@@ -1,0 +1,29 @@
+// Auth types - migrated from web client
+
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  avatar?: string;
+  email_verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+};
+
+export type AuthPermissions = {
+  canInviteMembers: boolean;
+  canManageRoles: boolean;
+  canManageChannels: boolean;
+};
+
+export type Auth = {
+  user: User;
+  permissions?: AuthPermissions;
+};
+
+export type TwoFactorConfigContent = {
+  title: string;
+  description: string;
+  buttonText: string;
+};
