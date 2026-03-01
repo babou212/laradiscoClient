@@ -1,2 +1,6 @@
-// Types directory - shared TypeScript types go here
-export {};
+// Types directory - shared TypeScript types
+export * from './auth';
+export * from './chat';
+export * from './navigation';
+export * from './ui';
+export * from './user';
