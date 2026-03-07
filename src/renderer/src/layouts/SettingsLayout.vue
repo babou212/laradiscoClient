@@ -1,12 +1,135 @@
-<!-- SettingsLayout - Settings pages layout with side navigation -->
-<!-- Migrated from: laradisco/resources/js/layouts/settings/Layout.vue -->
-<!-- TODO: Implement settings layout with category nav + content area -->
-
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { useAuthStore } from '@/stores/auth';
+
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+
+interface SettingsNavItem {
+    title: string;
+    routeName: string;
+}
+
+const sidebarNavItems: SettingsNavItem[] = [
+    { title: 'Profile', routeName: 'settings-profile' },
+    { title: 'Password', routeName: 'settings-password' },
+    { title: 'Two-Factor Auth', routeName: 'settings-two-factor' },
+    { title: 'Appearance', routeName: 'settings-appearance' },
+    { title: 'Voice', routeName: 'settings-voice' },
+    { title: 'Notifications', routeName: 'settings-notifications' },
+];
+
+const permissions = computed(() => authStore.user?.permissions);
+
+const adminNavItems = computed<SettingsNavItem[]>(() => {
+    const items: SettingsNavItem[] = [];
+    const perms = permissions.value;
+    if (!perms) return items;
+
+    if (perms.canInviteMembers || perms.isAdministrator) {
+        items.push({ title: 'Invite Links', routeName: 'settings-invite-links' });
+    }
+    if (perms.canManageRoles || perms.isAdministrator) {
+        items.push({ title: 'Roles', routeName: 'settings-roles' });
+        items.push({ title: 'Members', routeName: 'settings-members' });
+    }
+    if (perms.canManageChannels || perms.isAdministrator) {
+        items.push({ title: 'Channels', routeName: 'settings-channels' });
+    }
+    return items;
+});
+
+function isActive(routeName: string): boolean {
+    return route.name === routeName;
+}
 </script>
 
 <template>
-  <div>
-    <router-view />
-  </div>
+    <div class="h-full overflow-y-auto bg-background">
+        <div class="mx-auto max-w-7xl px-4 py-6 md:py-8">
+            <div class="mb-6">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    class="-ml-2"
+                    @click="router.push({ name: 'home' })"
+                >
+                    <ArrowLeft class="mr-2 h-4 w-4" />
+                    Back
+                </Button>
+            </div>
+
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold tracking-tight">Settings</h1>
+                <p class="mt-2 text-muted-foreground">
+                    Manage your profile and account settings
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-8 lg:flex-row lg:gap-12">
+                <aside class="w-full shrink-0 lg:w-56">
+                    <div class="rounded-lg border bg-card p-1">
+                        <nav
+                            class="flex flex-col space-y-0.5"
+                            aria-label="Settings"
+                        >
+                            <Button
+                                v-for="item in sidebarNavItems"
+                                :key="item.routeName"
+                                variant="ghost"
+                                :class="[
+                                    'justify-start font-medium transition-colors',
+                                    isActive(item.routeName)
+                                        ? 'bg-muted text-foreground'
+                                        : 'text-muted-foreground hover:text-foreground',
+                                ]"
+                                @click="router.push({ name: item.routeName })"
+                            >
+                                {{ item.title }}
+                            </Button>
+                        </nav>
+
+                        <template v-if="adminNavItems.length > 0">
+                            <Separator class="my-1" />
+                            <p
+                                class="px-3 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                            >
+                                Server
+                            </p>
+                            <nav
+                                class="flex flex-col space-y-0.5"
+                                aria-label="Server Settings"
+                            >
+                                <Button
+                                    v-for="item in adminNavItems"
+                                    :key="item.routeName"
+                                    variant="ghost"
+                                    :class="[
+                                        'justify-start font-medium transition-colors',
+                                        isActive(item.routeName)
+                                            ? 'bg-muted text-foreground'
+                                            : 'text-muted-foreground hover:text-foreground',
+                                    ]"
+                                    @click="router.push({ name: item.routeName })"
+                                >
+                                    {{ item.title }}
+                                </Button>
+                            </nav>
+                        </template>
+                    </div>
+                </aside>
+
+                <div class="min-w-0 flex-1">
+                    <div class="max-w-2xl space-y-6">
+                        <router-view />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>

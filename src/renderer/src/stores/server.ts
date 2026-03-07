@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
+export interface ReverbConfig {
+    key: string;
+    host: string;
+    port: number;
+    scheme: string;
+}
+
 export interface ServerConnection {
     id: number;
     name: string;
@@ -14,6 +21,7 @@ export const useServerStore = defineStore('server', () => {
     const servers = ref<ServerConnection[]>([]);
     const isConnecting = ref(false);
     const connectionError = ref<string | null>(null);
+    const reverbConfig = ref<ReverbConfig | null>(null);
 
     const isConnected = computed(() => !!activeServer.value);
     const activeHost = computed(() => activeServer.value?.host ?? null);
@@ -43,6 +51,8 @@ export const useServerStore = defineStore('server', () => {
             const result = await window.api.server.ping(host);
             if (!result.success) {
                 connectionError.value = result.error ?? 'Connection failed';
+            } else if (result.data?.reverb) {
+                reverbConfig.value = result.data.reverb as ReverbConfig;
             }
             return result;
         } catch {
@@ -96,6 +106,7 @@ export const useServerStore = defineStore('server', () => {
         connectionError,
         isConnected,
         activeHost,
+        reverbConfig,
         loadActiveServer,
         loadAllServers,
         pingServer,

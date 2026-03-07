@@ -1,25 +1,17 @@
-import { ipcMain, net } from 'electron';
+import { BrowserWindow, ipcMain, net, Notification } from 'electron';
 import {
     addServerConnection,
     getActiveServer,
     getAllServers,
     getAuthSession,
+    getSetting,
     removeAuthSession,
     removeServer,
     saveAuthSession,
     setActiveServer,
+    setSetting,
 } from './database';
 
-/**
- * Build a full URL from a host string.
- * Supports inputs like:
- *   - "localhost"          → "http://localhost"
- *   - "localhost:8000"     → "http://localhost:8000"
- *   - "127.0.0.1:8000"    → "http://127.0.0.1:8000"
- *   - "chat.example.com"  → "https://chat.example.com"
- *   - "http://..."        → kept as-is
- *   - "https://..."       → kept as-is
- */
 function buildBaseUrl(host: string): string {
     if (host.startsWith('http://') || host.startsWith('https://')) {
         return host.replace(/\/+$/, '');
@@ -40,12 +32,8 @@ function buildBaseUrl(host: string): string {
 
 export function registerIpcHandlers(): void {
 
-    /**
-     * Test connectivity to a server by hitting its /api/ping endpoint.
-     * Returns the server info on success, or an error message.
-     */
     ipcMain.handle('server:ping', async (_event, host: string) => {
-        const url = `${buildBaseUrl(host)}/api/ping`;
+        const url = `${buildBaseUrl(host)}/api/v1/ping`;
         try {
             const response = await net.fetch(url, {
                 method: 'GET',
@@ -64,9 +52,6 @@ export function registerIpcHandlers(): void {
         }
     });
 
-    /**
-     * Save a successful server connection to the local database.
-     */
     ipcMain.handle('server:save', async (_event, name: string, host: string) => {
         try {
             const connection = addServerConnection(name, host);
@@ -95,13 +80,10 @@ export function registerIpcHandlers(): void {
         return { success: true };
     });
 
-    /**
-     * Login to the server and store the token locally.
-     */
     ipcMain.handle(
         'auth:login',
         async (_event, host: string, serverId: number, email: string, password: string) => {
-            const url = `${buildBaseUrl(host)}/api/auth/login`;
+            const url = `${buildBaseUrl(host)}/api/v1/auth/login`;
             try {
                 const response = await net.fetch(url, {
                     method: 'POST',
@@ -116,16 +98,26 @@ export function registerIpcHandlers(): void {
                     }),
                 });
 
-                const data = await response.json();
+                const body = await response.json();
 
                 if (!response.ok) {
                     return {
                         success: false,
-                        error: data.message || data.errors?.email?.[0] || 'Login failed',
+                        error: body.message || body.errors?.email?.[0] || 'Login failed',
                     };
                 }
 
-                // Save encrypted token locally
+                const data = body.data;
+
+                // Two-factor authentication required — pass through to renderer
+                if (data.two_factor) {
+                    return {
+                        success: false,
+                        twoFactor: true,
+                        challengeToken: data.challenge_token,
+                    };
+                }
+
                 saveAuthSession(
                     serverId,
                     data.user.id,
@@ -143,21 +135,72 @@ export function registerIpcHandlers(): void {
         },
     );
 
-    /**
-     * Retrieve the stored auth session for a server.
-     */
+    ipcMain.handle(
+        'auth:twoFactorChallenge',
+        async (
+            _event,
+            host: string,
+            serverId: number,
+            challengeToken: string,
+            code: string | null,
+            recoveryCode: string | null,
+        ) => {
+            const url = `${buildBaseUrl(host)}/api/v1/auth/two-factor-challenge`;
+            try {
+                const response = await net.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        challenge_token: challengeToken,
+                        code: code,
+                        recovery_code: recoveryCode,
+                    }),
+                });
+
+                const body = await response.json();
+
+                if (!response.ok) {
+                    return {
+                        success: false,
+                        error:
+                            body.message ||
+                            body.errors?.code?.[0] ||
+                            body.errors?.recovery_code?.[0] ||
+                            'Verification failed',
+                    };
+                }
+
+                const data = body.data;
+
+                saveAuthSession(
+                    serverId,
+                    data.user.id,
+                    data.user.name,
+                    data.user.email,
+                    data.user.avatar_path,
+                    data.token,
+                );
+
+                return { success: true, user: data.user, token: data.token };
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Verification failed';
+                return { success: false, error: message };
+            }
+        },
+    );
+
     ipcMain.handle('auth:getSession', async (_event, serverId: number) => {
         return getAuthSession(serverId);
     });
 
-    /**
-     * Logout: revoke the token on the server and remove locally.
-     */
     ipcMain.handle('auth:logout', async (_event, host: string, serverId: number) => {
         const session = getAuthSession(serverId);
         if (session) {
             try {
-                await net.fetch(`${buildBaseUrl(host)}/api/auth/logout`, {
+                await net.fetch(`${buildBaseUrl(host)}/api/v1/auth/logout`, {
                     method: 'POST',
                     headers: {
                         Authorization: `Bearer ${session.token}`,
@@ -172,12 +215,9 @@ export function registerIpcHandlers(): void {
         return { success: true };
     });
 
-    /**
-     * Validate that a stored token is still valid.
-     */
     ipcMain.handle('auth:validate', async (_event, host: string, token: string) => {
         try {
-            const response = await net.fetch(`${buildBaseUrl(host)}/api/auth/user`, {
+            const response = await net.fetch(`${buildBaseUrl(host)}/api/v1/auth/me`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -189,10 +229,44 @@ export function registerIpcHandlers(): void {
                 return { valid: false };
             }
 
-            const user = await response.json();
-            return { valid: true, user };
+            const body = await response.json();
+            return { valid: true, user: body.data ?? body };
         } catch {
             return { valid: false };
         }
     });
+
+    ipcMain.handle('settings:get', async (_event, key: string) => {
+        return getSetting(key);
+    });
+
+    ipcMain.handle('settings:set', async (_event, key: string, value: string) => {
+        setSetting(key, value);
+        return { success: true };
+    });
+
+    ipcMain.on(
+        'notifications:show',
+        (_event, payload: { title: string; body: string; notificationId: string }) => {
+            if (!Notification.isSupported()) return;
+
+            const notification = new Notification({
+                title: payload.title,
+                body: payload.body,
+            });
+
+            notification.on('click', () => {
+                const windows = BrowserWindow.getAllWindows();
+                const win = windows[0];
+                if (win) {
+                    if (win.isMinimized()) win.restore();
+                    win.focus();
+
+                    win.webContents.send('notifications:clicked', payload.notificationId);
+                }
+            });
+
+            notification.show();
+        },
+    );
 }

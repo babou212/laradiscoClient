@@ -27,7 +27,6 @@ export function initDatabase(): void {
     const dbPath = join(app.getPath('userData'), 'laradisco.db');
     db = new Database(dbPath);
 
-    // Enable WAL mode for better performance
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
 
@@ -51,6 +50,11 @@ export function initDatabase(): void {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
     `);
 }
 
@@ -58,10 +62,7 @@ export function getDatabase(): Database.Database {
     return db;
 }
 
-// ── Server Connections ──────────────────────────────────────────────────
-
 export function addServerConnection(name: string, host: string): ServerConnection {
-    // Deactivate all existing connections
     db.prepare('UPDATE server_connections SET is_active = 0').run();
 
     const stmt = db.prepare(
@@ -97,8 +98,6 @@ export function removeServer(id: number): void {
     db.prepare('DELETE FROM server_connections WHERE id = ?').run(id);
 }
 
-// ── Auth Sessions ───────────────────────────────────────────────────────
-
 export function saveAuthSession(
     serverId: number,
     userId: number,
@@ -107,12 +106,10 @@ export function saveAuthSession(
     userAvatar: string | null,
     token: string,
 ): void {
-    // Encrypt the token using OS keychain via safeStorage
     let encryptedToken: string;
     if (safeStorage.isEncryptionAvailable()) {
         encryptedToken = safeStorage.encryptString(token).toString('base64');
     } else {
-        // Fallback: store as base64 (not truly encrypted, but app-level obfuscation)
         encryptedToken = Buffer.from(token).toString('base64');
     }
 
@@ -157,4 +154,17 @@ export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_
 
 export function removeAuthSession(serverId: number): void {
     db.prepare('DELETE FROM auth_sessions WHERE server_id = ?').run(serverId);
+}
+
+export function getSetting(key: string): string | null {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+        | { value: string }
+        | undefined;
+    return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+    db.prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+    ).run(key, value);
 }

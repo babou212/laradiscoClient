@@ -1,16 +1,22 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
+import { initEcho, disconnectEcho, isEchoConnected } from '@/lib/echo';
+import { useNotificationsStore } from '@/stores/notifications';
+import { usePresenceStore } from '@/stores/presence';
+import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
 
 const router = createRouter({
     history: createWebHashHistory(),
+    scrollBehavior() {
+        return false;
+    },
     routes: [
         {
             path: '/server-connect',
             name: 'server-connect',
             component: () => import('@/views/ServerConnectView.vue'),
         },
-
         {
             path: '/login',
             name: 'login',
@@ -30,25 +36,11 @@ const router = createRouter({
             meta: { requiresServer: true },
         },
         {
-            path: '/reset-password',
-            name: 'reset-password',
-            component: () => import('@/views/auth/ResetPasswordView.vue'),
-            meta: { requiresServer: true },
-        },
-        {
             path: '/two-factor-challenge',
             name: 'two-factor-challenge',
             component: () => import('@/views/auth/TwoFactorChallengeView.vue'),
             meta: { requiresServer: true },
         },
-        {
-            path: '/setup',
-            name: 'setup',
-            component: () => import('@/views/auth/SetupView.vue'),
-            meta: { requiresServer: true },
-        },
-
-        // ── Authenticated app routes ──────────────────────────────
         {
             path: '/',
             name: 'home',
@@ -70,7 +62,9 @@ const router = createRouter({
 
         {
             path: '/settings',
+            component: () => import('@/layouts/SettingsLayout.vue'),
             meta: { requiresAuth: true },
+            redirect: { name: 'settings-profile' },
             children: [
                 {
                     path: 'profile',
@@ -91,6 +85,11 @@ const router = createRouter({
                     path: 'notifications',
                     name: 'settings-notifications',
                     component: () => import('@/views/settings/NotificationSettingsView.vue'),
+                },
+                {
+                    path: 'voice',
+                    name: 'settings-voice',
+                    component: () => import('@/views/settings/VoiceSettingsView.vue'),
                 },
                 {
                     path: 'two-factor',
@@ -123,6 +122,36 @@ const router = createRouter({
 });
 
 let appInitialized = false;
+let realtimeConnected = false;
+
+function connectRealtime(userId: number): void {
+    if (realtimeConnected) return;
+    realtimeConnected = true;
+
+    initEcho();
+
+    const presenceStore = usePresenceStore();
+    const notificationsStore = useNotificationsStore();
+
+    presenceStore.connect();
+    notificationsStore.connect(userId);
+    startPresenceUpdater();
+}
+
+function disconnectRealtime(): void {
+    if (!realtimeConnected) return;
+    realtimeConnected = false;
+
+    const presenceStore = usePresenceStore();
+    const notificationsStore = useNotificationsStore();
+
+    presenceStore.goOffline();
+    stopPresenceUpdater();
+
+    notificationsStore.disconnect();
+    presenceStore.disconnect();
+    disconnectEcho();
+}
 
 router.beforeEach(async (to) => {
     const serverStore = useServerStore();
@@ -134,6 +163,7 @@ router.beforeEach(async (to) => {
         await serverStore.loadAllServers();
 
         if (serverStore.isConnected) {
+            await serverStore.pingServer(serverStore.activeHost!).catch(() => {});
             const sessionRestored = await authStore.restoreSession();
             if (sessionRestored && to.name === 'server-connect') {
                 return { name: 'home' };
@@ -146,8 +176,16 @@ router.beforeEach(async (to) => {
             return { name: 'server-connect' };
         }
         if (!authStore.isAuthenticated) {
+            disconnectRealtime();
             return { name: 'login' };
         }
+        if (authStore.user) {
+            connectRealtime(authStore.user.id);
+        }
+    }
+
+    if (!to.meta.requiresAuth && realtimeConnected) {
+        disconnectRealtime();
     }
 
     if (to.meta.requiresServer && !serverStore.isConnected) {

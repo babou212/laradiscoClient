@@ -3,6 +3,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
+import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon } from 'lucide-vue-next';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -20,7 +25,6 @@ const canSubmit = computed(
 );
 
 onMounted(() => {
-    // If no server connection, go back to server connect
     if (!serverStore.activeServer) {
         router.replace({ name: 'server-connect' });
     }
@@ -29,9 +33,11 @@ onMounted(() => {
 async function handleLogin(): Promise<void> {
     if (!canSubmit.value) return;
 
-    const success = await authStore.login(email.value.trim(), password.value);
+    const result = await authStore.login(email.value.trim(), password.value);
 
-    if (success) {
+    if (result === 'two-factor') {
+        router.push({ name: 'two-factor-challenge' });
+    } else if (result === true) {
         router.push({ name: 'home' });
     }
 }
@@ -42,87 +48,70 @@ function goBack(): void {
 </script>
 
 <template>
-    <div class="flex h-screen items-center justify-center bg-gray-950 text-white">
-        <div class="w-full max-w-md px-8">
-            <!-- Header -->
-            <div class="mb-8 text-center">
-                <h1 class="text-3xl font-bold">Welcome Back</h1>
-                <p class="mt-2 text-sm text-gray-400">
-                    Sign in to
-                    <span class="font-medium text-gray-300">{{ serverName }}</span>
-                </p>
-                <p class="mt-0.5 text-xs text-gray-600">{{ serverHost }}</p>
+    <AuthLayout title="Welcome Back" :description="`Sign in to ${serverName}`">
+        <p class="-mt-6 text-center text-xs text-muted-foreground/60">{{ serverHost }}</p>
+
+        <form @submit.prevent="handleLogin" class="space-y-5">
+            <div class="grid gap-2">
+                <Label for="email">Email</Label>
+                <Input
+                    id="email"
+                    v-model="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    :disabled="authStore.isLoggingIn"
+                />
             </div>
 
-            <!-- Login Form -->
-            <form @submit.prevent="handleLogin" class="space-y-4">
-                <div>
-                    <label for="email" class="mb-1.5 block text-sm font-medium text-gray-300">
-                        Email
-                    </label>
-                    <input
-                        id="email"
-                        v-model="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        autocomplete="email"
+            <div class="grid gap-2">
+                <Label for="password">Password</Label>
+                <div class="relative">
+                    <Input
+                        id="password"
+                        v-model="password"
+                        :type="showPassword ? 'text' : 'password'"
+                        placeholder="••••••••"
+                        autocomplete="current-password"
                         :disabled="authStore.isLoggingIn"
-                        class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-white placeholder-gray-500 transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                        class="pr-10"
                     />
-                </div>
-
-                <div>
-                    <label for="password" class="mb-1.5 block text-sm font-medium text-gray-300">
-                        Password
-                    </label>
-                    <div class="relative">
-                        <input
-                            id="password"
-                            v-model="password"
-                            :type="showPassword ? 'text' : 'password'"
-                            placeholder="••••••••"
-                            autocomplete="current-password"
-                            :disabled="authStore.isLoggingIn"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 pr-10 text-sm text-white placeholder-gray-500 transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                        />
-                        <button
-                            type="button"
-                            @click="showPassword = !showPassword"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                            tabindex="-1"
-                        >
-                            <span class="text-xs">{{ showPassword ? 'HIDE' : 'SHOW' }}</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Error -->
-                <div
-                    v-if="authStore.loginError"
-                    class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-400"
-                >
-                    {{ authStore.loginError }}
-                </div>
-
-                <!-- Actions -->
-                <div class="flex flex-col gap-3 pt-2">
-                    <button
-                        type="submit"
-                        :disabled="!canSubmit"
-                        class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <span v-if="authStore.isLoggingIn">Signing in...</span>
-                        <span v-else>Sign In</span>
-                    </button>
                     <button
                         type="button"
-                        @click="goBack"
-                        class="text-sm text-gray-500 transition hover:text-gray-300"
+                        @click="showPassword = !showPassword"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabindex="-1"
                     >
-                        &larr; Change server
+                        <EyeOffIcon v-if="showPassword" class="size-4" />
+                        <EyeIcon v-else class="size-4" />
                     </button>
                 </div>
-            </form>
-        </div>
-    </div>
+            </div>
+
+            <div
+                v-if="authStore.loginError"
+                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+                {{ authStore.loginError }}
+            </div>
+
+            <div class="flex flex-col gap-3 pt-1">
+                <Button type="submit" :disabled="!canSubmit" class="w-full">
+                    <Loader2Icon v-if="authStore.isLoggingIn" class="animate-spin" />
+                    <span v-if="authStore.isLoggingIn">Signing in...</span>
+                    <span v-else>Sign In</span>
+                </Button>
+                <router-link
+                    :to="{ name: 'forgot-password' }"
+                    class="text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    Forgot your password?
+                </router-link>
+                <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
+                    <ArrowLeftIcon class="size-3" />
+                    Change server
+                </Button>
+            </div>
+        </form>
+    </AuthLayout>
 </template>

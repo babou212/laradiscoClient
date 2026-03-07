@@ -2,12 +2,22 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useServerStore } from './server';
 
+export interface AuthPermissions {
+    canInviteMembers: boolean;
+    canManageRoles: boolean;
+    canManageChannels: boolean;
+    canManageServer: boolean;
+    canManageMessages: boolean;
+    isAdministrator: boolean;
+}
+
 export interface AuthUser {
     id: number;
     name: string;
     username: string;
     email: string;
     avatar_path: string | null;
+    permissions?: AuthPermissions;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -15,13 +25,10 @@ export const useAuthStore = defineStore('auth', () => {
     const token = ref<string | null>(null);
     const isLoggingIn = ref(false);
     const loginError = ref<string | null>(null);
+    const challengeToken = ref<string | null>(null);
 
     const isAuthenticated = computed(() => !!user.value && !!token.value);
 
-    /**
-     * Try to restore an existing auth session from local DB for the active server.
-     * Validates the token is still good with the server.
-     */
     async function restoreSession(): Promise<boolean> {
         const serverStore = useServerStore();
         if (!serverStore.activeServer) return false;
@@ -29,7 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
         const session = await window.api.auth.getSession(serverStore.activeServer.id);
         if (!session) return false;
 
-        // Validate the token is still valid
         const result = await window.api.auth.validate(serverStore.activeServer.host, session.token);
         if (result.valid && result.user) {
             user.value = result.user;
@@ -37,15 +43,11 @@ export const useAuthStore = defineStore('auth', () => {
             return true;
         }
 
-        // Token expired/revoked — clean up
         await window.api.auth.logout(serverStore.activeServer.host, serverStore.activeServer.id);
         return false;
     }
 
-    /**
-     * Login with email and password.
-     */
-    async function login(email: string, password: string): Promise<boolean> {
+    async function login(email: string, password: string): Promise<boolean | 'two-factor'> {
         const serverStore = useServerStore();
         if (!serverStore.activeServer) {
             loginError.value = 'No server connection';
@@ -63,6 +65,11 @@ export const useAuthStore = defineStore('auth', () => {
                 password,
             );
 
+            if (result.twoFactor && result.challengeToken) {
+                challengeToken.value = result.challengeToken;
+                return 'two-factor';
+            }
+
             if (result.success && result.user && result.token) {
                 user.value = result.user;
                 token.value = result.token;
@@ -79,9 +86,45 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    /**
-     * Logout and revoke token.
-     */
+    async function verifyTwoFactor(
+        code: string | null,
+        recoveryCode: string | null,
+    ): Promise<boolean> {
+        const serverStore = useServerStore();
+        if (!serverStore.activeServer || !challengeToken.value) {
+            loginError.value = 'No active challenge. Please log in again.';
+            return false;
+        }
+
+        isLoggingIn.value = true;
+        loginError.value = null;
+
+        try {
+            const result = await window.api.auth.twoFactorChallenge(
+                serverStore.activeServer.host,
+                serverStore.activeServer.id,
+                challengeToken.value,
+                code,
+                recoveryCode,
+            );
+
+            if (result.success && result.user && result.token) {
+                user.value = result.user;
+                token.value = result.token;
+                challengeToken.value = null;
+                return true;
+            }
+
+            loginError.value = result.error ?? 'Verification failed';
+            return false;
+        } catch {
+            loginError.value = 'Unexpected error during verification';
+            return false;
+        } finally {
+            isLoggingIn.value = false;
+        }
+    }
+
     async function logout(): Promise<void> {
         const serverStore = useServerStore();
         if (serverStore.activeServer) {
@@ -103,9 +146,11 @@ export const useAuthStore = defineStore('auth', () => {
         token,
         isLoggingIn,
         loginError,
+        challengeToken,
         isAuthenticated,
         restoreSession,
         login,
+        verifyTwoFactor,
         logout,
         clearError,
     };
