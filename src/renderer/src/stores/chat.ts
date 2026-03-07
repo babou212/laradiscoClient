@@ -1,8 +1,279 @@
-// Chat store - manages channels, messages, and active chat state
-// TODO: Implement channel list, active channel, message history, sending messages
-
 import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import api from '@/lib/api';
+import type {
+    Category,
+    Channel,
+    ChannelPermissions,
+    MessageData,
+    MessagesResponse,
+} from '@/types/chat';
 
 export const useChatStore = defineStore('chat', () => {
-  // TODO
+    const categories = ref<Category[]>([]);
+    const currentChannel = ref<Channel | null>(null);
+    const currentChannelPermissions = ref<ChannelPermissions | null>(null);
+    const messages = ref<MessageData[]>([]);
+    const nextCursor = ref<string | null>(null);
+    const prevCursor = ref<string | null>(null);
+    const isLoadingChannels = ref(false);
+    const isLoadingMessages = ref(false);
+    const isLoadingMore = ref(false);
+    const serverName = ref<string>('Laradisco');
+
+    const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
+
+    async function fetchCategories(): Promise<void> {
+        isLoadingChannels.value = true;
+        try {
+            const response = await api.get('/categories');
+            categories.value = response.data ?? [];
+        } catch (error) {
+            console.error('Failed to fetch categories:', error);
+        } finally {
+            isLoadingChannels.value = false;
+        }
+    }
+
+    async function fetchChannel(channelId: number): Promise<void> {
+        try {
+            const response = await api.get(`/channels/${channelId}`);
+            if (response.data) {
+                currentChannel.value = response.data;
+                currentChannelPermissions.value =
+                    response.data.permissions ?? null;
+            }
+        } catch (error) {
+            console.error('Failed to fetch channel:', error);
+        }
+    }
+
+    async function fetchMessages(channelId: number, cursor?: string): Promise<MessagesResponse | null> {
+        try {
+            const params: Record<string, string> = {};
+            if (cursor) params.cursor = cursor;
+
+            const response = await api.get(`/channels/${channelId}/messages`, { params });
+            return response.data as MessagesResponse;
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+            return null;
+        }
+    }
+
+    async function selectChannel(channelId: number): Promise<void> {
+        isLoadingMessages.value = true;
+        try {
+            const [, msgData] = await Promise.all([
+                fetchChannel(channelId),
+                fetchMessages(channelId),
+            ]);
+
+            if (msgData) {
+                messages.value = msgData.data ?? [];
+                nextCursor.value = msgData.next_cursor ?? null;
+                prevCursor.value = msgData.prev_cursor ?? null;
+            }
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
+    async function loadOlderMessages(): Promise<void> {
+        if (!prevCursor.value || !currentChannel.value || isLoadingMore.value)
+            return;
+
+        isLoadingMore.value = true;
+        try {
+            const msgData = await fetchMessages(
+                currentChannel.value.id,
+                prevCursor.value,
+            );
+
+            if (msgData) {
+                messages.value = [
+                    ...(msgData.data ?? []),
+                    ...messages.value,
+                ];
+                prevCursor.value = msgData.prev_cursor ?? null;
+            }
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
+    async function sendMessage(
+        content: string,
+        replyToId?: number,
+    ): Promise<void> {
+        if (!currentChannel.value) return;
+
+        const optimistic: MessageData = {
+            id: Date.now(),
+            content,
+            is_edited: false,
+            edited_at: null,
+            deleted_at: null,
+            reply_to_id: replyToId ?? null,
+            reply_to: null,
+            user: { id: 0, username: '', avatar_path: null }, // filled by caller
+            reactions: [],
+            created_at: new Date().toISOString(),
+        };
+
+        try {
+            const response = await api.post(
+                `/channels/${currentChannel.value.id}/messages`,
+                {
+                    content,
+                    reply_to_id: replyToId,
+                },
+            );
+
+            // Push the real server message (unwrapped from API envelope)
+            if (response.data) {
+                messages.value.push(response.data);
+            }
+        } catch (error) {
+            console.error('Failed to send message:', error);
+        }
+    }
+
+    async function editMessage(
+        messageId: number,
+        content: string,
+    ): Promise<void> {
+        if (!currentChannel.value) return;
+        try {
+            await api.put(
+                `/channels/${currentChannel.value.id}/messages/${messageId}`,
+                { content },
+            );
+            const msg = messages.value.find((m) => m.id === messageId);
+            if (msg) {
+                msg.content = content;
+                msg.is_edited = true;
+                msg.edited_at = new Date().toISOString();
+            }
+        } catch (error) {
+            console.error('Failed to edit message:', error);
+        }
+    }
+
+    async function deleteMessage(messageId: number): Promise<void> {
+        if (!currentChannel.value) return;
+        try {
+            await api.delete(
+                `/channels/${currentChannel.value.id}/messages/${messageId}`,
+            );
+            const idx = messages.value.findIndex((m) => m.id === messageId);
+            if (idx !== -1) messages.value.splice(idx, 1);
+        } catch (error) {
+            console.error('Failed to delete message:', error);
+        }
+    }
+
+    async function toggleReaction(
+        messageId: number,
+        emoji: string,
+    ): Promise<void> {
+        if (!currentChannel.value) return;
+        try {
+            const response = await api.post(
+                `/channels/${currentChannel.value.id}/messages/${messageId}/reactions`,
+                { emoji },
+            );
+            const msg = messages.value.find((m) => m.id === messageId);
+            if (msg && response.data) {
+                if (response.data.added) {
+                    const userId = response.data.reaction?.user_id ?? 0;
+                    msg.reactions.push({
+                        id: response.data.reaction?.id ?? 0,
+                        message_id: messageId,
+                        user_id: userId,
+                        emoji,
+                    });
+                } else {
+                    // Remove own reaction — find by current user and emoji
+                    const { useAuthStore } = await import('./auth');
+                    const currentUserId = useAuthStore().user?.id ?? 0;
+                    const idx = msg.reactions.findIndex(
+                        (r) => r.user_id === currentUserId && r.emoji === emoji,
+                    );
+                    if (idx !== -1) msg.reactions.splice(idx, 1);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to toggle reaction:', error);
+        }
+    }
+
+    async function emitTyping(): Promise<void> {
+        if (!currentChannel.value) return;
+        try {
+            await api.post(`/channels/${currentChannel.value.id}/typing`);
+        } catch {
+            // non-critical
+        }
+    }
+
+    function addMessage(message: MessageData): void {
+        const exists = messages.value.some((m) => m.id === message.id);
+        if (!exists) {
+            messages.value.push(message);
+        }
+    }
+
+    function updateMessage(
+        messageOrId: MessageData | number,
+        partial?: Partial<MessageData>,
+    ): void {
+        if (typeof messageOrId === 'number') {
+            const idx = messages.value.findIndex((m) => m.id === messageOrId);
+            if (idx !== -1 && partial) {
+                Object.assign(messages.value[idx], partial);
+            }
+        } else {
+            const idx = messages.value.findIndex(
+                (m) => m.id === messageOrId.id,
+            );
+            if (idx !== -1) {
+                messages.value[idx].content = messageOrId.content;
+                messages.value[idx].is_edited = true;
+                messages.value[idx].edited_at = messageOrId.edited_at;
+            }
+        }
+    }
+
+    function removeMessage(messageId: number): void {
+        const idx = messages.value.findIndex((m) => m.id === messageId);
+        if (idx !== -1) messages.value.splice(idx, 1);
+    }
+
+    return {
+        categories,
+        currentChannel,
+        currentChannelPermissions,
+        messages,
+        nextCursor,
+        prevCursor,
+        isLoadingChannels,
+        isLoadingMessages,
+        isLoadingMore,
+        serverName,
+        selectedChannelId,
+        fetchCategories,
+        fetchChannel,
+        fetchMessages,
+        selectChannel,
+        loadOlderMessages,
+        sendMessage,
+        editMessage,
+        deleteMessage,
+        toggleReaction,
+        emitTyping,
+        addMessage,
+        updateMessage,
+        removeMessage,
+    };
 });

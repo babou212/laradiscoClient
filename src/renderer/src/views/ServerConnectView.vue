@@ -2,6 +2,11 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useServerStore } from '@/stores/server';
+import { Loader2Icon, CheckCircle2Icon } from 'lucide-vue-next';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const router = useRouter();
 const serverStore = useServerStore();
@@ -39,98 +44,84 @@ async function connectAndSave(): Promise<void> {
 </script>
 
 <template>
-    <div class="flex h-screen items-center justify-center bg-gray-950 text-white">
-        <div class="w-full max-w-md px-8">
-            <!-- Header -->
-            <div class="mb-8 text-center">
-                <h1 class="text-3xl font-bold">LaraDisco</h1>
-                <p class="mt-2 text-sm text-gray-400">Connect to your server to get started</p>
+    <AuthLayout title="LaraDisco" description="Connect to your server to get started">
+        <form @submit.prevent="testConnection" class="space-y-5">
+            <div class="grid gap-2">
+                <Label for="host">Server Address</Label>
+                <Input
+                    id="host"
+                    v-model="host"
+                    type="text"
+                    placeholder="chat.example.com"
+                    :disabled="isTestingConnection"
+                />
             </div>
 
-            <!-- Server Input -->
-            <form @submit.prevent="testConnection" class="space-y-4">
+            <div
+                v-if="serverStore.connectionError"
+                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+                {{ serverStore.connectionError }}
+            </div>
+
+            <div
+                v-if="serverInfo"
+                class="flex items-start gap-3 rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500 dark:text-green-400"
+            >
+                <CheckCircle2Icon class="mt-0.5 size-4 shrink-0" />
                 <div>
-                    <label for="host" class="mb-1.5 block text-sm font-medium text-gray-300">
-                        Server Address
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <input
-                            id="host"
-                            v-model="host"
-                            type="text"
-                            placeholder="chat.example.com"
-                            :disabled="isTestingConnection"
-                            class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-white placeholder-gray-500 transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                        />
-                    </div>
-                </div>
-
-                <!-- Error -->
-                <div
-                    v-if="serverStore.connectionError"
-                    class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-400"
-                >
-                    {{ serverStore.connectionError }}
-                </div>
-
-                <!-- Success info -->
-                <div
-                    v-if="serverInfo"
-                    class="rounded-lg border border-green-800 bg-green-950/50 px-4 py-3 text-sm text-green-400"
-                >
                     <p class="font-medium">Connected to {{ serverInfo.app }}</p>
-                    <p class="mt-0.5 text-xs text-green-500">
+                    <p class="mt-0.5 text-xs opacity-70">
                         Laravel {{ serverInfo.version }}
                     </p>
                 </div>
+            </div>
 
-                <!-- Actions -->
-                <div class="flex flex-col gap-3 pt-2">
-                    <button
-                        v-if="!serverInfo"
-                        type="submit"
-                        :disabled="isTestingConnection || !host.trim()"
-                        class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <span v-if="isTestingConnection">Connecting...</span>
-                        <span v-else>Test Connection</span>
-                    </button>
-                    <button
-                        v-else
-                        type="button"
-                        @click="connectAndSave"
-                        class="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-green-500"
-                    >
-                        Continue
-                    </button>
-                </div>
-            </form>
+            <div class="flex flex-col gap-3 pt-1">
+                <Button
+                    v-if="!serverInfo"
+                    type="submit"
+                    :disabled="isTestingConnection || !host.trim()"
+                    class="w-full"
+                >
+                    <Loader2Icon v-if="isTestingConnection" class="animate-spin" />
+                    <span v-if="isTestingConnection">Connecting...</span>
+                    <span v-else>Test Connection</span>
+                </Button>
+                <Button
+                    v-else
+                    type="button"
+                    @click="connectAndSave"
+                    class="w-full"
+                >
+                    Continue
+                </Button>
+            </div>
+        </form>
 
-            <!-- Saved Servers -->
-            <div v-if="serverStore.servers.length > 0" class="mt-8 border-t border-gray-800 pt-6">
-                <p class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Saved Servers
-                </p>
-                <div class="space-y-2">
-                    <button
-                        v-for="server in serverStore.servers"
-                        :key="server.id"
-                        @click="host = server.host; serverInfo = null; serverStore.clearError();"
-                        class="flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-3 text-left text-sm transition hover:border-gray-700 hover:bg-gray-900"
+        <div v-if="serverStore.servers.length > 0" class="border-t border-border pt-6">
+            <p class="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Saved Servers
+            </p>
+            <div class="space-y-2">
+                <button
+                    v-for="server in serverStore.servers"
+                    :key="server.id"
+                    @click="host = server.host; serverInfo = null; serverStore.clearError();"
+                    class="flex w-full items-center justify-between rounded-md border border-border bg-card px-4 py-3 text-left text-sm transition hover:border-ring hover:bg-accent"
+                >
+                    <div>
+                        <p class="font-medium text-foreground">{{ server.name }}</p>
+                        <p class="text-xs text-muted-foreground">{{ server.host }}</p>
+                    </div>
+                    <span
+                        v-if="server.is_active"
+                        class="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500 dark:text-green-400"
                     >
-                        <div>
-                            <p class="font-medium text-gray-200">{{ server.name }}</p>
-                            <p class="text-xs text-gray-500">{{ server.host }}</p>
-                        </div>
-                        <span
-                            v-if="server.is_active"
-                            class="rounded-full bg-green-900/50 px-2 py-0.5 text-xs text-green-400"
-                        >
-                            Active
-                        </span>
-                    </button>
-                </div>
+                        Active
+                    </span>
+                </button>
             </div>
         </div>
-    </div>
+    </AuthLayout>
 </template>

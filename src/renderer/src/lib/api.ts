@@ -17,10 +17,6 @@ function buildBaseUrl(host: string): string {
     return `${isLocal ? 'http' : 'https'}://${host}`;
 }
 
-/**
- * Create a pre-configured axios instance that automatically sets the
- * base URL from the active server and attaches the auth token.
- */
 const api = axios.create({
     headers: {
         Accept: 'application/json',
@@ -29,13 +25,12 @@ const api = axios.create({
     timeout: 15_000,
 });
 
-// Dynamically set baseURL and Authorization header on every request
 api.interceptors.request.use((config) => {
     const serverStore = useServerStore();
     const authStore = useAuthStore();
 
     if (serverStore.activeHost) {
-        config.baseURL = `${buildBaseUrl(serverStore.activeHost)}/api`;
+        config.baseURL = `${buildBaseUrl(serverStore.activeHost)}/api/v1`;
     }
 
     if (authStore.token) {
@@ -45,15 +40,26 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Handle 401 responses — token expired/revoked
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        const body = response.data;
+        if (
+            body &&
+            typeof body === 'object' &&
+            !Array.isArray(body) &&
+            'data' in body
+        ) {
+            response.data = body.data;
+        }
+        return response;
+    },
     async (error) => {
         if (error.response?.status === 401) {
             const authStore = useAuthStore();
             await authStore.logout();
-            // Router will redirect to login via navigation guard
-            window.location.hash = '#/login';
+
+            const { default: router } = await import('@/router');
+            router.push({ name: 'login' });
         }
         return Promise.reject(error);
     },

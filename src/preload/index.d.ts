@@ -8,12 +8,22 @@ interface ServerConnection {
     created_at: string;
 }
 
+interface AuthPermissions {
+    canInviteMembers: boolean;
+    canManageRoles: boolean;
+    canManageChannels: boolean;
+    canManageServer: boolean;
+    canManageMessages: boolean;
+    isAdministrator: boolean;
+}
+
 interface AuthUser {
     id: number;
     name: string;
     username: string;
     email: string;
     avatar_path: string | null;
+    permissions?: AuthPermissions;
 }
 
 interface AuthSession {
@@ -42,15 +52,80 @@ interface AuthApi {
         serverId: number,
         email: string,
         password: string,
+    ) => Promise<{
+        success: boolean;
+        user?: AuthUser;
+        token?: string;
+        error?: string;
+        twoFactor?: boolean;
+        challengeToken?: string;
+    }>;
+    twoFactorChallenge: (
+        host: string,
+        serverId: number,
+        challengeToken: string,
+        code: string | null,
+        recoveryCode: string | null,
     ) => Promise<{ success: boolean; user?: AuthUser; token?: string; error?: string }>;
     getSession: (serverId: number) => Promise<AuthSession | null>;
     logout: (host: string, serverId: number) => Promise<{ success: boolean }>;
     validate: (host: string, token: string) => Promise<{ valid: boolean; user?: AuthUser }>;
 }
 
+interface PttCapturedKey {
+    keycode: number;
+    ctrlKey: boolean;
+    shiftKey: boolean;
+    altKey: boolean;
+    metaKey: boolean;
+}
+
+interface PttApi {
+    configure: (config: {
+        keycode: number | null;
+        ctrl: boolean;
+        shift: boolean;
+        alt: boolean;
+        meta: boolean;
+        enabled: boolean;
+    }) => Promise<{ success: boolean }>;
+    captureNextKey: () => Promise<PttCapturedKey>;
+    cancelCapture: () => Promise<{ success: boolean }>;
+    onActivated: (callback: () => void) => void;
+    onDeactivated: (callback: () => void) => void;
+    removeAllListeners: () => void;
+}
+
+interface WindowApi {
+    minimize: () => void;
+    maximize: () => void;
+    close: () => void;
+    isMaximized: () => Promise<boolean>;
+    onMaximizedChange: (callback: (_event: unknown, isMaximized: boolean) => void) => void;
+    removeMaximizedListener: () => void;
+    onBeforeQuit: (callback: () => void) => void;
+    removeBeforeQuitListener: () => void;
+    platform: string;
+}
+
+interface NotificationsApi {
+    show: (payload: { title: string; body: string; notificationId: string }) => void;
+    onClicked: (callback: (notificationId: string) => void) => void;
+    removeAllListeners: () => void;
+}
+
+interface SettingsApi {
+    get: (key: string) => Promise<string | null>;
+    set: (key: string, value: string) => Promise<{ success: boolean }>;
+}
+
 interface AppApi {
     server: ServerApi;
     auth: AuthApi;
+    ptt: PttApi;
+    notifications: NotificationsApi;
+    settings: SettingsApi;
+    window: WindowApi;
 }
 
 declare global {
