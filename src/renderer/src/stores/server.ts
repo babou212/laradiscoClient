@@ -43,7 +43,9 @@ export const useServerStore = defineStore('server', () => {
     /**
      * Ping a server to verify connectivity.
      */
-    async function pingServer(host: string): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+    async function pingServer(
+        host: string,
+    ): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
         isConnecting.value = true;
         connectionError.value = null;
 

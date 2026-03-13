@@ -1,12 +1,6 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { x25519 } from '@noble/curves/ed25519.js';
-import type {
-    DeviceIdentityKeyPair,
-    KeyPair,
-    OneTimePreKey,
-    SignedPreKey,
-    UserIdentityKeyPair,
-} from './types';
+import type { DeviceIdentityKeyPair, KeyPair, OneTimePreKey, SignedPreKey, UserIdentityKeyPair } from './types';
 
 export function generateUserIdentityKeyPair(): UserIdentityKeyPair {
     const privateKey = new Uint8Array(ed25519.utils.randomSecretKey());
@@ -14,9 +8,7 @@ export function generateUserIdentityKeyPair(): UserIdentityKeyPair {
     return { publicKey, privateKey };
 }
 
-export function generateDeviceIdentityKeyPair(
-    userIdentityPrivateKey: Uint8Array<ArrayBuffer>,
-): DeviceIdentityKeyPair {
+export function generateDeviceIdentityKeyPair(userIdentityPrivateKey: Uint8Array<ArrayBuffer>): DeviceIdentityKeyPair {
     const privateKey = new Uint8Array(ed25519.utils.randomSecretKey());
     const publicKey = new Uint8Array(ed25519.getPublicKey(privateKey));
 
@@ -45,10 +37,7 @@ export function ed25519PublicToX25519(ed25519PublicKey: Uint8Array<ArrayBuffer>)
     return new Uint8Array(ed25519.utils.toMontgomery(ed25519PublicKey));
 }
 
-export function generateSignedPreKey(
-    deviceIdentityPrivateKey: Uint8Array<ArrayBuffer>,
-    id: number,
-): SignedPreKey {
+export function generateSignedPreKey(deviceIdentityPrivateKey: Uint8Array<ArrayBuffer>, id: number): SignedPreKey {
     const privateKey = new Uint8Array(x25519.utils.randomSecretKey());
     const publicKey = new Uint8Array(x25519.getPublicKey(privateKey));
 
@@ -75,7 +64,10 @@ export function generateOneTimePreKeys(startId: number, count: number): OneTimeP
     return preKeys;
 }
 
-export function x25519DH(privateKey: Uint8Array<ArrayBuffer>, publicKey: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+export function x25519DH(
+    privateKey: Uint8Array<ArrayBuffer>,
+    publicKey: Uint8Array<ArrayBuffer>,
+): Uint8Array<ArrayBuffer> {
     return new Uint8Array(x25519.getSharedSecret(privateKey, publicKey));
 }
 

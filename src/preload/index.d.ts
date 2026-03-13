@@ -195,10 +195,7 @@ interface E2eeApi {
         signedPrekeyId: number;
         signedPrekeySignature: string;
     }>;
-    generatePreKeys: (
-        serverId: number,
-        count: number,
-    ) => Promise<Array<{ prekeyId: number; publicKey: string }>>;
+    generatePreKeys: (serverId: number, count: number) => Promise<Array<{ prekeyId: number; publicKey: string }>>;
     wipe: (serverId: number) => Promise<{ success: boolean }>;
     wipeForUserMismatch: (serverId: number, userId: number) => Promise<boolean>;
     invalidateChannelSenderKeys: (serverId: number, channelId: number) => Promise<{ success: boolean }>;

@@ -28,10 +28,7 @@ export function normalizeText(text: string): string[] {
     return unique.filter((w) => w.length >= MIN_WORD_LENGTH);
 }
 
-export async function generateSearchTokens(
-    searchKey: Uint8Array<ArrayBuffer>,
-    plaintext: string,
-): Promise<string[]> {
+export async function generateSearchTokens(searchKey: Uint8Array<ArrayBuffer>, plaintext: string): Promise<string[]> {
     const words = normalizeText(plaintext);
     if (words.length === 0) return [];
 
@@ -56,10 +53,7 @@ export async function generateSearchTokens(
     return tokens;
 }
 
-export async function generateSearchTrapdoor(
-    searchKey: Uint8Array<ArrayBuffer>,
-    query: string,
-): Promise<string[]> {
+export async function generateSearchTrapdoor(searchKey: Uint8Array<ArrayBuffer>, query: string): Promise<string[]> {
     const words = normalizeText(query);
     if (words.length === 0) return [];
 

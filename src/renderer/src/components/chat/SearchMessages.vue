@@ -93,114 +93,109 @@ onUnmounted(() => {
 
 <template>
     <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" @mousedown="handleClose" />
+        <div class="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/50" @mousedown="handleClose" />
 
-        <!-- Modal -->
-        <div class="relative z-10 flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
-        <!-- Header -->
-        <div class="flex h-12 items-center gap-2 border-b border-border px-3">
-            <Search :size="16" class="text-muted-foreground" />
-            <span class="text-sm font-medium">Search in {{ conversationName }}</span>
-            <button
-                class="ml-auto rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title="Close search (Esc)"
-                @click="handleClose"
-            >
-                <X :size="16" />
-            </button>
-        </div>
-
-        <!-- Search Input -->
-        <div class="border-b border-border p-3">
-            <div class="relative">
-                <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                    ref="searchInput"
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search messages…"
-                    class="w-full rounded-md border border-border bg-muted/50 py-1.5 pl-8 pr-3 text-sm placeholder-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background"
-                />
-            </div>
-        </div>
-
-        <!-- Results Area -->
-        <div class="min-h-0 flex-1 overflow-y-auto">
-            <!-- Loading State -->
-            <div v-if="isSearching" class="flex items-center justify-center py-8">
-                <Loader2 :size="20" class="animate-spin text-muted-foreground" />
-                <span class="ml-2 text-sm text-muted-foreground">Searching…</span>
-            </div>
-
-            <!-- Error State -->
-            <div v-else-if="searchError" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                <AlertCircle :size="24" class="text-destructive" />
-                <p class="text-sm text-destructive">{{ searchError }}</p>
-            </div>
-
-            <!-- Empty State (no query) -->
-            <div v-else-if="!searchQuery.trim()" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                <Search :size="32" class="text-muted-foreground/50" />
-                <p class="text-sm text-muted-foreground">Type to search messages</p>
-                <p class="text-xs text-muted-foreground/70">
-                    Search uses encrypted tokens — the server never sees your query
-                </p>
-            </div>
-
-            <!-- No Results -->
+            <!-- Modal -->
             <div
-                v-else-if="searchResults.length === 0 && !isSearching"
-                class="flex flex-col items-center gap-2 px-4 py-8 text-center"
+                class="border-border bg-background relative z-10 flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border shadow-2xl"
             >
-                <Search :size="32" class="text-muted-foreground/50" />
-                <p class="text-sm text-muted-foreground">No results found</p>
-                <p class="text-xs text-muted-foreground/70">
-                    Try different search terms
-                </p>
-            </div>
-
-            <!-- Results List -->
-            <div v-else class="divide-y divide-border">
-                <button
-                    v-for="result in searchResults"
-                    :key="result.id"
-                    class="flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
-                    @click="handleNavigate(result.id)"
-                >
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-foreground">
-                            {{ result.user?.username ?? 'Unknown' }}
-                        </span>
-                        <span class="text-xs text-muted-foreground">
-                            {{ formatTimestamp(result.created_at) }}
-                        </span>
-                    </div>
-                    <p
-                        v-if="!result.decrypt_error"
-                        class="line-clamp-2 text-xs text-muted-foreground"
-                    >
-                        {{ getDisplayContent(result) }}
-                    </p>
-                    <p v-else class="text-xs italic text-destructive/70">
-                        Could not decrypt message
-                    </p>
-                </button>
-
-                <!-- Load More -->
-                <div v-if="hasMore" class="flex justify-center py-3">
+                <!-- Header -->
+                <div class="border-border flex h-12 items-center gap-2 border-b px-3">
+                    <Search :size="16" class="text-muted-foreground" />
+                    <span class="text-sm font-medium">Search in {{ conversationName }}</span>
                     <button
-                        class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        @click="handleLoadMore"
+                        class="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded p-1 transition-colors"
+                        title="Close search (Esc)"
+                        @click="handleClose"
                     >
-                        <ChevronDown :size="14" />
-                        Load more results
+                        <X :size="16" />
                     </button>
+                </div>
+
+                <!-- Search Input -->
+                <div class="border-border border-b p-3">
+                    <div class="relative">
+                        <Search :size="14" class="text-muted-foreground absolute top-1/2 left-2.5 -translate-y-1/2" />
+                        <input
+                            ref="searchInput"
+                            v-model="searchQuery"
+                            type="text"
+                            placeholder="Search messages…"
+                            class="border-border bg-muted/50 placeholder-muted-foreground focus:border-primary focus:bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm transition-colors outline-none"
+                        />
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="min-h-0 flex-1 overflow-y-auto">
+                    <!-- Loading State -->
+                    <div v-if="isSearching" class="flex items-center justify-center py-8">
+                        <Loader2 :size="20" class="text-muted-foreground animate-spin" />
+                        <span class="text-muted-foreground ml-2 text-sm">Searching…</span>
+                    </div>
+
+                    <!-- Error State -->
+                    <div v-else-if="searchError" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                        <AlertCircle :size="24" class="text-destructive" />
+                        <p class="text-destructive text-sm">{{ searchError }}</p>
+                    </div>
+
+                    <!-- Empty State (no query) -->
+                    <div v-else-if="!searchQuery.trim()" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                        <Search :size="32" class="text-muted-foreground/50" />
+                        <p class="text-muted-foreground text-sm">Type to search messages</p>
+                        <p class="text-muted-foreground/70 text-xs">
+                            Search uses encrypted tokens — the server never sees your query
+                        </p>
+                    </div>
+
+                    <!-- No Results -->
+                    <div
+                        v-else-if="searchResults.length === 0 && !isSearching"
+                        class="flex flex-col items-center gap-2 px-4 py-8 text-center"
+                    >
+                        <Search :size="32" class="text-muted-foreground/50" />
+                        <p class="text-muted-foreground text-sm">No results found</p>
+                        <p class="text-muted-foreground/70 text-xs">Try different search terms</p>
+                    </div>
+
+                    <!-- Results List -->
+                    <div v-else class="divide-border divide-y">
+                        <button
+                            v-for="result in searchResults"
+                            :key="result.id"
+                            class="hover:bg-muted/50 flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors"
+                            @click="handleNavigate(result.id)"
+                        >
+                            <div class="flex items-center gap-2">
+                                <span class="text-foreground text-xs font-medium">
+                                    {{ result.user?.username ?? 'Unknown' }}
+                                </span>
+                                <span class="text-muted-foreground text-xs">
+                                    {{ formatTimestamp(result.created_at) }}
+                                </span>
+                            </div>
+                            <p v-if="!result.decrypt_error" class="text-muted-foreground line-clamp-2 text-xs">
+                                {{ getDisplayContent(result) }}
+                            </p>
+                            <p v-else class="text-destructive/70 text-xs italic">Could not decrypt message</p>
+                        </button>
+
+                        <!-- Load More -->
+                        <div v-if="hasMore" class="flex justify-center py-3">
+                            <button
+                                class="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors"
+                                @click="handleLoadMore"
+                            >
+                                <ChevronDown :size="14" />
+                                Load more results
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        </div>
-    </div>
     </Teleport>
 </template>

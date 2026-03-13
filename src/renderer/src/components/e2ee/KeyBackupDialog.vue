@@ -89,17 +89,25 @@ function handleSubmit() {
 </script>
 
 <template>
-    <Dialog :open="open" @update:open="(val) => { if (!val) emit('close'); }">
+    <Dialog
+        :open="open"
+        @update:open="
+            (val) => {
+                if (!val) emit('close');
+            }
+        "
+    >
         <DialogContent class="max-w-md">
             <DialogHeader>
                 <DialogTitle class="flex items-center gap-2">
-                    <Key class="h-5 w-5 text-primary" />
+                    <Key class="text-primary h-5 w-5" />
                     {{ restoreMode ? 'Restore Key Backup' : 'Create Key Backup' }}
                 </DialogTitle>
                 <DialogDescription>
-                    {{ restoreMode
-                        ? 'Enter the PIN you used when creating your backup.'
-                        : 'Choose a PIN to encrypt your key backup. You\'ll need this PIN to restore your keys on another device.'
+                    {{
+                        restoreMode
+                            ? 'Enter the PIN you used when creating your backup.'
+                            : "Choose a PIN to encrypt your key backup. You'll need this PIN to restore your keys on another device."
                     }}
                 </DialogDescription>
             </DialogHeader>
@@ -140,23 +148,15 @@ function handleSubmit() {
                         class="mt-1.5"
                         @keydown.enter="handleSubmit"
                     />
-                    <p
-                        v-if="pinConfirm && !pinsMatch"
-                        class="mt-1 text-sm text-destructive"
-                    >
-                        PINs do not match
-                    </p>
+                    <p v-if="pinConfirm && !pinsMatch" class="text-destructive mt-1 text-sm">PINs do not match</p>
                 </div>
 
-                <p v-if="error" class="text-sm text-destructive">
+                <p v-if="error" class="text-destructive text-sm">
                     <AlertCircle class="mr-1 inline h-4 w-4" />
                     {{ error }}
                 </p>
 
-                <div
-                    v-if="!restoreMode"
-                    class="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground"
-                >
+                <div v-if="!restoreMode" class="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
                     <p><strong>Important:</strong></p>
                     <ul class="mt-1 list-inside list-disc space-y-1">
                         <li>This PIN is used only for encrypting your key backup</li>
@@ -169,10 +169,7 @@ function handleSubmit() {
 
             <DialogFooter v-if="!success">
                 <Button variant="ghost" @click="emit('close')">Cancel</Button>
-                <Button
-                    :disabled="!canSubmit || processing"
-                    @click="handleSubmit"
-                >
+                <Button :disabled="!canSubmit || processing" @click="handleSubmit">
                     <Loader2 v-if="processing" class="mr-2 h-4 w-4 animate-spin" />
                     {{ restoreMode ? 'Restore Keys' : 'Create Backup' }}
                 </Button>

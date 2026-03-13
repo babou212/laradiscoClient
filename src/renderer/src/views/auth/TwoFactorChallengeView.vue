@@ -19,9 +19,7 @@ const recoveryInput = ref<InstanceType<typeof Input> | null>(null);
 
 const canSubmit = computed(() => {
     if (authStore.isLoggingIn) return false;
-    return useRecoveryCode.value
-        ? recoveryCode.value.trim() !== ''
-        : code.value.trim().length === 6;
+    return useRecoveryCode.value ? recoveryCode.value.trim() !== '' : code.value.trim().length === 6;
 });
 
 onMounted(() => {
@@ -76,9 +74,7 @@ function goBack(): void {
             <div v-if="!useRecoveryCode" class="grid gap-2">
                 <Label for="code">Authentication Code</Label>
                 <div class="relative">
-                    <ShieldCheckIcon
-                        class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
-                    />
+                    <ShieldCheckIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="code"
                         ref="codeInput"
@@ -88,7 +84,7 @@ function goBack(): void {
                         autocomplete="one-time-code"
                         placeholder="000000"
                         maxlength="6"
-                        class="pl-9 tracking-widest text-center font-mono"
+                        class="pl-9 text-center font-mono tracking-widest"
                         :disabled="authStore.isLoggingIn"
                         autofocus
                     />
@@ -98,9 +94,7 @@ function goBack(): void {
             <div v-else class="grid gap-2">
                 <Label for="recovery_code">Recovery Code</Label>
                 <div class="relative">
-                    <KeyIcon
-                        class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
-                    />
+                    <KeyIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="recovery_code"
                         ref="recoveryInput"
@@ -116,7 +110,7 @@ function goBack(): void {
 
             <div
                 v-if="authStore.loginError"
-                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
             >
                 {{ authStore.loginError }}
             </div>
@@ -129,19 +123,10 @@ function goBack(): void {
                 </Button>
 
                 <Button type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="toggleMode">
-                    {{
-                        useRecoveryCode
-                            ? 'Use authentication code instead'
-                            : 'Use a recovery code instead'
-                    }}
+                    {{ useRecoveryCode ? 'Use authentication code instead' : 'Use a recovery code instead' }}
                 </Button>
 
-                <Button
-                    type="button"
-                    variant="link"
-                    class="text-muted-foreground"
-                    @click="goBack"
-                >
+                <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
                     <ArrowLeftIcon class="size-3" />
                     Back to login
                 </Button>

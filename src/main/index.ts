@@ -22,9 +22,7 @@ function createWindow(): void {
         show: false,
         autoHideMenuBar: true,
 
-        ...(isMac
-            ? { titleBarStyle: 'hiddenInset' }
-            : { frame: false }),
+        ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: false }),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             sandbox: true,
@@ -75,11 +73,16 @@ app.whenReady().then(() => {
     electronApp.setAppUserModelId('com.laradisco.client');
 
     const defaultUserAgent = session.defaultSession.getUserAgent();
-    const cleanUserAgent = defaultUserAgent
-        .replace(/\s*Electron\/[\w.]+/gi, '')
-        .replace(/\s*laradisco[^\s]*/gi, '');
+    const cleanUserAgent = defaultUserAgent.replace(/\s*Electron\/[\w.]+/gi, '').replace(/\s*laradisco[^\s]*/gi, '');
     session.defaultSession.webRequest.onBeforeSendHeaders(
-        { urls: ['https://*.youtube.com/*', 'https://*.youtube-nocookie.com/*', 'https://*.googlevideo.com/*', 'https://*.google.com/*'] },
+        {
+            urls: [
+                'https://*.youtube.com/*',
+                'https://*.youtube-nocookie.com/*',
+                'https://*.googlevideo.com/*',
+                'https://*.google.com/*',
+            ],
+        },
         (details, callback) => {
             details.requestHeaders['User-Agent'] = cleanUserAgent;
             callback({ requestHeaders: details.requestHeaders });
@@ -94,7 +97,7 @@ app.whenReady().then(() => {
         "img-src 'self' data: http: https: blob:",
         "font-src 'self' data:",
         "media-src 'self' blob: https:",
-        "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+        'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
         "worker-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
@@ -103,10 +106,7 @@ app.whenReady().then(() => {
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         const url = new URL(details.url);
-        const isAppPage =
-            url.protocol === 'file:' ||
-            url.hostname === 'localhost' ||
-            url.hostname === '127.0.0.1';
+        const isAppPage = url.protocol === 'file:' || url.hostname === 'localhost' || url.hostname === '127.0.0.1';
 
         if (isAppPage) {
             callback({
@@ -116,9 +116,7 @@ app.whenReady().then(() => {
                     'X-Content-Type-Options': ['nosniff'],
                     'X-Frame-Options': ['DENY'],
                     'Referrer-Policy': ['strict-origin-when-cross-origin'],
-                    'Permissions-Policy': [
-                        'microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()',
-                    ],
+                    'Permissions-Policy': ['microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()'],
                 },
             });
         } else {
@@ -133,10 +131,7 @@ app.whenReady().then(() => {
 
     app.on('web-contents-created', (_event, contents) => {
         contents.on('will-navigate', (event, url) => {
-            const appOrigins = [
-                'http://localhost',
-                process.env['ELECTRON_RENDERER_URL'] ?? '',
-            ];
+            const appOrigins = ['http://localhost', process.env['ELECTRON_RENDERER_URL'] ?? ''];
             const isAllowed = appOrigins.some((o) => o && url.startsWith(o));
             if (!isAllowed && !url.startsWith('file://')) {
                 event.preventDefault();

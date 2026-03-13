@@ -143,10 +143,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     /**
      * Update a message in the list.
      */
-    function updateMessage(
-        messageOrId: MessageData | number,
-        partial?: Partial<MessageData>,
-    ): void {
+    function updateMessage(messageOrId: MessageData | number, partial?: Partial<MessageData>): void {
         if (typeof messageOrId === 'number') {
             const idx = messages.value.findIndex((m) => m.id === messageOrId);
             if (idx !== -1 && partial) {

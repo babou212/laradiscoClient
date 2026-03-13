@@ -53,9 +53,12 @@ export const useE2eeStore = defineStore('e2ee', () => {
                 performMaintenance();
 
                 if (maintenanceInterval) clearInterval(maintenanceInterval);
-                maintenanceInterval = setInterval(() => {
-                    performMaintenance();
-                }, 6 * 60 * 60 * 1000);
+                maintenanceInterval = setInterval(
+                    () => {
+                        performMaintenance();
+                    },
+                    6 * 60 * 60 * 1000,
+                );
             }
         } catch (err) {
             isReady.value = false;

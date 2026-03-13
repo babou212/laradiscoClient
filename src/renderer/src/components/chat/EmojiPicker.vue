@@ -12,19 +12,188 @@ const searchQuery = ref('');
 const emojiCategories = [
     {
         name: 'Smileys',
-        emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬'],
+        emojis: [
+            '😀',
+            '😃',
+            '😄',
+            '😁',
+            '😆',
+            '😅',
+            '🤣',
+            '😂',
+            '🙂',
+            '😉',
+            '😊',
+            '😇',
+            '🥰',
+            '😍',
+            '🤩',
+            '😘',
+            '😗',
+            '😚',
+            '😋',
+            '😛',
+            '😜',
+            '🤪',
+            '😝',
+            '🤑',
+            '🤗',
+            '🤭',
+            '🤫',
+            '🤔',
+            '🤐',
+            '🤨',
+            '😐',
+            '😑',
+            '😶',
+            '😏',
+            '😒',
+            '🙄',
+            '😬',
+            '🤥',
+            '😌',
+            '😔',
+            '😪',
+            '🤤',
+            '😴',
+            '😷',
+            '🤒',
+            '🤕',
+            '🤢',
+            '🤮',
+            '🥵',
+            '🥶',
+            '🥴',
+            '😵',
+            '🤯',
+            '🤠',
+            '🥳',
+            '😎',
+            '🤓',
+            '🧐',
+            '😕',
+            '😟',
+            '🙁',
+            '😮',
+            '😯',
+            '😲',
+            '😳',
+            '🥺',
+            '😦',
+            '😧',
+            '😨',
+            '😰',
+            '😥',
+            '😢',
+            '😭',
+            '😱',
+            '😖',
+            '😣',
+            '😞',
+            '😓',
+            '😩',
+            '😫',
+            '🥱',
+            '😤',
+            '😡',
+            '😠',
+            '🤬',
+        ],
     },
     {
         name: 'Gestures',
-        emojis: ['👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✌️', '🤞', '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙', '💪', '🦾', '🖕'],
+        emojis: [
+            '👍',
+            '👎',
+            '👊',
+            '✊',
+            '🤛',
+            '🤜',
+            '👏',
+            '🙌',
+            '👐',
+            '🤲',
+            '🤝',
+            '🙏',
+            '✌️',
+            '🤞',
+            '🤟',
+            '🤘',
+            '👌',
+            '🤌',
+            '🤏',
+            '👈',
+            '👉',
+            '👆',
+            '👇',
+            '☝️',
+            '✋',
+            '🤚',
+            '🖐️',
+            '🖖',
+            '👋',
+            '🤙',
+            '💪',
+            '🦾',
+            '🖕',
+        ],
     },
     {
         name: 'Hearts',
-        emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
+        emojis: [
+            '❤️',
+            '🧡',
+            '💛',
+            '💚',
+            '💙',
+            '💜',
+            '🖤',
+            '🤍',
+            '🤎',
+            '💔',
+            '❣️',
+            '💕',
+            '💞',
+            '💓',
+            '💗',
+            '💖',
+            '💘',
+            '💝',
+            '💟',
+        ],
     },
     {
         name: 'Objects',
-        emojis: ['🔥', '⭐', '🌟', '✨', '💫', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🎮', '🎵', '🎶', '☕', '🍕', '🍔', '🍟', '🌮', '🍩', '🍰', '🍫', '🍿', '🥤'],
+        emojis: [
+            '🔥',
+            '⭐',
+            '🌟',
+            '✨',
+            '💫',
+            '🎉',
+            '🎊',
+            '🎈',
+            '🎁',
+            '🏆',
+            '🥇',
+            '🥈',
+            '🥉',
+            '⚽',
+            '🏀',
+            '🎮',
+            '🎵',
+            '🎶',
+            '☕',
+            '🍕',
+            '🍔',
+            '🍟',
+            '🌮',
+            '🍩',
+            '🍰',
+            '🍫',
+            '🍿',
+            '🥤',
+        ],
     },
 ];
 
@@ -33,9 +202,7 @@ const filteredEmojis = () => {
     return emojiCategories
         .map((cat) => ({
             ...cat,
-            emojis: cat.emojis.filter(() =>
-                cat.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-            ),
+            emojis: cat.emojis.filter(() => cat.name.toLowerCase().includes(searchQuery.value.toLowerCase())),
         }))
         .filter((cat) => cat.emojis.length > 0);
 };
@@ -47,26 +214,20 @@ const selectEmoji = (emoji: string) => {
 
 <template>
     <div
-        class="flex h-[350px] w-[320px] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+        class="border-border bg-background flex h-[350px] w-[320px] flex-col overflow-hidden rounded-lg border shadow-lg"
     >
-        <div class="border-b border-border p-2">
+        <div class="border-border border-b p-2">
             <input
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search emoji..."
-                class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                class="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm outline-none focus:ring-2"
             />
         </div>
 
         <div class="flex-1 overflow-y-auto p-2">
-            <div
-                v-for="category in filteredEmojis()"
-                :key="category.name"
-                class="mb-3"
-            >
-                <div
-                    class="mb-1 text-xs font-semibold text-muted-foreground"
-                >
+            <div v-for="category in filteredEmojis()" :key="category.name" class="mb-3">
+                <div class="text-muted-foreground mb-1 text-xs font-semibold">
                     {{ category.name }}
                 </div>
                 <div class="flex flex-wrap gap-1">
@@ -74,7 +235,7 @@ const selectEmoji = (emoji: string) => {
                         v-for="emoji in category.emojis"
                         :key="emoji"
                         type="button"
-                        class="flex size-8 items-center justify-center rounded text-lg transition-colors hover:bg-accent"
+                        class="hover:bg-accent flex size-8 items-center justify-center rounded text-lg transition-colors"
                         @click="selectEmoji(emoji)"
                     >
                         {{ emoji }}

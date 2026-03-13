@@ -6,17 +6,12 @@ const voiceStore = useVoiceStore();
 </script>
 
 <template>
-    <div
-        v-if="voiceStore.isConnected"
-        class="border-t border-sidebar-border bg-sidebar-accent/50 px-3 py-2"
-    >
+    <div v-if="voiceStore.isConnected" class="border-sidebar-border bg-sidebar-accent/50 border-t px-3 py-2">
         <div class="mb-2 flex items-center gap-2">
             <div class="size-2 rounded-full bg-green-500"></div>
-            <span class="text-xs font-medium text-green-400">
-                Voice Connected
-            </span>
+            <span class="text-xs font-medium text-green-400"> Voice Connected </span>
         </div>
-        <div class="mb-2 truncate text-xs text-sidebar-foreground/60">
+        <div class="text-sidebar-foreground/60 mb-2 truncate text-xs">
             {{ voiceStore.currentChannel?.name }}
         </div>
 

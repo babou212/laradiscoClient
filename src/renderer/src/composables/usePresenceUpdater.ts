@@ -11,19 +11,11 @@ let currentAutoStatus: UserStatusType | null = null;
 let userManualStatus: UserStatusType | null = null;
 let started = false;
 
-const activityEvents = [
-    'mousemove',
-    'keydown',
-    'mousedown',
-    'touchstart',
-    'scroll',
-    'click',
-] as const;
+const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'] as const;
 
 function setStatus(status: UserStatusType): void {
     api.patch('/presence', { status }).catch(() => {});
 }
-
 
 function goIdle(): void {
     if (userManualStatus === 'dnd' || userManualStatus === 'offline') return;

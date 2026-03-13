@@ -43,30 +43,56 @@ function onPttSoundToggle(event: Event) {
 }
 
 const CODE_MAP: Record<string, string> = {
-    Backquote: '`', Minus: '-', Equal: '=',
-    BracketLeft: '[', BracketRight: ']', Backslash: '\\',
-    Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
-    Space: 'Space', Tab: 'Tab', Enter: 'Return', Escape: 'Escape',
-    Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
-    Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
-    ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
-    NumpadAdd: 'numadd', NumpadSubtract: 'numsub',
-    NumpadMultiply: 'nummult', NumpadDivide: 'numdiv',
-    NumpadDecimal: 'numdec', NumpadEnter: 'Return',
-    CapsLock: 'Capslock', NumLock: 'Numlock', ScrollLock: 'Scrolllock',
+    Backquote: '`',
+    Minus: '-',
+    Equal: '=',
+    BracketLeft: '[',
+    BracketRight: ']',
+    Backslash: '\\',
+    Semicolon: ';',
+    Quote: "'",
+    Comma: ',',
+    Period: '.',
+    Slash: '/',
+    Space: 'Space',
+    Tab: 'Tab',
+    Enter: 'Return',
+    Escape: 'Escape',
+    Backspace: 'Backspace',
+    Delete: 'Delete',
+    Insert: 'Insert',
+    Home: 'Home',
+    End: 'End',
+    PageUp: 'PageUp',
+    PageDown: 'PageDown',
+    ArrowUp: 'Up',
+    ArrowDown: 'Down',
+    ArrowLeft: 'Left',
+    ArrowRight: 'Right',
+    NumpadAdd: 'numadd',
+    NumpadSubtract: 'numsub',
+    NumpadMultiply: 'nummult',
+    NumpadDivide: 'numdiv',
+    NumpadDecimal: 'numdec',
+    NumpadEnter: 'Return',
+    CapsLock: 'Capslock',
+    NumLock: 'Numlock',
+    ScrollLock: 'Scrolllock',
     PrintScreen: 'PrintScreen',
 };
 
 const PURE_MODIFIER_CODES = new Set([
-    'ShiftLeft', 'ShiftRight',
-    'ControlLeft', 'ControlRight',
-    'AltLeft', 'AltRight',
-    'MetaLeft', 'MetaRight',
+    'ShiftLeft',
+    'ShiftRight',
+    'ControlLeft',
+    'ControlRight',
+    'AltLeft',
+    'AltRight',
+    'MetaLeft',
+    'MetaRight',
 ]);
 
-const UNSUPPORTED_CODES = new Set([
-    'Pause', 'ContextMenu',
-]);
+const UNSUPPORTED_CODES = new Set(['Pause', 'ContextMenu']);
 
 function keyEventToDisplayName(e: KeyboardEvent): string | null {
     if (PURE_MODIFIER_CODES.has(e.code)) return null;
@@ -169,48 +195,35 @@ function formatAccelerator(accel: string): string {
 
 <template>
     <div class="space-y-6">
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Microphone</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Select which microphone to use for voice channels
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Select which microphone to use for voice channels</p>
             </div>
             <div class="p-6">
-                <label for="mic-select" class="mb-2 block text-sm font-medium">
-                    Input Device
-                </label>
+                <label for="mic-select" class="mb-2 block text-sm font-medium"> Input Device </label>
                 <select
                     id="mic-select"
-                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                    class="border-input bg-background focus:border-ring focus:ring-ring w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:ring-1 focus:outline-none"
                     :value="voiceStore.selectedMicDeviceId"
                     @change="onMicChange"
                 >
                     <option value="default">System Default</option>
-                    <option
-                        v-for="mic in voiceStore.availableMics"
-                        :key="mic.deviceId"
-                        :value="mic.deviceId"
-                    >
+                    <option v-for="mic in voiceStore.availableMics" :key="mic.deviceId" :value="mic.deviceId">
                         {{ mic.label || `Microphone (${mic.deviceId.slice(0, 8)})` }}
                     </option>
                 </select>
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="mt-3"
-                    @click="voiceStore.refreshAvailableMics()"
-                >
+                <Button variant="outline" size="sm" class="mt-3" @click="voiceStore.refreshAvailableMics()">
                     Refresh Devices
                 </Button>
             </div>
         </div>
 
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Push to Talk</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
+                <p class="text-muted-foreground mt-1 text-sm">
                     Hold a key to unmute your microphone. Works across all windows and apps.
                 </p>
             </div>
@@ -218,7 +231,7 @@ function formatAccelerator(accel: string): string {
                 <label class="flex items-center gap-3">
                     <input
                         type="checkbox"
-                        class="h-4 w-4 rounded border-input accent-primary"
+                        class="border-input accent-primary h-4 w-4 rounded"
                         :checked="voiceStore.pttEnabled"
                         @change="onPttToggle"
                     />
@@ -231,37 +244,29 @@ function formatAccelerator(accel: string): string {
                     <div class="flex items-center gap-3">
                         <div
                             class="flex h-9 min-w-[160px] items-center rounded-md border px-3 text-sm transition-colors"
-                            :class="isRecordingKey
-                                ? 'border-yellow-500 bg-yellow-500/5 ring-1 ring-yellow-500'
-                                : 'border-input bg-background'"
+                            :class="
+                                isRecordingKey
+                                    ? 'border-yellow-500 bg-yellow-500/5 ring-1 ring-yellow-500'
+                                    : 'border-input bg-background'
+                            "
                         >
                             <template v-if="isRecordingKey">
                                 <span class="animate-pulse text-yellow-500">Press any key or combo…</span>
                             </template>
                             <template v-else-if="voiceStore.pttKey">
-                                <kbd
-                                    class="rounded bg-muted px-2 py-0.5 font-mono text-xs"
-                                >{{ formatAccelerator(voiceStore.pttKey) }}</kbd>
+                                <kbd class="bg-muted rounded px-2 py-0.5 font-mono text-xs">{{
+                                    formatAccelerator(voiceStore.pttKey)
+                                }}</kbd>
                             </template>
                             <template v-else>
                                 <span class="text-muted-foreground">Not set</span>
                             </template>
                         </div>
 
-                        <Button
-                            v-if="!isRecordingKey"
-                            variant="outline"
-                            size="sm"
-                            @click="startRecordingKey"
-                        >
+                        <Button v-if="!isRecordingKey" variant="outline" size="sm" @click="startRecordingKey">
                             {{ voiceStore.pttKey ? 'Change Key' : 'Set Key' }}
                         </Button>
-                        <Button
-                            v-if="isRecordingKey"
-                            variant="outline"
-                            size="sm"
-                            @click="cancelRecordingKey"
-                        >
+                        <Button v-if="isRecordingKey" variant="outline" size="sm" @click="cancelRecordingKey">
                             Cancel
                         </Button>
                         <Button
@@ -275,19 +280,19 @@ function formatAccelerator(accel: string): string {
                         </Button>
                     </div>
 
-                    <p v-if="recordError" class="mt-2 text-xs text-destructive">
+                    <p v-if="recordError" class="text-destructive mt-2 text-xs">
                         {{ recordError }}
                     </p>
 
-                    <p class="mt-2 text-xs text-muted-foreground">
-                        Press any key or key combination (e.g. F5, Space, Alt + Z, Ctrl + Shift + M).
-                        Hold the key to talk — release to mute.
+                    <p class="text-muted-foreground mt-2 text-xs">
+                        Press any key or key combination (e.g. F5, Space, Alt + Z, Ctrl + Shift + M). Hold the key to
+                        talk — release to mute.
                     </p>
 
                     <label class="mt-4 flex items-center gap-3">
                         <input
                             type="checkbox"
-                            class="h-4 w-4 rounded border-input accent-primary"
+                            class="border-input accent-primary h-4 w-4 rounded"
                             :checked="voiceStore.pttSoundEnabled"
                             @change="onPttSoundToggle"
                         />

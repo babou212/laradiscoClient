@@ -103,71 +103,66 @@ export const useNotificationsStore = defineStore('notifications', () => {
         userId = currentUserId;
 
         const echo = getEcho();
-        echo.private(`App.Models.User.${currentUserId}`).notification(
-            (raw: Record<string, unknown>) => {
-                const notification: AppNotification = {
-                    id: raw.id as string,
-                    type:
-                        typeof raw.type === 'string'
-                            ? raw.type.split('\\').pop()!
-                            : String(raw.type),
-                    data: {
-                        message_id: raw.message_id as number,
-                        sender_id: raw.sender_id as number,
-                        sender_username: raw.sender_username as string,
-                        sender_avatar: (raw.sender_avatar as string | null) ?? null,
-                        content: raw.content as string,
-                        is_encrypted: raw.is_encrypted as boolean | undefined,
-                        sender_device_id: raw.sender_device_id as string | undefined,
-                        channel_id: raw.channel_id as number | undefined,
-                        channel_name: raw.channel_name as string | undefined,
-                        mention_type: raw.mention_type as 'user' | 'everyone' | 'here' | undefined,
-                        dm_group_id: raw.dm_group_id as number | undefined,
-                        dm_group_name: raw.dm_group_name as string | null | undefined,
-                        notification_type: raw.notification_type as 'direct_message' | undefined,
-                    },
-                    read_at: null,
-                    created_at: new Date().toISOString(),
-                };
+        echo.private(`App.Models.User.${currentUserId}`).notification((raw: Record<string, unknown>) => {
+            const notification: AppNotification = {
+                id: raw.id as string,
+                type: typeof raw.type === 'string' ? raw.type.split('\\').pop()! : String(raw.type),
+                data: {
+                    message_id: raw.message_id as number,
+                    sender_id: raw.sender_id as number,
+                    sender_username: raw.sender_username as string,
+                    sender_avatar: (raw.sender_avatar as string | null) ?? null,
+                    content: raw.content as string,
+                    is_encrypted: raw.is_encrypted as boolean | undefined,
+                    sender_device_id: raw.sender_device_id as string | undefined,
+                    channel_id: raw.channel_id as number | undefined,
+                    channel_name: raw.channel_name as string | undefined,
+                    mention_type: raw.mention_type as 'user' | 'everyone' | 'here' | undefined,
+                    dm_group_id: raw.dm_group_id as number | undefined,
+                    dm_group_name: raw.dm_group_name as string | null | undefined,
+                    notification_type: raw.notification_type as 'direct_message' | undefined,
+                },
+                read_at: null,
+                created_at: new Date().toISOString(),
+            };
 
-                notifications.value.unshift(notification);
-                unreadCount.value++;
+            notifications.value.unshift(notification);
+            unreadCount.value++;
 
-                // Attempt to decrypt encrypted notification content
-                if (notification.data.is_encrypted) {
-                    tryDecryptNotification(notification).then(() => {
-                        const prefs = preferences.value;
-                        const isDm = notification.data.notification_type === 'direct_message';
+            // Attempt to decrypt encrypted notification content
+            if (notification.data.is_encrypted) {
+                tryDecryptNotification(notification).then(() => {
+                    const prefs = preferences.value;
+                    const isDm = notification.data.notification_type === 'direct_message';
 
-                        if (isDm && !prefs.enable_dm_notifications) return;
-                        if (!isDm && !prefs.enable_mention_notifications) return;
+                    if (isDm && !prefs.enable_dm_notifications) return;
+                    if (!isDm && !prefs.enable_mention_notifications) return;
 
-                        if (prefs.enable_browser_notifications) {
-                            showNativeNotification(notification);
-                        }
+                    if (prefs.enable_browser_notifications) {
+                        showNativeNotification(notification);
+                    }
 
-                        if (prefs.enable_toast_notifications) {
-                            addToast(notification);
-                        }
-                    });
-                    return;
-                }
+                    if (prefs.enable_toast_notifications) {
+                        addToast(notification);
+                    }
+                });
+                return;
+            }
 
-                const prefs = preferences.value;
-                const isDm = notification.data.notification_type === 'direct_message';
+            const prefs = preferences.value;
+            const isDm = notification.data.notification_type === 'direct_message';
 
-                if (isDm && !prefs.enable_dm_notifications) return;
-                if (!isDm && !prefs.enable_mention_notifications) return;
+            if (isDm && !prefs.enable_dm_notifications) return;
+            if (!isDm && !prefs.enable_mention_notifications) return;
 
-                if (prefs.enable_browser_notifications) {
-                    showNativeNotification(notification);
-                }
+            if (prefs.enable_browser_notifications) {
+                showNativeNotification(notification);
+            }
 
-                if (prefs.enable_toast_notifications) {
-                    addToast(notification);
-                }
-            },
-        );
+            if (prefs.enable_toast_notifications) {
+                addToast(notification);
+            }
+        });
 
         isConnected.value = true;
         fetchNotifications();

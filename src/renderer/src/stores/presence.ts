@@ -10,11 +10,7 @@ const SYNC_INTERVAL_MS = 120_000;
 export const usePresenceStore = defineStore('presence', () => {
     const onlineUsers = ref<OnlineUser[]>([]);
     const serverMembers = ref<OnlineUser[]>([]);
-    let channel: ReturnType<typeof getEcho>['private'] extends (
-        ch: string,
-    ) => infer R
-        ? R
-        : unknown = null as any;
+    let channel: ReturnType<typeof getEcho>['private'] extends (ch: string) => infer R ? R : unknown = null as any;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let syncTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -28,8 +24,7 @@ export const usePresenceStore = defineStore('presence', () => {
                 return {
                     ...member,
                     status: liveUser.status || 'online',
-                    custom_status:
-                        liveUser.custom_status ?? member.custom_status,
+                    custom_status: liveUser.custom_status ?? member.custom_status,
                 };
             }
 
@@ -109,10 +104,7 @@ export const usePresenceStore = defineStore('presence', () => {
         try {
             const echo = getEcho();
             channel = echo.private('presence') as any;
-            (channel as any).listen(
-                '.user.presence.updated',
-                applyPresenceUpdate,
-            );
+            (channel as any).listen('.user.presence.updated', applyPresenceUpdate);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);
         }
@@ -171,11 +163,7 @@ export const usePresenceStore = defineStore('presence', () => {
         return allMembers.value.find((u) => u.id === userId);
     };
 
-    const updateUserStatus = (
-        userId: number,
-        status: UserStatusType,
-        customStatus: string | null = null,
-    ) => {
+    const updateUserStatus = (userId: number, status: UserStatusType, customStatus: string | null = null) => {
         const user = onlineUsers.value.find((u) => u.id === userId);
         if (user) {
             user.status = status;

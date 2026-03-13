@@ -63,8 +63,7 @@ const selectCategory = (categoryId: string) => {
 };
 
 const selectGif = (gif: any) => {
-    const gifUrl =
-        gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
     if (gifUrl) {
         emit('select', gifUrl);
     }
@@ -76,28 +75,21 @@ onMounted(() => {
 </script>
 
 <template>
-    <div
-        class="flex h-[450px] w-[400px] flex-col rounded-lg border border-border bg-background shadow-lg"
-    >
-        <div class="border-b border-border p-3">
+    <div class="border-border bg-background flex h-[450px] w-[400px] flex-col rounded-lg border shadow-lg">
+        <div class="border-border border-b p-3">
             <div class="relative">
-                <Search
-                    :size="16"
-                    class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                />
+                <Search :size="16" class="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2" />
                 <input
                     v-model="searchQuery"
                     type="text"
                     placeholder="Search for GIFs"
-                    class="w-full rounded-md border border-input bg-background py-2 pr-3 pl-9 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    class="border-input bg-background focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 text-sm outline-none focus:ring-2"
                     @keydown.enter="searchGifs"
                 />
             </div>
         </div>
 
-        <div
-            class="scrollbar-thin flex gap-2 overflow-x-auto border-b border-border p-3"
-        >
+        <div class="scrollbar-thin border-border flex gap-2 overflow-x-auto border-b p-3">
             <button
                 v-for="category in categories"
                 :key="category.id"
@@ -112,29 +104,23 @@ onMounted(() => {
                 {{ category.label }}
             </button>
         </div>
-        
+
         <div class="flex-1 overflow-y-auto p-3">
             <div v-if="loading" class="flex h-full items-center justify-center">
-                <div class="text-sm text-muted-foreground">Loading...</div>
+                <div class="text-muted-foreground text-sm">Loading...</div>
             </div>
-            <div
-                v-else-if="gifs.length === 0"
-                class="flex h-full items-center justify-center"
-            >
-                <div class="text-sm text-muted-foreground">No GIFs found</div>
+            <div v-else-if="gifs.length === 0" class="flex h-full items-center justify-center">
+                <div class="text-muted-foreground text-sm">No GIFs found</div>
             </div>
             <div v-else class="grid grid-cols-2 gap-2">
                 <button
                     v-for="gif in gifs"
                     :key="gif.id"
-                    class="relative aspect-square overflow-hidden rounded-lg bg-accent transition-all hover:ring-2 hover:ring-primary"
+                    class="bg-accent hover:ring-primary relative aspect-square overflow-hidden rounded-lg transition-all hover:ring-2"
                     @click="selectGif(gif)"
                 >
                     <img
-                        :src="
-                            gif.media_formats?.tinygif?.url ||
-                            gif.media_formats?.gif?.url
-                        "
+                        :src="gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url"
                         :alt="gif.content_description"
                         class="h-full w-full object-cover"
                         loading="lazy"

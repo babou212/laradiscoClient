@@ -51,15 +51,10 @@ function isActive(routeName: string): boolean {
 </script>
 
 <template>
-    <div class="h-full overflow-y-auto bg-background">
+    <div class="bg-background h-full overflow-y-auto">
         <div class="mx-auto max-w-7xl px-4 py-6 md:py-8">
             <div class="mb-6">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    class="-ml-2"
-                    @click="router.push({ name: 'home' })"
-                >
+                <Button variant="ghost" size="sm" class="-ml-2" @click="router.push({ name: 'home' })">
                     <ArrowLeft class="mr-2 h-4 w-4" />
                     Back
                 </Button>
@@ -67,18 +62,13 @@ function isActive(routeName: string): boolean {
 
             <div class="mb-8">
                 <h1 class="text-3xl font-bold tracking-tight">Settings</h1>
-                <p class="mt-2 text-muted-foreground">
-                    Manage your profile and account settings
-                </p>
+                <p class="text-muted-foreground mt-2">Manage your profile and account settings</p>
             </div>
 
             <div class="flex flex-col gap-8 lg:flex-row lg:gap-12">
                 <aside class="w-full shrink-0 lg:w-56">
-                    <div class="rounded-lg border bg-card p-1">
-                        <nav
-                            class="flex flex-col space-y-0.5"
-                            aria-label="Settings"
-                        >
+                    <div class="bg-card rounded-lg border p-1">
+                        <nav class="flex flex-col space-y-0.5" aria-label="Settings">
                             <Button
                                 v-for="item in sidebarNavItems"
                                 :key="item.routeName"
@@ -97,15 +87,10 @@ function isActive(routeName: string): boolean {
 
                         <template v-if="adminNavItems.length > 0">
                             <Separator class="my-1" />
-                            <p
-                                class="px-3 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
+                            <p class="text-muted-foreground px-3 py-1.5 text-xs font-medium tracking-wider uppercase">
                                 Server
                             </p>
-                            <nav
-                                class="flex flex-col space-y-0.5"
-                                aria-label="Server Settings"
-                            >
+                            <nav class="flex flex-col space-y-0.5" aria-label="Server Settings">
                                 <Button
                                     v-for="item in adminNavItems"
                                     :key="item.routeName"

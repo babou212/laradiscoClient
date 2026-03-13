@@ -34,10 +34,7 @@ export interface EncryptedKeyBackup {
     };
 }
 
-export async function encryptKeyBackup(
-    bundle: KeyBackupBundle,
-    pin: string,
-): Promise<EncryptedKeyBackup> {
+export async function encryptKeyBackup(bundle: KeyBackupBundle, pin: string): Promise<EncryptedKeyBackup> {
     const bundleJson = JSON.stringify(bundle);
     const bundleBytes = new TextEncoder().encode(bundleJson);
 
@@ -59,10 +56,7 @@ export async function encryptKeyBackup(
     };
 }
 
-export async function decryptKeyBackup(
-    backup: EncryptedKeyBackup,
-    pin: string,
-): Promise<KeyBackupBundle | null> {
+export async function decryptKeyBackup(backup: EncryptedKeyBackup, pin: string): Promise<KeyBackupBundle | null> {
     try {
         const salt = new Uint8Array(Buffer.from(backup.salt, 'base64'));
         const encryptedBundle = new Uint8Array(Buffer.from(backup.encryptedBundle, 'base64'));

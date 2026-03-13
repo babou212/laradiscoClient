@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { electronAPI } from '@electron-toolkit/preload';
 
-
 const api = {
     server: {
         ping: (host: string) => ipcRenderer.invoke('server:ping', host),
@@ -21,20 +20,10 @@ const api = {
             challengeToken: string,
             code: string | null,
             recoveryCode: string | null,
-        ) =>
-            ipcRenderer.invoke(
-                'auth:twoFactorChallenge',
-                host,
-                serverId,
-                challengeToken,
-                code,
-                recoveryCode,
-            ),
+        ) => ipcRenderer.invoke('auth:twoFactorChallenge', host, serverId, challengeToken, code, recoveryCode),
         getSession: (serverId: number) => ipcRenderer.invoke('auth:getSession', serverId),
-        logout: (host: string, serverId: number) =>
-            ipcRenderer.invoke('auth:logout', host, serverId),
-        validate: (host: string, token: string) =>
-            ipcRenderer.invoke('auth:validate', host, token),
+        logout: (host: string, serverId: number) => ipcRenderer.invoke('auth:logout', host, serverId),
+        validate: (host: string, token: string) => ipcRenderer.invoke('auth:validate', host, token),
     },
 
     ptt: {
@@ -114,14 +103,9 @@ const api = {
             ipcRenderer.invoke('e2ee:setup', serverId, deviceName, userId),
         setupDevice: (serverId: number, deviceName: string, userId?: number) =>
             ipcRenderer.invoke('e2ee:setupDevice', serverId, deviceName, userId),
-        getPublicKeys: (serverId: number) =>
-            ipcRenderer.invoke('e2ee:getPublicKeys', serverId),
-        encrypt: (params: {
-            serverId: number;
-            type: 'channel' | 'dm';
-            targetId: number;
-            plaintext: string;
-        }) => ipcRenderer.invoke('e2ee:encrypt', params) as Promise<string>,
+        getPublicKeys: (serverId: number) => ipcRenderer.invoke('e2ee:getPublicKeys', serverId),
+        encrypt: (params: { serverId: number; type: 'channel' | 'dm'; targetId: number; plaintext: string }) =>
+            ipcRenderer.invoke('e2ee:encrypt', params) as Promise<string>,
         decrypt: (params: {
             serverId: number;
             payload: string;
@@ -139,16 +123,13 @@ const api = {
             senderDeviceId: string;
             distribution: unknown;
         }) => ipcRenderer.invoke('e2ee:processSenderKeyDist', params),
-        backupKeys: (serverId: number, pin: string) =>
-            ipcRenderer.invoke('e2ee:backupKeys', serverId, pin),
+        backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('e2ee:backupKeys', serverId, pin),
         restoreKeys: (serverId: number, backup: unknown, pin: string) =>
             ipcRenderer.invoke('e2ee:restoreKeys', serverId, backup, pin),
-        rotateSignedPreKey: (serverId: number) =>
-            ipcRenderer.invoke('e2ee:rotateSignedPreKey', serverId),
+        rotateSignedPreKey: (serverId: number) => ipcRenderer.invoke('e2ee:rotateSignedPreKey', serverId),
         generatePreKeys: (serverId: number, count: number) =>
             ipcRenderer.invoke('e2ee:generatePreKeys', serverId, count),
-        wipe: (serverId: number) =>
-            ipcRenderer.invoke('e2ee:wipe', serverId),
+        wipe: (serverId: number) => ipcRenderer.invoke('e2ee:wipe', serverId),
         wipeForUserMismatch: (serverId: number, userId: number) =>
             ipcRenderer.invoke('e2ee:wipeForUserMismatch', serverId, userId) as Promise<boolean>,
         invalidateChannelSenderKeys: (serverId: number, channelId: number) =>
@@ -179,15 +160,13 @@ const api = {
             type: 'channel' | 'dm';
             targetId: number;
             plaintext: string;
-        }) =>
-            ipcRenderer.invoke('e2ee:generateSearchTokens', params) as Promise<string[]>,
+        }) => ipcRenderer.invoke('e2ee:generateSearchTokens', params) as Promise<string[]>,
         generateSearchTrapdoor: (params: {
             serverId: number;
             type: 'channel' | 'dm';
             targetId: number;
             query: string;
-        }) =>
-            ipcRenderer.invoke('e2ee:generateSearchTrapdoor', params) as Promise<string[]>,
+        }) => ipcRenderer.invoke('e2ee:generateSearchTrapdoor', params) as Promise<string[]>,
     },
 };
 

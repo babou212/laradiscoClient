@@ -46,10 +46,10 @@ async function updatePassword() {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Update password</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
+                <p class="text-muted-foreground mt-1 text-sm">
                     Ensure your account is using a long, random password to stay secure
                 </p>
             </div>

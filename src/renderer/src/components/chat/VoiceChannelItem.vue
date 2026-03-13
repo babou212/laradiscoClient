@@ -49,10 +49,7 @@ const handleClick = () => {
             <span class="truncate">{{ channel.name }}</span>
         </button>
 
-        <div
-            v-if="channelParticipants.length > 0"
-            class="ml-6 space-y-0.5 py-0.5"
-        >
+        <div v-if="channelParticipants.length > 0" class="ml-6 space-y-0.5 py-0.5">
             <div
                 v-for="participant in channelParticipants"
                 :key="participant.id"
@@ -69,13 +66,22 @@ const handleClick = () => {
                     {{ participant.displayName?.[0]?.toUpperCase() || 'U' }}
                 </div>
                 <span
-                    class="truncate text-xs text-sidebar-foreground/70"
+                    class="text-sidebar-foreground/70 truncate text-xs"
                     :class="{ 'text-sidebar-foreground': participant.isSpeaking }"
                 >
                     {{ participant.displayName || participant.username }}
                 </span>
                 <span v-if="participant.isMuted" class="ml-auto shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3 text-red-400">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="size-3 text-red-400"
+                    >
                         <line x1="1" y1="1" x2="23" y2="23" />
                         <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
                         <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .7-.1 1.37-.29 2" />

@@ -115,7 +115,6 @@ export function initEcho(): Echo<'reverb'> {
     return echoInstance;
 }
 
-
 export function getEcho(): Echo<'reverb'> {
     if (!echoInstance) {
         return initEcho();

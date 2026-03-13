@@ -56,12 +56,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
     (response) => {
         const body = response.data;
-        if (
-            body &&
-            typeof body === 'object' &&
-            !Array.isArray(body) &&
-            'data' in body
-        ) {
+        if (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body) {
             response.data = body.data;
         }
         return response;

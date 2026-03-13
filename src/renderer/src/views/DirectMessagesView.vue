@@ -70,22 +70,13 @@ const handleStartDm = async (userId: number) => {
             @start-dm="handleStartDm"
         />
 
-        <MessagesPanel
-            v-if="dmStore.currentDmGroup"
-            :channel="channelForPanel"
-            :is-dm="true"
-        />
+        <MessagesPanel v-if="dmStore.currentDmGroup" :channel="channelForPanel" :is-dm="true" />
 
-        <div
-            v-else
-            class="flex flex-1 flex-col items-center justify-center bg-background text-center"
-        >
+        <div v-else class="bg-background flex flex-1 flex-col items-center justify-center text-center">
             <div class="text-muted-foreground">
                 <MessageSquare :size="48" class="mx-auto mb-3 opacity-40" />
                 <p class="text-lg font-semibold">Your Direct Messages</p>
-                <p class="mt-1 text-sm">
-                    Select a conversation or start a new one.
-                </p>
+                <p class="mt-1 text-sm">Select a conversation or start a new one.</p>
             </div>
         </div>
     </div>

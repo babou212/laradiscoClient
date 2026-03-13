@@ -2,10 +2,7 @@
 import { computed } from 'vue';
 
 interface Props {
-    typingUsers: Map<
-        number,
-        { username: string; timeout: ReturnType<typeof setTimeout> }
-    >;
+    typingUsers: Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>;
 }
 
 const props = defineProps<Props>();
@@ -19,19 +16,19 @@ const typingUserNames = computed(() => {
 </script>
 
 <template>
-    <div v-if="typingUserNames" class="px-4 pb-1 text-xs text-muted-foreground">
+    <div v-if="typingUserNames" class="text-muted-foreground px-4 pb-1 text-xs">
         <span class="inline-flex items-center gap-1">
             <span class="flex gap-0.5">
                 <span
-                    class="inline-block size-1.5 animate-bounce rounded-full bg-muted-foreground"
+                    class="bg-muted-foreground inline-block size-1.5 animate-bounce rounded-full"
                     style="animation-delay: 0ms"
                 />
                 <span
-                    class="inline-block size-1.5 animate-bounce rounded-full bg-muted-foreground"
+                    class="bg-muted-foreground inline-block size-1.5 animate-bounce rounded-full"
                     style="animation-delay: 150ms"
                 />
                 <span
-                    class="inline-block size-1.5 animate-bounce rounded-full bg-muted-foreground"
+                    class="bg-muted-foreground inline-block size-1.5 animate-bounce rounded-full"
                     style="animation-delay: 300ms"
                 />
             </span>

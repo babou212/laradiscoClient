@@ -33,43 +33,34 @@ function close(): void {
 
 <template>
     <div
-        class="title-bar flex h-9 select-none items-center border-b border-border bg-sidebar"
+        class="title-bar border-border bg-sidebar flex h-9 items-center border-b select-none"
         :class="{ 'pl-[70px]': isMac }"
     >
         <div class="title-bar-drag flex min-w-0 flex-1 items-center gap-2 px-3">
-            <span class="truncate text-xs font-medium text-sidebar-foreground/60">
-                LaraDisco
-            </span>
+            <span class="text-sidebar-foreground/60 truncate text-xs font-medium"> LaraDisco </span>
         </div>
 
         <div v-if="!isMac" class="flex items-center">
             <button
-                class="title-bar-button flex h-9 w-11 items-center justify-center text-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus:outline-none"
+                class="title-bar-button text-foreground/70 hover:bg-accent hover:text-foreground flex h-9 w-11 items-center justify-center transition-colors focus:outline-none"
                 aria-label="Minimize"
                 @click="minimize"
             >
                 <Minus class="size-4" :stroke-width="1.5" />
             </button>
             <button
-                class="title-bar-button flex h-9 w-11 items-center justify-center text-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus:outline-none"
+                class="title-bar-button text-foreground/70 hover:bg-accent hover:text-foreground flex h-9 w-11 items-center justify-center transition-colors focus:outline-none"
                 aria-label="Maximize"
                 @click="maximize"
             >
                 <Square v-if="!isMaximized" class="size-3" :stroke-width="1.5" />
-                <svg
-                    v-else
-                    class="size-3"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.2"
-                >
+                <svg v-else class="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
                     <rect x="2.5" y="3.5" width="7" height="7" rx="0.5" />
                     <path d="M3.5 3.5V2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H9" />
                 </svg>
             </button>
             <button
-                class="title-bar-button flex h-9 w-11 items-center justify-center text-foreground/70 transition-colors hover:bg-destructive hover:text-white focus:outline-none"
+                class="title-bar-button text-foreground/70 hover:bg-destructive flex h-9 w-11 items-center justify-center transition-colors hover:text-white focus:outline-none"
                 aria-label="Close"
                 @click="close"
             >

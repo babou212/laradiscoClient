@@ -86,10 +86,7 @@ function eventLabel(eventType: string): string {
 }
 
 onMounted(async () => {
-    await Promise.all([
-        e2eeStore.loadDevices(),
-        e2eeStore.checkBackup(),
-    ]);
+    await Promise.all([e2eeStore.loadDevices(), e2eeStore.checkBackup()]);
     isLoading.value = false;
 });
 
@@ -146,12 +143,10 @@ function formatDate(dateStr: string | null): string {
 
 <template>
     <div class="space-y-6">
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Encryption</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Manage your end-to-end encryption settings
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Manage your end-to-end encryption settings</p>
             </div>
 
             <div class="p-6">
@@ -163,13 +158,13 @@ function formatDate(dateStr: string | null): string {
                         ]"
                     >
                         <ShieldCheck v-if="e2eeStore.isReady" class="h-5 w-5 text-green-500" />
-                        <Shield v-else class="h-5 w-5 text-destructive" />
+                        <Shield v-else class="text-destructive h-5 w-5" />
                     </div>
                     <div>
                         <p class="font-medium">
                             {{ e2eeStore.isReady ? 'Encryption Active' : 'Encryption Not Set Up' }}
                         </p>
-                        <p class="text-sm text-muted-foreground">
+                        <p class="text-muted-foreground text-sm">
                             {{
                                 e2eeStore.isReady
                                     ? 'Your messages are end-to-end encrypted.'
@@ -181,10 +176,10 @@ function formatDate(dateStr: string | null): string {
             </div>
         </div>
 
-        <div v-if="e2eeStore.isReady" class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div v-if="e2eeStore.isReady" class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Key Backup</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
+                <p class="text-muted-foreground mt-1 text-sm">
                     Back up your keys to use encryption on multiple devices
                 </p>
             </div>
@@ -192,12 +187,12 @@ function formatDate(dateStr: string | null): string {
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <Key class="h-5 w-5 text-muted-foreground" />
+                        <Key class="text-muted-foreground h-5 w-5" />
                         <div>
                             <p class="font-medium">
                                 {{ e2eeStore.hasBackup ? 'Backup Exists' : 'No Backup' }}
                             </p>
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-muted-foreground text-sm">
                                 {{
                                     e2eeStore.hasBackup
                                         ? 'Your keys are backed up and can be restored on new devices.'
@@ -217,12 +212,12 @@ function formatDate(dateStr: string | null): string {
             </div>
         </div>
 
-        <div v-if="e2eeStore.isReady" class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div v-if="e2eeStore.isReady" class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold">Devices</h2>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="text-muted-foreground mt-1 text-sm">
                             Manage devices linked to your encryption identity
                         </p>
                     </div>
@@ -231,10 +226,10 @@ function formatDate(dateStr: string | null): string {
 
             <div class="p-6">
                 <div v-if="isLoading" class="flex justify-center py-4">
-                    <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 class="text-muted-foreground h-6 w-6 animate-spin" />
                 </div>
 
-                <div v-else-if="e2eeStore.devices.length === 0" class="py-4 text-center text-sm text-muted-foreground">
+                <div v-else-if="e2eeStore.devices.length === 0" class="text-muted-foreground py-4 text-center text-sm">
                     No devices found.
                 </div>
 
@@ -245,7 +240,7 @@ function formatDate(dateStr: string | null): string {
                         class="flex items-center justify-between rounded-md border p-3"
                     >
                         <div class="flex items-center gap-3">
-                            <Monitor class="h-5 w-5 text-muted-foreground" />
+                            <Monitor class="text-muted-foreground h-5 w-5" />
                             <div>
                                 <div class="flex items-center gap-2">
                                     <p class="font-medium">{{ device.device_name }}</p>
@@ -253,18 +248,12 @@ function formatDate(dateStr: string | null): string {
                                         This device
                                     </Badge>
                                 </div>
-                                <p class="text-xs text-muted-foreground">
-                                    Added {{ formatDate(device.created_at) }}
-                                </p>
+                                <p class="text-muted-foreground text-xs">Added {{ formatDate(device.created_at) }}</p>
                             </div>
                         </div>
 
                         <div v-if="!device.is_current" class="flex gap-1">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                @click="startRename(device)"
-                            >
+                            <Button variant="ghost" size="sm" @click="startRename(device)">
                                 <Pencil class="h-4 w-4" />
                             </Button>
                             <Button
@@ -281,12 +270,12 @@ function formatDate(dateStr: string | null): string {
             </div>
         </div>
 
-        <div v-if="e2eeStore.isReady" class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div v-if="e2eeStore.isReady" class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold">Audit Log</h2>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="text-muted-foreground mt-1 text-sm">
                             Key transparency log — cryptographic record of all encryption events
                         </p>
                     </div>
@@ -301,72 +290,67 @@ function formatDate(dateStr: string | null): string {
 
             <div v-if="auditLogExpanded" class="p-6">
                 <div v-if="auditLogLoading" class="flex justify-center py-4">
-                    <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 class="text-muted-foreground h-6 w-6 animate-spin" />
                 </div>
 
-                <div v-else-if="auditLog.length === 0" class="py-4 text-center text-sm text-muted-foreground">
-                    <Button variant="outline" size="sm" @click="loadAuditLog">
-                        Load audit log
-                    </Button>
+                <div v-else-if="auditLog.length === 0" class="text-muted-foreground py-4 text-center text-sm">
+                    <Button variant="outline" size="sm" @click="loadAuditLog"> Load audit log </Button>
                 </div>
 
                 <div v-else class="max-h-80 space-y-2 overflow-y-auto">
-                    <div
-                        v-for="entry in auditLog"
-                        :key="entry.id"
-                        class="rounded-md border p-3 text-sm"
-                    >
+                    <div v-for="entry in auditLog" :key="entry.id" class="rounded-md border p-3 text-sm">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <ScrollText class="h-4 w-4 text-muted-foreground" />
+                                <ScrollText class="text-muted-foreground h-4 w-4" />
                                 <span class="font-medium">{{ eventLabel(entry.event_type) }}</span>
                             </div>
-                            <span class="text-xs text-muted-foreground">
+                            <span class="text-muted-foreground text-xs">
                                 {{ entry.created_at ? formatDate(entry.created_at) : '' }}
                             </span>
                         </div>
-                        <div v-if="entry.device_id" class="mt-1 text-xs text-muted-foreground">
-                            Device: <code class="rounded bg-muted px-1">{{ entry.device_id.slice(0, 16) }}...</code>
+                        <div v-if="entry.device_id" class="text-muted-foreground mt-1 text-xs">
+                            Device: <code class="bg-muted rounded px-1">{{ entry.device_id.slice(0, 16) }}...</code>
                         </div>
-                        <div v-if="entry.entry_hash" class="mt-1 text-xs text-muted-foreground">
-                            Hash: <code class="rounded bg-muted px-1">{{ entry.entry_hash.slice(0, 16) }}...</code>
+                        <div v-if="entry.entry_hash" class="text-muted-foreground mt-1 text-xs">
+                            Hash: <code class="bg-muted rounded px-1">{{ entry.entry_hash.slice(0, 16) }}...</code>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="e2eeStore.isReady" class="rounded-lg border border-destructive/50 bg-card">
-            <div class="border-b border-destructive/50 bg-destructive/5 px-6 py-4">
-                <h2 class="text-lg font-semibold text-destructive">Danger Zone</h2>
+        <div v-if="e2eeStore.isReady" class="border-destructive/50 bg-card rounded-lg border">
+            <div class="border-destructive/50 bg-destructive/5 border-b px-6 py-4">
+                <h2 class="text-destructive text-lg font-semibold">Danger Zone</h2>
             </div>
 
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="font-medium">Reset Encryption</p>
-                        <p class="text-sm text-muted-foreground">
+                        <p class="text-muted-foreground text-sm">
                             Delete all local encryption keys. You will need to set up encryption again.
                         </p>
                     </div>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        @click="showWipeDialog = true"
-                    >
-                        Reset
-                    </Button>
+                    <Button variant="destructive" size="sm" @click="showWipeDialog = true"> Reset </Button>
                 </div>
             </div>
         </div>
 
-        <Dialog :open="showRevokeDialog" @update:open="(v) => { if (!v) showRevokeDialog = false; }">
+        <Dialog
+            :open="showRevokeDialog"
+            @update:open="
+                (v) => {
+                    if (!v) showRevokeDialog = false;
+                }
+            "
+        >
             <DialogContent class="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Revoke Device</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to revoke <strong>{{ targetDevice?.device_name }}</strong>?
-                        This device will no longer be able to decrypt new messages.
+                        Are you sure you want to revoke <strong>{{ targetDevice?.device_name }}</strong
+                        >? This device will no longer be able to decrypt new messages.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -379,20 +363,21 @@ function formatDate(dateStr: string | null): string {
             </DialogContent>
         </Dialog>
 
-        <Dialog :open="showRenameDialog" @update:open="(v) => { if (!v) showRenameDialog = false; }">
+        <Dialog
+            :open="showRenameDialog"
+            @update:open="
+                (v) => {
+                    if (!v) showRenameDialog = false;
+                }
+            "
+        >
             <DialogContent class="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Rename Device</DialogTitle>
-                    <DialogDescription>
-                        Enter a new name for this device.
-                    </DialogDescription>
+                    <DialogDescription> Enter a new name for this device. </DialogDescription>
                 </DialogHeader>
                 <div class="py-2">
-                    <Input
-                        v-model="newDeviceName"
-                        placeholder="Device name"
-                        @keydown.enter="handleRename"
-                    />
+                    <Input v-model="newDeviceName" placeholder="Device name" @keydown.enter="handleRename" />
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" @click="showRenameDialog = false">Cancel</Button>
@@ -404,17 +389,23 @@ function formatDate(dateStr: string | null): string {
             </DialogContent>
         </Dialog>
 
-        <Dialog :open="showWipeDialog" @update:open="(v) => { if (!v) showWipeDialog = false; }">
+        <Dialog
+            :open="showWipeDialog"
+            @update:open="
+                (v) => {
+                    if (!v) showWipeDialog = false;
+                }
+            "
+        >
             <DialogContent class="max-w-md">
                 <DialogHeader>
-                    <DialogTitle class="flex items-center gap-2 text-destructive">
+                    <DialogTitle class="text-destructive flex items-center gap-2">
                         <AlertTriangle class="h-5 w-5" />
                         Reset Encryption
                     </DialogTitle>
                     <DialogDescription>
-                        This will permanently delete all encryption keys from this device.
-                        You will lose the ability to decrypt existing messages unless you
-                        have a key backup. This action cannot be undone.
+                        This will permanently delete all encryption keys from this device. You will lose the ability to
+                        decrypt existing messages unless you have a key backup. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

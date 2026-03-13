@@ -70,12 +70,10 @@ function submit() {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Notifications</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Control how and when you receive notifications
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Control how and when you receive notifications</p>
             </div>
 
             <div class="p-6">
@@ -93,7 +91,7 @@ function submit() {
                                 <Label for="enable_mention_notifications" class="cursor-pointer">
                                     Mention notifications
                                 </Label>
-                                <p class="text-sm text-muted-foreground">
+                                <p class="text-muted-foreground text-sm">
                                     Get notified when someone mentions you with @username, @everyone, or @here
                                 </p>
                             </div>
@@ -109,7 +107,7 @@ function submit() {
                                 <Label for="enable_dm_notifications" class="cursor-pointer">
                                     Direct message notifications
                                 </Label>
-                                <p class="text-sm text-muted-foreground">
+                                <p class="text-muted-foreground text-sm">
                                     Get notified when someone sends you a direct message
                                 </p>
                             </div>
@@ -130,7 +128,7 @@ function submit() {
                                     <Label for="enable_toast_notifications" class="cursor-pointer">
                                         In-app pop-ups
                                     </Label>
-                                    <p class="text-sm text-muted-foreground">
+                                    <p class="text-muted-foreground text-sm">
                                         Show toast notifications in the corner of the screen
                                     </p>
                                 </div>
@@ -146,7 +144,7 @@ function submit() {
                                     <Label for="enable_browser_notifications" class="cursor-pointer">
                                         Desktop notifications
                                     </Label>
-                                    <p class="text-sm text-muted-foreground">
+                                    <p class="text-muted-foreground text-sm">
                                         Show desktop notifications when the app is in the background
                                     </p>
                                 </div>
@@ -155,9 +153,7 @@ function submit() {
                     </div>
 
                     <div class="flex items-center gap-4 border-t pt-6">
-                        <Button type="submit" :disabled="processing || !isDirty">
-                            Save preferences
-                        </Button>
+                        <Button type="submit" :disabled="processing || !isDirty"> Save preferences </Button>
 
                         <Transition
                             enter-active-class="transition ease-in-out"

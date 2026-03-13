@@ -44,7 +44,7 @@ export async function initializeTheme(): Promise<void> {
         return;
     }
 
-    const savedTheme = await window.api.settings.get('theme') as Theme | null;
+    const savedTheme = (await window.api.settings.get('theme')) as Theme | null;
     applyTheme(savedTheme || 'default');
 }
 
@@ -52,7 +52,7 @@ const theme = ref<Theme>('default');
 
 export function useAppearance(): UseAppearanceReturn {
     onMounted(async () => {
-        const savedTheme = await window.api.settings.get('theme') as Theme | null;
+        const savedTheme = (await window.api.settings.get('theme')) as Theme | null;
 
         if (savedTheme) {
             theme.value = savedTheme;

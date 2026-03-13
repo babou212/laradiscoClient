@@ -8,13 +8,7 @@ import { Check, Copy, Eye, EyeOff, LockKeyhole, RefreshCw, ShieldBan, ShieldChec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
@@ -145,36 +139,28 @@ async function regenerateRecoveryCodes() {
 
 <template>
     <div class="space-y-6">
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Two-Factor Authentication</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Add an additional layer of security to your account
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Add an additional layer of security to your account</p>
             </div>
 
             <div class="p-6">
-                <div v-if="isLoading" class="text-sm text-muted-foreground">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
 
                 <div v-else-if="!twoFactorEnabled" class="space-y-5">
                     <Badge variant="destructive">Disabled</Badge>
 
                     <p class="text-muted-foreground">
-                        When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.
+                        When you enable two-factor authentication, you will be prompted for a secure pin during login.
+                        This pin can be retrieved from a TOTP-supported application on your phone.
                     </p>
 
                     <div>
-                        <Button
-                            v-if="hasSetupData"
-                            @click="showSetupModal = true"
-                        >
+                        <Button v-if="hasSetupData" @click="showSetupModal = true">
                             <ShieldCheck class="mr-2 h-4 w-4" />Continue Setup
                         </Button>
-                        <Button
-                            v-else
-                            @click="enableTwoFactor"
-                            :disabled="processing"
-                        >
+                        <Button v-else @click="enableTwoFactor" :disabled="processing">
                             <ShieldCheck class="mr-2 h-4 w-4" />Enable 2FA
                         </Button>
                     </div>
@@ -184,16 +170,18 @@ async function regenerateRecoveryCodes() {
                     <Badge variant="default">Enabled</Badge>
 
                     <p class="text-muted-foreground">
-                        With two-factor authentication enabled, you will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.
+                        With two-factor authentication enabled, you will be prompted for a secure, random pin during
+                        login, which you can retrieve from the TOTP-supported application on your phone.
                     </p>
 
                     <div class="rounded-lg border p-4">
-                        <div class="flex items-center gap-3 mb-2">
+                        <div class="mb-2 flex items-center gap-3">
                             <LockKeyhole class="h-4 w-4" />
                             <h3 class="text-sm font-semibold">2FA Recovery Codes</h3>
                         </div>
-                        <p class="text-sm text-muted-foreground mb-3">
-                            Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.
+                        <p class="text-muted-foreground mb-3 text-sm">
+                            Recovery codes let you regain access if you lose your 2FA device. Store them in a secure
+                            password manager.
                         </p>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -218,20 +206,25 @@ async function regenerateRecoveryCodes() {
                                 isRecoveryCodesVisible ? 'h-auto opacity-100' : 'h-0 opacity-0',
                             ]"
                         >
-                            <div v-if="twoFactorErrors?.length" class="mt-3 text-sm text-destructive">
+                            <div v-if="twoFactorErrors?.length" class="text-destructive mt-3 text-sm">
                                 <p v-for="(error, i) in twoFactorErrors" :key="i">{{ error }}</p>
                             </div>
                             <div v-else class="mt-3 space-y-3">
-                                <div class="grid gap-1 rounded-lg bg-muted p-4 font-mono text-sm">
+                                <div class="bg-muted grid gap-1 rounded-lg p-4 font-mono text-sm">
                                     <div v-if="!recoveryCodesList.length" class="space-y-2">
-                                        <div v-for="n in 8" :key="n" class="h-4 animate-pulse rounded bg-muted-foreground/20" />
+                                        <div
+                                            v-for="n in 8"
+                                            :key="n"
+                                            class="bg-muted-foreground/20 h-4 animate-pulse rounded"
+                                        />
                                     </div>
                                     <div v-else v-for="(rc, index) in recoveryCodesList" :key="index">
                                         {{ rc }}
                                     </div>
                                 </div>
-                                <p class="text-xs text-muted-foreground">
-                                    Each recovery code can be used once. If you need more, click <span class="font-bold">Regenerate Codes</span> above.
+                                <p class="text-muted-foreground text-xs">
+                                    Each recovery code can be used once. If you need more, click
+                                    <span class="font-bold">Regenerate Codes</span> above.
                                 </p>
                             </div>
                         </div>
@@ -245,33 +238,53 @@ async function regenerateRecoveryCodes() {
             </div>
         </div>
 
-        <Dialog :open="showSetupModal" @update:open="(v) => { showSetupModal = v; if (!v) resetModal(); }">
+        <Dialog
+            :open="showSetupModal"
+            @update:open="
+                (v) => {
+                    showSetupModal = v;
+                    if (!v) resetModal();
+                }
+            "
+        >
             <DialogContent class="sm:max-w-md">
                 <DialogHeader class="flex items-center justify-center">
                     <DialogTitle>
                         {{ showVerificationStep ? 'Verify Authentication Code' : 'Enable Two-Factor Authentication' }}
                     </DialogTitle>
                     <DialogDescription class="text-center">
-                        {{ showVerificationStep
-                            ? 'Enter the 6-digit code from your authenticator app'
-                            : 'Scan the QR code or enter the setup key in your authenticator app'
+                        {{
+                            showVerificationStep
+                                ? 'Enter the 6-digit code from your authenticator app'
+                                : 'Scan the QR code or enter the setup key in your authenticator app'
                         }}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div class="relative flex w-auto flex-col items-center justify-center space-y-5">
                     <template v-if="!showVerificationStep">
-                        <div v-if="twoFactorErrors?.length" class="text-sm text-destructive">
+                        <div v-if="twoFactorErrors?.length" class="text-destructive text-sm">
                             <p v-for="(error, i) in twoFactorErrors" :key="i">{{ error }}</p>
                         </div>
                         <template v-else>
                             <div class="relative mx-auto flex max-w-md items-center overflow-hidden">
-                                <div class="relative mx-auto aspect-square w-64 overflow-hidden rounded-lg border border-border">
-                                    <div v-if="!qrCodeSvg" class="absolute inset-0 z-10 flex aspect-square h-auto w-full animate-pulse items-center justify-center bg-background">
+                                <div
+                                    class="border-border relative mx-auto aspect-square w-64 overflow-hidden rounded-lg border"
+                                >
+                                    <div
+                                        v-if="!qrCodeSvg"
+                                        class="bg-background absolute inset-0 z-10 flex aspect-square h-auto w-full animate-pulse items-center justify-center"
+                                    >
                                         <Spinner class="size-6" />
                                     </div>
                                     <div v-else class="relative z-10 overflow-hidden border p-5">
-                                        <div v-html="sanitizedQrCodeSvg" class="flex aspect-square size-full items-center justify-center" :style="{ filter: isDarkTheme(theme) ? 'invert(1) brightness(1.5)' : undefined }" />
+                                        <div
+                                            v-html="sanitizedQrCodeSvg"
+                                            class="flex aspect-square size-full items-center justify-center"
+                                            :style="{
+                                                filter: isDarkTheme(theme) ? 'invert(1) brightness(1.5)' : undefined,
+                                            }"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -281,18 +294,31 @@ async function regenerateRecoveryCodes() {
                             </div>
 
                             <div class="relative flex w-full items-center justify-center">
-                                <div class="absolute inset-0 top-1/2 h-px w-full bg-border" />
-                                <span class="relative bg-background px-2 py-1 text-sm text-muted-foreground">or, enter the code manually</span>
+                                <div class="bg-border absolute inset-0 top-1/2 h-px w-full" />
+                                <span class="bg-background text-muted-foreground relative px-2 py-1 text-sm"
+                                    >or, enter the code manually</span
+                                >
                             </div>
 
                             <div class="flex w-full items-center justify-center space-x-2">
-                                <div class="flex w-full items-stretch overflow-hidden rounded-xl border border-border">
-                                    <div v-if="!manualSetupKey" class="flex h-full w-full items-center justify-center bg-muted p-3">
+                                <div class="border-border flex w-full items-stretch overflow-hidden rounded-xl border">
+                                    <div
+                                        v-if="!manualSetupKey"
+                                        class="bg-muted flex h-full w-full items-center justify-center p-3"
+                                    >
                                         <Spinner />
                                     </div>
                                     <template v-else>
-                                        <input type="text" readonly :value="manualSetupKey" class="h-full w-full bg-background p-3 text-foreground text-sm" />
-                                        <button @click="copy(manualSetupKey || '')" class="relative block h-auto border-l border-border px-3 hover:bg-muted">
+                                        <input
+                                            type="text"
+                                            readonly
+                                            :value="manualSetupKey"
+                                            class="bg-background text-foreground h-full w-full p-3 text-sm"
+                                        />
+                                        <button
+                                            @click="copy(manualSetupKey || '')"
+                                            class="border-border hover:bg-muted relative block h-auto border-l px-3"
+                                        >
                                             <Check v-if="copied" class="w-4 text-green-500" />
                                             <Copy v-else class="w-4" />
                                         </button>
@@ -316,7 +342,13 @@ async function regenerateRecoveryCodes() {
                             </div>
 
                             <div class="flex w-full items-center space-x-3">
-                                <Button type="button" variant="outline" class="flex-1" @click="showVerificationStep = false" :disabled="processing">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    class="flex-1"
+                                    @click="showVerificationStep = false"
+                                    :disabled="processing"
+                                >
                                     Back
                                 </Button>
                                 <Button type="submit" class="flex-1" :disabled="processing || code.length < 6">

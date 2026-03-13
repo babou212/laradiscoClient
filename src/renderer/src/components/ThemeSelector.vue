@@ -31,7 +31,12 @@ const darkThemes: ThemeOption[] = [
     { value: 'cyberpunk', label: 'Cyberpunk', color: 'bg-[hsl(330,100%,60%)]', description: 'Neon pink & cyan' },
     { value: 'monokai', label: 'Monokai', color: 'bg-[hsl(80,76%,53%)]', description: 'Classic editor feel' },
     { value: 'emerald', label: 'Emerald', color: 'bg-[hsl(160,84%,39%)]', description: 'Rich dark greens' },
-    { value: 'solarized-dark', label: 'Solarized Dark', color: 'bg-[hsl(18,89%,50%)]', description: 'Classic dark tones' },
+    {
+        value: 'solarized-dark',
+        label: 'Solarized Dark',
+        color: 'bg-[hsl(18,89%,50%)]',
+        description: 'Classic dark tones',
+    },
     { value: 'crimson', label: 'Crimson', color: 'bg-[hsl(348,83%,47%)]', description: 'Intense dark reds' },
 ];
 
@@ -43,7 +48,7 @@ function selectTheme(value: Theme) {
 <template>
     <div class="space-y-6">
         <div>
-            <div class="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <div class="text-muted-foreground mb-3 flex items-center gap-2 text-sm font-medium">
                 <Sun class="h-4 w-4" />
                 Light Themes
             </div>
@@ -59,12 +64,21 @@ function selectTheme(value: Theme) {
                             : 'border-border hover:border-primary/40 hover:bg-accent',
                     ]"
                 >
-                    <div :class="['h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background transition-shadow', item.color, theme === item.value ? 'ring-primary' : 'ring-transparent group-hover:ring-primary/30']" />
+                    <div
+                        :class="[
+                            'ring-offset-background h-8 w-8 rounded-full ring-2 ring-offset-2 transition-shadow',
+                            item.color,
+                            theme === item.value ? 'ring-primary' : 'group-hover:ring-primary/30 ring-transparent',
+                        ]"
+                    />
                     <div class="text-center">
                         <span class="text-sm font-medium">{{ item.label }}</span>
-                        <p class="mt-0.5 text-xs text-muted-foreground">{{ item.description }}</p>
+                        <p class="text-muted-foreground mt-0.5 text-xs">{{ item.description }}</p>
                     </div>
-                    <div v-if="theme === item.value" class="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <div
+                        v-if="theme === item.value"
+                        class="bg-primary text-primary-foreground absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full"
+                    >
                         <Check class="h-3 w-3" />
                     </div>
                 </button>
@@ -72,7 +86,7 @@ function selectTheme(value: Theme) {
         </div>
 
         <div>
-            <div class="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <div class="text-muted-foreground mb-3 flex items-center gap-2 text-sm font-medium">
                 <Moon class="h-4 w-4" />
                 Dark Themes
             </div>
@@ -88,12 +102,21 @@ function selectTheme(value: Theme) {
                             : 'border-border hover:border-primary/40 hover:bg-accent',
                     ]"
                 >
-                    <div :class="['h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background transition-shadow', item.color, theme === item.value ? 'ring-primary' : 'ring-transparent group-hover:ring-primary/30']" />
+                    <div
+                        :class="[
+                            'ring-offset-background h-8 w-8 rounded-full ring-2 ring-offset-2 transition-shadow',
+                            item.color,
+                            theme === item.value ? 'ring-primary' : 'group-hover:ring-primary/30 ring-transparent',
+                        ]"
+                    />
                     <div class="text-center">
                         <span class="text-sm font-medium">{{ item.label }}</span>
-                        <p class="mt-0.5 text-xs text-muted-foreground">{{ item.description }}</p>
+                        <p class="text-muted-foreground mt-0.5 text-xs">{{ item.description }}</p>
                     </div>
-                    <div v-if="theme === item.value" class="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <div
+                        v-if="theme === item.value"
+                        class="bg-primary text-primary-foreground absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full"
+                    >
                         <Check class="h-3 w-3" />
                     </div>
                 </button>

@@ -12,16 +12,11 @@ export function formatMessageDate(dateValue: unknown): string {
 
     try {
         let date: Date;
-        
+
         if (typeof dateValue === 'number') {
-            date = new Date(
-                dateValue < 10000000000 ? dateValue * 1000 : dateValue,
-            );
+            date = new Date(dateValue < 10000000000 ? dateValue * 1000 : dateValue);
         } else {
-            date =
-                typeof dateValue === 'string'
-                    ? parseISO(dateValue)
-                    : new Date(dateValue as string | number);
+            date = typeof dateValue === 'string' ? parseISO(dateValue) : new Date(dateValue as string | number);
 
             if (isNaN(date.getTime())) {
                 date = new Date(dateValue as string | number);

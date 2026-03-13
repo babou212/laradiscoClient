@@ -59,7 +59,7 @@ async function connectAndSave(): Promise<void> {
 
             <div
                 v-if="serverStore.connectionError"
-                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
             >
                 {{ serverStore.connectionError }}
             </div>
@@ -71,48 +71,36 @@ async function connectAndSave(): Promise<void> {
                 <CheckCircle2Icon class="mt-0.5 size-4 shrink-0" />
                 <div>
                     <p class="font-medium">Connected to {{ serverInfo.app }}</p>
-                    <p class="mt-0.5 text-xs opacity-70">
-                        Laravel {{ serverInfo.version }}
-                    </p>
+                    <p class="mt-0.5 text-xs opacity-70">Laravel {{ serverInfo.version }}</p>
                 </div>
             </div>
 
             <div class="flex flex-col gap-3 pt-1">
-                <Button
-                    v-if="!serverInfo"
-                    type="submit"
-                    :disabled="isTestingConnection || !host.trim()"
-                    class="w-full"
-                >
+                <Button v-if="!serverInfo" type="submit" :disabled="isTestingConnection || !host.trim()" class="w-full">
                     <Loader2Icon v-if="isTestingConnection" class="animate-spin" />
                     <span v-if="isTestingConnection">Connecting...</span>
                     <span v-else>Test Connection</span>
                 </Button>
-                <Button
-                    v-else
-                    type="button"
-                    @click="connectAndSave"
-                    class="w-full"
-                >
-                    Continue
-                </Button>
+                <Button v-else type="button" @click="connectAndSave" class="w-full"> Continue </Button>
             </div>
         </form>
 
-        <div v-if="serverStore.servers.length > 0" class="border-t border-border pt-6">
-            <p class="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Saved Servers
-            </p>
+        <div v-if="serverStore.servers.length > 0" class="border-border border-t pt-6">
+            <p class="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">Saved Servers</p>
             <div class="space-y-2">
                 <button
                     v-for="server in serverStore.servers"
                     :key="server.id"
-                    @click="host = server.host; serverInfo = null; serverStore.clearError();"
-                    class="flex w-full items-center justify-between rounded-md border border-border bg-card px-4 py-3 text-left text-sm transition hover:border-ring hover:bg-accent"
+                    @click="
+                        host = server.host;
+                        serverInfo = null;
+                        serverStore.clearError();
+                    "
+                    class="border-border bg-card hover:border-ring hover:bg-accent flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition"
                 >
                     <div>
-                        <p class="font-medium text-foreground">{{ server.name }}</p>
-                        <p class="text-xs text-muted-foreground">{{ server.host }}</p>
+                        <p class="text-foreground font-medium">{{ server.name }}</p>
+                        <p class="text-muted-foreground text-xs">{{ server.host }}</p>
                     </div>
                     <span
                         v-if="server.is_active"

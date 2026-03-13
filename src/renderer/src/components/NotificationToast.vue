@@ -3,10 +3,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { AtSign, Bell, MessageSquare, X } from 'lucide-vue-next';
-import {
-    useNotificationsStore,
-    type ToastNotification,
-} from '@/stores/notifications';
+import { useNotificationsStore, type ToastNotification } from '@/stores/notifications';
 
 const router = useRouter();
 const notificationStore = useNotificationsStore();
@@ -61,55 +58,42 @@ const handleClick = (notification: ToastNotification) => {
         >
             <div
                 v-if="!toast.dismissing"
-                class="pointer-events-auto w-80 cursor-pointer overflow-hidden rounded-lg border border-border bg-popover shadow-lg transition-colors hover:bg-accent/50"
+                class="border-border bg-popover hover:bg-accent/50 pointer-events-auto w-80 cursor-pointer overflow-hidden rounded-lg border shadow-lg transition-colors"
                 @click="handleClick(toast)"
             >
                 <div class="flex items-start gap-3 p-3">
                     <div
-                        class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+                        class="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full"
                     >
-                        <component
-                            :is="getNotificationIcon(toast)"
-                            :size="16"
-                        />
+                        <component :is="getNotificationIcon(toast)" :size="16" />
                     </div>
 
                     <div class="min-w-0 flex-1">
-                        <div
-                            class="flex items-center gap-1 text-sm font-semibold"
-                        >
+                        <div class="flex items-center gap-1 text-sm font-semibold">
                             <template v-if="isDmNotification(toast)">
                                 <span class="text-primary">
                                     {{ toast.data.sender_username }}
                                 </span>
-                                <span class="text-muted-foreground">
-                                    sent a message
-                                </span>
+                                <span class="text-muted-foreground"> sent a message </span>
                             </template>
                             <template v-else>
                                 <span class="text-primary">
                                     {{ getMentionLabel(toast) }}
                                 </span>
-                                <span class="text-muted-foreground">
-                                    in #{{ toast.data.channel_name }}
-                                </span>
+                                <span class="text-muted-foreground"> in #{{ toast.data.channel_name }} </span>
                             </template>
                         </div>
                         <div class="mt-0.5 flex items-baseline gap-1.5 text-sm">
-                            <span class="font-medium">
-                                {{ toast.data.sender_username }}:
-                            </span>
-                            <span class="truncate text-muted-foreground">
+                            <span class="font-medium"> {{ toast.data.sender_username }}: </span>
+                            <span class="text-muted-foreground truncate">
                                 {{ getDisplayContent(toast).substring(0, 80)
-                                }}{{
-                                    getDisplayContent(toast).length > 80 ? '...' : ''
-                                }}
+                                }}{{ getDisplayContent(toast).length > 80 ? '...' : '' }}
                             </span>
                         </div>
                     </div>
 
                     <button
-                        class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1 transition-colors"
                         @click.stop="notificationStore.dismissToast(toast.id)"
                     >
                         <X :size="14" />

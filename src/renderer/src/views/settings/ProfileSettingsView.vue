@@ -89,12 +89,10 @@ async function deleteAccount() {
 <template>
     <div class="space-y-6">
         <!-- Profile Information Card -->
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Profile information</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Update your name and email address
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Update your name and email address</p>
             </div>
 
             <div class="p-6">
@@ -148,25 +146,28 @@ async function deleteAccount() {
         </div>
 
         <!-- Delete Account Card -->
-        <div class="overflow-hidden rounded-lg border border-destructive/50 bg-card">
-            <div class="border-b border-destructive/50 bg-destructive/10 px-6 py-4">
-                <h2 class="text-lg font-semibold text-destructive">Danger zone</h2>
-                <p class="mt-1 text-sm text-destructive/80">
-                    Permanently delete your account and all of its data
-                </p>
+        <div class="border-destructive/50 bg-card overflow-hidden rounded-lg border">
+            <div class="border-destructive/50 bg-destructive/10 border-b px-6 py-4">
+                <h2 class="text-destructive text-lg font-semibold">Danger zone</h2>
+                <p class="text-destructive/80 mt-1 text-sm">Permanently delete your account and all of its data</p>
             </div>
 
             <div class="space-y-4 p-6">
-                <div class="rounded-md border border-destructive/20 bg-destructive/10 p-4">
+                <div class="border-destructive/20 bg-destructive/10 rounded-md border p-4">
                     <div class="flex items-start gap-3">
                         <div class="mt-0.5 shrink-0">
-                            <svg class="h-5 w-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <svg class="text-destructive h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                />
                             </svg>
                         </div>
                         <div class="space-y-1">
-                            <p class="text-sm font-medium text-destructive">This action cannot be undone</p>
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-destructive text-sm font-medium">This action cannot be undone</p>
+                            <p class="text-muted-foreground text-sm">
                                 Once you delete your account, all of your data will be permanently removed.
                             </p>
                         </div>
@@ -175,16 +176,15 @@ async function deleteAccount() {
 
                 <Dialog v-model:open="showDeleteDialog">
                     <DialogTrigger as-child>
-                        <Button variant="destructive" class="w-full sm:w-auto">
-                            Delete account
-                        </Button>
+                        <Button variant="destructive" class="w-full sm:w-auto"> Delete account </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <form @submit.prevent="deleteAccount" class="space-y-6">
                             <DialogHeader class="space-y-3">
                                 <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
                                 <DialogDescription>
-                                    Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password to confirm.
+                                    Once your account is deleted, all of its resources and data will also be permanently
+                                    deleted. Please enter your password to confirm.
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -201,7 +201,13 @@ async function deleteAccount() {
 
                             <DialogFooter class="gap-2">
                                 <DialogClose as-child>
-                                    <Button variant="secondary" @click="deletePassword = ''; deleteErrors = {}">
+                                    <Button
+                                        variant="secondary"
+                                        @click="
+                                            deletePassword = '';
+                                            deleteErrors = {};
+                                        "
+                                    >
                                         Cancel
                                     </Button>
                                 </DialogClose>

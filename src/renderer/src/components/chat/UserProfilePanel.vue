@@ -60,11 +60,7 @@ const statusLabels: Record<string, string> = {
 
 const userInitials = computed(() => {
     if (!props.user) return '?';
-    return (
-        props.user.username?.[0]?.toUpperCase() ||
-        props.user.display_name?.[0]?.toUpperCase() ||
-        '?'
-    );
+    return props.user.username?.[0]?.toUpperCase() || props.user.display_name?.[0]?.toUpperCase() || '?';
 });
 
 const displayName = computed(() => {
@@ -104,11 +100,7 @@ const handleClose = () => {
         leave-from-class="opacity-100"
         leave-to-class="opacity-0"
     >
-        <div
-            v-if="show && user"
-            class="fixed inset-0 z-40"
-            @click="handleClose"
-        ></div>
+        <div v-if="show && user" class="fixed inset-0 z-40" @click="handleClose"></div>
     </Transition>
 
     <Transition
@@ -121,90 +113,62 @@ const handleClose = () => {
     >
         <div
             v-if="show && user"
-            class="fixed top-20 right-64 z-50 w-80 overflow-hidden rounded-lg border border-border bg-popover shadow-2xl"
+            class="border-border bg-popover fixed top-20 right-64 z-50 w-80 overflow-hidden rounded-lg border shadow-2xl"
         >
-            <div
-                class="relative h-16 bg-linear-to-br from-primary/30 via-primary/20 to-primary/10"
-            ></div>
+            <div class="from-primary/30 via-primary/20 to-primary/10 relative h-16 bg-linear-to-br"></div>
 
             <div class="relative -mt-10 px-4">
                 <div class="relative inline-block">
                     <div
                         v-if="user.avatar_path"
-                        class="size-20 overflow-hidden rounded-full border-4 border-popover bg-muted"
+                        class="border-popover bg-muted size-20 overflow-hidden rounded-full border-4"
                     >
-                        <img
-                            :src="user.avatar_path"
-                            :alt="user.username"
-                            class="size-full object-cover"
-                        />
+                        <img :src="user.avatar_path" :alt="user.username" class="size-full object-cover" />
                     </div>
                     <div
                         v-else
-                        class="flex size-20 items-center justify-center rounded-full border-4 border-popover bg-primary text-2xl font-bold text-primary-foreground"
+                        class="border-popover bg-primary text-primary-foreground flex size-20 items-center justify-center rounded-full border-4 text-2xl font-bold"
                     >
                         {{ userInitials }}
                     </div>
 
                     <div
-                        class="absolute right-0 bottom-0 size-5 rounded-full border-4 border-popover"
+                        class="border-popover absolute right-0 bottom-0 size-5 rounded-full border-4"
                         :class="statusColors[user.status || 'offline']"
                     ></div>
                 </div>
             </div>
 
             <div class="space-y-3 p-4 pt-2">
-                <div class="rounded-lg bg-background/50 p-3">
-                    <h2 class="text-lg font-bold text-popover-foreground">
+                <div class="bg-background/50 rounded-lg p-3">
+                    <h2 class="text-popover-foreground text-lg font-bold">
                         {{ displayName }}
                     </h2>
-                    <p
-                        v-if="user.custom_status"
-                        class="mt-1 text-xs text-muted-foreground"
-                    >
+                    <p v-if="user.custom_status" class="text-muted-foreground mt-1 text-xs">
                         {{ user.custom_status }}
                     </p>
                     <div class="mt-2 flex items-center gap-1.5">
-                        <div
-                            class="size-2 rounded-full"
-                            :class="statusColors[user.status || 'offline']"
-                        ></div>
-                        <span class="text-xs text-muted-foreground">{{
-                            statusLabels[user.status || 'offline']
-                        }}</span>
+                        <div class="size-2 rounded-full" :class="statusColors[user.status || 'offline']"></div>
+                        <span class="text-muted-foreground text-xs">{{ statusLabels[user.status || 'offline'] }}</span>
                     </div>
                 </div>
 
-                <div v-if="!loading" class="rounded-lg bg-background/50 p-3">
-                    <h3
-                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                    >
-                        Member Since
-                    </h3>
-                    <p class="mt-1 text-sm text-popover-foreground">
+                <div v-if="!loading" class="bg-background/50 rounded-lg p-3">
+                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Member Since</h3>
+                    <p class="text-popover-foreground mt-1 text-sm">
                         {{ memberSince }}
                     </p>
                 </div>
 
-                <div
-                    v-if="!loading && fullUser?.roles?.length"
-                    class="rounded-lg bg-background/50 p-3"
-                >
-                    <h3
-                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                    >
-                        Roles
-                    </h3>
+                <div v-if="!loading && fullUser?.roles?.length" class="bg-background/50 rounded-lg p-3">
+                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Roles</h3>
                     <div class="mt-2 flex flex-wrap gap-1.5">
                         <span
                             v-for="role in fullUser.roles"
                             :key="role.id"
-                            class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-0.5 text-xs font-medium text-popover-foreground"
+                            class="border-border bg-background text-popover-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
                         >
-                            <span
-                                class="size-2.5 rounded-full"
-                                :style="{ backgroundColor: role.color }"
-                            ></span>
+                            <span class="size-2.5 rounded-full" :style="{ backgroundColor: role.color }"></span>
                             {{ role.name }}
                         </span>
                     </div>
@@ -213,7 +177,7 @@ const handleClose = () => {
                 <button
                     v-if="!isCurrentUser"
                     type="button"
-                    class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    class="bg-primary text-primary-foreground hover:bg-primary/90 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
                     @click="handleSendMessage"
                 >
                     <MessageSquare :size="16" />

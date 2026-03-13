@@ -1,8 +1,6 @@
 import { safeStorage } from 'electron';
 import { getDatabase } from '../database';
-import type {
-    SenderKeyState,
-} from './types';
+import type { SenderKeyState } from './types';
 import { serializeSenderKey, deserializeSenderKey } from './sender-keys';
 
 export function initE2eeTables(): void {
@@ -112,9 +110,9 @@ export function getDeviceIdentity(
 
 export function getOwnerUserId(serverId: number): number | null {
     const db = getDatabase();
-    const row = db
-        .prepare('SELECT user_id FROM device_identity WHERE server_id = ?')
-        .get(serverId) as { user_id: number | null } | undefined;
+    const row = db.prepare('SELECT user_id FROM device_identity WHERE server_id = ?').get(serverId) as
+        | { user_id: number | null }
+        | undefined;
     return row?.user_id ?? null;
 }
 
@@ -146,32 +144,20 @@ export function storePrivateKey(
     );
 }
 
-export function loadPrivateKey(
-    serverId: number,
-    keyType: string,
-    keyId: string,
-): Uint8Array<ArrayBuffer> | null {
+export function loadPrivateKey(serverId: number, keyType: string, keyId: string): Uint8Array<ArrayBuffer> | null {
     const db = getDatabase();
     const row = db
-        .prepare(
-            'SELECT encrypted_private_key FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?',
-        )
+        .prepare('SELECT encrypted_private_key FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?')
         .get(serverId, keyType, keyId) as { encrypted_private_key: Buffer } | undefined;
 
     if (!row) return null;
     return decryptFromStorage(row.encrypted_private_key);
 }
 
-export function loadPublicKey(
-    serverId: number,
-    keyType: string,
-    keyId: string,
-): Uint8Array<ArrayBuffer> | null {
+export function loadPublicKey(serverId: number, keyType: string, keyId: string): Uint8Array<ArrayBuffer> | null {
     const db = getDatabase();
     const row = db
-        .prepare(
-            'SELECT public_key FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?',
-        )
+        .prepare('SELECT public_key FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?')
         .get(serverId, keyType, keyId) as { public_key: Buffer | null } | undefined;
 
     if (!row?.public_key) return null;
@@ -181,16 +167,14 @@ export function loadPublicKey(
 export function hasE2eeKeys(serverId: number, userId?: number): boolean {
     const db = getDatabase();
     const row = db
-        .prepare(
-            "SELECT COUNT(*) as count FROM e2ee_keys WHERE server_id = ? AND key_type = 'user_identity'",
-        )
+        .prepare("SELECT COUNT(*) as count FROM e2ee_keys WHERE server_id = ? AND key_type = 'user_identity'")
         .get(serverId) as { count: number };
     if (row.count === 0) return false;
 
     if (userId != null) {
-        const identity = db
-            .prepare('SELECT user_id FROM device_identity WHERE server_id = ?')
-            .get(serverId) as { user_id: number | null } | undefined;
+        const identity = db.prepare('SELECT user_id FROM device_identity WHERE server_id = ?').get(serverId) as
+            | { user_id: number | null }
+            | undefined;
         if (identity && identity.user_id != null && identity.user_id !== userId) {
             return false;
         }
@@ -201,16 +185,18 @@ export function hasE2eeKeys(serverId: number, userId?: number): boolean {
 
 export function deletePrivateKey(serverId: number, keyType: string, keyId: string): void {
     const db = getDatabase();
-    db.prepare(
-        'DELETE FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?',
-    ).run(serverId, keyType, keyId);
+    db.prepare('DELETE FROM e2ee_keys WHERE server_id = ? AND key_type = ? AND key_id = ?').run(
+        serverId,
+        keyType,
+        keyId,
+    );
 }
 
 export function wipeIfDifferentUser(serverId: number, userId: number): boolean {
     const db = getDatabase();
-    const identity = db
-        .prepare('SELECT user_id FROM device_identity WHERE server_id = ?')
-        .get(serverId) as { user_id: number | null } | undefined;
+    const identity = db.prepare('SELECT user_id FROM device_identity WHERE server_id = ?').get(serverId) as
+        | { user_id: number | null }
+        | undefined;
 
     if (identity && identity.user_id != null && identity.user_id !== userId) {
         deleteAllE2eeKeys(serverId);
@@ -229,9 +215,7 @@ export function deleteAllE2eeKeys(serverId: number): void {
 export function loadOneTimePreKeyIds(serverId: number): number[] {
     const db = getDatabase();
     const rows = db
-        .prepare(
-            "SELECT key_id FROM e2ee_keys WHERE server_id = ? AND key_type = 'one_time_prekey'",
-        )
+        .prepare("SELECT key_id FROM e2ee_keys WHERE server_id = ? AND key_type = 'one_time_prekey'")
         .all(serverId) as { key_id: string }[];
     return rows.map((r) => parseInt(r.key_id, 10));
 }
@@ -239,9 +223,7 @@ export function loadOneTimePreKeyIds(serverId: number): number[] {
 export function loadSignedPreKeyIds(serverId: number): number[] {
     const db = getDatabase();
     const rows = db
-        .prepare(
-            "SELECT key_id FROM e2ee_keys WHERE server_id = ? AND key_type = 'signed_prekey'",
-        )
+        .prepare("SELECT key_id FROM e2ee_keys WHERE server_id = ? AND key_type = 'signed_prekey'")
         .all(serverId) as { key_id: string }[];
     return rows.map((r) => parseInt(r.key_id, 10));
 }
@@ -286,7 +268,5 @@ export function loadSenderKey(
 
 export function deleteSenderKeysForChannel(serverId: number, channelId: number): void {
     const db = getDatabase();
-    db.prepare(
-        'DELETE FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ?',
-    ).run(serverId, channelId);
+    db.prepare('DELETE FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ?').run(serverId, channelId);
 }

@@ -35,7 +35,10 @@ export const useVoiceStore = defineStore('voice', () => {
     const pttKey = ref<string | null>(null);
     const pttKeycode = ref<number | null>(null);
     const pttModifiers = ref<{ ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }>({
-        ctrl: false, shift: false, alt: false, meta: false,
+        ctrl: false,
+        shift: false,
+        alt: false,
+        meta: false,
     });
     const pttSoundEnabled = ref(true);
     const selectedMicDeviceId = ref<string>('default');
@@ -57,7 +60,11 @@ export const useVoiceStore = defineStore('voice', () => {
         pttKey.value = key;
         pttKeycode.value = keycode ? Number(keycode) : null;
         if (modifiers) {
-            try { pttModifiers.value = JSON.parse(modifiers); } catch { /* keep defaults */ }
+            try {
+                pttModifiers.value = JSON.parse(modifiers);
+            } catch {
+                /* keep defaults */
+            }
         }
         pttSoundEnabled.value = sound !== 'false';
         selectedMicDeviceId.value = micId ?? 'default';
@@ -74,7 +81,10 @@ export const useVoiceStore = defineStore('voice', () => {
     async function fetchVoiceParticipants(): Promise<void> {
         try {
             const response = await api.get('/voice/participants');
-            const data: Record<string, Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>> = response.data ?? {};
+            const data: Record<
+                string,
+                Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>
+            > = response.data ?? {};
 
             for (const [channelIdStr, participants] of Object.entries(data)) {
                 const channelId = Number(channelIdStr);
@@ -232,7 +242,6 @@ export const useVoiceStore = defineStore('voice', () => {
             if (isMicMuted.value) {
                 await room.localParticipant.setMicrophoneEnabled(false);
             } else if (!pttEnabled.value || pttActive) {
-
                 await room.localParticipant.setMicrophoneEnabled(true);
             }
 
@@ -341,7 +350,7 @@ export const useVoiceStore = defineStore('voice', () => {
     function initPttListeners() {
         window.api.ptt.onActivated(handlePttActivated);
         window.api.ptt.onDeactivated(handlePttDeactivated);
-        
+
         syncPttConfig();
     }
 

@@ -4,9 +4,7 @@ export async function hkdf(
     info: Uint8Array<ArrayBuffer>,
     length: number = 32,
 ): Promise<Uint8Array<ArrayBuffer>> {
-    const baseKey = await crypto.subtle.importKey('raw', inputKeyMaterial, 'HKDF', false, [
-        'deriveBits',
-    ]);
+    const baseKey = await crypto.subtle.importKey('raw', inputKeyMaterial, 'HKDF', false, ['deriveBits']);
 
     const bits = await crypto.subtle.deriveBits(
         {
@@ -31,14 +29,11 @@ export async function hkdfDeriveTwo(
     return [derived.slice(0, 32), derived.slice(32, 64)];
 }
 
-export async function hmacSHA256(key: Uint8Array<ArrayBuffer>, data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        key,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-    );
+export async function hmacSHA256(
+    key: Uint8Array<ArrayBuffer>,
+    data: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
+    const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
 
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
     return new Uint8Array(signature);

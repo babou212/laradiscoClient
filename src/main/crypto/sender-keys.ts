@@ -89,11 +89,7 @@ export async function senderKeyDecrypt(
     message: SenderKeyMessage,
 ): Promise<Uint8Array<ArrayBuffer>> {
     if (state.signingKeyPair.publicKey.length > 0) {
-        const valid = ed25519.verify(
-            message.signature,
-            message.ciphertext,
-            state.signingKeyPair.publicKey,
-        );
+        const valid = ed25519.verify(message.signature, message.ciphertext, state.signingKeyPair.publicKey);
         if (!valid) {
             throw new Error('SenderKey: Invalid message signature');
         }
@@ -103,9 +99,7 @@ export async function senderKeyDecrypt(
     const baseIdx = state.baseChainIndex ?? state.chainIndex;
 
     if (message.chainIndex < baseIdx) {
-        throw new Error(
-            `SenderKey: Message chain index ${message.chainIndex} is before distribution start ${baseIdx}`,
-        );
+        throw new Error(`SenderKey: Message chain index ${message.chainIndex} is before distribution start ${baseIdx}`);
     }
 
     let currentChainKey = baseKey;

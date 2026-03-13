@@ -78,8 +78,7 @@ const onMentionSelect = (value: string) => {
     if (mentionStartIndex.value < 0) return;
 
     const before = messageInput.value.slice(0, mentionStartIndex.value);
-    const cursorPos =
-        textareaRef.value?.selectionStart || messageInput.value.length;
+    const cursorPos = textareaRef.value?.selectionStart || messageInput.value.length;
     const after = messageInput.value.slice(cursorPos);
 
     const prefix = before.length > 0 && !before.endsWith(' ') ? before : before;
@@ -101,12 +100,8 @@ const handleInput = () => {
 };
 
 const onSelectEmoji = (emoji: string) => {
-    const cursorPos =
-        textareaRef.value?.selectionStart || messageInput.value.length;
-    messageInput.value =
-        messageInput.value.slice(0, cursorPos) +
-        emoji +
-        messageInput.value.slice(cursorPos);
+    const cursorPos = textareaRef.value?.selectionStart || messageInput.value.length;
+    messageInput.value = messageInput.value.slice(0, cursorPos) + emoji + messageInput.value.slice(cursorPos);
     showEmojiPicker.value = false;
 
     setTimeout(() => {
@@ -123,26 +118,14 @@ const onSelectGif = (gifUrl: string) => {
 };
 
 const handleClickOutside = (e: MouseEvent) => {
-    if (
-        showEmojiPicker.value &&
-        emojiPickerRef.value &&
-        !emojiPickerRef.value.contains(e.target as Node)
-    ) {
-        const emojiButton = (e.target as HTMLElement).closest(
-            '[data-emoji-button]',
-        );
+    if (showEmojiPicker.value && emojiPickerRef.value && !emojiPickerRef.value.contains(e.target as Node)) {
+        const emojiButton = (e.target as HTMLElement).closest('[data-emoji-button]');
         if (!emojiButton) {
             showEmojiPicker.value = false;
         }
     }
-    if (
-        showGifPicker.value &&
-        gifPickerRef.value &&
-        !gifPickerRef.value.contains(e.target as Node)
-    ) {
-        const gifButton = (e.target as HTMLElement).closest(
-            '[data-gif-button]',
-        );
+    if (showGifPicker.value && gifPickerRef.value && !gifPickerRef.value.contains(e.target as Node)) {
+        const gifButton = (e.target as HTMLElement).closest('[data-gif-button]');
         if (!gifButton) {
             showGifPicker.value = false;
         }
@@ -162,23 +145,17 @@ onUnmounted(() => {
     <div class="px-4 pb-4">
         <div
             v-if="replyingTo"
-            class="flex items-start gap-2 rounded-t-2xl border border-b-0 border-border bg-accent/30 px-4 py-2"
+            class="border-border bg-accent/30 flex items-start gap-2 rounded-t-2xl border border-b-0 px-4 py-2"
         >
-            <CornerDownRight
-                :size="16"
-                class="mt-1 shrink-0 text-muted-foreground"
-            />
+            <CornerDownRight :size="16" class="text-muted-foreground mt-1 shrink-0" />
             <div class="min-w-0 flex-1">
-                <div class="text-xs font-medium text-primary">
-                    Replying to {{ replyingTo.user.username }}
-                </div>
-                <div class="truncate text-xs text-muted-foreground">
-                    {{ replyingTo.content.substring(0, 100)
-                    }}{{ replyingTo.content.length > 100 ? '...' : '' }}
+                <div class="text-primary text-xs font-medium">Replying to {{ replyingTo.user.username }}</div>
+                <div class="text-muted-foreground truncate text-xs">
+                    {{ replyingTo.content.substring(0, 100) }}{{ replyingTo.content.length > 100 ? '...' : '' }}
                 </div>
             </div>
             <button
-                class="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1"
                 @click="emit('cancelReply')"
             >
                 <X :size="16" />
@@ -193,24 +170,16 @@ onUnmounted(() => {
                 @close="showMentionDropdown = false"
             />
 
-            <div
-                v-if="showEmojiPicker"
-                ref="emojiPickerRef"
-                class="absolute bottom-full left-4 z-10 mb-2"
-            >
+            <div v-if="showEmojiPicker" ref="emojiPickerRef" class="absolute bottom-full left-4 z-10 mb-2">
                 <EmojiPicker @select="onSelectEmoji" />
             </div>
 
-            <div
-                v-if="showGifPicker"
-                ref="gifPickerRef"
-                class="absolute bottom-full left-4 z-10 mb-2"
-            >
+            <div v-if="showGifPicker" ref="gifPickerRef" class="absolute bottom-full left-4 z-10 mb-2">
                 <GifPicker @select="onSelectGif" />
             </div>
 
             <div
-                class="flex items-center gap-2 rounded-full border border-input bg-background px-4 py-2 shadow-lg focus-within:ring-2 focus-within:ring-ring"
+                class="border-input bg-background focus-within:ring-ring flex items-center gap-2 rounded-full border px-4 py-2 shadow-lg focus-within:ring-2"
             >
                 <button
                     type="button"
@@ -248,14 +217,14 @@ onUnmounted(() => {
                     ref="textareaRef"
                     v-model="messageInput"
                     rows="1"
-                    class="flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                    class="placeholder:text-muted-foreground flex-1 resize-none bg-transparent py-1.5 text-sm outline-none"
                     :placeholder="`Message #${channelName || 'channel'}`"
                     @keydown="handleKeydown"
                     @input="handleInput"
                 />
                 <button
                     type="button"
-                    class="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                    class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors disabled:opacity-50"
                     :disabled="!messageInput.trim()"
                     @click="sendMessage"
                 >

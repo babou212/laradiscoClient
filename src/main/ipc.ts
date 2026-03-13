@@ -31,7 +31,6 @@ function buildBaseUrl(host: string): string {
 }
 
 export function registerIpcHandlers(): void {
-
     ipcMain.handle('server:ping', async (_event, host: string) => {
         const url = `${buildBaseUrl(host)}/api/v1/ping`;
         try {
@@ -80,60 +79,50 @@ export function registerIpcHandlers(): void {
         return { success: true };
     });
 
-    ipcMain.handle(
-        'auth:login',
-        async (_event, host: string, serverId: number, email: string, password: string) => {
-            const url = `${buildBaseUrl(host)}/api/v1/auth/login`;
-            try {
-                const response = await net.fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email,
-                        password,
-                        device_name: `LaraDisco Desktop (${process.platform})`,
-                    }),
-                });
+    ipcMain.handle('auth:login', async (_event, host: string, serverId: number, email: string, password: string) => {
+        const url = `${buildBaseUrl(host)}/api/v1/auth/login`;
+        try {
+            const response = await net.fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    device_name: `LaraDisco Desktop (${process.platform})`,
+                }),
+            });
 
-                const body = await response.json();
+            const body = await response.json();
 
-                if (!response.ok) {
-                    return {
-                        success: false,
-                        error: body.message || body.errors?.email?.[0] || 'Login failed',
-                    };
-                }
-
-                const data = body.data;
-
-                // Two-factor authentication required — pass through to renderer
-                if (data.two_factor) {
-                    return {
-                        success: false,
-                        twoFactor: true,
-                        challengeToken: data.challenge_token,
-                    };
-                }
-
-                saveAuthSession(
-                    serverId,
-                    data.user.id,
-                    data.user.name,
-                    data.user.email,
-                    data.user.avatar_path,
-                    data.token,
-                );
-
-                return { success: true, user: data.user, token: data.token };
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : 'Login failed';
-                return { success: false, error: message };
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: body.message || body.errors?.email?.[0] || 'Login failed',
+                };
             }
-        },
-    );
+
+            const data = body.data;
+
+            // Two-factor authentication required — pass through to renderer
+            if (data.two_factor) {
+                return {
+                    success: false,
+                    twoFactor: true,
+                    challengeToken: data.challenge_token,
+                };
+            }
+
+            saveAuthSession(serverId, data.user.id, data.user.name, data.user.email, data.user.avatar_path, data.token);
+
+            return { success: true, user: data.user, token: data.token };
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Login failed';
+            return { success: false, error: message };
+        }
+    });
 
     ipcMain.handle(
         'auth:twoFactorChallenge',
@@ -245,28 +234,25 @@ export function registerIpcHandlers(): void {
         return { success: true };
     });
 
-    ipcMain.on(
-        'notifications:show',
-        (_event, payload: { title: string; body: string; notificationId: string }) => {
-            if (!Notification.isSupported()) return;
+    ipcMain.on('notifications:show', (_event, payload: { title: string; body: string; notificationId: string }) => {
+        if (!Notification.isSupported()) return;
 
-            const notification = new Notification({
-                title: payload.title,
-                body: payload.body,
-            });
+        const notification = new Notification({
+            title: payload.title,
+            body: payload.body,
+        });
 
-            notification.on('click', () => {
-                const windows = BrowserWindow.getAllWindows();
-                const win = windows[0];
-                if (win) {
-                    if (win.isMinimized()) win.restore();
-                    win.focus();
+        notification.on('click', () => {
+            const windows = BrowserWindow.getAllWindows();
+            const win = windows[0];
+            if (win) {
+                if (win.isMinimized()) win.restore();
+                win.focus();
 
-                    win.webContents.send('notifications:clicked', payload.notificationId);
-                }
-            });
+                win.webContents.send('notifications:clicked', payload.notificationId);
+            }
+        });
 
-            notification.show();
-        },
-    );
+        notification.show();
+    });
 }

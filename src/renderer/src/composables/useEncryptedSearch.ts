@@ -101,11 +101,7 @@ export function useEncryptedSearch() {
         }
     }
 
-    async function loadMoreResults(
-        type: 'channel' | 'dm',
-        targetId: number,
-        query: string,
-    ): Promise<void> {
+    async function loadMoreResults(type: 'channel' | 'dm', targetId: number, query: string): Promise<void> {
         if (!hasMore.value || searchResults.value.length === 0) return;
 
         const lastId = Math.min(...searchResults.value.map((m) => m.id));
@@ -123,19 +119,14 @@ export function useEncryptedSearch() {
         messageIds: number[],
     ): Promise<MessageData[]> {
         const endpoint =
-            type === 'dm'
-                ? `/direct-messages/${targetId}/messages/batch`
-                : `/channels/${targetId}/messages/batch`;
+            type === 'dm' ? `/direct-messages/${targetId}/messages/batch` : `/channels/${targetId}/messages/batch`;
 
         try {
             const response = await api.post(endpoint, { message_ids: messageIds });
             const data = response.data;
-            return Array.isArray(data) ? data : (data as any)?.data ?? [];
+            return Array.isArray(data) ? data : ((data as any)?.data ?? []);
         } catch {
-            const endpoint2 =
-                type === 'dm'
-                    ? `/direct-messages/${targetId}`
-                    : `/channels/${targetId}/messages`;
+            const endpoint2 = type === 'dm' ? `/direct-messages/${targetId}` : `/channels/${targetId}/messages`;
 
             const response = await api.get(endpoint2);
             const rawData = response.data;

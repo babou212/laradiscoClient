@@ -86,10 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function verifyTwoFactor(
-        code: string | null,
-        recoveryCode: string | null,
-    ): Promise<boolean> {
+    async function verifyTwoFactor(code: string | null, recoveryCode: string | null): Promise<boolean> {
         const serverStore = useServerStore();
         if (!serverStore.activeServer || !challengeToken.value) {
             loginError.value = 'No active challenge. Please log in again.';
@@ -138,10 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         if (serverStore.activeServer) {
-            await window.api.auth.logout(
-                serverStore.activeServer.host,
-                serverStore.activeServer.id,
-            );
+            await window.api.auth.logout(serverStore.activeServer.host, serverStore.activeServer.id);
         }
         user.value = null;
         token.value = null;

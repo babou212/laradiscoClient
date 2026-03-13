@@ -62,143 +62,113 @@ function registerE2eeIpcHandlers(): void {
         return wipeIfDifferentUser(serverId, userId);
     });
 
-    ipcMain.handle(
-        'e2ee:setup',
-        async (_event, serverId: number, deviceName: string, userId?: number) => {
-            deleteAllE2eeKeys(serverId);
+    ipcMain.handle('e2ee:setup', async (_event, serverId: number, deviceName: string, userId?: number) => {
+        deleteAllE2eeKeys(serverId);
 
-            const userIdentity = generateUserIdentityKeyPair();
+        const userIdentity = generateUserIdentityKeyPair();
 
-            const deviceIdentity = generateDeviceIdentityKeyPair(userIdentity.privateKey);
+        const deviceIdentity = generateDeviceIdentityKeyPair(userIdentity.privateKey);
 
-            const deviceId = generateUUID();
+        const deviceId = generateUUID();
 
-            const signedPreKey = generateSignedPreKey(
-                deviceIdentity.privateKey,
-                SIGNED_PREKEY_START_ID,
-            );
+        const signedPreKey = generateSignedPreKey(deviceIdentity.privateKey, SIGNED_PREKEY_START_ID);
 
-            const oneTimePreKeys = generateOneTimePreKeys(1, ONE_TIME_PREKEY_COUNT);
+        const oneTimePreKeys = generateOneTimePreKeys(1, ONE_TIME_PREKEY_COUNT);
 
+        storePrivateKey(serverId, 'user_identity', 'primary', userIdentity.privateKey, userIdentity.publicKey);
+
+        storePrivateKey(serverId, 'device_identity', deviceId, deviceIdentity.privateKey, deviceIdentity.publicKey);
+
+        storePrivateKey(
+            serverId,
+            'signed_prekey',
+            String(signedPreKey.id),
+            signedPreKey.keyPair.privateKey,
+            signedPreKey.keyPair.publicKey,
+            { timestamp: signedPreKey.timestamp },
+        );
+
+        for (const otpk of oneTimePreKeys) {
             storePrivateKey(
                 serverId,
-                'user_identity',
-                'primary',
-                userIdentity.privateKey,
-                userIdentity.publicKey,
+                'one_time_prekey',
+                String(otpk.id),
+                otpk.keyPair.privateKey,
+                otpk.keyPair.publicKey,
             );
+        }
 
+        saveDeviceIdentity(serverId, deviceId, deviceName, userId);
+
+        return {
+            userIdentityKey: Buffer.from(userIdentity.publicKey).toString('base64'),
+            deviceId,
+            deviceName,
+            deviceIdentityKey: Buffer.from(deviceIdentity.publicKey).toString('base64'),
+            identitySignature: Buffer.from(deviceIdentity.signature).toString('base64'),
+            signedPrekey: Buffer.from(signedPreKey.keyPair.publicKey).toString('base64'),
+            signedPrekeyId: signedPreKey.id,
+            signedPrekeySignature: Buffer.from(signedPreKey.signature).toString('base64'),
+            oneTimePrekeys: oneTimePreKeys.map((otpk) => ({
+                prekeyId: otpk.id,
+                publicKey: Buffer.from(otpk.keyPair.publicKey).toString('base64'),
+            })),
+        };
+    });
+
+    ipcMain.handle('e2ee:setupDevice', async (_event, serverId: number, deviceName: string, userId?: number) => {
+        const userIdentityPrivate = loadPrivateKey(serverId, 'user_identity', 'primary');
+        const userIdentityPublic = loadPublicKey(serverId, 'user_identity', 'primary');
+
+        if (!userIdentityPrivate || !userIdentityPublic) {
+            throw new Error('User identity key not found. Restore from backup first.');
+        }
+
+        const deviceIdentity = generateDeviceIdentityKeyPair(userIdentityPrivate);
+        const deviceId = generateUUID();
+
+        const signedPreKey = generateSignedPreKey(deviceIdentity.privateKey, SIGNED_PREKEY_START_ID);
+
+        const oneTimePreKeys = generateOneTimePreKeys(1, ONE_TIME_PREKEY_COUNT);
+
+        storePrivateKey(serverId, 'device_identity', deviceId, deviceIdentity.privateKey, deviceIdentity.publicKey);
+
+        storePrivateKey(
+            serverId,
+            'signed_prekey',
+            String(signedPreKey.id),
+            signedPreKey.keyPair.privateKey,
+            signedPreKey.keyPair.publicKey,
+            { timestamp: signedPreKey.timestamp },
+        );
+
+        for (const otpk of oneTimePreKeys) {
             storePrivateKey(
                 serverId,
-                'device_identity',
-                deviceId,
-                deviceIdentity.privateKey,
-                deviceIdentity.publicKey,
+                'one_time_prekey',
+                String(otpk.id),
+                otpk.keyPair.privateKey,
+                otpk.keyPair.publicKey,
             );
+        }
 
-            storePrivateKey(
-                serverId,
-                'signed_prekey',
-                String(signedPreKey.id),
-                signedPreKey.keyPair.privateKey,
-                signedPreKey.keyPair.publicKey,
-                { timestamp: signedPreKey.timestamp },
-            );
+        saveDeviceIdentity(serverId, deviceId, deviceName, userId);
 
-            for (const otpk of oneTimePreKeys) {
-                storePrivateKey(
-                    serverId,
-                    'one_time_prekey',
-                    String(otpk.id),
-                    otpk.keyPair.privateKey,
-                    otpk.keyPair.publicKey,
-                );
-            }
-
-            saveDeviceIdentity(serverId, deviceId, deviceName, userId);
-
-            return {
-                userIdentityKey: Buffer.from(userIdentity.publicKey).toString('base64'),
-                deviceId,
-                deviceName,
-                deviceIdentityKey: Buffer.from(deviceIdentity.publicKey).toString('base64'),
-                identitySignature: Buffer.from(deviceIdentity.signature).toString('base64'),
-                signedPrekey: Buffer.from(signedPreKey.keyPair.publicKey).toString('base64'),
-                signedPrekeyId: signedPreKey.id,
-                signedPrekeySignature: Buffer.from(signedPreKey.signature).toString('base64'),
-                oneTimePrekeys: oneTimePreKeys.map((otpk) => ({
-                    prekeyId: otpk.id,
-                    publicKey: Buffer.from(otpk.keyPair.publicKey).toString('base64'),
-                })),
-            };
-        },
-    );
-
-    ipcMain.handle(
-        'e2ee:setupDevice',
-        async (_event, serverId: number, deviceName: string, userId?: number) => {
-            const userIdentityPrivate = loadPrivateKey(serverId, 'user_identity', 'primary');
-            const userIdentityPublic = loadPublicKey(serverId, 'user_identity', 'primary');
-
-            if (!userIdentityPrivate || !userIdentityPublic) {
-                throw new Error('User identity key not found. Restore from backup first.');
-            }
-
-            const deviceIdentity = generateDeviceIdentityKeyPair(userIdentityPrivate);
-            const deviceId = generateUUID();
-
-            const signedPreKey = generateSignedPreKey(
-                deviceIdentity.privateKey,
-                SIGNED_PREKEY_START_ID,
-            );
-
-            const oneTimePreKeys = generateOneTimePreKeys(1, ONE_TIME_PREKEY_COUNT);
-
-            storePrivateKey(
-                serverId,
-                'device_identity',
-                deviceId,
-                deviceIdentity.privateKey,
-                deviceIdentity.publicKey,
-            );
-
-            storePrivateKey(
-                serverId,
-                'signed_prekey',
-                String(signedPreKey.id),
-                signedPreKey.keyPair.privateKey,
-                signedPreKey.keyPair.publicKey,
-                { timestamp: signedPreKey.timestamp },
-            );
-
-            for (const otpk of oneTimePreKeys) {
-                storePrivateKey(
-                    serverId,
-                    'one_time_prekey',
-                    String(otpk.id),
-                    otpk.keyPair.privateKey,
-                    otpk.keyPair.publicKey,
-                );
-            }
-
-            saveDeviceIdentity(serverId, deviceId, deviceName, userId);
-
-            return {
-                userIdentityKey: Buffer.from(userIdentityPublic).toString('base64'),
-                deviceId,
-                deviceName,
-                deviceIdentityKey: Buffer.from(deviceIdentity.publicKey).toString('base64'),
-                identitySignature: Buffer.from(deviceIdentity.signature).toString('base64'),
-                signedPrekey: Buffer.from(signedPreKey.keyPair.publicKey).toString('base64'),
-                signedPrekeyId: signedPreKey.id,
-                signedPrekeySignature: Buffer.from(signedPreKey.signature).toString('base64'),
-                oneTimePrekeys: oneTimePreKeys.map((otpk) => ({
-                    prekeyId: otpk.id,
-                    publicKey: Buffer.from(otpk.keyPair.publicKey).toString('base64'),
-                })),
-            };
-        },
-    );
+        return {
+            userIdentityKey: Buffer.from(userIdentityPublic).toString('base64'),
+            deviceId,
+            deviceName,
+            deviceIdentityKey: Buffer.from(deviceIdentity.publicKey).toString('base64'),
+            identitySignature: Buffer.from(deviceIdentity.signature).toString('base64'),
+            signedPrekey: Buffer.from(signedPreKey.keyPair.publicKey).toString('base64'),
+            signedPrekeyId: signedPreKey.id,
+            signedPrekeySignature: Buffer.from(signedPreKey.signature).toString('base64'),
+            oneTimePrekeys: oneTimePreKeys.map((otpk) => ({
+                prekeyId: otpk.id,
+                publicKey: Buffer.from(otpk.keyPair.publicKey).toString('base64'),
+            })),
+        };
+    });
 
     ipcMain.handle('e2ee:getPublicKeys', async (_event, serverId: number) => {
         const userIdentityPublic = loadPublicKey(serverId, 'user_identity', 'primary');
@@ -267,25 +237,22 @@ function registerE2eeIpcHandlers(): void {
         },
     );
 
-    ipcMain.handle(
-        'e2ee:createSenderKey',
-        async (_event, serverId: number, channelId: number) => {
-            const deviceInfo = getDeviceIdentity(serverId);
-            if (!deviceInfo) throw new Error('Device not set up');
+    ipcMain.handle('e2ee:createSenderKey', async (_event, serverId: number, channelId: number) => {
+        const deviceInfo = getDeviceIdentity(serverId);
+        if (!deviceInfo) throw new Error('Device not set up');
 
-            const existing = loadSenderKey(serverId, channelId, 'self', deviceInfo.deviceId);
-            if (existing) {
-                return exportSenderKeyDistribution(existing);
-            }
+        const existing = loadSenderKey(serverId, channelId, 'self', deviceInfo.deviceId);
+        if (existing) {
+            return exportSenderKeyDistribution(existing);
+        }
 
-            const distributionId = generateUUID();
-            const senderKeyState = createSenderKey(distributionId);
+        const distributionId = generateUUID();
+        const senderKeyState = createSenderKey(distributionId);
 
-            saveSenderKey(serverId, channelId, 'self', deviceInfo.deviceId, senderKeyState);
+        saveSenderKey(serverId, channelId, 'self', deviceInfo.deviceId, senderKeyState);
 
-            return exportSenderKeyDistribution(senderKeyState);
-        },
-    );
+        return exportSenderKeyDistribution(senderKeyState);
+    });
 
     ipcMain.handle(
         'e2ee:processSenderKeyDist',
@@ -304,12 +271,7 @@ function registerE2eeIpcHandlers(): void {
                 };
             },
         ) => {
-            const existing = loadSenderKey(
-                params.serverId,
-                params.channelId,
-                params.senderId,
-                params.senderDeviceId,
-            );
+            const existing = loadSenderKey(params.serverId, params.channelId, params.senderId, params.senderDeviceId);
             if (
                 existing &&
                 existing.distributionId === params.distribution.distributionId &&
@@ -319,24 +281,15 @@ function registerE2eeIpcHandlers(): void {
             }
 
             const state = importSenderKeyDistribution(params.distribution);
-            saveSenderKey(
-                params.serverId,
-                params.channelId,
-                params.senderId,
-                params.senderDeviceId,
-                state,
-            );
+            saveSenderKey(params.serverId, params.channelId, params.senderId, params.senderDeviceId, state);
             return { success: true };
         },
     );
 
-    ipcMain.handle(
-        'e2ee:backupKeys',
-        async (_event, serverId: number, pin: string) => {
-            const bundle = buildKeyBackupBundle(serverId);
-            return await encryptKeyBackup(bundle, pin);
-        },
-    );
+    ipcMain.handle('e2ee:backupKeys', async (_event, serverId: number, pin: string) => {
+        const bundle = buildKeyBackupBundle(serverId);
+        return await encryptKeyBackup(bundle, pin);
+    });
 
     ipcMain.handle(
         'e2ee:restoreKeys',
@@ -388,43 +341,31 @@ function registerE2eeIpcHandlers(): void {
         };
     });
 
-    ipcMain.handle(
-        'e2ee:generatePreKeys',
-        async (_event, serverId: number, count: number) => {
-            const existingIds = loadOneTimePreKeyIds(serverId);
-            const startId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+    ipcMain.handle('e2ee:generatePreKeys', async (_event, serverId: number, count: number) => {
+        const existingIds = loadOneTimePreKeyIds(serverId);
+        const startId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
 
-            const preKeys = generateOneTimePreKeys(startId, count);
+        const preKeys = generateOneTimePreKeys(startId, count);
 
-            for (const pk of preKeys) {
-                storePrivateKey(
-                    serverId,
-                    'one_time_prekey',
-                    String(pk.id),
-                    pk.keyPair.privateKey,
-                    pk.keyPair.publicKey,
-                );
-            }
+        for (const pk of preKeys) {
+            storePrivateKey(serverId, 'one_time_prekey', String(pk.id), pk.keyPair.privateKey, pk.keyPair.publicKey);
+        }
 
-            return preKeys.map((pk) => ({
-                prekeyId: pk.id,
-                publicKey: Buffer.from(pk.keyPair.publicKey).toString('base64'),
-            }));
-        },
-    );
+        return preKeys.map((pk) => ({
+            prekeyId: pk.id,
+            publicKey: Buffer.from(pk.keyPair.publicKey).toString('base64'),
+        }));
+    });
 
     ipcMain.handle('e2ee:wipe', async (_event, serverId: number) => {
         deleteAllE2eeKeys(serverId);
         return { success: true };
     });
 
-    ipcMain.handle(
-        'e2ee:invalidateChannelSenderKeys',
-        async (_event, serverId: number, channelId: number) => {
-            deleteSenderKeysForChannel(serverId, channelId);
-            return { success: true };
-        },
-    );
+    ipcMain.handle('e2ee:invalidateChannelSenderKeys', async (_event, serverId: number, channelId: number) => {
+        deleteSenderKeysForChannel(serverId, channelId);
+        return { success: true };
+    });
 
     ipcMain.handle(
         'e2ee:encryptSenderKeyDist',
@@ -442,9 +383,7 @@ function registerE2eeIpcHandlers(): void {
         ) => {
             const { distribution, recipientDeviceIdentityKey } = params;
 
-            const recipientEd25519Pub = Uint8Array.from(
-                Buffer.from(recipientDeviceIdentityKey, 'base64'),
-            );
+            const recipientEd25519Pub = Uint8Array.from(Buffer.from(recipientDeviceIdentityKey, 'base64'));
             const recipientX25519Pub = ed25519PublicToX25519(recipientEd25519Pub);
 
             const ephemeral = generateX25519KeyPair();
@@ -482,11 +421,7 @@ function registerE2eeIpcHandlers(): void {
             const deviceInfo = getDeviceIdentity(serverId);
             if (!deviceInfo) throw new Error('Device not set up');
 
-            const ourEd25519Private = loadPrivateKey(
-                serverId,
-                'device_identity',
-                deviceInfo.deviceId,
-            );
+            const ourEd25519Private = loadPrivateKey(serverId, 'device_identity', deviceInfo.deviceId);
             if (!ourEd25519Private) throw new Error('Device key not found');
 
             const ourX25519Private = ed25519PrivateToX25519(ourEd25519Private);
@@ -559,7 +494,6 @@ function registerE2eeIpcHandlers(): void {
             return generateSearchTrapdoor(searchKey, query);
         },
     );
-
 }
 
 async function encryptSenderKeyMessage(
@@ -602,12 +536,7 @@ async function decryptSenderKeyMessage(
     senderDeviceId: string,
     conversationKey: number,
 ): Promise<string> {
-    let senderKeyState = loadSenderKey(
-        serverId,
-        conversationKey,
-        String(senderId),
-        senderDeviceId,
-    );
+    let senderKeyState = loadSenderKey(serverId, conversationKey, String(senderId), senderDeviceId);
 
     if (!senderKeyState) {
         const deviceInfo = getDeviceIdentity(serverId);
@@ -620,9 +549,7 @@ async function decryptSenderKeyMessage(
     }
 
     if (!senderKeyState) {
-        throw new Error(
-            `No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`,
-        );
+        throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
     }
 
     const ciphertext = Uint8Array.from(Buffer.from(parsed.ct as string, 'base64'));
@@ -646,9 +573,7 @@ async function decryptSenderKeyMessage(
         if (errMsg.includes('OperationError') || errMsg.includes('Invalid message signature')) {
             deleteSenderKeysForChannel(serverId, conversationKey);
         }
-        throw new Error(
-            `No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`,
-        );
+        throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
     }
 }
 
@@ -660,30 +585,24 @@ function buildKeyBackupBundle(serverId: number): KeyBackupBundle {
         throw new Error('E2EE keys not found');
     }
 
-    const deviceIdentityPrivate = loadPrivateKey(
-        serverId,
-        'device_identity',
-        deviceInfo.deviceId,
-    );
+    const deviceIdentityPrivate = loadPrivateKey(serverId, 'device_identity', deviceInfo.deviceId);
 
-    const signedPreKeyPrivate = loadPrivateKey(
-        serverId,
-        'signed_prekey',
-        String(SIGNED_PREKEY_START_ID),
-    );
+    const signedPreKeyPrivate = loadPrivateKey(serverId, 'signed_prekey', String(SIGNED_PREKEY_START_ID));
 
     if (!deviceIdentityPrivate || !signedPreKeyPrivate) {
         throw new Error('Device keys not found');
     }
 
     const oneTimePreKeyIds = loadOneTimePreKeyIds(serverId);
-    const oneTimePreKeys = oneTimePreKeyIds.map((id) => {
-        const pk = loadPrivateKey(serverId, 'one_time_prekey', String(id));
-        return {
-            id,
-            privateKey: pk ? Buffer.from(pk).toString('base64') : '',
-        };
-    }).filter((pk) => pk.privateKey !== '');
+    const oneTimePreKeys = oneTimePreKeyIds
+        .map((id) => {
+            const pk = loadPrivateKey(serverId, 'one_time_prekey', String(id));
+            return {
+                id,
+                privateKey: pk ? Buffer.from(pk).toString('base64') : '',
+            };
+        })
+        .filter((pk) => pk.privateKey !== '');
 
     return {
         userIdentityPrivateKey: Buffer.from(userIdentityPrivate).toString('base64'),
@@ -696,17 +615,9 @@ function buildKeyBackupBundle(serverId: number): KeyBackupBundle {
 }
 
 function restoreKeysFromBundle(serverId: number, bundle: KeyBackupBundle): void {
-    const userIdentityPrivate = Uint8Array.from(
-        Buffer.from(bundle.userIdentityPrivateKey, 'base64'),
-    );
+    const userIdentityPrivate = Uint8Array.from(Buffer.from(bundle.userIdentityPrivateKey, 'base64'));
 
     const userIdentityPublic = ed25519.getPublicKey(userIdentityPrivate);
 
-    storePrivateKey(
-        serverId,
-        'user_identity',
-        'primary',
-        userIdentityPrivate,
-        userIdentityPublic,
-    );
+    storePrivateKey(serverId, 'user_identity', 'primary', userIdentityPrivate, userIdentityPublic);
 }

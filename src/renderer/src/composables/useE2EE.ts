@@ -191,7 +191,7 @@ export function useE2EE() {
         const hasDistributed = distributedDevicesPerChannel.has(channelId);
 
         // After initial distribution, only re-check for new members periodically
-        if (!force && hasDistributed && (now - lastCheck < MEMBER_CHECK_INTERVAL)) {
+        if (!force && hasDistributed && now - lastCheck < MEMBER_CHECK_INTERVAL) {
             return;
         }
 
@@ -297,7 +297,7 @@ export function useE2EE() {
         const lastCheck = lastMemberCheckPerDmGroup.get(dmGroupId) ?? 0;
         const hasDistributed = distributedDevicesPerDmGroup.has(dmGroupId);
 
-        if (!force && hasDistributed && (now - lastCheck < MEMBER_CHECK_INTERVAL)) {
+        if (!force && hasDistributed && now - lastCheck < MEMBER_CHECK_INTERVAL) {
             return;
         }
 
@@ -367,7 +367,13 @@ export function useE2EE() {
      * Parses the encrypted payload and delegates to main process.
      * Pass either `channelId` (for channel messages) or `dmGroupId` (for DM messages).
      */
-    async function decrypt(encryptedContent: string, senderId: number, senderDeviceId: string, channelId?: number, dmGroupId?: number): Promise<string> {
+    async function decrypt(
+        encryptedContent: string,
+        senderId: number,
+        senderDeviceId: string,
+        channelId?: number,
+        dmGroupId?: number,
+    ): Promise<string> {
         const serverId = getServerId();
         return window.api.e2ee.decrypt({
             serverId,
@@ -407,7 +413,9 @@ export function useE2EE() {
 
             if (isMissingSenderKey) {
                 if (message.decrypt_attempts >= MAX_DECRYPT_ATTEMPTS) {
-                    console.warn(`Decryption failed after ${MAX_DECRYPT_ATTEMPTS} attempts for message ${message.id} — marking as permanently failed`);
+                    console.warn(
+                        `Decryption failed after ${MAX_DECRYPT_ATTEMPTS} attempts for message ${message.id} — marking as permanently failed`,
+                    );
                     message.decrypted_content = undefined;
                     message.decrypt_error = true;
                     return;
@@ -419,7 +427,13 @@ export function useE2EE() {
                     } else if (channelId != null) {
                         await fetchAndProcessSenderKeys(channelId);
                     }
-                    const plaintext = await decrypt(message.content, message.user.id, senderDeviceId, channelId, dmGroupId);
+                    const plaintext = await decrypt(
+                        message.content,
+                        message.user.id,
+                        senderDeviceId,
+                        channelId,
+                        dmGroupId,
+                    );
                     message.decrypted_content = plaintext;
                     message.decrypt_error = false;
                     return;
@@ -442,7 +456,11 @@ export function useE2EE() {
 
     const decryptionQueues = new Map<string, Promise<void>>();
 
-    function enqueueDecryption(channelId: number | undefined, dmGroupId: number | undefined, task: () => Promise<void>): Promise<void> {
+    function enqueueDecryption(
+        channelId: number | undefined,
+        dmGroupId: number | undefined,
+        task: () => Promise<void>,
+    ): Promise<void> {
         const key = dmGroupId ? `decrypt-dm-${dmGroupId}` : `decrypt-${channelId ?? 'unknown'}`;
         const prev = decryptionQueues.get(key) ?? Promise.resolve();
         const next = prev.then(task, task);
@@ -457,7 +475,9 @@ export function useE2EE() {
 
     async function decryptMessages(messages: MessageData[], channelId?: number, dmGroupId?: number): Promise<void> {
         return enqueueDecryption(channelId, dmGroupId, async () => {
-            const encrypted = messages.filter((m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error);
+            const encrypted = messages.filter(
+                (m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error,
+            );
             if (encrypted.length === 0) return;
 
             for (const m of encrypted) {
@@ -472,10 +492,13 @@ export function useE2EE() {
         });
     }
 
-    async function retryPendingDecryptions(messages: MessageData[], channelId?: number, dmGroupId?: number, fetchFirst = false): Promise<void> {
-        const pending = messages.filter(
-            (m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error,
-        );
+    async function retryPendingDecryptions(
+        messages: MessageData[],
+        channelId?: number,
+        dmGroupId?: number,
+        fetchFirst = false,
+    ): Promise<void> {
+        const pending = messages.filter((m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error);
         if (pending.length === 0) return;
 
         if (fetchFirst) {
@@ -698,12 +721,16 @@ export function useE2EE() {
             return { success: false, error: 'No backup found' };
         }
 
-        return window.api.e2ee.restoreKeys(serverId, {
-            encryptedBundle: data.encrypted_bundle,
-            salt: data.salt,
-            nonce: data.nonce,
-            argon2Params: data.argon2_params,
-        }, pin);
+        return window.api.e2ee.restoreKeys(
+            serverId,
+            {
+                encryptedBundle: data.encrypted_bundle,
+                salt: data.salt,
+                nonce: data.nonce,
+                argon2Params: data.argon2_params,
+            },
+            pin,
+        );
     }
 
     async function deleteBackup() {

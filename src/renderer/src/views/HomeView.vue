@@ -18,9 +18,7 @@ onMounted(async () => {
     voiceStore.initPttListeners();
 
     if (!chatStore.currentChannel) {
-        const firstChannel = chatStore.categories
-            .flatMap((cat) => cat.channels)
-            .find((ch) => ch.type === 'text');
+        const firstChannel = chatStore.categories.flatMap((cat) => cat.channels).find((ch) => ch.type === 'text');
         if (firstChannel) {
             await chatStore.selectChannel(firstChannel.id);
         }
@@ -57,10 +55,7 @@ const handleSwitchToDms = () => {
             :channel-permissions="chatStore.currentChannelPermissions ?? undefined"
         />
 
-        <div
-            v-else
-            class="flex flex-1 flex-col items-center justify-center bg-background text-center"
-        >
+        <div v-else class="bg-background flex flex-1 flex-col items-center justify-center text-center">
             <div class="text-muted-foreground">
                 <p class="text-2xl font-bold">Welcome to {{ chatStore.serverName }}</p>
                 <p class="mt-2 text-sm">Select a channel from the sidebar to start chatting.</p>

@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { Hash, MessageSquare, ShieldCheck, Search } from 'lucide-vue-next';
-import {
-    computed,
-    nextTick,
-    onMounted,
-    onUnmounted,
-    reactive,
-    ref,
-    watch,
-} from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -72,9 +64,7 @@ function extractMentionMetadata(content: string): {
     for (const match of matches) {
         const name = match[1];
         if (name === 'everyone' || name === 'here') continue;
-        const member = presenceStore.allMembers.find(
-            (m) => m.username?.toLowerCase() === name.toLowerCase(),
-        );
+        const member = presenceStore.allMembers.find((m) => m.username?.toLowerCase() === name.toLowerCase());
         if (member) {
             userIds.push(member.id);
         }
@@ -83,11 +73,12 @@ function extractMentionMetadata(content: string): {
     return { userIds: [...new Set(userIds)], mentionEveryone, mentionHere };
 }
 
-const activeMessages = computed(() => props.isDm ? dmStore.messages : chatStore.messages);
-const activeAddMessage = (msg: MessageData) => props.isDm ? dmStore.addMessage(msg) : chatStore.addMessage(msg);
-const activeUpdateMessage = (id: number, partial: Partial<MessageData>) => props.isDm ? dmStore.updateMessage(id, partial) : chatStore.updateMessage(id, partial);
-const activeRemoveMessage = (id: number) => props.isDm ? dmStore.removeMessage(id) : chatStore.removeMessage(id);
-const activeLoadOlderMessages = () => props.isDm ? dmStore.loadOlderMessages() : chatStore.loadOlderMessages();
+const activeMessages = computed(() => (props.isDm ? dmStore.messages : chatStore.messages));
+const activeAddMessage = (msg: MessageData) => (props.isDm ? dmStore.addMessage(msg) : chatStore.addMessage(msg));
+const activeUpdateMessage = (id: number, partial: Partial<MessageData>) =>
+    props.isDm ? dmStore.updateMessage(id, partial) : chatStore.updateMessage(id, partial);
+const activeRemoveMessage = (id: number) => (props.isDm ? dmStore.removeMessage(id) : chatStore.removeMessage(id));
+const activeLoadOlderMessages = () => (props.isDm ? dmStore.loadOlderMessages() : chatStore.loadOlderMessages());
 
 const messagesContainer = ref<HTMLElement>();
 const editingMessageId = ref<number | null>(null);
@@ -98,16 +89,9 @@ const showSafetyNumber = ref(false);
 const isLoadingMore = ref(false);
 const userIsNearBottom = ref(true);
 
-const isStoreLoadingMessages = computed(() =>
-    props.isDm ? dmStore.isLoadingMessages : chatStore.isLoadingMessages,
-);
+const isStoreLoadingMessages = computed(() => (props.isDm ? dmStore.isLoadingMessages : chatStore.isLoadingMessages));
 
-const typingUsers = reactive(
-    new Map<
-        number,
-        { username: string; timeout: ReturnType<typeof setTimeout> }
-    >(),
-);
+const typingUsers = reactive(new Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>());
 let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const handleClickOutside = (e: MouseEvent) => {
@@ -181,25 +165,23 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
 
     if (e2eeStore.isReady) {
         if (isDm) {
-            senderKeyFetchPromise = e2ee.fetchAndProcessDmSenderKeys(channelId)
+            senderKeyFetchPromise = e2ee
+                .fetchAndProcessDmSenderKeys(channelId)
                 .then(() => e2ee.requestDmSenderKeys(channelId))
                 .then(() => {})
-                .catch((err) => {
-                });
+                .catch((err) => {});
         } else {
-            senderKeyFetchPromise = e2ee.fetchAndProcessSenderKeys(channelId)
+            senderKeyFetchPromise = e2ee
+                .fetchAndProcessSenderKeys(channelId)
                 .then(() => e2ee.requestSenderKeys(channelId))
                 .then(() => {})
-                .catch((err) => {
-                });
+                .catch((err) => {});
         }
     } else {
         senderKeyFetchPromise = null;
     }
 
-    currentChannelListener = isDm
-        ? `direct-message.${channelId}`
-        : `channel.${channelId}`;
+    currentChannelListener = isDm ? `direct-message.${channelId}` : `channel.${channelId}`;
 
     echo.join(currentChannelListener)
         .listen('MessageSent', async (data: { message: MessageData }) => {
@@ -216,7 +198,9 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     try {
                         const parsed = JSON.parse(data.message.content);
                         msgSenderDeviceId = parsed.sender_device_id ?? '';
-                    } catch { /* not valid JSON */ }
+                    } catch {
+                        /* not valid JSON */
+                    }
                 }
                 const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
 
@@ -269,7 +253,9 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                         try {
                             const parsed = JSON.parse(data.message.content);
                             senderDeviceId = parsed.sender_device_id ?? '';
-                        } catch { /* not valid JSON */ }
+                        } catch {
+                            /* not valid JSON */
+                        }
                     }
                     const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
                     let plaintext: string;
@@ -313,123 +299,95 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
         .listen('MessageDeleted', (data: { message_id: number }) => {
             activeRemoveMessage(data.message_id);
         })
-        .listen(
-            'ReactionToggled',
-            (data: { reaction: MessageReaction; added: boolean }) => {
-                const msg = activeMessages.value.find(
-                    (m) => m.id === data.reaction.message_id,
-                );
-                if (msg) {
-                    if (!msg.reactions) msg.reactions = [];
-                    if (data.added) {
-                        const exists = msg.reactions.some(
-                            (r) =>
-                                r.user_id === data.reaction.user_id &&
-                                r.emoji === data.reaction.emoji,
-                        );
-                        if (!exists) {
-                            msg.reactions.push(data.reaction);
-                        }
-                    } else {
-                        const idx = msg.reactions.findIndex(
-                            (r) =>
-                                r.user_id === data.reaction.user_id &&
-                                r.emoji === data.reaction.emoji,
-                        );
-                        if (idx !== -1) {
-                            msg.reactions.splice(idx, 1);
-                        }
+        .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.reaction.message_id);
+            if (msg) {
+                if (!msg.reactions) msg.reactions = [];
+                if (data.added) {
+                    const exists = msg.reactions.some(
+                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
+                    );
+                    if (!exists) {
+                        msg.reactions.push(data.reaction);
                     }
-                }
-            },
-        )
-        .listen(
-            'UserTyping',
-            (data: {
-                user_id: number;
-                username: string;
-                is_typing: boolean;
-            }) => {
-                if (data.user_id === currentUser.value?.id) return;
-
-                if (data.is_typing) {
-                    const existing = typingUsers.get(data.user_id);
-                    if (existing) clearTimeout(existing.timeout);
-
-                    const timeout = setTimeout(() => {
-                        typingUsers.delete(data.user_id);
-                    }, 3000);
-
-                    typingUsers.set(data.user_id, {
-                        username: data.username,
-                        timeout,
-                    });
                 } else {
-                    const existing = typingUsers.get(data.user_id);
-                    if (existing) clearTimeout(existing.timeout);
+                    const idx = msg.reactions.findIndex(
+                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
+                    );
+                    if (idx !== -1) {
+                        msg.reactions.splice(idx, 1);
+                    }
+                }
+            }
+        })
+        .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
+            if (data.user_id === currentUser.value?.id) return;
+
+            if (data.is_typing) {
+                const existing = typingUsers.get(data.user_id);
+                if (existing) clearTimeout(existing.timeout);
+
+                const timeout = setTimeout(() => {
                     typingUsers.delete(data.user_id);
-                }
-            },
-        )
-        .listen(
-            'SenderKeyNeeded',
-            async (data: { user_id: number; device_id: string }) => {
-                if (e2eeStore.isReady) {
-                    try {
-                        if (isDm) {
-                            await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                        } else {
-                            await e2ee.ensureSenderKeyDistributed(channelId, true);
-                        }
-                    } catch (err) {
-                        // Failed to redistribute sender key
-                    }
-                }
-            },
-        )
-        .listen(
-            'SenderKeyDistributed',
-            async () => {
-                if (e2eeStore.isReady && props.channel?.id) {
-                    try {
-                        if (isDm) {
-                            await e2ee.fetchAndProcessDmSenderKeys(channelId);
-                            await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
-                        } else {
-                            await e2ee.fetchAndProcessSenderKeys(channelId);
-                            await e2ee.retryPendingDecryptions(activeMessages.value, channelId);
-                        }
-                    } catch (err) {
-                        // Failed to process redistributed sender keys
-                    }
-                }
-            },
-        )
-        .listen(
-            'DmSenderKeyNeeded',
-            async (data: { requesting_user_id: number; requesting_device_id: string }) => {
-                if (isDm && e2eeStore.isReady) {
-                    try {
+                }, 3000);
+
+                typingUsers.set(data.user_id, {
+                    username: data.username,
+                    timeout,
+                });
+            } else {
+                const existing = typingUsers.get(data.user_id);
+                if (existing) clearTimeout(existing.timeout);
+                typingUsers.delete(data.user_id);
+            }
+        })
+        .listen('SenderKeyNeeded', async (data: { user_id: number; device_id: string }) => {
+            if (e2eeStore.isReady) {
+                try {
+                    if (isDm) {
                         await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                    } catch (err) {
-                        // Failed to redistribute DM sender key
+                    } else {
+                        await e2ee.ensureSenderKeyDistributed(channelId, true);
                     }
+                } catch (err) {
+                    // Failed to redistribute sender key
                 }
-            },
-        )
-        .listen(
-            'DmSenderKeyDistributed',
-            async () => {
-                if (isDm && e2eeStore.isReady && props.channel?.id) {
-                    try {
+            }
+        })
+        .listen('SenderKeyDistributed', async () => {
+            if (e2eeStore.isReady && props.channel?.id) {
+                try {
+                    if (isDm) {
                         await e2ee.fetchAndProcessDmSenderKeys(channelId);
                         await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
-                    } catch (err) {
-                        // Failed to process redistributed DM sender keys
+                    } else {
+                        await e2ee.fetchAndProcessSenderKeys(channelId);
+                        await e2ee.retryPendingDecryptions(activeMessages.value, channelId);
                     }
+                } catch (err) {
+                    // Failed to process redistributed sender keys
                 }
-            },
-        );
+            }
+        })
+        .listen('DmSenderKeyNeeded', async (data: { requesting_user_id: number; requesting_device_id: string }) => {
+            if (isDm && e2eeStore.isReady) {
+                try {
+                    await e2ee.ensureDmSenderKeyDistributed(channelId, true);
+                } catch (err) {
+                    // Failed to redistribute DM sender key
+                }
+            }
+        })
+        .listen('DmSenderKeyDistributed', async () => {
+            if (isDm && e2eeStore.isReady && props.channel?.id) {
+                try {
+                    await e2ee.fetchAndProcessDmSenderKeys(channelId);
+                    await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
+                } catch (err) {
+                    // Failed to process redistributed DM sender keys
+                }
+            }
+        });
 };
 
 const leaveChannel = () => {
@@ -545,7 +503,9 @@ const handleScroll = async () => {
         isLoadingMore.value = false;
 
         loadCooldown = true;
-        setTimeout(() => { loadCooldown = false; }, 500);
+        setTimeout(() => {
+            loadCooldown = false;
+        }, 500);
     }
 };
 
@@ -596,11 +556,7 @@ const sendMessage = async (content: string) => {
     }
 
     if (isEncrypted && props.channel?.id) {
-        const tokens = await generateTokensForMessage(
-            props.isDm ? 'dm' : 'channel',
-            props.channel.id,
-            content,
-        );
+        const tokens = await generateTokensForMessage(props.isDm ? 'dm' : 'channel', props.channel.id, content);
         if (tokens.length > 0) {
             data.search_tokens = tokens;
         }
@@ -671,9 +627,7 @@ const startReply = (message: MessageData) => {
 
 const startEdit = (message: MessageData) => {
     editingMessageId.value = message.id;
-    editContent.value = message.is_encrypted
-        ? (message.decrypted_content ?? message.content)
-        : message.content;
+    editContent.value = message.is_encrypted ? (message.decrypted_content ?? message.content) : message.content;
 };
 
 const cancelEdit = () => {
@@ -710,13 +664,14 @@ const saveEdit = async (message: MessageData) => {
             content: contentToSend,
             is_encrypted: isEncrypted,
             ...(isEncrypted && { sender_device_id: await e2ee.getDeviceId() }),
-            ...(isEncrypted && props.channel?.id && {
-                search_tokens: await generateTokensForMessage(
-                    props.isDm ? 'dm' : 'channel',
-                    props.channel.id,
-                    editContent.value,
-                ),
-            }),
+            ...(isEncrypted &&
+                props.channel?.id && {
+                    search_tokens: await generateTokensForMessage(
+                        props.isDm ? 'dm' : 'channel',
+                        props.channel.id,
+                        editContent.value,
+                    ),
+                }),
         });
         activeUpdateMessage(message.id, {
             content: contentToSend,
@@ -767,10 +722,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 emoji,
             });
         } else {
-            const idx = message.reactions.findIndex(
-                (r) =>
-                    r.user_id === currentUser.value!.id && r.emoji === emoji,
-            );
+            const idx = message.reactions.findIndex((r) => r.user_id === currentUser.value!.id && r.emoji === emoji);
             if (idx !== -1) {
                 message.reactions.splice(idx, 1);
             }
@@ -797,22 +749,16 @@ const emitTyping = () => {
 </script>
 
 <template>
-    <div class="relative flex h-full min-h-0 flex-1 flex-col bg-background">
-        <div
-            class="flex h-12 items-center border-b border-border px-4 shadow-sm"
-        >
-            <Hash v-if="!isDm" :size="20" class="mr-2 text-muted-foreground" />
-            <MessageSquare
-                v-else
-                :size="20"
-                class="mr-2 text-muted-foreground"
-            />
+    <div class="bg-background relative flex h-full min-h-0 flex-1 flex-col">
+        <div class="border-border flex h-12 items-center border-b px-4 shadow-sm">
+            <Hash v-if="!isDm" :size="20" class="text-muted-foreground mr-2" />
+            <MessageSquare v-else :size="20" class="text-muted-foreground mr-2" />
             <div class="flex-1">
                 <h2 class="flex items-center gap-1.5 font-semibold">
                     {{ channel?.name || 'Select a channel' }}
                     <EncryptionBadge v-if="e2eeStore.isReady" :is-encrypted="true" />
                 </h2>
-                <p v-if="channel?.topic" class="text-xs text-muted-foreground">
+                <p v-if="channel?.topic" class="text-muted-foreground text-xs">
                     {{ channel.topic }}
                 </p>
             </div>
@@ -820,7 +766,7 @@ const emitTyping = () => {
             <div class="ml-4 flex items-center gap-2">
                 <button
                     v-if="e2eeStore.isReady"
-                    class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
                     :class="{ 'bg-muted text-foreground': showSearch }"
                     title="Search messages"
                     @click="showSearch = !showSearch"
@@ -829,7 +775,7 @@ const emitTyping = () => {
                 </button>
                 <button
                     v-if="isDm && e2eeStore.isReady && channel?.other_user"
-                    class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
                     title="Verify safety number"
                     @click="showSafetyNumber = true"
                 >
@@ -844,30 +790,20 @@ const emitTyping = () => {
             class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
             @scroll="handleScroll"
         >
-            <div
-                v-if="activeMessages.length === 0"
-                class="flex h-full items-center justify-center"
-            >
-                <div class="text-center text-muted-foreground">
+            <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
+                <div class="text-muted-foreground text-center">
                     <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
                     <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
                     <p class="text-lg font-semibold">
                         {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
                     </p>
-                    <p class="text-sm">
-                        This is the start of your conversation.
-                    </p>
+                    <p class="text-sm">This is the start of your conversation.</p>
                 </div>
             </div>
 
             <div v-else class="space-y-1">
-                <div
-                    v-if="isLoadingMore"
-                    class="flex justify-center py-2"
-                >
-                    <div
-                        class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                    ></div>
+                <div v-if="isLoadingMore" class="flex justify-center py-2">
+                    <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"></div>
                 </div>
 
                 <Message
@@ -876,31 +812,18 @@ const emitTyping = () => {
                     :message="message"
                     :is-editing="editingMessageId === message.id"
                     :edit-content="editContent"
-                    :show-emoji-picker="
-                        emojiPickerMessageId === message.id
-                    "
-                    :can-manage-messages="
-                        channelPermissions?.canManageMessages ?? false
-                    "
-                    :can-add-reactions="
-                        channelPermissions?.canAddReactions ?? true
-                    "
-                    :can-send-messages="
-                        channelPermissions?.canSendMessages ?? true
-                    "
+                    :show-emoji-picker="emojiPickerMessageId === message.id"
+                    :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                    :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                    :can-send-messages="channelPermissions?.canSendMessages ?? true"
                     @start-edit="startEdit(message)"
                     @cancel-edit="cancelEdit"
                     @save-edit="saveEdit(message)"
                     @delete="deleteMessage(message)"
                     @reply="startReply(message)"
-                    @toggle-reaction="
-                        (emoji) => toggleReaction(message, emoji)
-                    "
+                    @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
                     @toggle-emoji-picker="
-                        emojiPickerMessageId =
-                            emojiPickerMessageId === message.id
-                                ? null
-                                : message.id
+                        emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
                     "
                     @update-edit-content="editContent = $event"
                 />
@@ -913,13 +836,10 @@ const emitTyping = () => {
         <!-- Send error banner -->
         <div
             v-if="sendError"
-            class="flex items-center gap-2 border-t border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            class="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 border-t px-4 py-2 text-sm"
         >
             <span class="flex-1">{{ sendError }}</span>
-            <button
-                class="shrink-0 rounded px-2 py-0.5 text-xs hover:bg-destructive/20"
-                @click="sendError = null"
-            >
+            <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="sendError = null">
                 Dismiss
             </button>
         </div>
@@ -932,10 +852,7 @@ const emitTyping = () => {
             @typing="emitTyping"
             @cancel-reply="replyingToMessage = null"
         />
-        <div
-            v-else
-            class="border-t border-border bg-muted/50 px-4 py-3 text-center text-sm text-muted-foreground"
-        >
+        <div v-else class="border-border bg-muted/50 text-muted-foreground border-t px-4 py-3 text-center text-sm">
             You do not have permission to send messages in this channel.
         </div>
 
@@ -951,9 +868,13 @@ const emitTyping = () => {
             v-if="showSearch && channel"
             :conversation-type="isDm ? 'dm' : 'channel'"
             :conversation-id="channel.id"
-            :conversation-name="isDm ? channel.name ?? '' : `#${channel.name}`"
+            :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
             @close="showSearch = false"
-            @navigate-to-message="(id) => { /* TODO: scroll to message */ }"
+            @navigate-to-message="
+                (id) => {
+                    /* TODO: scroll to message */
+                }
+            "
         />
     </div>
 </template>

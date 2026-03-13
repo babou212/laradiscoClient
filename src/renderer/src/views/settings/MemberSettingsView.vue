@@ -152,11 +152,11 @@ function isDefaultRole(role: MemberRole): boolean {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <div>
                     <h2 class="text-lg font-semibold">Members</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-muted-foreground mt-1 text-sm">
                         Manage member roles. Assign or remove roles to control permissions.
                     </p>
                 </div>
@@ -164,15 +164,18 @@ function isDefaultRole(role: MemberRole): boolean {
 
             <div class="p-6">
                 <!-- Error banner -->
-                <div v-if="apiError" class="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div
+                    v-if="apiError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm"
+                >
                     {{ apiError }}
                 </div>
 
-                <div v-if="isLoading" class="text-sm text-muted-foreground">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
 
                 <template v-else>
                     <div class="relative mb-4">
-                        <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search class="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                         <Input v-model="searchQuery" placeholder="Search members..." class="pl-9" />
                     </div>
 
@@ -180,11 +183,11 @@ function isDefaultRole(role: MemberRole): boolean {
                         v-if="filteredMembers.length === 0"
                         class="flex flex-col items-center justify-center py-8 text-center"
                     >
-                        <div class="mb-3 rounded-full border border-border bg-muted p-3">
-                            <UsersRound class="h-6 w-6 text-muted-foreground" />
+                        <div class="border-border bg-muted mb-3 rounded-full border p-3">
+                            <UsersRound class="text-muted-foreground h-6 w-6" />
                         </div>
                         <p class="text-sm font-medium">No members found</p>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="text-muted-foreground mt-1 text-sm">
                             {{ searchQuery ? 'Try a different search term.' : 'No members registered yet.' }}
                         </p>
                     </div>
@@ -193,17 +196,19 @@ function isDefaultRole(role: MemberRole): boolean {
                         <div
                             v-for="member in filteredMembers"
                             :key="member.id"
-                            class="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4"
+                            class="border-border bg-background flex items-center justify-between gap-4 rounded-lg border p-4"
                         >
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-3">
-                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                                    <div
+                                        class="bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium"
+                                    >
                                         {{ member.display_name.charAt(0).toUpperCase() }}
                                     </div>
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">
                                             <span class="truncate text-sm font-medium">{{ member.display_name }}</span>
-                                            <span class="text-xs text-muted-foreground">@{{ member.username }}</span>
+                                            <span class="text-muted-foreground text-xs">@{{ member.username }}</span>
                                         </div>
                                         <div class="mt-1 flex flex-wrap gap-1">
                                             <Badge
@@ -212,11 +217,14 @@ function isDefaultRole(role: MemberRole): boolean {
                                                 variant="outline"
                                                 :class="[
                                                     'gap-1 text-xs',
-                                                    isDefaultRole(role) ? '' : 'cursor-pointer hover:bg-destructive/10',
+                                                    isDefaultRole(role) ? '' : 'hover:bg-destructive/10 cursor-pointer',
                                                 ]"
                                                 @click="!isDefaultRole(role) && openRemoveRoleDialog(member, role)"
                                             >
-                                                <div class="h-2 w-2 rounded-full" :style="{ backgroundColor: role.color }" />
+                                                <div
+                                                    class="h-2 w-2 rounded-full"
+                                                    :style="{ backgroundColor: role.color }"
+                                                />
                                                 {{ role.name }}
                                                 <X v-if="!isDefaultRole(role)" class="h-3 w-3" />
                                             </Badge>
@@ -241,19 +249,23 @@ function isDefaultRole(role: MemberRole): boolean {
                 <DialogHeader>
                     <DialogTitle>Assign Role</DialogTitle>
                     <DialogDescription>
-                        Select a role to assign to <strong>{{ selectedMember?.display_name }}</strong>.
+                        Select a role to assign to <strong>{{ selectedMember?.display_name }}</strong
+                        >.
                     </DialogDescription>
                 </DialogHeader>
 
                 <!-- Error in dialog -->
-                <div v-if="roleError" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div
+                    v-if="roleError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                >
                     {{ roleError }}
                 </div>
 
                 <div class="space-y-2">
                     <div
                         v-if="selectedMember && getAvailableRoles(selectedMember).length === 0"
-                        class="py-4 text-center text-sm text-muted-foreground"
+                        class="text-muted-foreground py-4 text-center text-sm"
                     >
                         This member already has all available roles.
                     </div>
@@ -278,12 +290,17 @@ function isDefaultRole(role: MemberRole): boolean {
                 <DialogHeader>
                     <DialogTitle>Remove Role</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to remove the role <strong>{{ removingRole?.name }}</strong> from <strong>{{ selectedMember?.display_name }}</strong>?
+                        Are you sure you want to remove the role <strong>{{ removingRole?.name }}</strong> from
+                        <strong>{{ selectedMember?.display_name }}</strong
+                        >?
                     </DialogDescription>
                 </DialogHeader>
 
                 <!-- Error in dialog -->
-                <div v-if="roleError" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div
+                    v-if="roleError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                >
                     {{ roleError }}
                 </div>
 
