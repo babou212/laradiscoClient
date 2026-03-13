@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Lock } from 'lucide-vue-next';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const props = defineProps<{
+defineProps<{
     isEncrypted?: boolean;
     decryptError?: boolean;
 }>();

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import api from '@/lib/api';
-import { usePresenceStore } from '@/stores/presence';
 import type { DmGroup } from '@/stores/directMessages';
-import type { UserStatusType } from '@/types';
+import { usePresenceStore } from '@/stores/presence';
 
 type Props = {
     dmGroups: DmGroup[];

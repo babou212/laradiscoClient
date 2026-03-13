@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { RouterView } from 'vue-router';
-import TitleBar from '@/components/TitleBar.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
+import TitleBar from '@/components/TitleBar.vue';
 import { usePresenceStore } from '@/stores/presence';
 
 const presenceStore = usePresenceStore();

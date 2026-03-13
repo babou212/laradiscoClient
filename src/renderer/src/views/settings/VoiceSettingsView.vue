@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { useVoiceStore } from '@/stores/voice';
 import { Button } from '@/components/ui/button';
+import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
 

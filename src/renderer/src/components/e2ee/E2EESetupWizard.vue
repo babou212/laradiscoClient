@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import { Shield, Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Shield, Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-vue-next';
+import KeyBackupDialog from './KeyBackupDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useE2eeStore } from '@/stores/e2ee';
-import KeyBackupDialog from './KeyBackupDialog.vue';
 
 const router = useRouter();
 const e2eeStore = useE2eeStore();

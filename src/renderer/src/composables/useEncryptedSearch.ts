@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue';
-import { useServerStore } from '@/stores/server';
 import { useE2EE } from './useE2EE';
 import api from '@/lib/api';
+import { useServerStore } from '@/stores/server';
 import type { MessageData } from '@/types/chat';
 
 export function useEncryptedSearch() {

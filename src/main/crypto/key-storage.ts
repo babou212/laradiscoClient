@@ -1,7 +1,7 @@
 import { safeStorage } from 'electron';
 import { getDatabase } from '../database';
-import type { SenderKeyState } from './types';
 import { serializeSenderKey, deserializeSenderKey } from './sender-keys';
+import type { SenderKeyState } from './types';
 
 export function initE2eeTables(): void {
     const db = getDatabase();

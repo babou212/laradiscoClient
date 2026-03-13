@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import router from '@/router';
-import { getEcho } from '@/lib/echo';
 import api from '@/lib/api';
-import { useServerStore } from '@/stores/server';
+import { getEcho } from '@/lib/echo';
+import router from '@/router';
 import { useE2eeStore } from '@/stores/e2ee';
+import { useServerStore } from '@/stores/server';
 
 export interface AppNotification {
     id: string;

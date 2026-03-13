@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Hash, MessageSquare, ShieldCheck, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import SearchMessages from './SearchMessages.vue';
+import TypingIndicator from './TypingIndicator.vue';
+import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
+import { useE2EE } from '@/composables/useE2EE';
+import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -8,16 +16,7 @@ import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
-import { useE2EE } from '@/composables/useE2EE';
 import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import TypingIndicator from './TypingIndicator.vue';
-import NotificationBell from '@/components/NotificationBell.vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
-import SafetyNumberDialog from '@/components/e2ee/SafetyNumberDialog.vue';
-import SearchMessages from './SearchMessages.vue';
-import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 
 type ChannelData = {
     id: number;
@@ -169,13 +168,13 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 .fetchAndProcessDmSenderKeys(channelId)
                 .then(() => e2ee.requestDmSenderKeys(channelId))
                 .then(() => {})
-                .catch((err) => {});
+                .catch(() => {});
         } else {
             senderKeyFetchPromise = e2ee
                 .fetchAndProcessSenderKeys(channelId)
                 .then(() => e2ee.requestSenderKeys(channelId))
                 .then(() => {})
-                .catch((err) => {});
+                .catch(() => {});
         }
     } else {
         senderKeyFetchPromise = null;
@@ -284,8 +283,8 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     }
                     update.decrypted_content = plaintext;
                     update.decrypt_error = false;
-                } catch (err) {
-                    const errMsg = err instanceof Error ? err.message : String(err);
+                } catch (decryptErr) {
+                    const errMsg = decryptErr instanceof Error ? decryptErr.message : String(decryptErr);
                     if (errMsg.includes('Need sender key distribution')) {
                         // Sender key not available yet — don't mark as permanently failed
                     } else {
@@ -341,7 +340,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 typingUsers.delete(data.user_id);
             }
         })
-        .listen('SenderKeyNeeded', async (data: { user_id: number; device_id: string }) => {
+        .listen('SenderKeyNeeded', async () => {
             if (e2eeStore.isReady) {
                 try {
                     if (isDm) {
@@ -349,7 +348,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     } else {
                         await e2ee.ensureSenderKeyDistributed(channelId, true);
                     }
-                } catch (err) {
+                } catch {
                     // Failed to redistribute sender key
                 }
             }
@@ -364,16 +363,16 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                         await e2ee.fetchAndProcessSenderKeys(channelId);
                         await e2ee.retryPendingDecryptions(activeMessages.value, channelId);
                     }
-                } catch (err) {
+                } catch {
                     // Failed to process redistributed sender keys
                 }
             }
         })
-        .listen('DmSenderKeyNeeded', async (data: { requesting_user_id: number; requesting_device_id: string }) => {
+        .listen('DmSenderKeyNeeded', async () => {
             if (isDm && e2eeStore.isReady) {
                 try {
                     await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                } catch (err) {
+                } catch {
                     // Failed to redistribute DM sender key
                 }
             }
@@ -383,7 +382,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 try {
                     await e2ee.fetchAndProcessDmSenderKeys(channelId);
                     await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
-                } catch (err) {
+                } catch {
                     // Failed to process redistributed DM sender keys
                 }
             }
@@ -531,7 +530,7 @@ const sendMessage = async (content: string) => {
             messageContent = await e2ee.encryptForChannel(props.channel.id, content);
             isEncrypted = true;
         }
-    } catch (err: any) {
+    } catch {
         sendError.value = 'Failed to encrypt message. Please try again.';
         return;
     }
@@ -655,7 +654,7 @@ const saveEdit = async (message: MessageData) => {
                     contentToSend = await e2ee.encryptForChannel(props.channel.id, editContent.value);
                     isEncrypted = true;
                 }
-            } catch (err) {
+            } catch {
                 return;
             }
         }

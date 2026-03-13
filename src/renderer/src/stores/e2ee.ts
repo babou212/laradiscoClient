@@ -43,7 +43,7 @@ export const useE2eeStore = defineStore('e2ee', () => {
             error.value = null;
 
             // Wipe any keys belonging to a previously logged-in user
-            const wiped = await e2ee.wipeIfUserChanged();
+            await e2ee.wipeIfUserChanged();
 
             const setup = await e2ee.isSetup();
             isReady.value = setup;
@@ -60,7 +60,7 @@ export const useE2eeStore = defineStore('e2ee', () => {
                     6 * 60 * 60 * 1000,
                 );
             }
-        } catch (err) {
+        } catch {
             isReady.value = false;
         }
     }

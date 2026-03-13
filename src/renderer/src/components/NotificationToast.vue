@@ -1,8 +1,8 @@
 <!-- NotificationToast - Toast notifications for real-time events -->
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import { AtSign, Bell, MessageSquare, X } from 'lucide-vue-next';
+import { useRouter } from 'vue-router';
 import { useNotificationsStore, type ToastNotification } from '@/stores/notifications';
 
 const router = useRouter();

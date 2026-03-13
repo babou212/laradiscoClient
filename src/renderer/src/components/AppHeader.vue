@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
 
-const authStore = useAuthStore();
 const serverStore = useServerStore();
 
 const serverName = computed(() => serverStore.activeServer?.name ?? 'LaraDisco');
-const user = computed(() => authStore.user);
 </script>
 
 <template>

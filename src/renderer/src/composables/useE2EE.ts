@@ -1,6 +1,6 @@
-import { useServerStore } from '@/stores/server';
-import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
+import { useServerStore } from '@/stores/server';
 import type { MessageData } from '@/types/chat';
 
 /**
@@ -164,7 +164,7 @@ export function useE2EE() {
         // Ensure sender key is distributed to all current members (incremental)
         try {
             await ensureSenderKeyDistributed(channelId);
-        } catch (err) {
+        } catch {
             // Sender key distribution failed (may already exist)
         }
 
@@ -276,7 +276,7 @@ export function useE2EE() {
         // Ensure sender key is distributed to all DM group participants (incremental)
         try {
             await ensureDmSenderKeyDistributed(dmGroupId);
-        } catch (err) {
+        } catch {
             // DM sender key distribution failed (may already exist)
         }
 
@@ -525,7 +525,7 @@ export function useE2EE() {
             await api.post(`/e2ee/channels/${channelId}/request-sender-keys`, {
                 device_id: deviceId,
             });
-        } catch (err) {
+        } catch {
             // Failed to request sender keys
         }
     }
@@ -537,7 +537,7 @@ export function useE2EE() {
             await api.post(`/e2ee/dm-groups/${dmGroupId}/request-sender-keys`, {
                 device_id: deviceId,
             });
-        } catch (err) {
+        } catch {
             // Failed to request DM sender keys
         }
     }
@@ -662,7 +662,7 @@ export function useE2EE() {
 
         try {
             await api.delete(`/e2ee/channels/${channelId}/sender-keys`);
-        } catch (err) {
+        } catch {
             // Failed to invalidate server sender keys
         }
 
@@ -681,7 +681,7 @@ export function useE2EE() {
 
         try {
             await api.delete(`/e2ee/dm-groups/${dmGroupId}/sender-keys`);
-        } catch (err) {
+        } catch {
             // Failed to invalidate server DM sender keys
         }
 

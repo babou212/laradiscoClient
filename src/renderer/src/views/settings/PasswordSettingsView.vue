@@ -2,10 +2,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import InputError from '@/components/InputError.vue';
 import api from '@/lib/api';
 
 const currentPassword = ref('');

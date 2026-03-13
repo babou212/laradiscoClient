@@ -6,9 +6,9 @@ if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
 }
 
+import { initE2ee } from './crypto';
 import { initDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
-import { initE2ee } from './crypto';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
 
 function createWindow(): void {

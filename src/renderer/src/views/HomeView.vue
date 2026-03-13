@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useChatStore } from '@/stores/chat';
-import { useVoiceStore } from '@/stores/voice';
 import ChannelSidebar from '@/components/chat/ChannelSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import OnlineUsersSidebar from '@/components/chat/OnlineUsersSidebar.vue';
+import { useChatStore } from '@/stores/chat';
+import { useVoiceStore } from '@/stores/voice';
 
 const router = useRouter();
 const chatStore = useChatStore();

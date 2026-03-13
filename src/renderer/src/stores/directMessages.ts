@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import api from '@/lib/api';
-import type { MessageData, MessagesResponse } from '@/types/chat';
+import type { MessageData } from '@/types/chat';
 
 export interface DmGroup {
     id: number;

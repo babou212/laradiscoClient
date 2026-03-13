@@ -2,14 +2,14 @@
 import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/lib/api';
-import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
-import { useAuthStore } from '@/stores/auth';
-import { usePresenceStore } from '@/stores/presence';
-import type { Category, Channel } from '@/types/chat';
-import type { UserStatusType } from '@/types';
 import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
+import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
+import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
+import { usePresenceStore } from '@/stores/presence';
+import type { UserStatusType } from '@/types';
+import type { Category, Channel } from '@/types/chat';
 
 type Props = {
     categories: Category[];
@@ -18,7 +18,7 @@ type Props = {
     serverName?: string;
 };
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
     serverName: 'Laradisco',
 });
 

@@ -1,11 +1,10 @@
 <!-- MemberSettingsView - Server member management -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
 import { Search, Shield, UsersRound, X } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -14,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
 
 type Role = {

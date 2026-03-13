@@ -1,9 +1,9 @@
 <!-- NotificationBell - Notification indicator and dropdown -->
 
 <script setup lang="ts">
+import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next';
 import { formatMessageDate } from '@/lib/utils';
 import { useNotificationsStore, type AppNotification } from '@/stores/notifications';
 

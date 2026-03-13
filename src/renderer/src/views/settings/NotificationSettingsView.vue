@@ -3,8 +3,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useNotificationsStore } from '@/stores/notifications';
 
 const enableToastNotifications = ref(true);

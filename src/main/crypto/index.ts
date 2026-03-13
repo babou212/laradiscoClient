@@ -1,5 +1,7 @@
-import { ipcMain } from 'electron';
 import { ed25519 } from '@noble/curves/ed25519.js';
+import { ipcMain } from 'electron';
+import { encrypt as aesEncrypt, decrypt as aesDecrypt } from './aes-gcm';
+import { hkdf } from './hkdf';
 import {
     generateUserIdentityKeyPair,
     generateDeviceIdentityKeyPair,
@@ -11,17 +13,7 @@ import {
     ed25519PublicToX25519,
     x25519DH,
 } from './identity';
-import { hkdf } from './hkdf';
-import { encrypt as aesEncrypt, decrypt as aesDecrypt } from './aes-gcm';
-import {
-    createSenderKey,
-    exportSenderKeyDistribution,
-    importSenderKeyDistribution,
-    senderKeyEncrypt,
-    senderKeyDecrypt,
-} from './sender-keys';
 import { encryptKeyBackup, decryptKeyBackup } from './key-backup';
-import { deriveSearchKey, generateSearchTokens, generateSearchTrapdoor } from './sse';
 import {
     initE2eeTables,
     saveDeviceIdentity,
@@ -38,6 +30,14 @@ import {
     deleteSenderKeysForChannel,
     wipeIfDifferentUser,
 } from './key-storage';
+import {
+    createSenderKey,
+    exportSenderKeyDistribution,
+    importSenderKeyDistribution,
+    senderKeyEncrypt,
+    senderKeyDecrypt,
+} from './sender-keys';
+import { deriveSearchKey, generateSearchTokens, generateSearchTrapdoor } from './sse';
 import type { KeyBackupBundle } from './types';
 
 const ONE_TIME_PREKEY_COUNT = 100;

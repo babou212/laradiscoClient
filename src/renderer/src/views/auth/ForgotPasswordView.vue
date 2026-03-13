@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useServerStore } from '@/stores/server';
+import axios from 'axios';
 import {
     ArrowLeftIcon,
     Loader2Icon,
@@ -11,12 +9,14 @@ import {
     ShieldCheckIcon,
     CheckCircle2Icon,
 } from 'lucide-vue-next';
-import AuthLayout from '@/layouts/AuthLayout.vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AuthLayout from '@/layouts/AuthLayout.vue';
 import api from '@/lib/api';
-import axios from 'axios';
+import { useServerStore } from '@/stores/server';
 
 const router = useRouter();
 const serverStore = useServerStore();

@@ -1,6 +1,6 @@
-import { app, safeStorage } from 'electron';
-import Database from 'better-sqlite3';
 import { join } from 'path';
+import Database from 'better-sqlite3';
+import { app, safeStorage } from 'electron';
 
 export interface ServerConnection {
     id: number;

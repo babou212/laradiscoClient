@@ -1,9 +1,9 @@
 <!-- InviteLinkSettingsView - Invite link management -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';

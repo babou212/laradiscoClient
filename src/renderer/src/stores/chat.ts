@@ -88,19 +88,6 @@ export const useChatStore = defineStore('chat', () => {
     async function sendMessage(content: string, replyToId?: number): Promise<void> {
         if (!currentChannel.value) return;
 
-        const optimistic: MessageData = {
-            id: Date.now(),
-            content,
-            is_edited: false,
-            edited_at: null,
-            deleted_at: null,
-            reply_to_id: replyToId ?? null,
-            reply_to: null,
-            user: { id: 0, username: '', avatar_path: null }, // filled by caller
-            reactions: [],
-            created_at: new Date().toISOString(),
-        };
-
         try {
             const response = await api.post(`/channels/${currentChannel.value.id}/messages`, {
                 content,

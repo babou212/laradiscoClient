@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify';
-import { CornerDownRight, ExternalLink, Lock, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
+import { CornerDownRight, ExternalLink, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import { formatMessageDate } from '@/lib/utils';
-import type { MessageData, MessageReaction } from '@/types/chat';
 import EmojiPicker from './EmojiPicker.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatMessageDate } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth';
+import type { MessageData } from '@/types/chat';
 
 interface Props {
     message: MessageData;

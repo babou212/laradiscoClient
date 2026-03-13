@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import { ArrowLeftIcon, Loader2Icon, ShieldCheckIcon, KeyIcon } from 'lucide-vue-next';
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import { ArrowLeftIcon, Loader2Icon, ShieldCheckIcon, KeyIcon } from 'lucide-vue-next';
-import AuthLayout from '@/layouts/AuthLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();

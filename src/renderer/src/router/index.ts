@@ -1,11 +1,11 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
+import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
-import { useServerStore } from '@/stores/server';
 import { useE2eeStore } from '@/stores/e2ee';
-import { initEcho, disconnectEcho, isEchoConnected } from '@/lib/echo';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
-import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
+import { useServerStore } from '@/stores/server';
 
 const router = createRouter({
     history: createWebHashHistory(),

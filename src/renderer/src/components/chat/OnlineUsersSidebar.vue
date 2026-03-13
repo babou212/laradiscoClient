@@ -2,11 +2,11 @@
 import { ChevronDown, ChevronRight } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import UserProfilePanel from './UserProfilePanel.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import type { UserStatusType } from '@/types';
-import UserProfilePanel from './UserProfilePanel.vue';
 
 const presenceStore = usePresenceStore();
 const authStore = useAuthStore();

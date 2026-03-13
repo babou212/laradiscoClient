@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import {
     Shield,
     ShieldCheck,
@@ -9,14 +8,15 @@ import {
     Key,
     AlertTriangle,
     Loader2,
-    RefreshCw,
     ScrollText,
     ChevronDown,
     ChevronUp,
 } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import KeyBackupDialog from '@/components/e2ee/KeyBackupDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -25,11 +25,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { useRouter } from 'vue-router';
+import { Input } from '@/components/ui/input';
+import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useE2eeStore, type E2eeDevice } from '@/stores/e2ee';
-import KeyBackupDialog from '@/components/e2ee/KeyBackupDialog.vue';
-import api from '@/lib/api';
 
 const e2eeStore = useE2eeStore();
 const authStore = useAuthStore();

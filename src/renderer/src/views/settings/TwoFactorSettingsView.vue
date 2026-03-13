@@ -1,18 +1,18 @@
 <!-- TwoFactorSettingsView - Two-factor authentication settings -->
 
 <script setup lang="ts">
-import DOMPurify from 'dompurify';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
+import DOMPurify from 'dompurify';
 import { Check, Copy, Eye, EyeOff, LockKeyhole, RefreshCw, ShieldBan, ShieldCheck } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
-import InputError from '@/components/InputError.vue';
 import api from '@/lib/api';
 
 const { theme } = useAppearance();

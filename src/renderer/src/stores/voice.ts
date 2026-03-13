@@ -1,13 +1,7 @@
+import type { RemoteParticipant } from 'livekit-client';
+import { Room, RoomEvent, type RemoteTrackPublication, ConnectionState, createLocalAudioTrack } from 'livekit-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import {
-    Room,
-    RoomEvent,
-    RemoteParticipant,
-    type RemoteTrackPublication,
-    ConnectionState,
-    createLocalAudioTrack,
-} from 'livekit-client';
 import api from '@/lib/api';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 
