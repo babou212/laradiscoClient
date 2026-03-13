@@ -16,6 +16,15 @@ onMounted(async () => {
     voiceStore.fetchVoiceParticipants();
     await voiceStore.loadSettings();
     voiceStore.initPttListeners();
+
+    if (!chatStore.currentChannel) {
+        const firstChannel = chatStore.categories
+            .flatMap((cat) => cat.channels)
+            .find((ch) => ch.type === 'text');
+        if (firstChannel) {
+            await chatStore.selectChannel(firstChannel.id);
+        }
+    }
 });
 
 onUnmounted(() => {

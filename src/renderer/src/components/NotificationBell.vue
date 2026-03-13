@@ -32,6 +32,13 @@ const getMentionLabel = (notification: AppNotification): string => {
     return `@${data.sender_username}`;
 };
 
+const getDisplayContent = (notification: AppNotification): string => {
+    const { data } = notification;
+    if (data.decrypted_content) return data.decrypted_content;
+    if (data.is_encrypted) return '[Encrypted message]';
+    return data.content;
+};
+
 const handleNotificationClick = async (notification: AppNotification) => {
     showDropdown.value = false;
     await notificationStore.markAsRead(notification.id);
@@ -153,9 +160,9 @@ onUnmounted(() => {
                             <span class="font-medium"
                                 >{{ notification.data.sender_username }}:</span
                             >
-                            {{ notification.data.content.substring(0, 60)
+                            {{ getDisplayContent(notification).substring(0, 60)
                             }}{{
-                                notification.data.content.length > 60
+                                getDisplayContent(notification).length > 60
                                     ? '...'
                                     : ''
                             }}

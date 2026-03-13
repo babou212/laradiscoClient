@@ -19,6 +19,7 @@ const sidebarNavItems: SettingsNavItem[] = [
     { title: 'Profile', routeName: 'settings-profile' },
     { title: 'Password', routeName: 'settings-password' },
     { title: 'Two-Factor Auth', routeName: 'settings-two-factor' },
+    { title: 'Security', routeName: 'settings-security' },
     { title: 'Appearance', routeName: 'settings-appearance' },
     { title: 'Voice', routeName: 'settings-voice' },
     { title: 'Notifications', routeName: 'settings-notifications' },

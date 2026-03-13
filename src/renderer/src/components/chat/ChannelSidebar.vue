@@ -127,12 +127,6 @@ const statusOptions = [
 
 <template>
     <div class="flex h-full w-60 flex-col bg-sidebar">
-        <div
-            class="flex h-12 items-center border-b border-sidebar-border px-4 font-semibold shadow-sm"
-        >
-            {{ serverName }}
-        </div>
-
         <div class="flex-1 overflow-y-auto">
             <div class="px-2 py-2">
                 <button
@@ -205,7 +199,7 @@ const statusOptions = [
 
         <VoiceControlPanel />
 
-        <div class="relative border-t border-sidebar-border bg-sidebar-accent/30">
+        <div class="relative p-3">
             <div
                 v-if="showUserPopup"
                 class="fixed inset-0 z-10"
@@ -213,7 +207,7 @@ const statusOptions = [
             ></div>
             <div
                 v-if="showUserPopup"
-                class="absolute right-0 bottom-full left-0 z-20 mb-2 rounded-lg border border-sidebar-border bg-popover p-2 shadow-lg"
+                class="absolute right-0 bottom-full left-0 z-20 mx-3 mb-2 rounded-2xl border border-sidebar-border bg-popover p-2 shadow-lg"
             >
                 <div class="mb-2 space-y-1">
                     <button
@@ -254,7 +248,7 @@ const statusOptions = [
 
             <button
                 type="button"
-                class="flex w-full items-center gap-3 px-3 py-3 transition-colors hover:bg-sidebar-accent/50"
+                class="flex w-full items-center gap-3 rounded-full border border-sidebar-border bg-sidebar-accent px-3 py-2 shadow-lg transition-colors hover:bg-sidebar-accent/80"
                 @click="showUserPopup = !showUserPopup"
             >
                 <div

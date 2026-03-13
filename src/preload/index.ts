@@ -104,6 +104,91 @@ const api = {
         },
         platform: process.platform,
     },
+
+    e2ee: {
+        isSetup: (serverId: number, userId?: number) =>
+            ipcRenderer.invoke('e2ee:isSetup', serverId, userId) as Promise<boolean>,
+        getDeviceId: (serverId: number, userId?: number) =>
+            ipcRenderer.invoke('e2ee:getDeviceId', serverId, userId) as Promise<string | null>,
+        setup: (serverId: number, deviceName: string, userId?: number) =>
+            ipcRenderer.invoke('e2ee:setup', serverId, deviceName, userId),
+        setupDevice: (serverId: number, deviceName: string, userId?: number) =>
+            ipcRenderer.invoke('e2ee:setupDevice', serverId, deviceName, userId),
+        getPublicKeys: (serverId: number) =>
+            ipcRenderer.invoke('e2ee:getPublicKeys', serverId),
+        encrypt: (params: {
+            serverId: number;
+            type: 'channel' | 'dm';
+            targetId: number;
+            plaintext: string;
+        }) => ipcRenderer.invoke('e2ee:encrypt', params) as Promise<string>,
+        decrypt: (params: {
+            serverId: number;
+            payload: string;
+            senderId: number;
+            senderDeviceId: string;
+            channelId?: number;
+            dmGroupId?: number;
+        }) => ipcRenderer.invoke('e2ee:decrypt', params) as Promise<string>,
+        createSenderKey: (serverId: number, channelId: number) =>
+            ipcRenderer.invoke('e2ee:createSenderKey', serverId, channelId),
+        processSenderKeyDist: (params: {
+            serverId: number;
+            channelId: number;
+            senderId: string;
+            senderDeviceId: string;
+            distribution: unknown;
+        }) => ipcRenderer.invoke('e2ee:processSenderKeyDist', params),
+        backupKeys: (serverId: number, pin: string) =>
+            ipcRenderer.invoke('e2ee:backupKeys', serverId, pin),
+        restoreKeys: (serverId: number, backup: unknown, pin: string) =>
+            ipcRenderer.invoke('e2ee:restoreKeys', serverId, backup, pin),
+        rotateSignedPreKey: (serverId: number) =>
+            ipcRenderer.invoke('e2ee:rotateSignedPreKey', serverId),
+        generatePreKeys: (serverId: number, count: number) =>
+            ipcRenderer.invoke('e2ee:generatePreKeys', serverId, count),
+        wipe: (serverId: number) =>
+            ipcRenderer.invoke('e2ee:wipe', serverId),
+        wipeForUserMismatch: (serverId: number, userId: number) =>
+            ipcRenderer.invoke('e2ee:wipeForUserMismatch', serverId, userId) as Promise<boolean>,
+        invalidateChannelSenderKeys: (serverId: number, channelId: number) =>
+            ipcRenderer.invoke('e2ee:invalidateChannelSenderKeys', serverId, channelId),
+        encryptSenderKeyDist: (params: {
+            distribution: { distributionId: string; chainKey: string; signingPublicKey: string; chainIndex: number };
+            recipientDeviceIdentityKey: string;
+        }) =>
+            ipcRenderer.invoke('e2ee:encryptSenderKeyDist', params) as Promise<{
+                encryptedDistribution: string;
+                ephemeralPublicKey: string;
+                nonce: string;
+            }>,
+        decryptSenderKeyDist: (params: {
+            serverId: number;
+            encryptedDistribution: string;
+            ephemeralPublicKey: string;
+            nonce: string;
+        }) =>
+            ipcRenderer.invoke('e2ee:decryptSenderKeyDist', params) as Promise<{
+                distributionId: string;
+                chainKey: string;
+                signingPublicKey: string;
+                chainIndex: number;
+            }>,
+        generateSearchTokens: (params: {
+            serverId: number;
+            type: 'channel' | 'dm';
+            targetId: number;
+            plaintext: string;
+        }) =>
+            ipcRenderer.invoke('e2ee:generateSearchTokens', params) as Promise<string[]>,
+        generateSearchTrapdoor: (params: {
+            serverId: number;
+            type: 'channel' | 'dm';
+            targetId: number;
+            query: string;
+        }) =>
+            ipcRenderer.invoke('e2ee:generateSearchTrapdoor', params) as Promise<string[]>,
+    },
 };
 
 if (process.contextIsolated) {

@@ -121,12 +121,6 @@ const statusSections = computed(() => {
 
 <template>
     <div class="flex h-full w-60 flex-col border-l border-border bg-sidebar">
-        <div
-            class="flex h-12 items-center border-b border-sidebar-border px-4 font-semibold shadow-sm"
-        >
-            Members
-        </div>
-
         <div class="flex-1 overflow-y-auto px-2 py-4">
             <div
                 v-for="section in statusSections"

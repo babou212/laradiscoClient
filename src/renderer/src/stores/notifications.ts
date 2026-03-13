@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import router from '@/router';
 import { getEcho } from '@/lib/echo';
 import api from '@/lib/api';
+import { useServerStore } from '@/stores/server';
+import { useE2eeStore } from '@/stores/e2ee';
 
 export interface AppNotification {
     id: string;
@@ -13,6 +15,9 @@ export interface AppNotification {
         sender_username: string;
         sender_avatar: string | null;
         content: string;
+        is_encrypted?: boolean;
+        sender_device_id?: string;
+        decrypted_content?: string;
 
         channel_id?: number;
         channel_name?: string;
@@ -77,6 +82,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
             const { data } = await api.get('/notifications');
             notifications.value = data.notifications;
             unreadCount.value = data.unread_count;
+
+            for (const notification of notifications.value) {
+                if (notification.data.is_encrypted && !notification.data.decrypted_content) {
+                    tryDecryptNotification(notification);
+                }
+            }
         } catch (err) {
             console.error('Failed to fetch notifications:', err);
         }
@@ -106,6 +117,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
                         sender_username: raw.sender_username as string,
                         sender_avatar: (raw.sender_avatar as string | null) ?? null,
                         content: raw.content as string,
+                        is_encrypted: raw.is_encrypted as boolean | undefined,
+                        sender_device_id: raw.sender_device_id as string | undefined,
                         channel_id: raw.channel_id as number | undefined,
                         channel_name: raw.channel_name as string | undefined,
                         mention_type: raw.mention_type as 'user' | 'everyone' | 'here' | undefined,
@@ -119,6 +132,26 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
                 notifications.value.unshift(notification);
                 unreadCount.value++;
+
+                // Attempt to decrypt encrypted notification content
+                if (notification.data.is_encrypted) {
+                    tryDecryptNotification(notification).then(() => {
+                        const prefs = preferences.value;
+                        const isDm = notification.data.notification_type === 'direct_message';
+
+                        if (isDm && !prefs.enable_dm_notifications) return;
+                        if (!isDm && !prefs.enable_mention_notifications) return;
+
+                        if (prefs.enable_browser_notifications) {
+                            showNativeNotification(notification);
+                        }
+
+                        if (prefs.enable_toast_notifications) {
+                            addToast(notification);
+                        }
+                    });
+                    return;
+                }
 
                 const prefs = preferences.value;
                 const isDm = notification.data.notification_type === 'direct_message';
@@ -169,6 +202,52 @@ export const useNotificationsStore = defineStore('notifications', () => {
         }, 5000);
     };
 
+    /**
+     * Attempt to decrypt an encrypted notification's content.
+     * On success, sets `decrypted_content` on the notification data.
+     */
+    const tryDecryptNotification = async (notification: AppNotification): Promise<void> => {
+        const { data } = notification;
+        if (!data.is_encrypted) return;
+
+        const e2eeStore = useE2eeStore();
+        if (!e2eeStore.isReady) return;
+
+        const serverStore = useServerStore();
+        const serverId = serverStore.activeServer?.id;
+        if (!serverId) return;
+
+        let senderDeviceId = data.sender_device_id ?? '';
+        if (!senderDeviceId) {
+            try {
+                const parsed = JSON.parse(data.content);
+                senderDeviceId = parsed.sender_device_id ?? '';
+            } catch {
+                // content might not be valid JSON
+            }
+        }
+
+        try {
+            const plaintext = await window.api.e2ee.decrypt({
+                serverId,
+                payload: data.content,
+                senderId: data.sender_id,
+                senderDeviceId,
+                channelId: data.channel_id,
+                dmGroupId: data.dm_group_id,
+            });
+            data.decrypted_content = plaintext;
+
+            // Also update the notification in the list
+            const existing = notifications.value.find((n) => n.id === notification.id);
+            if (existing) {
+                existing.data.decrypted_content = plaintext;
+            }
+        } catch (err) {
+            console.warn('Failed to decrypt notification content:', err);
+        }
+    };
+
     const dismissToast = (notificationId: string) => {
         const index = toasts.value.findIndex((t) => t.id === notificationId);
         if (index !== -1) {
@@ -215,7 +294,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
             title = `${mentionLabel} in #${data.channel_name}`;
         }
 
-        const body = `${data.sender_username}: ${data.content.substring(0, 100)}`;
+        const displayContent = data.decrypted_content ?? (data.is_encrypted ? null : data.content);
+        const body = displayContent
+            ? `${data.sender_username}: ${displayContent.substring(0, 100)}`
+            : `${data.sender_username}: [Encrypted message]`;
 
         window.api.notifications.show({ title, body, notificationId: notification.id });
     };

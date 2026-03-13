@@ -49,10 +49,22 @@ export interface MessageData {
         id: number;
         content: string;
         user: MessageUser;
+        is_encrypted?: boolean;
+        decrypted_content?: string;
+        decrypt_error?: boolean;
+        decrypt_attempts?: number;
     } | null;
     user: MessageUser;
     reactions: MessageReaction[];
     created_at: string;
+    is_encrypted?: boolean;
+    sender_device_id?: string;
+    /** Populated client-side after decryption; original encrypted payload kept in `content` */
+    decrypted_content?: string;
+    /** Set to true if decryption failed */
+    decrypt_error?: boolean;
+    /** Number of decryption attempts (for retry limiting) */
+    decrypt_attempts?: number;
 }
 
 export interface MessagesResponse {

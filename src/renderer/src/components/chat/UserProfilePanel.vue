@@ -46,7 +46,7 @@ watch(
 
 const statusColors: Record<string, string> = {
     online: 'bg-green-500',
-    idle: 'bg-yellow-500',
+    idle: 'bg-orange-500',
     dnd: 'bg-red-500',
     offline: 'bg-gray-500',
 };

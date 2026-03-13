@@ -1,8 +1,14 @@
 import { join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
+
+if (process.env.USER_DATA_DIR) {
+    app.setPath('userData', process.env.USER_DATA_DIR);
+}
+
 import { initDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
+import { initE2ee } from './crypto';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
 
 function createWindow(): void {
@@ -63,9 +69,22 @@ function createWindow(): void {
 app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
+    initE2ee();
     initPushToTalk();
 
     electronApp.setAppUserModelId('com.laradisco.client');
+
+    const defaultUserAgent = session.defaultSession.getUserAgent();
+    const cleanUserAgent = defaultUserAgent
+        .replace(/\s*Electron\/[\w.]+/gi, '')
+        .replace(/\s*laradisco[^\s]*/gi, '');
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+        { urls: ['https://*.youtube.com/*', 'https://*.youtube-nocookie.com/*', 'https://*.googlevideo.com/*', 'https://*.google.com/*'] },
+        (details, callback) => {
+            details.requestHeaders['User-Agent'] = cleanUserAgent;
+            callback({ requestHeaders: details.requestHeaders });
+        },
+    );
 
     const csp = [
         "default-src 'self'",
@@ -83,18 +102,28 @@ app.whenReady().then(() => {
     ].join('; ');
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                'Content-Security-Policy': [csp],
-                'X-Content-Type-Options': ['nosniff'],
-                'X-Frame-Options': ['DENY'],
-                'Referrer-Policy': ['strict-origin-when-cross-origin'],
-                'Permissions-Policy': [
-                    'microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()',
-                ],
-            },
-        });
+        const url = new URL(details.url);
+        const isAppPage =
+            url.protocol === 'file:' ||
+            url.hostname === 'localhost' ||
+            url.hostname === '127.0.0.1';
+
+        if (isAppPage) {
+            callback({
+                responseHeaders: {
+                    ...details.responseHeaders,
+                    'Content-Security-Policy': [csp],
+                    'X-Content-Type-Options': ['nosniff'],
+                    'X-Frame-Options': ['DENY'],
+                    'Referrer-Policy': ['strict-origin-when-cross-origin'],
+                    'Permissions-Policy': [
+                        'microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()',
+                    ],
+                },
+            });
+        } else {
+            callback({ responseHeaders: details.responseHeaders });
+        }
     });
 
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {

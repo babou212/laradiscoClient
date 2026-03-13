@@ -159,10 +159,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="border-t border-border">
+    <div class="px-4 pb-4">
         <div
             v-if="replyingTo"
-            class="flex items-start gap-2 border-b border-border bg-accent/30 px-4 py-2"
+            class="flex items-start gap-2 rounded-t-2xl border border-b-0 border-border bg-accent/30 px-4 py-2"
         >
             <CornerDownRight
                 :size="16"
@@ -185,7 +185,7 @@ onUnmounted(() => {
             </button>
         </div>
 
-        <div class="relative p-4">
+        <div class="relative">
             <MentionDropdown
                 :query="mentionQuery"
                 :visible="showMentionDropdown"
@@ -210,7 +210,7 @@ onUnmounted(() => {
             </div>
 
             <div
-                class="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring"
+                class="flex items-center gap-2 rounded-full border border-input bg-background px-4 py-2 shadow-lg focus-within:ring-2 focus-within:ring-ring"
             >
                 <button
                     type="button"

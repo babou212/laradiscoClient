@@ -25,7 +25,7 @@ const api = axios.create({
     timeout: 15_000,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
     const serverStore = useServerStore();
     const authStore = useAuthStore();
 
@@ -35,6 +35,19 @@ api.interceptors.request.use((config) => {
 
     if (authStore.token) {
         config.headers.Authorization = `Bearer ${authStore.token}`;
+    }
+
+    try {
+        const serverId = serverStore.activeServer?.id;
+        if (serverId && window.api?.e2ee) {
+            const userId = authStore.user?.id;
+            const deviceId = await window.api.e2ee.getDeviceId(serverId, userId);
+            if (deviceId) {
+                config.headers['X-Device-Id'] = deviceId;
+            }
+        }
+    } catch {
+        // E2EE not set up yet — skip device header
     }
 
     return config;

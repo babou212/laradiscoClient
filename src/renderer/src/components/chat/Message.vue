@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import DOMPurify from 'dompurify';
-import { CornerDownRight, Pencil, SmilePlus, Trash2 } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { CornerDownRight, ExternalLink, Lock, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { formatMessageDate } from '@/lib/utils';
 import type { MessageData, MessageReaction } from '@/types/chat';
 import EmojiPicker from './EmojiPicker.vue';
+import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Props {
     message: MessageData;
@@ -41,6 +43,34 @@ const canEdit = computed(() => isOwnMessage.value);
 const canDelete = computed(() => isOwnMessage.value || props.canManageMessages);
 const canReact = computed(() => props.canAddReactions !== false);
 const canReply = computed(() => props.canSendMessages !== false);
+
+const isDecrypting = computed(() => {
+    return props.message.is_encrypted && !props.message.decrypt_error && !props.message.decrypted_content;
+});
+
+const displayContent = computed(() => {
+    if (props.message.is_encrypted) {
+        if (props.message.decrypt_error) return '[Unable to decrypt this message]';
+        return props.message.decrypted_content ?? '';
+    }
+    return props.message.content;
+});
+
+const isReplyDecrypting = computed(() => {
+    if (!props.message.reply_to) return false;
+    const reply = props.message.reply_to;
+    return reply.is_encrypted && !reply.decrypt_error && !reply.decrypted_content;
+});
+
+const replyDisplayContent = computed(() => {
+    if (!props.message.reply_to) return '';
+    const reply = props.message.reply_to;
+    if (reply.is_encrypted) {
+        if (reply.decrypt_error) return '[Unable to decrypt]';
+        return reply.decrypted_content ?? '';
+    }
+    return reply.content;
+});
 
 const groupedReactions = computed(() => {
     const map = new Map<
@@ -90,7 +120,7 @@ const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
 const youtubeVideoId = computed(() => {
     const urlPattern =
         /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/;
-    const match = props.message.content.match(urlPattern);
+    const match = displayContent.value.match(urlPattern);
     if (match) {
         const id = extractYouTubeId(match[1]);
         return id && YOUTUBE_ID_REGEX.test(id) ? id : null;
@@ -98,18 +128,40 @@ const youtubeVideoId = computed(() => {
     return null;
 });
 
+const youtubeUrl = computed(() => {
+    if (!youtubeVideoId.value) return '';
+    return `https://www.youtube.com/watch?v=${youtubeVideoId.value}`;
+});
+
+const youtubeEmbedUrl = computed(() => {
+    if (!youtubeVideoId.value) return '';
+    return `https://www.youtube-nocookie.com/embed/${youtubeVideoId.value}?autoplay=1&rel=0`;
+});
+
+const youtubeActive = ref(false);
+
+const playYouTube = () => {
+    youtubeActive.value = true;
+};
+
+const openYouTube = () => {
+    if (youtubeUrl.value) {
+        window.open(youtubeUrl.value, '_blank');
+    }
+};
+
 const messageWithoutYoutubeUrl = computed(() => {
-    if (!youtubeVideoId.value) return props.message.content;
+    if (!youtubeVideoId.value) return displayContent.value;
     const urlPattern =
         /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/g;
-    return props.message.content.replace(urlPattern, '').trim();
+    return displayContent.value.replace(urlPattern, '').trim();
 });
 
 const isGifUrl = computed(() => {
     return (
-        props.message.content.match(/^https?:\/\/.*\.gif$/i) ||
-        props.message.content.includes('tenor.com') ||
-        props.message.content.includes('media.tenor.com')
+        displayContent.value.match(/^https?:\/\/.*\.gif$/i) ||
+        displayContent.value.includes('tenor.com') ||
+        displayContent.value.includes('media.tenor.com')
     );
 });
 
@@ -140,7 +192,7 @@ const parseMentions = (text: string): string => {
 };
 
 const renderedContent = computed(() => {
-    return parseMentions(props.message.content);
+    return parseMentions(displayContent.value);
 });
 
 const renderedContentWithoutYoutube = computed(() => {
@@ -165,6 +217,10 @@ const renderedContentWithoutYoutube = computed(() => {
                 <span class="text-xs text-muted-foreground">
                     {{ formatMessageDate(message.created_at) }}
                 </span>
+                <EncryptionBadge
+                    :is-encrypted="message.is_encrypted"
+                    :decrypt-error="message.decrypt_error"
+                />
                 <span
                     v-if="message.is_edited"
                     class="text-xs text-muted-foreground italic"
@@ -185,10 +241,11 @@ const renderedContentWithoutYoutube = computed(() => {
                     <span class="font-medium text-primary">
                         {{ message.reply_to.user.username }}
                     </span>
-                    <span class="block truncate text-muted-foreground">
-                        {{ message.reply_to.content.substring(0, 100)
+                    <Skeleton v-if="isReplyDecrypting" class="h-3 w-40" />
+                    <span v-else class="block truncate text-muted-foreground">
+                        {{ replyDisplayContent.substring(0, 100)
                         }}{{
-                            message.reply_to.content.length > 100 ? '...' : ''
+                            replyDisplayContent.length > 100 ? '...' : ''
                         }}
                     </span>
                 </div>
@@ -232,12 +289,16 @@ const renderedContentWithoutYoutube = computed(() => {
             </div>
 
             <div v-else class="mt-1">
+                <div v-if="isDecrypting" class="flex flex-col gap-1.5">
+                    <Skeleton class="h-4 w-3/4" />
+                    <Skeleton class="h-4 w-1/2" />
+                </div>
                 <div
-                    v-if="isGifUrl"
+                    v-else-if="isGifUrl"
                     class="max-w-sm overflow-hidden rounded-lg"
                 >
                     <img
-                        :src="message.content"
+                        :src="displayContent"
                         alt="GIF"
                         class="h-auto w-full"
                         loading="lazy"
@@ -256,16 +317,39 @@ const renderedContentWithoutYoutube = computed(() => {
                         class="mb-2 text-sm wrap-break-word whitespace-pre-wrap"
                         v-html="renderedContentWithoutYoutube"
                     />
-                    <div class="mt-2 max-w-md overflow-hidden rounded-lg">
-                        <iframe
-                            :src="`https://www.youtube.com/embed/${youtubeVideoId}`"
-                            class="aspect-video w-full"
-                            frameborder="0"
-                            sandbox="allow-scripts allow-same-origin allow-popups"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture;"
-                            allowfullscreen
-                            referrerpolicy="no-referrer"
-                        />
+                    <div class="mt-2 max-w-md overflow-hidden rounded-lg border border-border bg-black">
+                        <div class="relative aspect-video w-full">
+                            <iframe
+                                v-if="youtubeActive"
+                                :src="youtubeEmbedUrl"
+                                class="h-full w-full border-none"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen
+                            />
+                            <template v-else>
+                                <img
+                                    :src="`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`"
+                                    alt="YouTube video"
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
+                                />
+                                <button
+                                    class="group/yt absolute inset-0 flex items-center justify-center bg-black/30 transition-colors hover:bg-black/10 focus:outline-none"
+                                    @click="playYouTube"
+                                >
+                                    <div class="flex size-14 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform group-hover/yt:scale-110">
+                                        <Play :size="28" class="ml-1 fill-white text-white" />
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+                        <button
+                            class="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs text-muted-foreground hover:text-foreground"
+                            @click="openYouTube"
+                        >
+                            <ExternalLink :size="12" />
+                            <span>Open in browser</span>
+                        </button>
                     </div>
                 </template>
             </div>

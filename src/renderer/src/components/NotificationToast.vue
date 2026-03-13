@@ -27,6 +27,13 @@ const getMentionLabel = (notification: ToastNotification): string => {
     return `@${data.sender_username}`;
 };
 
+const getDisplayContent = (notification: ToastNotification): string => {
+    const { data } = notification;
+    if (data.decrypted_content) return data.decrypted_content;
+    if (data.is_encrypted) return '[Encrypted message]';
+    return data.content;
+};
+
 const handleClick = (notification: ToastNotification) => {
     notificationStore.markAsRead(notification.id);
     notificationStore.dismissToast(notification.id);
@@ -93,9 +100,9 @@ const handleClick = (notification: ToastNotification) => {
                                 {{ toast.data.sender_username }}:
                             </span>
                             <span class="truncate text-muted-foreground">
-                                {{ toast.data.content.substring(0, 80)
+                                {{ getDisplayContent(toast).substring(0, 80)
                                 }}{{
-                                    toast.data.content.length > 80 ? '...' : ''
+                                    getDisplayContent(toast).length > 80 ? '...' : ''
                                 }}
                             </span>
                         </div>
