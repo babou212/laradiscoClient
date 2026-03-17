@@ -81,8 +81,5 @@ export function initAutoUpdater(): void {
     });
 
     setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 30_000);
-    setInterval(
-        () => autoUpdater.checkForUpdates().catch(() => {}),
-        4 * 60 * 60 * 1000,
-    );
+    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 4 * 60 * 60 * 1000);
 }

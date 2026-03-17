@@ -128,7 +128,6 @@ export function useE2EE() {
 
     const lastMemberCheckPerChannel = new Map<number, number>();
 
-
     const MEMBER_CHECK_INTERVAL = 5 * 60_000;
 
     const distributionFailures = new Map<number, { count: number; backoffUntil: number }>();
@@ -364,7 +363,12 @@ export function useE2EE() {
         });
     }
 
-    async function decryptMessage(message: MessageData, channelId?: number, dmGroupId?: number, skipFetch = false): Promise<void> {
+    async function decryptMessage(
+        message: MessageData,
+        channelId?: number,
+        dmGroupId?: number,
+        skipFetch = false,
+    ): Promise<void> {
         if (!message.is_encrypted) return;
         if (message.decrypted_content !== undefined) return;
         if (message.decrypt_error) return;
@@ -434,7 +438,11 @@ export function useE2EE() {
             message.decrypt_error = true;
         }
 
-        if (message.reply_to?.is_encrypted && message.reply_to.decrypted_content === undefined && !message.reply_to.decrypt_error) {
+        if (
+            message.reply_to?.is_encrypted &&
+            message.reply_to.decrypted_content === undefined &&
+            !message.reply_to.decrypt_error
+        ) {
             await decryptReplyTo(message.reply_to, channelId, dmGroupId);
         }
     }
@@ -511,9 +519,7 @@ export function useE2EE() {
                     await decryptMessage(m, channelId, dmGroupId, true);
                 }
 
-                const stillPending = needsSenderKey.some(
-                    (m) => m.decrypted_content === undefined && !m.decrypt_error,
-                );
+                const stillPending = needsSenderKey.some((m) => m.decrypted_content === undefined && !m.decrypt_error);
                 if (stillPending) {
                     if (dmGroupId != null) {
                         requestDmSenderKeys(dmGroupId).catch(() => {});

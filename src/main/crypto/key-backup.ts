@@ -15,7 +15,9 @@ export function cacheBackupKey(serverId: number, key: Uint8Array<ArrayBuffer>, s
     cachedBackupKeys.set(serverId, { key: new Uint8Array(key), salt: new Uint8Array(salt) });
 }
 
-export function getCachedBackupKey(serverId: number): { key: Uint8Array<ArrayBuffer>; salt: Uint8Array<ArrayBuffer> } | null {
+export function getCachedBackupKey(
+    serverId: number,
+): { key: Uint8Array<ArrayBuffer>; salt: Uint8Array<ArrayBuffer> } | null {
     return cachedBackupKeys.get(serverId) ?? null;
 }
 
@@ -60,7 +62,11 @@ export interface EncryptedKeyBackup {
     };
 }
 
-export async function encryptKeyBackup(bundle: KeyBackupBundle, pin: string, serverId?: number): Promise<EncryptedKeyBackup> {
+export async function encryptKeyBackup(
+    bundle: KeyBackupBundle,
+    pin: string,
+    serverId?: number,
+): Promise<EncryptedKeyBackup> {
     const bundleJson = JSON.stringify(bundle);
     const bundleBytes = new TextEncoder().encode(bundleJson);
 
@@ -86,7 +92,11 @@ export async function encryptKeyBackup(bundle: KeyBackupBundle, pin: string, ser
     };
 }
 
-export async function decryptKeyBackup(backup: EncryptedKeyBackup, pin: string, serverId?: number): Promise<KeyBackupBundle | null> {
+export async function decryptKeyBackup(
+    backup: EncryptedKeyBackup,
+    pin: string,
+    serverId?: number,
+): Promise<KeyBackupBundle | null> {
     try {
         const salt = new Uint8Array(Buffer.from(backup.salt, 'base64'));
         const encryptedBundle = new Uint8Array(Buffer.from(backup.encryptedBundle, 'base64'));

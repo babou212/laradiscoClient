@@ -72,7 +72,8 @@ const fetchGifs = async (query?: string, append = false) => {
 
 const loadMore = () => {
     if (loadingMore.value || !nextCursor.value) return;
-    const query = searchQuery.value.trim() || (selectedCategory.value !== 'trending' ? selectedCategory.value : undefined);
+    const query =
+        searchQuery.value.trim() || (selectedCategory.value !== 'trending' ? selectedCategory.value : undefined);
     fetchGifs(query, true);
 };
 
@@ -162,11 +163,7 @@ onMounted(() => {
             </button>
         </div>
 
-        <div
-            class="scrollbar-thin flex-1 overflow-y-auto p-2"
-            @scroll="onScroll"
-        >
-
+        <div class="scrollbar-thin flex-1 overflow-y-auto p-2" @scroll="onScroll">
             <div v-if="loading" class="columns-2 gap-2">
                 <div
                     v-for="i in 8"

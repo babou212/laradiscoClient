@@ -22,41 +22,14 @@ const qualityInfo = computed(() => {
 </script>
 
 <template>
-    <div v-if="voiceStore.isConnected" class="border-sidebar-border border-t bg-black/20 px-3 pb-1 pt-2">
+    <div v-if="voiceStore.isConnected" class="border-sidebar-border border-t bg-black/20 px-3 pt-2 pb-1">
         <div class="mb-1 flex items-center justify-between">
             <div class="flex items-center gap-1.5">
                 <!-- Signal strength bars -->
-                <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                    :class="qualityInfo.color"
-                >
-                    <rect
-                        x="1"
-                        y="11"
-                        width="3"
-                        height="4"
-                        rx="0.5"
-                        :opacity="qualityInfo.bars >= 1 ? 1 : 0.2"
-                    />
-                    <rect
-                        x="6"
-                        y="7"
-                        width="3"
-                        height="8"
-                        rx="0.5"
-                        :opacity="qualityInfo.bars >= 2 ? 1 : 0.2"
-                    />
-                    <rect
-                        x="11"
-                        y="3"
-                        width="3"
-                        height="12"
-                        rx="0.5"
-                        :opacity="qualityInfo.bars >= 3 ? 1 : 0.2"
-                    />
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" :class="qualityInfo.color">
+                    <rect x="1" y="11" width="3" height="4" rx="0.5" :opacity="qualityInfo.bars >= 1 ? 1 : 0.2" />
+                    <rect x="6" y="7" width="3" height="8" rx="0.5" :opacity="qualityInfo.bars >= 2 ? 1 : 0.2" />
+                    <rect x="11" y="3" width="3" height="12" rx="0.5" :opacity="qualityInfo.bars >= 3 ? 1 : 0.2" />
                 </svg>
                 <span class="text-xs font-semibold" :class="qualityInfo.color">
                     {{ qualityInfo.label }}
@@ -64,7 +37,7 @@ const qualityInfo = computed(() => {
             </div>
             <button
                 type="button"
-                class="flex size-7 items-center justify-center rounded text-sidebar-foreground/50 transition-colors hover:bg-white/10 hover:text-sidebar-foreground"
+                class="text-sidebar-foreground/50 hover:text-sidebar-foreground flex size-7 items-center justify-center rounded transition-colors hover:bg-white/10"
                 title="Disconnect"
                 @click="voiceStore.leaveChannel()"
             >
@@ -85,7 +58,7 @@ const qualityInfo = computed(() => {
                 :class="
                     voiceStore.isMicMuted
                         ? 'bg-white/10 text-red-400 hover:bg-white/15'
-                        : 'bg-white/5 text-sidebar-foreground/60 hover:bg-white/10 hover:text-sidebar-foreground'
+                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                 "
                 :title="voiceStore.isMicMuted ? 'Unmute' : 'Mute'"
                 @click="voiceStore.toggleMic()"
@@ -100,7 +73,7 @@ const qualityInfo = computed(() => {
                 :class="
                     voiceStore.isSoundMuted
                         ? 'bg-white/10 text-red-400 hover:bg-white/15'
-                        : 'bg-white/5 text-sidebar-foreground/60 hover:bg-white/10 hover:text-sidebar-foreground'
+                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                 "
                 :title="voiceStore.isSoundMuted ? 'Undeafen' : 'Deafen'"
                 @click="voiceStore.toggleSound()"

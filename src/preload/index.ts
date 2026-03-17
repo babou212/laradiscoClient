@@ -105,7 +105,12 @@ const api = {
             ipcRenderer.on('updater:up-to-date', callback);
         },
         onDownloadProgress: (
-            callback: (progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void,
+            callback: (progress: {
+                percent: number;
+                bytesPerSecond: number;
+                transferred: number;
+                total: number;
+            }) => void,
         ) => {
             ipcRenderer.on('updater:download-progress', (_event, progress) => callback(progress));
         },

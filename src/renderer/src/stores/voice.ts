@@ -1,5 +1,12 @@
 import type { RemoteParticipant } from 'livekit-client';
-import { ConnectionQuality, Room, RoomEvent, type RemoteTrackPublication, ConnectionState, createLocalAudioTrack } from 'livekit-client';
+import {
+    ConnectionQuality,
+    Room,
+    RoomEvent,
+    type RemoteTrackPublication,
+    ConnectionState,
+    createLocalAudioTrack,
+} from 'livekit-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import api from '@/lib/api';

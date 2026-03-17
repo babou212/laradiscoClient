@@ -406,9 +406,7 @@ function formatAccelerator(accel: string): string {
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Audio Processing</h2>
-                <p class="text-muted-foreground mt-1 text-sm">
-                    Built-in noise suppression and audio enhancements
-                </p>
+                <p class="text-muted-foreground mt-1 text-sm">Built-in noise suppression and audio enhancements</p>
             </div>
             <div class="space-y-4 p-6">
                 <label class="flex items-center justify-between gap-3">
@@ -470,20 +468,14 @@ function formatAccelerator(accel: string): string {
                     <Button variant="outline" size="sm" @click="startMicTest">
                         {{ isMicTesting ? 'Stop Test' : 'Test Microphone' }}
                     </Button>
-                    <span v-if="isMicTesting" class="text-muted-foreground text-xs animate-pulse">Listening...</span>
+                    <span v-if="isMicTesting" class="text-muted-foreground animate-pulse text-xs">Listening...</span>
                 </div>
 
                 <div v-if="isMicTesting" class="space-y-2">
                     <div class="bg-muted h-3 w-full overflow-hidden rounded-full">
                         <div
                             class="h-full rounded-full transition-all duration-75"
-                            :class="
-                                micLevel > 70
-                                    ? 'bg-red-500'
-                                    : micLevel > 40
-                                      ? 'bg-yellow-500'
-                                      : 'bg-green-500'
-                            "
+                            :class="micLevel > 70 ? 'bg-red-500' : micLevel > 40 ? 'bg-yellow-500' : 'bg-green-500'"
                             :style="{ width: micLevel + '%' }"
                         />
                     </div>

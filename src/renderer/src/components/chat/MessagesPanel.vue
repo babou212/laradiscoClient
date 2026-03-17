@@ -889,10 +889,7 @@ const emitTyping = () => {
             :conversation-id="channel.id"
             :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
             @close="showSearch = false"
-            @navigate-to-message="
-                (id) => {
-                }
-            "
+            @navigate-to-message="(id) => {}"
         />
     </div>
 </template>

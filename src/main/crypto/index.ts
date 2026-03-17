@@ -13,7 +13,13 @@ import {
     ed25519PublicToX25519,
     x25519DH,
 } from './identity';
-import { encryptKeyBackup, decryptKeyBackup, encryptKeyBackupWithCachedKey, hasCachedBackupKey, clearCachedBackupKey } from './key-backup';
+import {
+    encryptKeyBackup,
+    decryptKeyBackup,
+    encryptKeyBackupWithCachedKey,
+    hasCachedBackupKey,
+    clearCachedBackupKey,
+} from './key-backup';
 import {
     initE2eeTables,
     saveDeviceIdentity,
@@ -280,7 +286,13 @@ function registerE2eeIpcHandlers(): void {
                 };
             },
         ) => {
-            const existing = loadSenderKey(params.serverId, params.channelId, params.senderId, params.senderDeviceId, params.distribution.distributionId);
+            const existing = loadSenderKey(
+                params.serverId,
+                params.channelId,
+                params.senderId,
+                params.senderDeviceId,
+                params.distribution.distributionId,
+            );
             if (
                 existing &&
                 existing.distributionId === params.distribution.distributionId &&
@@ -699,7 +711,13 @@ function restoreKeysFromBundle(serverId: number, bundle: KeyBackupBundle): void 
         try {
             const deviceIdentityPrivate = Uint8Array.from(Buffer.from(bundle.deviceIdentityPrivateKey, 'base64'));
             const deviceIdentityPublic = ed25519.getPublicKey(deviceIdentityPrivate);
-            storePrivateKey(serverId, 'device_identity_legacy', 'restored', deviceIdentityPrivate, deviceIdentityPublic);
+            storePrivateKey(
+                serverId,
+                'device_identity_legacy',
+                'restored',
+                deviceIdentityPrivate,
+                deviceIdentityPublic,
+            );
         } catch {
             console.warn('Key restore: skipping corrupted device identity key');
         }

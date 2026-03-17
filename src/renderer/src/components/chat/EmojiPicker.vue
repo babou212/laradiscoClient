@@ -20,12 +20,7 @@ const onSelect = (emoji: { i: string }) => {
 
 <template>
     <div class="emoji-picker-wrapper">
-        <EmojiPicker
-            :native="true"
-            :theme="pickerTheme"
-            :display-recent="true"
-            @select="onSelect"
-        />
+        <EmojiPicker :native="true" :theme="pickerTheme" :display-recent="true" @select="onSelect" />
     </div>
 </template>
 

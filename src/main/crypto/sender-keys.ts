@@ -70,13 +70,14 @@ function buildSignedPayload(
     const chainIndexBytes = new Uint8Array(4);
     new DataView(chainIndexBytes.buffer).setUint32(0, chainIndex, false);
 
-    const result = new Uint8Array(
-        ciphertext.length + nonce.length + 4 + distributionIdBytes.length,
-    );
+    const result = new Uint8Array(ciphertext.length + nonce.length + 4 + distributionIdBytes.length);
     let offset = 0;
-    result.set(ciphertext, offset); offset += ciphertext.length;
-    result.set(nonce, offset); offset += nonce.length;
-    result.set(chainIndexBytes, offset); offset += 4;
+    result.set(ciphertext, offset);
+    offset += ciphertext.length;
+    result.set(nonce, offset);
+    offset += nonce.length;
+    result.set(chainIndexBytes, offset);
+    offset += 4;
     result.set(distributionIdBytes, offset);
     return result;
 }
@@ -111,7 +112,12 @@ export async function senderKeyDecrypt(
     message: SenderKeyMessage,
 ): Promise<Uint8Array<ArrayBuffer>> {
     if (state.signingKeyPair.publicKey.length > 0) {
-        const dataToVerify = buildSignedPayload(message.ciphertext, message.nonce, message.chainIndex, message.distributionId);
+        const dataToVerify = buildSignedPayload(
+            message.ciphertext,
+            message.nonce,
+            message.chainIndex,
+            message.distributionId,
+        );
         const valid = ed25519.verify(message.signature, dataToVerify, state.signingKeyPair.publicKey);
         if (!valid) {
             throw new Error('SenderKey: Invalid message signature');

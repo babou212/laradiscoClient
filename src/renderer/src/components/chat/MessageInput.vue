@@ -252,7 +252,7 @@ onUnmounted(() => {
                         showEmojiPicker = false;
                     "
                 >
-                    <span class="text-[11px] font-extrabold leading-none">GIF</span>
+                    <span class="text-[11px] leading-none font-extrabold">GIF</span>
                 </button>
                 <button
                     type="button"
@@ -267,8 +267,10 @@ onUnmounted(() => {
                     v-model="messageInput"
                     rows="1"
                     class="placeholder:text-muted-foreground flex-1 resize-none bg-transparent py-1.5 text-sm outline-none"
-                    :class="{ 'opacity-50 cursor-not-allowed': props.disabled }"
-                    :placeholder="props.disabled ? 'Sending too fast — please wait…' : `Message #${channelName || 'channel'}`"
+                    :class="{ 'cursor-not-allowed opacity-50': props.disabled }"
+                    :placeholder="
+                        props.disabled ? 'Sending too fast — please wait…' : `Message #${channelName || 'channel'}`
+                    "
                     :disabled="props.disabled"
                     @keydown="handleKeydown"
                     @input="handleInput"

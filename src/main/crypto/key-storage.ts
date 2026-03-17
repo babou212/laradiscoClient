@@ -53,7 +53,9 @@ export function initE2eeTables(): void {
     if (!skColumns.some((c) => c.name === 'distribution_id')) {
         db.exec(`ALTER TABLE e2ee_sender_keys ADD COLUMN distribution_id TEXT NOT NULL DEFAULT ''`);
         try {
-            db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS e2ee_sender_keys_unique ON e2ee_sender_keys(server_id, channel_id, user_id, device_id, distribution_id)`);
+            db.exec(
+                `CREATE UNIQUE INDEX IF NOT EXISTS e2ee_sender_keys_unique ON e2ee_sender_keys(server_id, channel_id, user_id, device_id, distribution_id)`,
+            );
         } catch (error) {
             console.error(error);
         }
@@ -334,7 +336,9 @@ export function loadAllSenderKeys(
 ): Array<{ channelId: number; userId: string; deviceId: string; distributionId: string; serializedState: string }> {
     const db = getDatabase();
     const rows = db
-        .prepare('SELECT channel_id, user_id, device_id, distribution_id, sender_key_data FROM e2ee_sender_keys WHERE server_id = ?')
+        .prepare(
+            'SELECT channel_id, user_id, device_id, distribution_id, sender_key_data FROM e2ee_sender_keys WHERE server_id = ?',
+        )
         .all(serverId) as Array<{
         channel_id: number;
         user_id: string;
