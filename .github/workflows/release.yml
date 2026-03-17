@@ -133,15 +133,19 @@ jobs:
         run: |
           pacman -Syu --noconfirm
           pacman -S --noconfirm git nodejs npm fakeroot
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
       - uses: actions/checkout@v4
 
-      - run: npm ci
+      - name: Fix ownership
+        run: chown -R builder:builder .
+
+      - run: su builder -c 'npm ci'
 
       - name: Build distributables
         run: |
-          npm run build
-          npx electron-forge make --platform linux --targets ./maker-pacman.ts
+          su builder -c 'npm run build && npx electron-forge make --platform linux --targets ./maker-pacman.ts'
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
