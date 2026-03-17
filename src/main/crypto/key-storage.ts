@@ -36,9 +36,10 @@ export function initE2eeTables(): void {
             user_id         TEXT NOT NULL,
             device_id       TEXT NOT NULL,
             sender_key_data BLOB NOT NULL,
+            distribution_id TEXT NOT NULL DEFAULT '',
             created_at      TEXT DEFAULT (datetime('now')),
             updated_at      TEXT DEFAULT (datetime('now')),
-            UNIQUE(server_id, channel_id, user_id, device_id)
+            UNIQUE(server_id, channel_id, user_id, device_id, distribution_id)
         );
 
     `);
@@ -46,6 +47,16 @@ export function initE2eeTables(): void {
     const columns = db.pragma('table_info(device_identity)') as Array<{ name: string }>;
     if (!columns.some((c) => c.name === 'user_id')) {
         db.exec('ALTER TABLE device_identity ADD COLUMN user_id INTEGER');
+    }
+
+    const skColumns = db.pragma('table_info(e2ee_sender_keys)') as Array<{ name: string }>;
+    if (!skColumns.some((c) => c.name === 'distribution_id')) {
+        db.exec(`ALTER TABLE e2ee_sender_keys ADD COLUMN distribution_id TEXT NOT NULL DEFAULT ''`);
+        try {
+            db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS e2ee_sender_keys_unique ON e2ee_sender_keys(server_id, channel_id, user_id, device_id, distribution_id)`);
+        } catch (error) {
+            console.error(error);
+        }
     }
 }
 
@@ -238,14 +249,15 @@ export function saveSenderKey(
     const db = getDatabase();
     const serialized = serializeSenderKey(state);
     const encrypted = encryptStringForStorage(serialized);
+    const distributionId = state.distributionId || '';
 
     db.prepare(
-        `INSERT INTO e2ee_sender_keys (server_id, channel_id, user_id, device_id, sender_key_data, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))
-         ON CONFLICT(server_id, channel_id, user_id, device_id) DO UPDATE SET
+        `INSERT INTO e2ee_sender_keys (server_id, channel_id, user_id, device_id, distribution_id, sender_key_data, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(server_id, channel_id, user_id, device_id, distribution_id) DO UPDATE SET
             sender_key_data = excluded.sender_key_data,
             updated_at = datetime('now')`,
-    ).run(serverId, channelId, userId, deviceId, encrypted);
+    ).run(serverId, channelId, userId, deviceId, distributionId, encrypted);
 }
 
 export function loadSenderKey(
@@ -253,11 +265,25 @@ export function loadSenderKey(
     channelId: number,
     userId: string,
     deviceId: string,
+    distributionId?: string,
 ): SenderKeyState | null {
     const db = getDatabase();
+
+    if (distributionId) {
+        const row = db
+            .prepare(
+                'SELECT sender_key_data FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ? AND user_id = ? AND device_id = ? AND distribution_id = ?',
+            )
+            .get(serverId, channelId, userId, deviceId, distributionId) as { sender_key_data: Buffer } | undefined;
+        if (row) {
+            const serialized = decryptStringFromStorage(row.sender_key_data);
+            return deserializeSenderKey(serialized);
+        }
+    }
+
     const row = db
         .prepare(
-            'SELECT sender_key_data FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ? AND user_id = ? AND device_id = ?',
+            'SELECT sender_key_data FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ? AND user_id = ? AND device_id = ? ORDER BY updated_at DESC LIMIT 1',
         )
         .get(serverId, channelId, userId, deviceId) as { sender_key_data: Buffer } | undefined;
 
@@ -266,7 +292,62 @@ export function loadSenderKey(
     return deserializeSenderKey(serialized);
 }
 
+export function loadAllSenderKeysForSender(
+    serverId: number,
+    channelId: number,
+    userId: string,
+    deviceId: string,
+): SenderKeyState[] {
+    const db = getDatabase();
+    const rows = db
+        .prepare(
+            'SELECT sender_key_data FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ? AND user_id = ? AND device_id = ? ORDER BY updated_at DESC',
+        )
+        .all(serverId, channelId, userId, deviceId) as Array<{ sender_key_data: Buffer }>;
+
+    return rows.map((row) => {
+        const serialized = decryptStringFromStorage(row.sender_key_data);
+        return deserializeSenderKey(serialized);
+    });
+}
+
 export function deleteSenderKeysForChannel(serverId: number, channelId: number): void {
     const db = getDatabase();
     db.prepare('DELETE FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ?').run(serverId, channelId);
+}
+
+export function deleteSenderKeyByDistribution(
+    serverId: number,
+    channelId: number,
+    userId: string,
+    deviceId: string,
+    distributionId: string,
+): void {
+    const db = getDatabase();
+    db.prepare(
+        'DELETE FROM e2ee_sender_keys WHERE server_id = ? AND channel_id = ? AND user_id = ? AND device_id = ? AND distribution_id = ?',
+    ).run(serverId, channelId, userId, deviceId, distributionId);
+}
+
+export function loadAllSenderKeys(
+    serverId: number,
+): Array<{ channelId: number; userId: string; deviceId: string; distributionId: string; serializedState: string }> {
+    const db = getDatabase();
+    const rows = db
+        .prepare('SELECT channel_id, user_id, device_id, distribution_id, sender_key_data FROM e2ee_sender_keys WHERE server_id = ?')
+        .all(serverId) as Array<{
+        channel_id: number;
+        user_id: string;
+        device_id: string;
+        distribution_id: string;
+        sender_key_data: Buffer;
+    }>;
+
+    return rows.map((row) => ({
+        channelId: row.channel_id,
+        userId: row.user_id,
+        deviceId: row.device_id,
+        distributionId: row.distribution_id,
+        serializedState: decryptStringFromStorage(row.sender_key_data),
+    }));
 }

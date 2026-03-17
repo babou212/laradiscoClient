@@ -1,5 +1,3 @@
-// User types - migrated from web client
-
 export type UserStatusType = 'online' | 'idle' | 'dnd' | 'offline';
 
 export interface UserRole {

@@ -2,8 +2,8 @@ import api from '@/lib/api';
 import { usePresenceStore } from '@/stores/presence';
 import type { UserStatusType } from '@/types';
 
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity → idle
-const ACTIVITY_THROTTLE_MS = 30_000; // Only check activity every 30s
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const ACTIVITY_THROTTLE_MS = 30_000;
 
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let lastActivityCheck = 0;

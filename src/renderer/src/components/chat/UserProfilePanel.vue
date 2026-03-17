@@ -153,16 +153,21 @@ const handleClose = () => {
                     </div>
                 </div>
 
-                <div v-if="!loading" class="bg-background/50 rounded-lg p-3">
+                <div class="bg-background/50 rounded-lg p-3">
                     <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Member Since</h3>
-                    <p class="text-popover-foreground mt-1 text-sm">
+                    <div v-if="loading" class="bg-muted mt-1 h-5 w-24 animate-pulse rounded"></div>
+                    <p v-else class="text-popover-foreground mt-1 text-sm">
                         {{ memberSince }}
                     </p>
                 </div>
 
-                <div v-if="!loading && fullUser?.roles?.length" class="bg-background/50 rounded-lg p-3">
+                <div v-if="loading || fullUser?.roles?.length" class="bg-background/50 rounded-lg p-3">
                     <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Roles</h3>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
+                    <div v-if="loading" class="mt-2 flex flex-wrap gap-1.5">
+                        <span class="bg-muted h-6 w-16 animate-pulse rounded-full"></span>
+                        <span class="bg-muted h-6 w-20 animate-pulse rounded-full"></span>
+                    </div>
+                    <div v-else class="mt-2 flex flex-wrap gap-1.5">
                         <span
                             v-for="role in fullUser.roles"
                             :key="role.id"

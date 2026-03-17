@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import DOMPurify from 'dompurify';
 import { CornerDownRight, ExternalLink, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import type { MessageData } from '@/types/chat';
@@ -88,6 +88,65 @@ const groupedReactions = computed(() => {
     return Array.from(map.values());
 });
 
+const messageRef = ref<HTMLElement | null>(null);
+const emojiPickerPosition = ref<'above' | 'below'>('above');
+
+watch(
+    () => props.showEmojiPicker,
+    async (show) => {
+        if (show && messageRef.value) {
+            await nextTick();
+            const rect = messageRef.value.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            emojiPickerPosition.value = rect.top < viewportHeight / 2 ? 'below' : 'above';
+        }
+    },
+);
+
+const copyToClipboard = (text: string): void => {
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+};
+
+const fallbackCopy = (text: string): void => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+};
+
+const handleCodeCopy = (e: MouseEvent) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.code-block-copy');
+    if (!btn) return;
+    const encoded = btn.dataset.code;
+    if (!encoded) return;
+    const tmp = document.createElement('textarea');
+    tmp.innerHTML = encoded;
+    copyToClipboard(tmp.value);
+    const original = btn.innerHTML;
+    btn.innerHTML = checkIcon;
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.innerHTML = original;
+        btn.classList.remove('copied');
+    }, 2000);
+};
+
+onMounted(() => {
+    messageRef.value?.addEventListener('click', handleCodeCopy);
+});
+
+onUnmounted(() => {
+    messageRef.value?.removeEventListener('click', handleCodeCopy);
+});
+
 const handleEditKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -158,51 +217,25 @@ const isGifUrl = computed(() => {
     );
 });
 
-const escapeHtml = (text: string): string =>
-    text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
-const parseMentions = (text: string): string => {
-    const escaped = escapeHtml(text);
-
-    const html = escaped.replace(/@(everyone|here|\w+)/g, (match, name) => {
-        const isSpecial = name === 'everyone' || name === 'here';
-        const classes = isSpecial
-            ? 'mention mention-special cursor-pointer rounded bg-primary/20 px-1 py-0.5 font-medium text-primary hover:bg-primary/30'
-            : 'mention mention-user cursor-pointer rounded bg-primary/20 px-1 py-0.5 font-medium text-primary hover:bg-primary/30';
-        const safeName = escapeHtml(name);
-        return `<span class="${classes}" data-mention="${safeName}">${escapeHtml(match)}</span>`;
-    });
-
-    return DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: ['span'],
-        ALLOWED_ATTR: ['class', 'data-mention'],
-    });
-};
-
 const renderedContent = computed(() => {
-    return parseMentions(displayContent.value);
+    return renderMarkdownWithMentions(displayContent.value);
 });
 
 const renderedContentWithoutYoutube = computed(() => {
     if (!messageWithoutYoutubeUrl.value) return '';
-    return parseMentions(messageWithoutYoutubeUrl.value);
+    return renderMarkdownWithMentions(messageWithoutYoutubeUrl.value);
 });
 </script>
 
 <template>
-    <div class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
+    <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
         <div
             class="bg-primary text-primary-foreground flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
         >
             {{ message.user.username[0].toUpperCase() }}
         </div>
 
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span class="text-sm font-semibold">
                     {{ message.user.username }}
@@ -261,14 +294,14 @@ const renderedContentWithoutYoutube = computed(() => {
 
                 <div
                     v-else-if="messageWithoutYoutubeUrl && !youtubeVideoId"
-                    class="text-sm wrap-break-word whitespace-pre-wrap"
+                    class="prose-chat text-sm wrap-break-word"
                     v-html="renderedContent"
                 />
 
                 <template v-else-if="youtubeVideoId">
                     <div
                         v-if="messageWithoutYoutubeUrl"
-                        class="mb-2 text-sm wrap-break-word whitespace-pre-wrap"
+                        class="prose-chat mb-2 text-sm wrap-break-word"
                         v-html="renderedContentWithoutYoutube"
                     />
                     <div class="border-border mt-2 max-w-md overflow-hidden rounded-lg border bg-black">
@@ -378,7 +411,8 @@ const renderedContentWithoutYoutube = computed(() => {
 
         <EmojiPicker
             v-if="showEmojiPicker"
-            class="emoji-picker-container absolute -top-3 right-20 z-10"
+            class="emoji-picker-container absolute right-20 z-10"
+            :class="emojiPickerPosition === 'above' ? 'bottom-full mb-1' : 'top-8'"
             @select="emit('toggleReaction', $event)"
         />
     </div>

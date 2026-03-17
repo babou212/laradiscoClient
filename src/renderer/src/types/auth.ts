@@ -1,5 +1,3 @@
-// Auth types - migrated from web client
-
 export type User = {
     id: number;
     name: string;

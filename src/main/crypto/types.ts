@@ -77,16 +77,17 @@ export interface EncryptedMessagePayload {
 }
 
 export interface KeyBackupBundle {
+    version: number;
     userIdentityPrivateKey: string;
     deviceIdentityPrivateKey: string;
-    signedPreKeyPrivate: string;
-    signedPreKeyId: number;
+    sourceDeviceId: string;
+    signedPreKeys: Array<{ id: number; privateKey: string }>;
     oneTimePreKeys: Array<{ id: number; privateKey: string }>;
     senderKeys: Array<{
         channelId: number;
+        userId: string;
+        deviceId: string;
         distributionId: string;
-        chainKey: string;
-        signingPrivateKey: string;
-        chainIndex: number;
+        state: string;
     }>;
 }

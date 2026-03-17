@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Hash, MessageSquare, ShieldCheck, Search } from 'lucide-vue-next';
+import { Hash, MessageSquare, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
@@ -49,6 +49,33 @@ const { generateTokensForMessage } = useEncryptedSearch();
 const currentUser = computed(() => authStore.user);
 const sendError = ref<string | null>(null);
 const showSearch = ref(false);
+const rateLimitedUntil = ref<number | null>(null);
+const rateLimitCountdown = ref(0);
+let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
+
+const isRateLimited = computed(() => rateLimitedUntil.value !== null && Date.now() < rateLimitedUntil.value);
+
+function startRateLimitCooldown(retryAfterSeconds: number): void {
+    rateLimitedUntil.value = Date.now() + retryAfterSeconds * 1000;
+    rateLimitCountdown.value = retryAfterSeconds;
+    sendError.value = `You're sending too many messages. Please wait ${retryAfterSeconds} seconds.`;
+
+    if (rateLimitTimer) clearInterval(rateLimitTimer);
+    rateLimitTimer = setInterval(() => {
+        if (!rateLimitedUntil.value || Date.now() >= rateLimitedUntil.value) {
+            rateLimitedUntil.value = null;
+            rateLimitCountdown.value = 0;
+            sendError.value = null;
+            if (rateLimitTimer) {
+                clearInterval(rateLimitTimer);
+                rateLimitTimer = null;
+            }
+        } else {
+            rateLimitCountdown.value = Math.ceil((rateLimitedUntil.value - Date.now()) / 1000);
+            sendError.value = `You're sending too many messages. Please wait ${rateLimitCountdown.value}s.`;
+        }
+    }, 1000);
+}
 
 function extractMentionMetadata(content: string): {
     userIds: number[];
@@ -84,7 +111,6 @@ const editingMessageId = ref<number | null>(null);
 const editContent = ref('');
 const emojiPickerMessageId = ref<number | null>(null);
 const replyingToMessage = ref<MessageData | null>(null);
-const showSafetyNumber = ref(false);
 const isLoadingMore = ref(false);
 const userIsNearBottom = ref(true);
 
@@ -166,13 +192,11 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
         if (isDm) {
             senderKeyFetchPromise = e2ee
                 .fetchAndProcessDmSenderKeys(channelId)
-                .then(() => e2ee.requestDmSenderKeys(channelId))
                 .then(() => {})
                 .catch(() => {});
         } else {
             senderKeyFetchPromise = e2ee
                 .fetchAndProcessSenderKeys(channelId)
-                .then(() => e2ee.requestSenderKeys(channelId))
                 .then(() => {})
                 .catch(() => {});
         }
@@ -197,8 +221,8 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     try {
                         const parsed = JSON.parse(data.message.content);
                         msgSenderDeviceId = parsed.sender_device_id ?? '';
-                    } catch {
-                        /* not valid JSON */
+                    } catch (error) {
+                        console.error(error);
                     }
                 }
                 const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
@@ -218,7 +242,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                         }
                     }
                 } else if (!data.message.is_encrypted) {
-                    // Unencrypted message from another device — display as-is
                 } else {
                     data.message.decrypted_content = '[Message sent from another device]';
                 }
@@ -252,8 +275,8 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                         try {
                             const parsed = JSON.parse(data.message.content);
                             senderDeviceId = parsed.sender_device_id ?? '';
-                        } catch {
-                            /* not valid JSON */
+                        } catch (error) {
+                            console.error(error);
                         }
                     }
                     const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
@@ -286,7 +309,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 } catch (decryptErr) {
                     const errMsg = decryptErr instanceof Error ? decryptErr.message : String(decryptErr);
                     if (errMsg.includes('Need sender key distribution')) {
-                        // Sender key not available yet — don't mark as permanently failed
                     } else {
                         update.decrypt_error = true;
                     }
@@ -348,8 +370,8 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     } else {
                         await e2ee.ensureSenderKeyDistributed(channelId, true);
                     }
-                } catch {
-                    // Failed to redistribute sender key
+                } catch (error) {
+                    console.error(error);
                 }
             }
         })
@@ -357,14 +379,14 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
             if (e2eeStore.isReady && props.channel?.id) {
                 try {
                     if (isDm) {
-                        await e2ee.fetchAndProcessDmSenderKeys(channelId);
+                        await e2ee.fetchAndProcessDmSenderKeys(channelId, true);
                         await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
                     } else {
-                        await e2ee.fetchAndProcessSenderKeys(channelId);
+                        await e2ee.fetchAndProcessSenderKeys(channelId, true);
                         await e2ee.retryPendingDecryptions(activeMessages.value, channelId);
                     }
-                } catch {
-                    // Failed to process redistributed sender keys
+                } catch (error) {
+                    console.error(error);
                 }
             }
         })
@@ -372,18 +394,18 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
             if (isDm && e2eeStore.isReady) {
                 try {
                     await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                } catch {
-                    // Failed to redistribute DM sender key
+                } catch (error) {
+                    console.error(error);
                 }
             }
         })
         .listen('DmSenderKeyDistributed', async () => {
             if (isDm && e2eeStore.isReady && props.channel?.id) {
                 try {
-                    await e2ee.fetchAndProcessDmSenderKeys(channelId);
+                    await e2ee.fetchAndProcessDmSenderKeys(channelId, true);
                     await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
-                } catch {
-                    // Failed to process redistributed DM sender keys
+                } catch (error) {
+                    console.error(error);
                 }
             }
         });
@@ -436,16 +458,16 @@ watch(isStoreLoadingMessages, async (loading, wasLoading) => {
                     const hasPending = activeMessages.value.some(
                         (m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error,
                     );
-                    if (!hasPending || retryCount > 10) {
+                    if (!hasPending || retryCount > 3) {
                         clearPendingDecryptRetry();
                         return;
                     }
                     if (props.channel?.id) {
                         const chId = props.isDm ? undefined : props.channel.id;
                         const dmId = props.isDm ? props.channel.id : undefined;
-                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId, true);
+                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId, retryCount === 1);
                     }
-                }, 5_000);
+                }, 15_000);
             }
         }
         userIsNearBottom.value = true;
@@ -471,6 +493,7 @@ onUnmounted(() => {
     leaveChannel();
     cancelScrollRetry();
     clearPendingDecryptRetry();
+    if (rateLimitTimer) clearInterval(rateLimitTimer);
     document.removeEventListener('click', handleClickOutside);
 });
 
@@ -510,6 +533,11 @@ const handleScroll = async () => {
 
 const sendMessage = async (content: string) => {
     if (!props.channel?.id) return;
+
+    if (isRateLimited.value) {
+        return;
+    }
+
     sendError.value = null;
 
     const mentionMeta = extractMentionMetadata(content);
@@ -615,8 +643,15 @@ const sendMessage = async (content: string) => {
                 activeMessages.value.splice(idx, 1, serverMsg);
             }
         }
-    } catch {
+    } catch (error: any) {
         activeRemoveMessage(optimisticMessage.id);
+
+        if (error?.response?.status === 429) {
+            const retryAfter = parseInt(error.response.headers?.['retry-after'] ?? '60', 10);
+            startRateLimitCooldown(retryAfter);
+        } else {
+            sendError.value = 'Failed to send message. Please try again.';
+        }
     }
 };
 
@@ -772,14 +807,6 @@ const emitTyping = () => {
                 >
                     <Search :size="18" />
                 </button>
-                <button
-                    v-if="isDm && e2eeStore.isReady && channel?.other_user"
-                    class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
-                    title="Verify safety number"
-                    @click="showSafetyNumber = true"
-                >
-                    <ShieldCheck :size="18" />
-                </button>
                 <NotificationBell />
             </div>
         </div>
@@ -847,6 +874,7 @@ const emitTyping = () => {
             v-if="isDm || channelPermissions?.canSendMessages !== false"
             :channel-name="channel?.name"
             :replying-to="replyingToMessage"
+            :disabled="isRateLimited"
             @send="sendMessage"
             @typing="emitTyping"
             @cancel-reply="replyingToMessage = null"
@@ -854,14 +882,6 @@ const emitTyping = () => {
         <div v-else class="border-border bg-muted/50 text-muted-foreground border-t px-4 py-3 text-center text-sm">
             You do not have permission to send messages in this channel.
         </div>
-
-        <SafetyNumberDialog
-            v-if="showSafetyNumber && channel?.other_user"
-            :open="showSafetyNumber"
-            :user-id="channel.other_user.id"
-            :username="channel.other_user.username"
-            @close="showSafetyNumber = false"
-        />
 
         <SearchMessages
             v-if="showSearch && channel"
@@ -871,7 +891,6 @@ const emitTyping = () => {
             @close="showSearch = false"
             @navigate-to-message="
                 (id) => {
-                    /* TODO: scroll to message */
                 }
             "
         />

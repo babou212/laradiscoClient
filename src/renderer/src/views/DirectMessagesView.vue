@@ -24,6 +24,7 @@ const channelForPanel = computed(() => {
 
 onMounted(async () => {
     await dmStore.fetchDmGroups();
+    dmStore.decryptLastMessages();
     await presenceStore.fetchMembers();
 
     const threadId = Number(route.params.threadId);

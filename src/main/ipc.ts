@@ -106,7 +106,6 @@ export function registerIpcHandlers(): void {
 
             const data = body.data;
 
-            // Two-factor authentication required — pass through to renderer
             if (data.two_factor) {
                 return {
                     success: false,
@@ -196,8 +195,8 @@ export function registerIpcHandlers(): void {
                         Accept: 'application/json',
                     },
                 });
-            } catch {
-                // Server may be unreachable — still remove local session
+            } catch (error) {
+                console.error(error);
             }
             removeAuthSession(serverId);
         }

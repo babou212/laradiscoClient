@@ -3,13 +3,9 @@ import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
 import type { MessageData } from '@/types/chat';
 
-/**
- * Vue composable wrapping the E2EE IPC bridge (`window.api.e2ee.*`)
- * and the server-side E2EE API endpoints.
- *
- * All cryptographic operations happen in the Electron main process;
- * this composable merely orchestrates IPC calls and HTTP requests.
- */
+let autoBackupTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_BACKUP_DEBOUNCE = 5_000;
+
 export function useE2EE() {
     function getServerId(): number {
         const serverStore = useServerStore();
@@ -23,47 +19,47 @@ export function useE2EE() {
         return authStore.user?.id;
     }
 
-    /** Check whether E2EE keys exist locally for the active server and current user. */
+    function scheduleAutoBackup(): void {
+        if (autoBackupTimer) clearTimeout(autoBackupTimer);
+        autoBackupTimer = setTimeout(async () => {
+            autoBackupTimer = null;
+            try {
+                await autoUpdateBackup();
+            } catch (error) {
+                console.error(error);
+            }
+        }, AUTO_BACKUP_DEBOUNCE);
+    }
+
     async function isSetup(): Promise<boolean> {
         return window.api.e2ee.isSetup(getServerId(), getUserId());
     }
 
-    /** Get this device's UUID (null if not set up or belongs to different user). */
     async function getDeviceId(): Promise<string | null> {
         return window.api.e2ee.getDeviceId(getServerId(), getUserId());
     }
 
-    /**
-     * First-time E2EE setup: generates User Identity Key + Device keys,
-     * registers them with the server. Returns the setup result.
-     */
     async function setup(deviceName: string) {
         const serverId = getServerId();
         const userId = getUserId();
         const result = await window.api.e2ee.setup(serverId, deviceName, userId);
 
-        // Register identity key on server (handle 409 if already registered)
         try {
             await api.post('/e2ee/identity/register', {
                 identity_key: result.userIdentityKey,
             });
         } catch (err: any) {
             if (err.response?.status === 409) {
-                // Identity already exists on the server. Check whether the
-                // existing key matches before deciding to reset.
                 try {
                     const existing = await api.get(`/e2ee/identity/${userId}`);
                     if (existing.data?.identity_key === result.userIdentityKey) {
-                        // Same key — no reset needed, just proceed to device registration
                     } else {
-                        // Different key — must reset (new identity generated locally)
                         await api.delete('/e2ee/identity/reset');
                         await api.post('/e2ee/identity/register', {
                             identity_key: result.userIdentityKey,
                         });
                     }
                 } catch {
-                    // Couldn't verify — fall back to reset for safety
                     await api.delete('/e2ee/identity/reset');
                     await api.post('/e2ee/identity/register', {
                         identity_key: result.userIdentityKey,
@@ -74,7 +70,6 @@ export function useE2EE() {
             }
         }
 
-        // Register device on server
         await api.post('/e2ee/devices/register', {
             device_id: result.deviceId,
             device_name: result.deviceName,
@@ -92,17 +87,11 @@ export function useE2EE() {
         return result;
     }
 
-    /**
-     * Multi-device setup: reuses restored User Identity Key, generates
-     * new device keys, registers them with the server.
-     */
     async function setupDevice(deviceName: string) {
         const serverId = getServerId();
         const userId = getUserId();
         const result = await window.api.e2ee.setupDevice(serverId, deviceName, userId);
 
-        // Verify local identity key matches server before registering device
-        // to prevent registering a device signed with a stale/mismatched key.
         try {
             const identityResponse = await api.get(`/e2ee/identity/${userId}`);
             const serverIdentityKey = identityResponse.data?.identity_key;
@@ -112,16 +101,12 @@ export function useE2EE() {
                 );
             }
         } catch (err: any) {
-            // 404 means no identity registered yet — fine, setup() should be used instead
             if (err.response?.status === 404) {
                 throw new Error('No identity key registered on server. Use full setup instead of setupDevice.');
             }
-            // Re-throw our own mismatch error
             if (err.message?.includes('does not match')) throw err;
-            // Network errors — proceed cautiously
         }
 
-        // Register device on server
         await api.post('/e2ee/devices/register', {
             device_id: result.deviceId,
             device_name: result.deviceName,
@@ -139,33 +124,29 @@ export function useE2EE() {
         return result;
     }
 
-    /**
-     * Track which device IDs we've already distributed our sender key to,
-     * per channel. This allows incremental distribution to new members
-     * without re-encrypting for devices that already have the key.
-     */
     const distributedDevicesPerChannel = new Map<number, Set<string>>();
 
-    /** Timestamp of the last member bundle check per channel */
     const lastMemberCheckPerChannel = new Map<number, number>();
 
-    /** How often (ms) to re-check for new channel members. */
-    const MEMBER_CHECK_INTERVAL = 10_000; // 10 seconds
 
-    /**
-     * Encrypt a channel message using Sender Keys.
-     * Returns the encrypted payload string to send as message content.
-     * Ensures sender key is created and distributed to ALL current channel
-     * members — including any who joined since the last distribution.
-     */
+    const MEMBER_CHECK_INTERVAL = 5 * 60_000;
+
+    const distributionFailures = new Map<number, { count: number; backoffUntil: number }>();
+    const DISTRIBUTION_BACKOFF_BASE = 5_000;
+
+    const lastSenderKeyFetchPerChannel = new Map<number, number>();
+    const lastSenderKeyFetchPerDmGroup = new Map<number, number>();
+    const SENDER_KEY_FETCH_INTERVAL = 60_000;
+    const inFlightSenderKeyFetch = new Map<number, Promise<void>>();
+    const inFlightDmSenderKeyFetch = new Map<number, Promise<void>>();
+
     async function encryptForChannel(channelId: number, plaintext: string): Promise<string> {
         const serverId = getServerId();
 
-        // Ensure sender key is distributed to all current members (incremental)
         try {
             await ensureSenderKeyDistributed(channelId);
-        } catch {
-            // Sender key distribution failed (may already exist)
+        } catch (error) {
+            console.error(error);
         }
 
         return window.api.e2ee.encrypt({
@@ -176,28 +157,20 @@ export function useE2EE() {
         });
     }
 
-    /**
-     * Ensure our sender key is distributed to all current channel members.
-     * On first call, creates the sender key and distributes to everyone.
-     * On subsequent calls, only distributes to devices added since the last call
-     * (e.g. new members who joined the channel or set up E2EE after initial distribution).
-     *
-     * @param force — skip the rate-limit check and re-check members immediately
-     *                (used when responding to a SenderKeyNeeded event).
-     */
     async function ensureSenderKeyDistributed(channelId: number, force = false) {
         const now = Date.now();
         const lastCheck = lastMemberCheckPerChannel.get(channelId) ?? 0;
         const hasDistributed = distributedDevicesPerChannel.has(channelId);
 
-        // After initial distribution, only re-check for new members periodically
+        const failure = distributionFailures.get(channelId);
+        if (failure && now < failure.backoffUntil) {
+            return;
+        }
+
         if (!force && hasDistributed && now - lastCheck < MEMBER_CHECK_INTERVAL) {
             return;
         }
 
-        // When force=true (e.g. responding to SenderKeyNeeded), clear the
-        // tracking so we re-distribute to ALL devices — not just new ones.
-        // A device may have missed or failed to decrypt a previous distribution.
         if (force) {
             distributedDevicesPerChannel.delete(channelId);
         }
@@ -206,14 +179,12 @@ export function useE2EE() {
         const distribution = await window.api.e2ee.createSenderKey(serverId, channelId);
         const ourDeviceId = (await getDeviceId()) ?? '';
 
-        // Fetch all current channel members' key bundles
         const membersResponse = await api.get(`/e2ee/channels/${channelId}/members/bundles`);
         const memberBundles: Array<{
             user_id: number;
             devices: Array<{ device_id: string; device_identity_key: string }>;
         }> = membersResponse.data ?? [];
 
-        // Determine which devices we haven't distributed to yet
         const alreadyDistributed = distributedDevicesPerChannel.get(channelId) ?? new Set<string>();
         const newDistributions: Array<{
             recipient_user_id: number;
@@ -244,40 +215,43 @@ export function useE2EE() {
         }
 
         if (newDistributions.length > 0) {
-            await api.post(`/e2ee/channels/${channelId}/sender-keys`, {
-                device_id: ourDeviceId,
-                distribution_id: distribution.distributionId,
-                distributions: newDistributions,
-            });
+            try {
+                await api.post(`/e2ee/channels/${channelId}/sender-keys`, {
+                    device_id: ourDeviceId,
+                    distribution_id: distribution.distributionId,
+                    distributions: newDistributions,
+                });
+
+                distributionFailures.delete(channelId);
+            } catch (err: any) {
+                const failCount = (failure?.count ?? 0) + 1;
+                const backoff = DISTRIBUTION_BACKOFF_BASE * Math.pow(2, Math.min(failCount - 1, 5));
+                distributionFailures.set(channelId, { count: failCount, backoffUntil: Date.now() + backoff });
+                throw err;
+            }
         }
 
-        // Update tracking with all current member devices
         const updatedSet = new Set(alreadyDistributed);
         for (const d of newDistributions) {
             updatedSet.add(d.recipient_device_id);
         }
         distributedDevicesPerChannel.set(channelId, updatedSet);
         lastMemberCheckPerChannel.set(channelId, Date.now());
+
+        scheduleAutoBackup();
     }
 
-    /**
-     * Per-DM-group tracking, mirroring the channel equivalents above.
-     */
     const distributedDevicesPerDmGroup = new Map<number, Set<string>>();
     const lastMemberCheckPerDmGroup = new Map<number, number>();
+    const dmDistributionFailures = new Map<number, { count: number; backoffUntil: number }>();
 
-    /**
-     * Encrypt a DM using Sender Keys (same protocol as channels).
-     * Ensures our sender key is distributed to all DM group participants.
-     */
     async function encryptForDM(dmGroupId: number, plaintext: string): Promise<string> {
         const serverId = getServerId();
 
-        // Ensure sender key is distributed to all DM group participants (incremental)
         try {
             await ensureDmSenderKeyDistributed(dmGroupId);
-        } catch {
-            // DM sender key distribution failed (may already exist)
+        } catch (error) {
+            console.error(error);
         }
 
         return window.api.e2ee.encrypt({
@@ -288,14 +262,15 @@ export function useE2EE() {
         });
     }
 
-    /**
-     * Ensure our sender key is distributed to all DM group participants.
-     * Same incremental pattern as `ensureSenderKeyDistributed` but hits DM API routes.
-     */
     async function ensureDmSenderKeyDistributed(dmGroupId: number, force = false) {
         const now = Date.now();
         const lastCheck = lastMemberCheckPerDmGroup.get(dmGroupId) ?? 0;
         const hasDistributed = distributedDevicesPerDmGroup.has(dmGroupId);
+
+        const failure = dmDistributionFailures.get(dmGroupId);
+        if (failure && now < failure.backoffUntil) {
+            return;
+        }
 
         if (!force && hasDistributed && now - lastCheck < MEMBER_CHECK_INTERVAL) {
             return;
@@ -306,11 +281,9 @@ export function useE2EE() {
         }
 
         const serverId = getServerId();
-        // Use negated DM group ID for local sender key storage to avoid collision with channel IDs
         const distribution = await window.api.e2ee.createSenderKey(serverId, -dmGroupId);
         const ourDeviceId = (await getDeviceId()) ?? '';
 
-        // Fetch all DM group participants' key bundles
         const membersResponse = await api.get(`/e2ee/dm-groups/${dmGroupId}/members/bundles`);
         const memberBundles: Array<{
             user_id: number;
@@ -347,11 +320,20 @@ export function useE2EE() {
         }
 
         if (newDistributions.length > 0) {
-            await api.post(`/e2ee/dm-groups/${dmGroupId}/sender-keys`, {
-                device_id: ourDeviceId,
-                distribution_id: distribution.distributionId,
-                distributions: newDistributions,
-            });
+            try {
+                await api.post(`/e2ee/dm-groups/${dmGroupId}/sender-keys`, {
+                    device_id: ourDeviceId,
+                    distribution_id: distribution.distributionId,
+                    distributions: newDistributions,
+                });
+
+                dmDistributionFailures.delete(dmGroupId);
+            } catch (err: any) {
+                const failCount = (failure?.count ?? 0) + 1;
+                const backoff = DISTRIBUTION_BACKOFF_BASE * Math.pow(2, Math.min(failCount - 1, 5));
+                dmDistributionFailures.set(dmGroupId, { count: failCount, backoffUntil: Date.now() + backoff });
+                throw err;
+            }
         }
 
         const updatedSet = new Set(alreadyDistributed);
@@ -360,13 +342,10 @@ export function useE2EE() {
         }
         distributedDevicesPerDmGroup.set(dmGroupId, updatedSet);
         lastMemberCheckPerDmGroup.set(dmGroupId, Date.now());
+
+        scheduleAutoBackup();
     }
 
-    /**
-     * Decrypt a received message (channel or DM).
-     * Parses the encrypted payload and delegates to main process.
-     * Pass either `channelId` (for channel messages) or `dmGroupId` (for DM messages).
-     */
     async function decrypt(
         encryptedContent: string,
         senderId: number,
@@ -385,7 +364,7 @@ export function useE2EE() {
         });
     }
 
-    async function decryptMessage(message: MessageData, channelId?: number, dmGroupId?: number): Promise<void> {
+    async function decryptMessage(message: MessageData, channelId?: number, dmGroupId?: number, skipFetch = false): Promise<void> {
         if (!message.is_encrypted) return;
         if (message.decrypted_content !== undefined) return;
         if (message.decrypt_error) return;
@@ -398,8 +377,8 @@ export function useE2EE() {
             try {
                 const parsed = JSON.parse(message.content);
                 senderDeviceId = parsed.sender_device_id ?? '';
-            } catch {
-                // content might not be valid JSON, proceed with empty device id
+            } catch (error) {
+                console.error(error);
             }
         }
 
@@ -420,6 +399,8 @@ export function useE2EE() {
                     message.decrypt_error = true;
                     return;
                 }
+
+                if (skipFetch) return;
 
                 try {
                     if (dmGroupId != null) {
@@ -452,6 +433,32 @@ export function useE2EE() {
             message.decrypted_content = undefined;
             message.decrypt_error = true;
         }
+
+        if (message.reply_to?.is_encrypted && message.reply_to.decrypted_content === undefined && !message.reply_to.decrypt_error) {
+            await decryptReplyTo(message.reply_to, channelId, dmGroupId);
+        }
+    }
+
+    async function decryptReplyTo(
+        reply: NonNullable<MessageData['reply_to']>,
+        channelId?: number,
+        dmGroupId?: number,
+    ): Promise<void> {
+        let senderDeviceId = '';
+        try {
+            const parsed = JSON.parse(reply.content);
+            senderDeviceId = parsed.sender_device_id ?? '';
+        } catch (error) {
+            console.error(error);
+        }
+
+        try {
+            const plaintext = await decrypt(reply.content, reply.user.id, senderDeviceId, channelId, dmGroupId);
+            reply.decrypted_content = plaintext;
+            reply.decrypt_error = false;
+        } catch {
+            reply.decrypt_error = true;
+        }
     }
 
     const decryptionQueues = new Map<string, Promise<void>>();
@@ -480,8 +487,40 @@ export function useE2EE() {
             );
             if (encrypted.length === 0) return;
 
+            const needsSenderKey: MessageData[] = [];
             for (const m of encrypted) {
-                await decryptMessage(m, channelId, dmGroupId);
+                await decryptMessage(m, channelId, dmGroupId, true);
+                if (m.decrypted_content === undefined && !m.decrypt_error) {
+                    needsSenderKey.push(m);
+                }
+            }
+
+            if (needsSenderKey.length > 0) {
+                try {
+                    if (dmGroupId != null) {
+                        await fetchAndProcessDmSenderKeys(dmGroupId, true);
+                    } else if (channelId != null) {
+                        await fetchAndProcessSenderKeys(channelId, true);
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+
+                for (const m of needsSenderKey) {
+                    if (m.decrypted_content !== undefined || m.decrypt_error) continue;
+                    await decryptMessage(m, channelId, dmGroupId, true);
+                }
+
+                const stillPending = needsSenderKey.some(
+                    (m) => m.decrypted_content === undefined && !m.decrypt_error,
+                );
+                if (stillPending) {
+                    if (dmGroupId != null) {
+                        requestDmSenderKeys(dmGroupId).catch(() => {});
+                    } else if (channelId != null) {
+                        requestSenderKeys(channelId).catch(() => {});
+                    }
+                }
             }
         });
     }
@@ -508,8 +547,8 @@ export function useE2EE() {
                 } else if (channelId != null) {
                     await fetchAndProcessSenderKeys(channelId);
                 }
-            } catch {
-                // Fetch failed — still attempt decryption with locally cached keys
+            } catch (error) {
+                console.error(error);
             }
         }
 
@@ -518,27 +557,41 @@ export function useE2EE() {
         }
     }
 
+    const lastSenderKeyRequestPerChannel = new Map<number, number>();
+    const lastSenderKeyRequestPerDmGroup = new Map<number, number>();
+    const SENDER_KEY_REQUEST_INTERVAL = 30_000;
+
     async function requestSenderKeys(channelId: number): Promise<void> {
+        const now = Date.now();
+        const last = lastSenderKeyRequestPerChannel.get(channelId) ?? 0;
+        if (now - last < SENDER_KEY_REQUEST_INTERVAL) return;
+
         const deviceId = (await getDeviceId()) ?? '';
         if (!deviceId) return;
+        lastSenderKeyRequestPerChannel.set(channelId, now);
         try {
             await api.post(`/e2ee/channels/${channelId}/request-sender-keys`, {
                 device_id: deviceId,
             });
-        } catch {
-            // Failed to request sender keys
+        } catch (error) {
+            console.error(error);
         }
     }
 
     async function requestDmSenderKeys(dmGroupId: number): Promise<void> {
+        const now = Date.now();
+        const last = lastSenderKeyRequestPerDmGroup.get(dmGroupId) ?? 0;
+        if (now - last < SENDER_KEY_REQUEST_INTERVAL) return;
+
         const deviceId = (await getDeviceId()) ?? '';
         if (!deviceId) return;
+        lastSenderKeyRequestPerDmGroup.set(dmGroupId, now);
         try {
             await api.post(`/e2ee/dm-groups/${dmGroupId}/request-sender-keys`, {
                 device_id: deviceId,
             });
-        } catch {
-            // Failed to request DM sender keys
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -563,7 +616,7 @@ export function useE2EE() {
 
         for (const member of memberBundles) {
             for (const device of member.devices) {
-                if (device.device_id === ourDeviceId) continue; // skip self
+                if (device.device_id === ourDeviceId) continue;
 
                 const encrypted = await window.api.e2ee.encryptSenderKeyDist({
                     distribution,
@@ -589,69 +642,125 @@ export function useE2EE() {
         return distribution;
     }
 
-    async function fetchAndProcessSenderKeys(channelId: number) {
-        const serverId = getServerId();
-        const deviceId = (await getDeviceId()) ?? '';
-        const response = await api.get(`/e2ee/channels/${channelId}/sender-keys`, {
-            params: { device_id: deviceId },
+    async function fetchAndProcessSenderKeys(channelId: number, force = false) {
+        const now = Date.now();
+        const lastFetch = lastSenderKeyFetchPerChannel.get(channelId) ?? 0;
+        if (!force && now - lastFetch < SENDER_KEY_FETCH_INTERVAL) return;
+
+        const existing = inFlightSenderKeyFetch.get(channelId);
+        if (existing) return existing;
+
+        const promise = _doFetchAndProcessSenderKeys(channelId).finally(() => {
+            inFlightSenderKeyFetch.delete(channelId);
         });
-        const encryptedDists: Array<{
+        inFlightSenderKeyFetch.set(channelId, promise);
+        return promise;
+    }
+
+    async function _doFetchAndProcessSenderKeys(channelId: number) {
+        const serverId = getServerId();
+
+        const response = await api.get(`/e2ee/channels/${channelId}/sender-keys`);
+        lastSenderKeyFetchPerChannel.set(channelId, Date.now());
+
+        const allDists: Array<{
             sender_user_id: number;
             sender_device_id: string;
             distribution_id: string;
+            recipient_device_id: string;
             encrypted_distribution: string;
             ephemeral_public_key: string;
             nonce: string;
         }> = response.data ?? [];
 
-        for (const sk of encryptedDists) {
-            const distribution = await window.api.e2ee.decryptSenderKeyDist({
-                serverId,
-                encryptedDistribution: sk.encrypted_distribution,
-                ephemeralPublicKey: sk.ephemeral_public_key,
-                nonce: sk.nonce,
-            });
+        const processedDistributions = new Set<string>();
+        for (const sk of allDists) {
+            if (processedDistributions.has(sk.distribution_id)) continue;
+            try {
+                const distribution = await window.api.e2ee.decryptSenderKeyDist({
+                    serverId,
+                    encryptedDistribution: sk.encrypted_distribution,
+                    ephemeralPublicKey: sk.ephemeral_public_key,
+                    nonce: sk.nonce,
+                });
 
-            await window.api.e2ee.processSenderKeyDist({
-                serverId,
-                channelId,
-                senderId: String(sk.sender_user_id),
-                senderDeviceId: sk.sender_device_id,
-                distribution,
-            });
+                await window.api.e2ee.processSenderKeyDist({
+                    serverId,
+                    channelId,
+                    senderId: String(sk.sender_user_id),
+                    senderDeviceId: sk.sender_device_id,
+                    distribution,
+                });
+
+                processedDistributions.add(sk.distribution_id);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        if (processedDistributions.size > 0) {
+            scheduleAutoBackup();
         }
     }
 
-    async function fetchAndProcessDmSenderKeys(dmGroupId: number) {
-        const serverId = getServerId();
-        const deviceId = (await getDeviceId()) ?? '';
-        const response = await api.get(`/e2ee/dm-groups/${dmGroupId}/sender-keys`, {
-            params: { device_id: deviceId },
+    async function fetchAndProcessDmSenderKeys(dmGroupId: number, force = false) {
+        const now = Date.now();
+        const lastFetch = lastSenderKeyFetchPerDmGroup.get(dmGroupId) ?? 0;
+        if (!force && now - lastFetch < SENDER_KEY_FETCH_INTERVAL) return;
+
+        const existing = inFlightDmSenderKeyFetch.get(dmGroupId);
+        if (existing) return existing;
+
+        const promise = _doFetchAndProcessDmSenderKeys(dmGroupId).finally(() => {
+            inFlightDmSenderKeyFetch.delete(dmGroupId);
         });
-        const encryptedDists: Array<{
+        inFlightDmSenderKeyFetch.set(dmGroupId, promise);
+        return promise;
+    }
+
+    async function _doFetchAndProcessDmSenderKeys(dmGroupId: number) {
+        const serverId = getServerId();
+
+        const response = await api.get(`/e2ee/dm-groups/${dmGroupId}/sender-keys`);
+        lastSenderKeyFetchPerDmGroup.set(dmGroupId, Date.now());
+
+        const allDists: Array<{
             sender_user_id: number;
             sender_device_id: string;
             distribution_id: string;
+            recipient_device_id: string;
             encrypted_distribution: string;
             ephemeral_public_key: string;
             nonce: string;
         }> = response.data ?? [];
 
-        for (const sk of encryptedDists) {
-            const distribution = await window.api.e2ee.decryptSenderKeyDist({
-                serverId,
-                encryptedDistribution: sk.encrypted_distribution,
-                ephemeralPublicKey: sk.ephemeral_public_key,
-                nonce: sk.nonce,
-            });
+        const processedDistributions = new Set<string>();
+        for (const sk of allDists) {
+            if (processedDistributions.has(sk.distribution_id)) continue;
+            try {
+                const distribution = await window.api.e2ee.decryptSenderKeyDist({
+                    serverId,
+                    encryptedDistribution: sk.encrypted_distribution,
+                    ephemeralPublicKey: sk.ephemeral_public_key,
+                    nonce: sk.nonce,
+                });
 
-            await window.api.e2ee.processSenderKeyDist({
-                serverId,
-                channelId: -dmGroupId,
-                senderId: String(sk.sender_user_id),
-                senderDeviceId: sk.sender_device_id,
-                distribution,
-            });
+                await window.api.e2ee.processSenderKeyDist({
+                    serverId,
+                    channelId: -dmGroupId,
+                    senderId: String(sk.sender_user_id),
+                    senderDeviceId: sk.sender_device_id,
+                    distribution,
+                });
+
+                processedDistributions.add(sk.distribution_id);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        if (processedDistributions.size > 0) {
+            scheduleAutoBackup();
         }
     }
 
@@ -662,8 +771,8 @@ export function useE2EE() {
 
         try {
             await api.delete(`/e2ee/channels/${channelId}/sender-keys`);
-        } catch {
-            // Failed to invalidate server sender keys
+        } catch (error) {
+            console.error(error);
         }
 
         distributedDevicesPerChannel.delete(channelId);
@@ -681,8 +790,8 @@ export function useE2EE() {
 
         try {
             await api.delete(`/e2ee/dm-groups/${dmGroupId}/sender-keys`);
-        } catch {
-            // Failed to invalidate server DM sender keys
+        } catch (error) {
+            console.error(error);
         }
 
         distributedDevicesPerDmGroup.delete(dmGroupId);
@@ -701,12 +810,22 @@ export function useE2EE() {
         const serverId = getServerId();
         const backup = await window.api.e2ee.backupKeys(serverId, pin);
 
-        await api.post('/e2ee/keys/backup', {
+        const payload = {
             encrypted_bundle: backup.encryptedBundle,
             salt: backup.salt,
             nonce: backup.nonce,
             argon2_params: backup.argon2Params,
-        });
+        };
+
+        try {
+            await api.post('/e2ee/keys/backup', payload);
+        } catch (err: any) {
+            if (err.response?.status === 409) {
+                await api.put('/e2ee/keys/backup', payload);
+            } else {
+                throw err;
+            }
+        }
 
         return backup;
     }
@@ -819,6 +938,64 @@ export function useE2EE() {
         return window.api.e2ee.wipeForUserMismatch(serverId, userId);
     }
 
+    async function autoUpdateBackup(): Promise<boolean> {
+        const serverId = getServerId();
+        const hasCachedKey = await window.api.e2ee.hasBackupKey(serverId);
+        if (!hasCachedKey) return false;
+
+        const backup = await window.api.e2ee.autoUpdateBackup(serverId);
+        if (!backup) return false;
+
+        const payload = {
+            encrypted_bundle: backup.encryptedBundle,
+            salt: backup.salt,
+            nonce: backup.nonce,
+            argon2_params: backup.argon2Params,
+        };
+
+        try {
+            await api.put('/e2ee/keys/backup', payload);
+        } catch (err: any) {
+            if (err.response?.status === 404) {
+                await api.post('/e2ee/keys/backup', payload);
+            } else {
+                throw err;
+            }
+        }
+
+        return true;
+    }
+
+    async function bulkFetchSenderKeysAfterRestore(): Promise<void> {
+        try {
+            const categoriesResponse = await api.get('/categories');
+            const categories: Array<{ channels?: Array<{ id: number }> }> = categoriesResponse.data ?? [];
+            for (const cat of categories) {
+                if (!cat.channels) continue;
+                for (const ch of cat.channels) {
+                    await fetchAndProcessSenderKeys(ch.id, true).catch(() => {});
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+
+        try {
+            const dmsResponse = await api.get('/direct-messages');
+            const dms: Array<{ id: number }> = dmsResponse.data ?? [];
+            for (const dm of dms) {
+                await fetchAndProcessDmSenderKeys(dm.id, true).catch(() => {});
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function clearBackupKey(): Promise<void> {
+        const serverId = getServerId();
+        await window.api.e2ee.clearBackupKey(serverId);
+    }
+
     return {
         isSetup,
         getDeviceId,
@@ -843,6 +1020,9 @@ export function useE2EE() {
         backupExists,
         backupKeys,
         restoreKeys,
+        autoUpdateBackup,
+        bulkFetchSenderKeysAfterRestore,
+        clearBackupKey,
         deleteBackup,
         fetchDevices,
         revokeDevice,

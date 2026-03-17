@@ -10,6 +10,12 @@ import { initE2ee } from './crypto';
 import { initDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
+import { initAutoUpdater } from './updater';
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+}
 
 function createWindow(): void {
     const isMac = process.platform === 'darwin';
@@ -64,11 +70,20 @@ function createWindow(): void {
     }
 }
 
+app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+        if (win.isMinimized()) win.restore();
+        win.focus();
+    }
+});
+
 app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
     initE2ee();
     initPushToTalk();
+    initAutoUpdater();
 
     electronApp.setAppUserModelId('com.laradisco.client');
 

@@ -1,4 +1,3 @@
-// Navigation types - adapted from web client (no Inertia dependency)
 import type { Component } from 'vue';
 
 export type BreadcrumbItem = {

@@ -125,13 +125,12 @@ export const useAuthStore = defineStore('auth', () => {
     async function logout(): Promise<void> {
         const serverStore = useServerStore();
 
-        // Wipe E2EE keys from local storage before clearing auth state
         try {
             const { useE2eeStore } = await import('./e2ee');
             const e2eeStore = useE2eeStore();
             await e2eeStore.wipeKeys();
-        } catch {
-            // E2EE store may not be initialized
+        } catch (error) {
+            console.error(error);
         }
 
         if (serverStore.activeServer) {

@@ -1,5 +1,3 @@
-// UI types - migrated from web client
-
 export type Theme =
     | 'default'
     | 'default-dark'

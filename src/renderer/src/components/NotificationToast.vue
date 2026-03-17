@@ -31,6 +31,11 @@ const getDisplayContent = (notification: ToastNotification): string => {
     return data.content;
 };
 
+const getDisplayPreview = (notification: ToastNotification): string => {
+    const content = getDisplayContent(notification);
+    return content.length > 80 ? content.substring(0, 80) + '...' : content;
+};
+
 const handleClick = (notification: ToastNotification) => {
     notificationStore.markAsRead(notification.id);
     notificationStore.dismissToast(notification.id);
@@ -86,8 +91,7 @@ const handleClick = (notification: ToastNotification) => {
                         <div class="mt-0.5 flex items-baseline gap-1.5 text-sm">
                             <span class="font-medium"> {{ toast.data.sender_username }}: </span>
                             <span class="text-muted-foreground truncate">
-                                {{ getDisplayContent(toast).substring(0, 80)
-                                }}{{ getDisplayContent(toast).length > 80 ? '...' : '' }}
+                                {{ getDisplayPreview(toast) }}
                             </span>
                         </div>
                     </div>

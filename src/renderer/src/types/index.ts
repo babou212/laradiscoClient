@@ -1,4 +1,3 @@
-// Types directory - shared TypeScript types
 export * from './auth';
 export * from './chat';
 export * from './navigation';

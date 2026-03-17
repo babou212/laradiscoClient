@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { CornerDownRight, Image, Send, Smile, X } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { CodeXml, CornerDownRight, Send, Smile, X } from 'lucide-vue-next';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
 import GifPicker from './GifPicker.vue';
 import MentionDropdown from './MentionDropdown.vue';
@@ -9,6 +9,7 @@ import type { MessageData } from '@/types/chat';
 interface Props {
     channelName?: string;
     replyingTo?: MessageData | null;
+    disabled?: boolean;
 }
 
 interface Emits {
@@ -17,7 +18,6 @@ interface Emits {
     (e: 'cancelReply'): void;
 }
 
-defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const messageInput = ref('');
@@ -30,11 +30,22 @@ const textareaRef = ref<HTMLTextAreaElement>();
 const emojiPickerRef = ref<HTMLElement>();
 const gifPickerRef = ref<HTMLElement>();
 
+const props = defineProps<Props>();
+
+const replyPreviewContent = computed(() => {
+    if (!props.replyingTo) return '';
+    if (props.replyingTo.is_encrypted) {
+        return props.replyingTo.decrypted_content ?? '[Encrypted message]';
+    }
+    return props.replyingTo.content;
+});
+
 const sendMessage = () => {
-    if (!messageInput.value.trim()) return;
+    if (!messageInput.value.trim() || props.disabled) return;
     emit('send', messageInput.value);
     messageInput.value = '';
     showMentionDropdown.value = false;
+    nextTick(adjustTextareaHeight);
 };
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -94,9 +105,17 @@ const onMentionSelect = (value: string) => {
     }, 0);
 };
 
+const adjustTextareaHeight = () => {
+    const textarea = textareaRef.value;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+};
+
 const handleInput = () => {
     emit('typing');
     detectMention();
+    adjustTextareaHeight();
 };
 
 const onSelectEmoji = (emoji: string) => {
@@ -108,7 +127,29 @@ const onSelectEmoji = (emoji: string) => {
         textareaRef.value?.focus();
         const newPos = cursorPos + emoji.length;
         textareaRef.value?.setSelectionRange(newPos, newPos);
+        adjustTextareaHeight();
     }, 0);
+};
+
+const insertCodeBlock = () => {
+    const textarea = textareaRef.value;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = messageInput.value.slice(start, end);
+    const before = messageInput.value.slice(0, start);
+    const after = messageInput.value.slice(end);
+    messageInput.value = `${before}\`\`\`\n${selected}\n\`\`\`${after}`;
+    nextTick(() => {
+        textarea.focus();
+        if (selected) {
+            textarea.setSelectionRange(start + 4, start + 4 + selected.length);
+        } else {
+            const pos = start + 4;
+            textarea.setSelectionRange(pos, pos);
+        }
+        adjustTextareaHeight();
+    });
 };
 
 const onSelectGif = (gifUrl: string) => {
@@ -151,7 +192,7 @@ onUnmounted(() => {
             <div class="min-w-0 flex-1">
                 <div class="text-primary text-xs font-medium">Replying to {{ replyingTo.user.username }}</div>
                 <div class="text-muted-foreground truncate text-xs">
-                    {{ replyingTo.content.substring(0, 100) }}{{ replyingTo.content.length > 100 ? '...' : '' }}
+                    {{ replyPreviewContent.substring(0, 100) }}{{ replyPreviewContent.length > 100 ? '...' : '' }}
                 </div>
             </div>
             <button
@@ -179,7 +220,7 @@ onUnmounted(() => {
             </div>
 
             <div
-                class="border-input bg-background focus-within:ring-ring flex items-center gap-2 rounded-full border px-4 py-2 shadow-lg focus-within:ring-2"
+                class="border-input bg-background focus-within:ring-ring flex items-end gap-2 rounded-3xl border px-4 py-2 shadow-lg focus-within:ring-2"
             >
                 <button
                     type="button"
@@ -211,21 +252,31 @@ onUnmounted(() => {
                         showEmojiPicker = false;
                     "
                 >
-                    <Image :size="18" />
+                    <span class="text-[11px] font-extrabold leading-none">GIF</span>
+                </button>
+                <button
+                    type="button"
+                    title="Insert code block"
+                    class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
+                    @click="insertCodeBlock"
+                >
+                    <CodeXml :size="18" />
                 </button>
                 <textarea
                     ref="textareaRef"
                     v-model="messageInput"
                     rows="1"
                     class="placeholder:text-muted-foreground flex-1 resize-none bg-transparent py-1.5 text-sm outline-none"
-                    :placeholder="`Message #${channelName || 'channel'}`"
+                    :class="{ 'opacity-50 cursor-not-allowed': props.disabled }"
+                    :placeholder="props.disabled ? 'Sending too fast — please wait…' : `Message #${channelName || 'channel'}`"
+                    :disabled="props.disabled"
                     @keydown="handleKeydown"
                     @input="handleInput"
                 />
                 <button
                     type="button"
                     class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors disabled:opacity-50"
-                    :disabled="!messageInput.trim()"
+                    :disabled="!messageInput.trim() || props.disabled"
                     @click="sendMessage"
                 >
                     <Send :size="18" />

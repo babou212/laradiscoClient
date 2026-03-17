@@ -30,19 +30,12 @@ export const useE2eeStore = defineStore('e2ee', () => {
 
     const needsSetup = computed(() => !isReady.value && !isSettingUp.value);
 
-    /** Interval ID for periodic maintenance */
     let maintenanceInterval: ReturnType<typeof setInterval> | null = null;
 
-    /**
-     * Initialize E2EE state on app boot / login.
-     * Checks if keys exist locally and performs maintenance.
-     * Wipes stale keys if a different user previously owned them.
-     */
     async function initialize(): Promise<void> {
         try {
             error.value = null;
 
-            // Wipe any keys belonging to a previously logged-in user
             await e2ee.wipeIfUserChanged();
 
             const setup = await e2ee.isSetup();
@@ -65,9 +58,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * First-time setup: generate keys and register with server.
-     */
     async function performSetup(deviceName: string): Promise<boolean> {
         isSettingUp.value = true;
         error.value = null;
@@ -84,9 +74,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Multi-device setup: restore identity from backup, then setup device.
-     */
     async function performDeviceSetup(deviceName: string): Promise<boolean> {
         isSettingUp.value = true;
         error.value = null;
@@ -95,6 +82,18 @@ export const useE2eeStore = defineStore('e2ee', () => {
             deviceId.value = result.deviceId;
             isReady.value = true;
             setupStep.value = 'done';
+
+            performMaintenance();
+            if (maintenanceInterval) clearInterval(maintenanceInterval);
+            maintenanceInterval = setInterval(
+                () => {
+                    performMaintenance();
+                },
+                6 * 60 * 60 * 1000,
+            );
+
+            e2ee.bulkFetchSenderKeysAfterRestore().catch(() => {});
+
             return true;
         } catch (err: any) {
             error.value = err.response?.data?.message ?? err.message ?? 'Device setup failed';
@@ -104,9 +103,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Restore keys from PIN-encrypted backup.
-     */
     async function restoreFromBackup(pin: string): Promise<boolean> {
         error.value = null;
         try {
@@ -122,9 +118,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Create and upload encrypted key backup.
-     */
     async function createBackup(pin: string): Promise<boolean> {
         error.value = null;
         try {
@@ -137,9 +130,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Check if a backup exists on the server.
-     */
     async function checkBackup(): Promise<boolean> {
         try {
             hasBackup.value = await e2ee.backupExists();
@@ -149,9 +139,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Fetch and update the list of registered devices.
-     */
     async function loadDevices(): Promise<void> {
         try {
             const result = await e2ee.fetchDevices();
@@ -164,9 +151,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Revoke a device and refresh the list.
-     */
     async function revokeDevice(targetDeviceId: string): Promise<boolean> {
         error.value = null;
         try {
@@ -179,9 +163,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Rename a device and refresh the list.
-     */
     async function renameDevice(targetDeviceId: string, name: string): Promise<boolean> {
         error.value = null;
         try {
@@ -194,9 +175,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Background maintenance: replenish prekeys + rotate signed prekey.
-     */
     async function performMaintenance(): Promise<void> {
         try {
             await e2ee.checkAndReplenishPrekeys();
@@ -211,9 +189,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Delete key backup from server.
-     */
     async function deleteBackup(): Promise<boolean> {
         error.value = null;
         try {
@@ -226,9 +201,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
-    /**
-     * Wipe all local E2EE data.
-     */
     async function wipeKeys(): Promise<void> {
         await e2ee.wipe();
         isReady.value = false;
@@ -237,9 +209,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
         setupStep.value = 'check';
     }
 
-    /**
-     * Reset store state (on logout).
-     */
     function $reset(): void {
         isReady.value = false;
         isSettingUp.value = false;

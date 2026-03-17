@@ -1,4 +1,4 @@
-import { ed25519 } from '@noble/curves/ed25519.js';
+import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 import { ipcMain } from 'electron';
 import { encrypt as aesEncrypt, decrypt as aesDecrypt } from './aes-gcm';
 import { hkdf } from './hkdf';
@@ -13,11 +13,12 @@ import {
     ed25519PublicToX25519,
     x25519DH,
 } from './identity';
-import { encryptKeyBackup, decryptKeyBackup } from './key-backup';
+import { encryptKeyBackup, decryptKeyBackup, encryptKeyBackupWithCachedKey, hasCachedBackupKey, clearCachedBackupKey } from './key-backup';
 import {
     initE2eeTables,
     saveDeviceIdentity,
     getDeviceIdentity,
+    getOwnerUserId,
     storePrivateKey,
     loadPrivateKey,
     loadPublicKey,
@@ -27,6 +28,8 @@ import {
     loadSignedPreKeyIds,
     saveSenderKey,
     loadSenderKey,
+    loadAllSenderKeys,
+    loadAllSenderKeysForSender,
     deleteSenderKeysForChannel,
     wipeIfDifferentUser,
 } from './key-storage';
@@ -36,9 +39,11 @@ import {
     importSenderKeyDistribution,
     senderKeyEncrypt,
     senderKeyDecrypt,
+    serializeSenderKey,
+    deserializeSenderKey,
 } from './sender-keys';
 import { deriveSearchKey, generateSearchTokens, generateSearchTrapdoor } from './sse';
-import type { KeyBackupBundle } from './types';
+import type { KeyBackupBundle, SenderKeyState } from './types';
 
 const ONE_TIME_PREKEY_COUNT = 100;
 const SIGNED_PREKEY_START_ID = 1;
@@ -127,9 +132,13 @@ function registerE2eeIpcHandlers(): void {
         const deviceIdentity = generateDeviceIdentityKeyPair(userIdentityPrivate);
         const deviceId = generateUUID();
 
-        const signedPreKey = generateSignedPreKey(deviceIdentity.privateKey, SIGNED_PREKEY_START_ID);
+        const existingSpkIds = loadSignedPreKeyIds(serverId);
+        const spkStartId = existingSpkIds.length > 0 ? Math.max(...existingSpkIds) + 1 : SIGNED_PREKEY_START_ID;
+        const signedPreKey = generateSignedPreKey(deviceIdentity.privateKey, spkStartId);
 
-        const oneTimePreKeys = generateOneTimePreKeys(1, ONE_TIME_PREKEY_COUNT);
+        const existingOtpIds = loadOneTimePreKeyIds(serverId);
+        const otpStartId = existingOtpIds.length > 0 ? Math.max(...existingOtpIds) + 1 : 1;
+        const oneTimePreKeys = generateOneTimePreKeys(otpStartId, ONE_TIME_PREKEY_COUNT);
 
         storePrivateKey(serverId, 'device_identity', deviceId, deviceIdentity.privateKey, deviceIdentity.publicKey);
 
@@ -271,7 +280,7 @@ function registerE2eeIpcHandlers(): void {
                 };
             },
         ) => {
-            const existing = loadSenderKey(params.serverId, params.channelId, params.senderId, params.senderDeviceId);
+            const existing = loadSenderKey(params.serverId, params.channelId, params.senderId, params.senderDeviceId, params.distribution.distributionId);
             if (
                 existing &&
                 existing.distributionId === params.distribution.distributionId &&
@@ -288,7 +297,7 @@ function registerE2eeIpcHandlers(): void {
 
     ipcMain.handle('e2ee:backupKeys', async (_event, serverId: number, pin: string) => {
         const bundle = buildKeyBackupBundle(serverId);
-        return await encryptKeyBackup(bundle, pin);
+        return await encryptKeyBackup(bundle, pin, serverId);
     });
 
     ipcMain.handle(
@@ -304,13 +313,28 @@ function registerE2eeIpcHandlers(): void {
             },
             pin: string,
         ) => {
-            const bundle = await decryptKeyBackup(backup, pin);
+            const bundle = await decryptKeyBackup(backup, pin, serverId);
             if (!bundle) return { success: false, error: 'Wrong PIN' };
 
             restoreKeysFromBundle(serverId, bundle);
             return { success: true };
         },
     );
+
+    ipcMain.handle('e2ee:autoUpdateBackup', async (_event, serverId: number) => {
+        if (!hasCachedBackupKey(serverId)) return null;
+        const bundle = buildKeyBackupBundle(serverId);
+        return await encryptKeyBackupWithCachedKey(bundle, serverId);
+    });
+
+    ipcMain.handle('e2ee:hasBackupKey', async (_event, serverId: number) => {
+        return hasCachedBackupKey(serverId);
+    });
+
+    ipcMain.handle('e2ee:clearBackupKey', async (_event, serverId?: number) => {
+        clearCachedBackupKey(serverId);
+        return { success: true };
+    });
 
     ipcMain.handle('e2ee:rotateSignedPreKey', async (_event, serverId: number) => {
         const deviceInfo = getDeviceIdentity(serverId);
@@ -359,6 +383,7 @@ function registerE2eeIpcHandlers(): void {
 
     ipcMain.handle('e2ee:wipe', async (_event, serverId: number) => {
         deleteAllE2eeKeys(serverId);
+        clearCachedBackupKey(serverId);
         return { success: true };
     });
 
@@ -421,23 +446,35 @@ function registerE2eeIpcHandlers(): void {
             const deviceInfo = getDeviceIdentity(serverId);
             if (!deviceInfo) throw new Error('Device not set up');
 
-            const ourEd25519Private = loadPrivateKey(serverId, 'device_identity', deviceInfo.deviceId);
-            if (!ourEd25519Private) throw new Error('Device key not found');
-
-            const ourX25519Private = ed25519PrivateToX25519(ourEd25519Private);
-
             const ephPub = Uint8Array.from(Buffer.from(ephemeralPublicKey, 'base64'));
-            const dhResult = x25519DH(ourX25519Private, ephPub);
-
-            const salt = new Uint8Array(32);
-            const info = new TextEncoder().encode('LaradiscoSenderKeyDist');
-            const aesKey = await hkdf(dhResult, salt, info, 32);
-
             const ct = Uint8Array.from(Buffer.from(encryptedDistribution, 'base64'));
             const n = Uint8Array.from(Buffer.from(nonce, 'base64'));
-            const plaintext = await aesDecrypt(aesKey, ct, n);
+            const salt = new Uint8Array(32);
+            const info = new TextEncoder().encode('LaradiscoSenderKeyDist');
 
-            return JSON.parse(new TextDecoder().decode(plaintext));
+            const ourEd25519Private = loadPrivateKey(serverId, 'device_identity', deviceInfo.deviceId);
+            if (ourEd25519Private) {
+                try {
+                    const ourX25519Private = ed25519PrivateToX25519(ourEd25519Private);
+                    const dhResult = x25519DH(ourX25519Private, ephPub);
+                    const aesKey = await hkdf(dhResult, salt, info, 32);
+                    const plaintext = await aesDecrypt(aesKey, ct, n);
+                    return JSON.parse(new TextDecoder().decode(plaintext));
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            const legacyPrivate = loadPrivateKey(serverId, 'device_identity_legacy', 'restored');
+            if (legacyPrivate) {
+                const legacyX25519Private = ed25519PrivateToX25519(legacyPrivate);
+                const dhResult = x25519DH(legacyX25519Private, ephPub);
+                const aesKey = await hkdf(dhResult, salt, info, 32);
+                const plaintext = await aesDecrypt(aesKey, ct, n);
+                return JSON.parse(new TextDecoder().decode(plaintext));
+            }
+
+            throw new Error('Cannot decrypt sender key distribution: no matching device key');
         },
     );
 
@@ -536,19 +573,41 @@ async function decryptSenderKeyMessage(
     senderDeviceId: string,
     conversationKey: number,
 ): Promise<string> {
-    let senderKeyState = loadSenderKey(serverId, conversationKey, String(senderId), senderDeviceId);
+    const messageDistId = parsed.dId as string;
 
-    if (!senderKeyState) {
-        const deviceInfo = getDeviceIdentity(serverId);
-        if (deviceInfo && senderDeviceId === deviceInfo.deviceId) {
-            senderKeyState = loadSenderKey(serverId, conversationKey, 'self', senderDeviceId);
-            if (senderKeyState) {
-                saveSenderKey(serverId, conversationKey, String(senderId), senderDeviceId, senderKeyState);
+    const candidates: SenderKeyState[] = [];
+
+    const exactMatch = loadSenderKey(serverId, conversationKey, String(senderId), senderDeviceId, messageDistId);
+    if (exactMatch) candidates.push(exactMatch);
+
+    const allKeys = loadAllSenderKeysForSender(serverId, conversationKey, String(senderId), senderDeviceId);
+    for (const k of allKeys) {
+        if (!candidates.some((c) => c.distributionId === k.distributionId)) {
+            candidates.push(k);
+        }
+    }
+
+    const deviceInfo = getDeviceIdentity(serverId);
+    if (deviceInfo && senderDeviceId === deviceInfo.deviceId) {
+        const selfKeys = loadAllSenderKeysForSender(serverId, conversationKey, 'self', senderDeviceId);
+        for (const k of selfKeys) {
+            if (!candidates.some((c) => c.distributionId === k.distributionId)) {
+                candidates.push(k);
             }
         }
     }
 
-    if (!senderKeyState) {
+    const ownerUserId = getOwnerUserId(serverId);
+    if (ownerUserId !== null && senderId === ownerUserId) {
+        const selfOldKeys = loadAllSenderKeysForSender(serverId, conversationKey, 'self', senderDeviceId);
+        for (const k of selfOldKeys) {
+            if (!candidates.some((c) => c.distributionId === k.distributionId)) {
+                candidates.push(k);
+            }
+        }
+    }
+
+    if (candidates.length === 0) {
         throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
     }
 
@@ -556,25 +615,26 @@ async function decryptSenderKeyMessage(
     const nonce = Uint8Array.from(Buffer.from(parsed.nonce as string, 'base64'));
     const signature = Uint8Array.from(Buffer.from((parsed.sig as string) || '', 'base64'));
 
-    try {
-        const plaintext = await senderKeyDecrypt(senderKeyState, {
-            ciphertext,
-            nonce,
-            signature,
-            chainIndex: parsed.ci as number,
-            distributionId: parsed.dId as string,
-        });
+    let lastError: Error | null = null;
+    for (const senderKeyState of candidates) {
+        try {
+            const plaintext = await senderKeyDecrypt(senderKeyState, {
+                ciphertext,
+                nonce,
+                signature,
+                chainIndex: parsed.ci as number,
+                distributionId: parsed.dId as string,
+            });
 
-        saveSenderKey(serverId, conversationKey, String(senderId), senderDeviceId, senderKeyState);
+            saveSenderKey(serverId, conversationKey, String(senderId), senderDeviceId, senderKeyState);
 
-        return new TextDecoder().decode(plaintext);
-    } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        if (errMsg.includes('OperationError') || errMsg.includes('Invalid message signature')) {
-            deleteSenderKeysForChannel(serverId, conversationKey);
+            return new TextDecoder().decode(plaintext);
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
         }
-        throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
     }
+
+    throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
 }
 
 function buildKeyBackupBundle(serverId: number): KeyBackupBundle {
@@ -582,42 +642,102 @@ function buildKeyBackupBundle(serverId: number): KeyBackupBundle {
     const deviceInfo = getDeviceIdentity(serverId);
 
     if (!userIdentityPrivate || !deviceInfo) {
-        throw new Error('E2EE keys not found');
+        throw new Error('E2EE keys not found — cannot create backup');
     }
 
     const deviceIdentityPrivate = loadPrivateKey(serverId, 'device_identity', deviceInfo.deviceId);
+    if (!deviceIdentityPrivate) {
+        throw new Error('Device identity key not found — cannot create backup');
+    }
 
-    const signedPreKeyPrivate = loadPrivateKey(serverId, 'signed_prekey', String(SIGNED_PREKEY_START_ID));
-
-    if (!deviceIdentityPrivate || !signedPreKeyPrivate) {
-        throw new Error('Device keys not found');
+    const signedPreKeyIds = loadSignedPreKeyIds(serverId);
+    const signedPreKeys: Array<{ id: number; privateKey: string }> = [];
+    for (const id of signedPreKeyIds) {
+        const pk = loadPrivateKey(serverId, 'signed_prekey', String(id));
+        if (pk) {
+            signedPreKeys.push({ id, privateKey: Buffer.from(pk).toString('base64') });
+        }
     }
 
     const oneTimePreKeyIds = loadOneTimePreKeyIds(serverId);
-    const oneTimePreKeys = oneTimePreKeyIds
-        .map((id) => {
-            const pk = loadPrivateKey(serverId, 'one_time_prekey', String(id));
-            return {
-                id,
-                privateKey: pk ? Buffer.from(pk).toString('base64') : '',
-            };
-        })
-        .filter((pk) => pk.privateKey !== '');
+    const oneTimePreKeys: Array<{ id: number; privateKey: string }> = [];
+    for (const id of oneTimePreKeyIds) {
+        const pk = loadPrivateKey(serverId, 'one_time_prekey', String(id));
+        if (pk) {
+            oneTimePreKeys.push({ id, privateKey: Buffer.from(pk).toString('base64') });
+        }
+    }
+
+    const allSenderKeys = loadAllSenderKeys(serverId);
+    const senderKeys = allSenderKeys.map((sk) => ({
+        channelId: sk.channelId,
+        userId: sk.userId,
+        deviceId: sk.deviceId,
+        distributionId: sk.distributionId,
+        state: sk.serializedState,
+    }));
 
     return {
+        version: 2,
         userIdentityPrivateKey: Buffer.from(userIdentityPrivate).toString('base64'),
         deviceIdentityPrivateKey: Buffer.from(deviceIdentityPrivate).toString('base64'),
-        signedPreKeyPrivate: Buffer.from(signedPreKeyPrivate).toString('base64'),
-        signedPreKeyId: SIGNED_PREKEY_START_ID,
+        sourceDeviceId: deviceInfo.deviceId,
+        signedPreKeys,
         oneTimePreKeys,
-        senderKeys: [],
+        senderKeys,
     };
 }
 
 function restoreKeysFromBundle(serverId: number, bundle: KeyBackupBundle): void {
+    deleteAllE2eeKeys(serverId);
+
     const userIdentityPrivate = Uint8Array.from(Buffer.from(bundle.userIdentityPrivateKey, 'base64'));
-
     const userIdentityPublic = ed25519.getPublicKey(userIdentityPrivate);
-
     storePrivateKey(serverId, 'user_identity', 'primary', userIdentityPrivate, userIdentityPublic);
+
+    if (bundle.deviceIdentityPrivateKey) {
+        try {
+            const deviceIdentityPrivate = Uint8Array.from(Buffer.from(bundle.deviceIdentityPrivateKey, 'base64'));
+            const deviceIdentityPublic = ed25519.getPublicKey(deviceIdentityPrivate);
+            storePrivateKey(serverId, 'device_identity_legacy', 'restored', deviceIdentityPrivate, deviceIdentityPublic);
+        } catch {
+            console.warn('Key restore: skipping corrupted device identity key');
+        }
+    }
+
+    if (bundle.signedPreKeys && bundle.signedPreKeys.length > 0) {
+        for (const spk of bundle.signedPreKeys) {
+            try {
+                const privKey = Uint8Array.from(Buffer.from(spk.privateKey, 'base64'));
+                const pubKey = new Uint8Array(x25519.getPublicKey(privKey));
+                storePrivateKey(serverId, 'signed_prekey', String(spk.id), privKey, pubKey);
+            } catch {
+                console.warn(`Key restore: skipping corrupted signed prekey ${spk.id}`);
+            }
+        }
+    }
+
+    if (bundle.oneTimePreKeys && bundle.oneTimePreKeys.length > 0) {
+        for (const otp of bundle.oneTimePreKeys) {
+            try {
+                const privKey = Uint8Array.from(Buffer.from(otp.privateKey, 'base64'));
+                const pubKey = new Uint8Array(x25519.getPublicKey(privKey));
+                storePrivateKey(serverId, 'one_time_prekey', String(otp.id), privKey, pubKey);
+            } catch {
+                console.warn(`Key restore: skipping corrupted one-time prekey ${otp.id}`);
+            }
+        }
+    }
+
+    if (bundle.senderKeys && bundle.senderKeys.length > 0) {
+        for (const sk of bundle.senderKeys) {
+            if (!sk.state) continue;
+            try {
+                const state = deserializeSenderKey(sk.state);
+                saveSenderKey(serverId, sk.channelId, sk.userId, sk.deviceId, state);
+            } catch {
+                console.warn(`Key restore: skipping corrupted sender key for channel ${sk.channelId}`);
+            }
+        }
+    }
 }

@@ -94,7 +94,6 @@ export const useChatStore = defineStore('chat', () => {
                 reply_to_id: replyToId,
             });
 
-            // Push the real server message (unwrapped from API envelope)
             if (response.data) {
                 messages.value.push(response.data);
             }
@@ -146,7 +145,6 @@ export const useChatStore = defineStore('chat', () => {
                         emoji,
                     });
                 } else {
-                    // Remove own reaction — find by current user and emoji
                     const { useAuthStore } = await import('./auth');
                     const currentUserId = useAuthStore().user?.id ?? 0;
                     const idx = msg.reactions.findIndex((r) => r.user_id === currentUserId && r.emoji === emoji);
@@ -162,8 +160,8 @@ export const useChatStore = defineStore('chat', () => {
         if (!currentChannel.value) return;
         try {
             await api.post(`/channels/${currentChannel.value.id}/typing`);
-        } catch {
-            // non-critical
+        } catch (error) {
+            console.error(error);
         }
     }
 

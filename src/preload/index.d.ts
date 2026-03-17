@@ -119,6 +119,20 @@ interface SettingsApi {
     set: (key: string, value: string) => Promise<{ success: boolean }>;
 }
 
+interface UpdaterApi {
+    check: () => Promise<{ success: boolean; version?: string; error?: string }>;
+    download: () => Promise<{ success: boolean; error?: string }>;
+    install: () => void;
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes: string }) => void) => void;
+    onUpToDate: (callback: () => void) => void;
+    onDownloadProgress: (
+        callback: (progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void,
+    ) => void;
+    onUpdateDownloaded: (callback: () => void) => void;
+    onError: (callback: (error: string) => void) => void;
+    removeAllListeners: () => void;
+}
+
 interface E2eeSetupResult {
     userIdentityKey: string;
     deviceId: string;
@@ -189,6 +203,9 @@ interface E2eeApi {
         backup: E2eeKeyBackup,
         pin: string,
     ) => Promise<{ success: boolean; error?: string }>;
+    autoUpdateBackup: (serverId: number) => Promise<E2eeKeyBackup | null>;
+    hasBackupKey: (serverId: number) => Promise<boolean>;
+    clearBackupKey: (serverId?: number) => Promise<{ success: boolean }>;
     rotateSignedPreKey: (serverId: number) => Promise<{
         deviceId: string;
         signedPrekey: string;
@@ -234,6 +251,7 @@ interface AppApi {
     notifications: NotificationsApi;
     settings: SettingsApi;
     window: WindowApi;
+    updater: UpdaterApi;
     e2ee: E2eeApi;
 }
 

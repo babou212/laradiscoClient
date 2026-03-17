@@ -32,7 +32,6 @@ export function useEncryptedSearch() {
                 plaintext,
             });
         } catch {
-            // SSE token generation failure should not block sending
             return [];
         }
     }

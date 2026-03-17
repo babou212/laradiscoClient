@@ -94,6 +94,36 @@ const api = {
         platform: process.platform,
     },
 
+    updater: {
+        check: () => ipcRenderer.invoke('updater:check'),
+        download: () => ipcRenderer.invoke('updater:download'),
+        install: () => ipcRenderer.invoke('updater:install'),
+        onUpdateAvailable: (callback: (info: { version: string; releaseNotes: string }) => void) => {
+            ipcRenderer.on('updater:update-available', (_event, info) => callback(info));
+        },
+        onUpToDate: (callback: () => void) => {
+            ipcRenderer.on('updater:up-to-date', callback);
+        },
+        onDownloadProgress: (
+            callback: (progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void,
+        ) => {
+            ipcRenderer.on('updater:download-progress', (_event, progress) => callback(progress));
+        },
+        onUpdateDownloaded: (callback: () => void) => {
+            ipcRenderer.on('updater:update-downloaded', callback);
+        },
+        onError: (callback: (error: string) => void) => {
+            ipcRenderer.on('updater:error', (_event, error) => callback(error));
+        },
+        removeAllListeners: () => {
+            ipcRenderer.removeAllListeners('updater:update-available');
+            ipcRenderer.removeAllListeners('updater:up-to-date');
+            ipcRenderer.removeAllListeners('updater:download-progress');
+            ipcRenderer.removeAllListeners('updater:update-downloaded');
+            ipcRenderer.removeAllListeners('updater:error');
+        },
+    },
+
     e2ee: {
         isSetup: (serverId: number, userId?: number) =>
             ipcRenderer.invoke('e2ee:isSetup', serverId, userId) as Promise<boolean>,
@@ -126,6 +156,9 @@ const api = {
         backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('e2ee:backupKeys', serverId, pin),
         restoreKeys: (serverId: number, backup: unknown, pin: string) =>
             ipcRenderer.invoke('e2ee:restoreKeys', serverId, backup, pin),
+        autoUpdateBackup: (serverId: number) => ipcRenderer.invoke('e2ee:autoUpdateBackup', serverId),
+        hasBackupKey: (serverId: number) => ipcRenderer.invoke('e2ee:hasBackupKey', serverId) as Promise<boolean>,
+        clearBackupKey: (serverId?: number) => ipcRenderer.invoke('e2ee:clearBackupKey', serverId),
         rotateSignedPreKey: (serverId: number) => ipcRenderer.invoke('e2ee:rotateSignedPreKey', serverId),
         generatePreKeys: (serverId: number, count: number) =>
             ipcRenderer.invoke('e2ee:generatePreKeys', serverId, count),

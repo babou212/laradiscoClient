@@ -1,5 +1,5 @@
 import type { RemoteParticipant } from 'livekit-client';
-import { Room, RoomEvent, type RemoteTrackPublication, ConnectionState, createLocalAudioTrack } from 'livekit-client';
+import { ConnectionQuality, Room, RoomEvent, type RemoteTrackPublication, ConnectionState, createLocalAudioTrack } from 'livekit-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import api from '@/lib/api';
@@ -25,6 +25,8 @@ export const useVoiceStore = defineStore('voice', () => {
     const currentParticipants = ref<VoiceParticipant[]>([]);
     const channelParticipantsMap = ref<Map<number, VoiceParticipant[]>>(new Map());
 
+    const connectionQuality = ref<ConnectionQuality>(ConnectionQuality.Unknown);
+
     const pttEnabled = ref(false);
     const pttKey = ref<string | null>(null);
     const pttKeycode = ref<number | null>(null);
@@ -38,16 +40,23 @@ export const useVoiceStore = defineStore('voice', () => {
     const selectedMicDeviceId = ref<string>('default');
     const availableMics = ref<MediaDeviceInfo[]>([]);
 
+    const noiseSuppression = ref(true);
+    const echoCancellation = ref(true);
+    const autoGainControl = ref(true);
+
     let pttActive = false;
 
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId] = await Promise.all([
+        const [enabled, key, keycode, modifiers, sound, micId, ns, ec, agc] = await Promise.all([
             window.api.settings.get('voice:pttEnabled'),
             window.api.settings.get('voice:pttKey'),
             window.api.settings.get('voice:pttKeycode'),
             window.api.settings.get('voice:pttModifiers'),
             window.api.settings.get('voice:pttSoundEnabled'),
             window.api.settings.get('voice:micDeviceId'),
+            window.api.settings.get('voice:noiseSuppression'),
+            window.api.settings.get('voice:echoCancellation'),
+            window.api.settings.get('voice:autoGainControl'),
         ]);
 
         pttEnabled.value = enabled === 'true';
@@ -56,12 +65,15 @@ export const useVoiceStore = defineStore('voice', () => {
         if (modifiers) {
             try {
                 pttModifiers.value = JSON.parse(modifiers);
-            } catch {
-                /* keep defaults */
+            } catch (error) {
+                console.error(error);
             }
         }
         pttSoundEnabled.value = sound !== 'false';
         selectedMicDeviceId.value = micId ?? 'default';
+        noiseSuppression.value = ns !== 'false';
+        echoCancellation.value = ec !== 'false';
+        autoGainControl.value = agc !== 'false';
     }
 
     let room: Room | null = null;
@@ -144,6 +156,11 @@ export const useVoiceStore = defineStore('voice', () => {
         });
         r.on(RoomEvent.TrackMuted, () => refreshParticipants());
         r.on(RoomEvent.TrackUnmuted, () => refreshParticipants());
+        r.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+            if (participant.identity === r.localParticipant.identity) {
+                connectionQuality.value = quality;
+            }
+        });
 
         r.on(RoomEvent.Disconnected, () => {
             if (room === r) {
@@ -152,6 +169,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 }
                 currentChannel.value = null;
                 currentParticipants.value = [];
+                connectionQuality.value = ConnectionQuality.Unknown;
                 room = null;
             }
         });
@@ -181,12 +199,21 @@ export const useVoiceStore = defineStore('voice', () => {
                     selectedMicDeviceId.value && selectedMicDeviceId.value !== 'default'
                         ? selectedMicDeviceId.value
                         : undefined;
-                const micTrack = await createLocalAudioTrack({ deviceId });
+                const micTrack = await createLocalAudioTrack({
+                    deviceId,
+                    noiseSuppression: noiseSuppression.value,
+                    echoCancellation: echoCancellation.value,
+                    autoGainControl: autoGainControl.value,
+                });
                 if (room) await room.localParticipant.publishTrack(micTrack);
             } catch (micErr) {
                 console.warn('[Voice] Selected mic unavailable, falling back to default:', micErr);
                 try {
-                    const fallbackTrack = await createLocalAudioTrack();
+                    const fallbackTrack = await createLocalAudioTrack({
+                        noiseSuppression: noiseSuppression.value,
+                        echoCancellation: echoCancellation.value,
+                        autoGainControl: autoGainControl.value,
+                    });
                     if (room) await room.localParticipant.publishTrack(fallbackTrack);
                 } catch (fallbackErr) {
                     console.warn('[Voice] No microphone available — joining without mic:', fallbackErr);
@@ -228,6 +255,7 @@ export const useVoiceStore = defineStore('voice', () => {
         currentParticipants.value = [];
         isMicMuted.value = false;
         isSoundMuted.value = false;
+        connectionQuality.value = ConnectionQuality.Unknown;
     }
 
     async function toggleMic() {
@@ -308,6 +336,43 @@ export const useVoiceStore = defineStore('voice', () => {
         window.api.settings.set('voice:pttSoundEnabled', String(enabled));
     }
 
+    function setNoiseSuppression(enabled: boolean) {
+        noiseSuppression.value = enabled;
+        window.api.settings.set('voice:noiseSuppression', String(enabled));
+        reapplyAudioProcessing();
+    }
+
+    function setEchoCancellation(enabled: boolean) {
+        echoCancellation.value = enabled;
+        window.api.settings.set('voice:echoCancellation', String(enabled));
+        reapplyAudioProcessing();
+    }
+
+    function setAutoGainControl(enabled: boolean) {
+        autoGainControl.value = enabled;
+        window.api.settings.set('voice:autoGainControl', String(enabled));
+        reapplyAudioProcessing();
+    }
+
+    async function reapplyAudioProcessing() {
+        if (!room || room.state !== ConnectionState.Connected) return;
+
+        const localPubs = room.localParticipant.audioTrackPublications;
+        const localPub = [...localPubs.values()].find((p) => p.track);
+        if (!localPub?.track) return;
+
+        const mediaTrack = localPub.track.mediaStreamTrack;
+        try {
+            await mediaTrack.applyConstraints({
+                noiseSuppression: noiseSuppression.value,
+                echoCancellation: echoCancellation.value,
+                autoGainControl: autoGainControl.value,
+            });
+        } catch (err) {
+            console.warn('[Voice] Failed to apply audio constraints live, will apply on next connect:', err);
+        }
+    }
+
     function syncPttConfig() {
         window.api.ptt.configure({
             keycode: pttKeycode.value,
@@ -354,6 +419,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     return {
         currentChannel,
+        connectionQuality,
         isMicMuted,
         isSoundMuted,
         currentParticipants,
@@ -365,6 +431,9 @@ export const useVoiceStore = defineStore('voice', () => {
         pttSoundEnabled,
         selectedMicDeviceId,
         availableMics,
+        noiseSuppression,
+        echoCancellation,
+        autoGainControl,
         getChannelParticipants,
         loadSettings,
         fetchVoiceParticipants,
@@ -374,6 +443,9 @@ export const useVoiceStore = defineStore('voice', () => {
         toggleSound,
         refreshAvailableMics,
         setMicDevice,
+        setNoiseSuppression,
+        setEchoCancellation,
+        setAutoGainControl,
         setPttEnabled,
         setPttKey,
         setPttSoundEnabled,

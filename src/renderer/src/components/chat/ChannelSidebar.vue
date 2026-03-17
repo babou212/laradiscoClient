@@ -83,8 +83,8 @@ const setStatus = async (status: UserStatusType) => {
             status: status,
             custom_status: currentCustomStatus.value,
         });
-    } catch {
-        // non-critical
+    } catch (error) {
+        console.error(error);
     }
     showUserPopup.value = false;
 };

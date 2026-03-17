@@ -57,8 +57,8 @@ function loadPreferences(): NotificationPreferences {
         if (stored) {
             return { ...defaultPreferences, ...JSON.parse(stored) };
         }
-    } catch {
-        // ignore parse errors
+    } catch (error) {
+        console.error(error);
     }
     return { ...defaultPreferences };
 }
@@ -129,7 +129,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
             notifications.value.unshift(notification);
             unreadCount.value++;
 
-            // Attempt to decrypt encrypted notification content
             if (notification.data.is_encrypted) {
                 tryDecryptNotification(notification).then(() => {
                     const prefs = preferences.value;
@@ -197,10 +196,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
         }, 5000);
     };
 
-    /**
-     * Attempt to decrypt an encrypted notification's content.
-     * On success, sets `decrypted_content` on the notification data.
-     */
     const tryDecryptNotification = async (notification: AppNotification): Promise<void> => {
         const { data } = notification;
         if (!data.is_encrypted) return;
@@ -217,8 +212,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
             try {
                 const parsed = JSON.parse(data.content);
                 senderDeviceId = parsed.sender_device_id ?? '';
-            } catch {
-                // content might not be valid JSON
+            } catch (error) {
+                console.error(error);
             }
         }
 
@@ -233,7 +228,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
             });
             data.decrypted_content = plaintext;
 
-            // Also update the notification in the list
             const existing = notifications.value.find((n) => n.id === notification.id);
             if (existing) {
                 existing.data.decrypted_content = plaintext;
@@ -302,8 +296,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
             try {
                 const echo = getEcho();
                 echo.leave(`App.Models.User.${userId}`);
-            } catch {
-                // Echo may already be disconnected
+            } catch (error) {
+                console.error(error);
             }
             userId = null;
             isConnected.value = false;

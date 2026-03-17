@@ -22,7 +22,6 @@ const step = computed(() => e2eeStore.setupStep);
 onMounted(async () => {
     isChecking.value = true;
 
-    // Default device name
     const platform = window.api?.window?.platform ?? 'unknown';
     const platformNames: Record<string, string> = {
         darwin: 'Mac',
@@ -36,7 +35,6 @@ onMounted(async () => {
         e2eeStore.setupStep = 'restore';
         isChecking.value = false;
     } else {
-        // New user — auto-generate keys immediately
         e2eeStore.setupStep = 'setup';
         isChecking.value = false;
         await autoSetup();
@@ -47,7 +45,6 @@ async function autoSetup() {
     const name = deviceName.value.trim() || 'Desktop';
     const success = await e2eeStore.performSetup(name);
     if (success) {
-        // Backup is mandatory — show the backup dialog
         showBackupDialog.value = true;
     }
 }

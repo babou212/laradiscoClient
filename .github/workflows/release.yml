@@ -2,21 +2,70 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g. v1.0.0)'
-        required: false
 
 permissions:
   contents: write
   packages: write
 
 jobs:
+  version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    name: Lint & Typecheck
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Typecheck
+        run: npm run typecheck
+
   build:
     name: Build (${{ matrix.os }})
+    needs: [version, lint]
+    if: needs.version.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,22 +88,22 @@ jobs:
 
       - run: npm ci
 
-      - name: Lint & Typecheck
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
         run: |
-          npx eslint .
-          npm run typecheck
-
-      - name: Build distributables
-        run: npm run ${{ matrix.make_target }}
+          sudo apt-get update
+          sudo apt-get install -y rpm
 
       - name: Install Flatpak SDK (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
         continue-on-error: true
+
+      - name: Build distributables
+        run: npm run ${{ matrix.make_target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -62,20 +111,53 @@ jobs:
           name: dist-${{ matrix.os }}
           path: |
             dist/make/**/*.exe
+            dist/make/**/*.nupkg
             dist/make/**/*.dmg
             dist/make/**/*.zip
             dist/make/**/*.deb
+            dist/make/**/*.rpm
             dist/make/**/*.flatpak
-            dist/make/**/*.nupkg
+            dist/make/**/*.AppImage
           if-no-files-found: warn
+          retention-days: 30
+
+  build-arch:
+    name: Build (Arch Linux)
+    needs: [version, lint]
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git nodejs npm fakeroot
+
+      - uses: actions/checkout@v4
+
+      - run: npm ci
+
+      - name: Build distributables
+        run: |
+          npm run build
+          npx electron-forge make --platform linux --targets ./maker-pacman.ts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-arch
+          path: dist/make/**/*.pkg.tar.zst
+          if-no-files-found: error
           retention-days: 30
 
   release:
     name: Create Release
-    needs: build
+    needs: [version, build, build-arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -85,23 +167,69 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f | head -50
 
+      - name: Generate electron-updater metadata
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
+          generate_yml() {
+            local pattern="$1"
+            local output="$2"
+            local file=$(find artifacts -name "$pattern" -type f | head -1)
+
+            if [ -z "$file" ]; then
+              echo "No file matching $pattern found, skipping $output"
+              return
+            fi
+
+            local filename=$(basename "$file")
+            local size=$(stat -c%s "$file")
+            local sha512=$(sha512sum "$file" | awk '{print $1}' | xxd -r -p | base64 -w0)
+
+            cat > "artifacts/$output" <<EOF
+          version: ${VERSION}
+          files:
+            - url: ${filename}
+              sha512: ${sha512}
+              size: ${size}
+          path: ${filename}
+          sha512: ${sha512}
+          releaseDate: '${RELEASE_DATE}'
+          EOF
+
+            echo "Generated $output for $filename"
+            cat "artifacts/$output"
+          }
+
+          generate_yml "*.exe" "latest.yml"
+          generate_yml "*.dmg" "latest-mac.yml"
+          generate_yml "*.AppImage" "latest-linux.yml"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: LaraDisco ${{ needs.version.outputs.tag }}
+          draft: false
           generate_release_notes: true
           files: |
             artifacts/**/*.exe
+            artifacts/**/*.nupkg
             artifacts/**/*.dmg
             artifacts/**/*.zip
             artifacts/**/*.deb
+            artifacts/**/*.rpm
             artifacts/**/*.flatpak
+            artifacts/**/*.pkg.tar.zst
+            artifacts/**/*.AppImage
+            artifacts/latest.yml
+            artifacts/latest-mac.yml
+            artifacts/latest-linux.yml
 
   publish:
     name: Publish to GitHub Packages
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
 
@@ -116,8 +244,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Set version from tag
-        run: npm version "${GITHUB_REF#refs/tags/v}" --no-git-tag-version --allow-same-version
+      - name: Set version
+        run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Publish to GitHub Packages
         run: npm publish
