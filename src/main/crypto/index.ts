@@ -645,7 +645,9 @@ async function decryptSenderKeyMessage(
         }
     }
 
-    throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution. Errors: ${errors.map((e) => e.message).join('; ')}`);
+    throw new Error(
+        `No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution. Errors: ${errors.map((e) => e.message).join('; ')}`,
+    );
 }
 
 function buildKeyBackupBundle(serverId: number): KeyBackupBundle {
