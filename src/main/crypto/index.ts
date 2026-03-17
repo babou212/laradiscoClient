@@ -45,7 +45,6 @@ import {
     importSenderKeyDistribution,
     senderKeyEncrypt,
     senderKeyDecrypt,
-    serializeSenderKey,
     deserializeSenderKey,
 } from './sender-keys';
 import { deriveSearchKey, generateSearchTokens, generateSearchTrapdoor } from './sse';
@@ -627,7 +626,7 @@ async function decryptSenderKeyMessage(
     const nonce = Uint8Array.from(Buffer.from(parsed.nonce as string, 'base64'));
     const signature = Uint8Array.from(Buffer.from((parsed.sig as string) || '', 'base64'));
 
-    let lastError: Error | null = null;
+    const errors: Error[] = [];
     for (const senderKeyState of candidates) {
         try {
             const plaintext = await senderKeyDecrypt(senderKeyState, {
@@ -642,11 +641,11 @@ async function decryptSenderKeyMessage(
 
             return new TextDecoder().decode(plaintext);
         } catch (err) {
-            lastError = err instanceof Error ? err : new Error(String(err));
+            errors.push(err instanceof Error ? err : new Error(String(err)));
         }
     }
 
-    throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution.`);
+    throw new Error(`No sender key for user ${senderId} device ${senderDeviceId}. Need sender key distribution. Errors: ${errors.map((e) => e.message).join('; ')}`);
 }
 
 function buildKeyBackupBundle(serverId: number): KeyBackupBundle {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
-import { computed } from 'vue';
 import { useAppearance, isDarkTheme } from '@/composables/useAppearance';
 
 interface Emits {

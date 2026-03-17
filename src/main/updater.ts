@@ -1,7 +1,7 @@
+import { is } from '@electron-toolkit/utils';
 import { BrowserWindow, ipcMain } from 'electron';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
-import { is } from '@electron-toolkit/utils';
 
 export function initAutoUpdater(): void {
     if (is.dev) return;
