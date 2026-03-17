@@ -1,86 +1,45 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
+import EmojiPicker from 'vue3-emoji-picker';
+import 'vue3-emoji-picker/css';
+import { useAppearance, isDarkTheme } from '@/composables/useAppearance';
 
 interface Emits {
     (e: 'select', emoji: string): void;
 }
 
 const emit = defineEmits<Emits>();
+const { theme } = useAppearance();
 
-const searchQuery = ref('');
+const pickerTheme = computed(() => (isDarkTheme(theme.value) ? 'dark' : 'light'));
 
-const emojiCategories = [
-    {
-        name: 'Smileys',
-        emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬'],
-    },
-    {
-        name: 'Gestures',
-        emojis: ['👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✌️', '🤞', '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙', '💪', '🦾', '🖕'],
-    },
-    {
-        name: 'Hearts',
-        emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
-    },
-    {
-        name: 'Objects',
-        emojis: ['🔥', '⭐', '🌟', '✨', '💫', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🎮', '🎵', '🎶', '☕', '🍕', '🍔', '🍟', '🌮', '🍩', '🍰', '🍫', '🍿', '🥤'],
-    },
-];
-
-const filteredEmojis = () => {
-    if (!searchQuery.value) return emojiCategories;
-    return emojiCategories
-        .map((cat) => ({
-            ...cat,
-            emojis: cat.emojis.filter(() =>
-                cat.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-            ),
-        }))
-        .filter((cat) => cat.emojis.length > 0);
-};
-
-const selectEmoji = (emoji: string) => {
-    emit('select', emoji);
+const onSelect = (emoji: { i: string }) => {
+    emit('select', emoji.i);
 };
 </script>
 
 <template>
-    <div
-        class="flex h-[350px] w-[320px] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg"
-    >
-        <div class="border-b border-border p-2">
-            <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search emoji..."
-                class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-        </div>
-
-        <div class="flex-1 overflow-y-auto p-2">
-            <div
-                v-for="category in filteredEmojis()"
-                :key="category.name"
-                class="mb-3"
-            >
-                <div
-                    class="mb-1 text-xs font-semibold text-muted-foreground"
-                >
-                    {{ category.name }}
-                </div>
-                <div class="flex flex-wrap gap-1">
-                    <button
-                        v-for="emoji in category.emojis"
-                        :key="emoji"
-                        type="button"
-                        class="flex size-8 items-center justify-center rounded text-lg transition-colors hover:bg-accent"
-                        @click="selectEmoji(emoji)"
-                    >
-                        {{ emoji }}
-                    </button>
-                </div>
-            </div>
-        </div>
+    <div class="emoji-picker-wrapper">
+        <EmojiPicker :native="true" :theme="pickerTheme" :display-recent="true" @select="onSelect" />
     </div>
 </template>
+
+<style scoped>
+.emoji-picker-wrapper {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow:
+        0 10px 15px -3px rgb(0 0 0 / 0.1),
+        0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.emoji-picker-wrapper :deep(.v3-emoji-picker) {
+    --v3-picker-bg: var(--popover);
+    --v3-picker-fg: var(--popover-foreground);
+    --v3-picker-border: var(--border);
+    --v3-picker-input-bg: var(--input);
+    --v3-picker-input-border: var(--border);
+    --v3-picker-input-focus-border: var(--ring);
+    --v3-picker-emoji-hover: var(--accent);
+}
+</style>

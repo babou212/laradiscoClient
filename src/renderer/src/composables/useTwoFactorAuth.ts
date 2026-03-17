@@ -22,9 +22,7 @@ const manualSetupKey = ref<string | null>(null);
 const qrCodeSvg = ref<string | null>(null);
 const recoveryCodesList = ref<string[]>([]);
 
-const hasSetupData = computed<boolean>(
-    () => qrCodeSvg.value !== null && manualSetupKey.value !== null,
-);
+const hasSetupData = computed<boolean>(() => qrCodeSvg.value !== null && manualSetupKey.value !== null);
 
 export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
     const fetchQrCode = async (): Promise<void> => {

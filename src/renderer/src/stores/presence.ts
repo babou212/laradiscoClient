@@ -10,11 +10,7 @@ const SYNC_INTERVAL_MS = 120_000;
 export const usePresenceStore = defineStore('presence', () => {
     const onlineUsers = ref<OnlineUser[]>([]);
     const serverMembers = ref<OnlineUser[]>([]);
-    let channel: ReturnType<typeof getEcho>['private'] extends (
-        ch: string,
-    ) => infer R
-        ? R
-        : unknown = null as any;
+    let channel: ReturnType<typeof getEcho>['private'] extends (ch: string) => infer R ? R : unknown = null as any;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let syncTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -28,15 +24,13 @@ export const usePresenceStore = defineStore('presence', () => {
                 return {
                     ...member,
                     status: liveUser.status || 'online',
-                    custom_status:
-                        liveUser.custom_status ?? member.custom_status,
+                    custom_status: liveUser.custom_status ?? member.custom_status,
                 };
             }
 
             return { ...member, status: 'offline' as UserStatusType };
         });
 
-        // Include online users who are beyond the first page of serverMembers
         const extraOnline = onlineUsers.value
             .filter((u) => !memberIds.has(u.id))
             .map((u) => ({
@@ -51,8 +45,8 @@ export const usePresenceStore = defineStore('presence', () => {
         try {
             const response = await api.get('/members');
             serverMembers.value = response.data?.members ?? response.data ?? [];
-        } catch {
-            // Will retry on next sync
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -64,16 +58,16 @@ export const usePresenceStore = defineStore('presence', () => {
                 ...u,
                 status: u.status || 'online',
             }));
-        } catch {
-            // Will retry on next sync interval
+        } catch (error) {
+            console.error(error);
         }
     };
 
     const sendHeartbeat = async () => {
         try {
             await api.post('/presence/heartbeat');
-        } catch {
-            // Heartbeat failure is non-critical
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -104,29 +98,20 @@ export const usePresenceStore = defineStore('presence', () => {
 
         await fetchMembers();
 
-        // Subscribe to the presence channel BEFORE announcing ourselves
-        // so we (and our local store) catch our own broadcast event.
         try {
             const echo = getEcho();
             channel = echo.private('presence') as any;
-            (channel as any).listen(
-                '.user.presence.updated',
-                applyPresenceUpdate,
-            );
+            (channel as any).listen('.user.presence.updated', applyPresenceUpdate);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);
         }
 
-        // Explicitly register ourselves as online — ensures we appear in
-        // the presence list even if the login event was not handled by the
-        // session-based auth listener on the server.
         try {
             await api.patch('/presence', { status: 'online' });
-        } catch {
-            // Non-critical — heartbeat will re-register us
+        } catch (error) {
+            console.error(error);
         }
 
-        // Fetch the full online list AFTER registration so we are included.
         await fetchOnlineUsers();
 
         if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -140,8 +125,8 @@ export const usePresenceStore = defineStore('presence', () => {
             try {
                 const echo = getEcho();
                 echo.leave('presence');
-            } catch {
-                // Already disconnected
+            } catch (error) {
+                console.error(error);
             }
             channel = null as any;
         }
@@ -155,15 +140,11 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
-    /**
-     * Notify the server that this user is going offline.
-     * Uses a fire-and-forget approach suitable for app close scenarios.
-     */
     const goOffline = () => {
         try {
             api.patch('/presence', { status: 'offline' }).catch(() => {});
-        } catch {
-            // Best-effort
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -171,11 +152,7 @@ export const usePresenceStore = defineStore('presence', () => {
         return allMembers.value.find((u) => u.id === userId);
     };
 
-    const updateUserStatus = (
-        userId: number,
-        status: UserStatusType,
-        customStatus: string | null = null,
-    ) => {
+    const updateUserStatus = (userId: number, status: UserStatusType, customStatus: string | null = null) => {
         const user = onlineUsers.value.find((u) => u.id === userId);
         if (user) {
             user.status = status;

@@ -1,23 +1,15 @@
 <script setup lang="ts">
-import {
-    Hash,
-    ChevronDown,
-    ChevronRight,
-    MessageSquare,
-    Settings,
-    LogOut,
-    MoreVertical,
-} from 'lucide-vue-next';
+import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/lib/api';
-import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
-import { useAuthStore } from '@/stores/auth';
-import { usePresenceStore } from '@/stores/presence';
-import type { Category, Channel } from '@/types/chat';
-import type { UserStatusType } from '@/types';
 import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
+import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
+import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
+import { usePresenceStore } from '@/stores/presence';
+import type { UserStatusType } from '@/types';
+import type { Category, Channel } from '@/types/chat';
 
 type Props = {
     categories: Category[];
@@ -26,7 +18,7 @@ type Props = {
     serverName?: string;
 };
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
     serverName: 'Laradisco',
 });
 
@@ -55,7 +47,7 @@ const getVoiceChannels = (channels: Channel[]) => {
 };
 
 watch(
-    () => user.value?.id ? presenceStore.getUserStatus(user.value.id) : undefined,
+    () => (user.value?.id ? presenceStore.getUserStatus(user.value.id) : undefined),
     (userStatus) => {
         if (userStatus) {
             currentStatus.value = userStatus.status || 'online';
@@ -83,11 +75,7 @@ const setStatus = async (status: UserStatusType) => {
     setManualPresenceStatus(status);
 
     if (user.value?.id) {
-        presenceStore.updateUserStatus(
-            user.value.id,
-            status,
-            currentCustomStatus.value,
-        );
+        presenceStore.updateUserStatus(user.value.id, status, currentCustomStatus.value);
     }
 
     try {
@@ -95,8 +83,8 @@ const setStatus = async (status: UserStatusType) => {
             status: status,
             custom_status: currentCustomStatus.value,
         });
-    } catch {
-        // non-critical
+    } catch (error) {
+        console.error(error);
     }
     showUserPopup.value = false;
 };
@@ -126,18 +114,12 @@ const statusOptions = [
 </script>
 
 <template>
-    <div class="flex h-full w-60 flex-col bg-sidebar">
-        <div
-            class="flex h-12 items-center border-b border-sidebar-border px-4 font-semibold shadow-sm"
-        >
-            {{ serverName }}
-        </div>
-
+    <div class="bg-sidebar flex h-full w-60 flex-col">
         <div class="flex-1 overflow-y-auto">
             <div class="px-2 py-2">
                 <button
                     type="button"
-                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold tracking-wide text-sidebar-foreground/70 uppercase hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    class="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold tracking-wide uppercase"
                     @click="$emit('switchToDms')"
                 >
                     <MessageSquare :size="16" />
@@ -146,14 +128,10 @@ const statusOptions = [
             </div>
 
             <div class="px-2 py-2">
-                <div
-                    v-for="category in categories"
-                    :key="category.id"
-                    class="mb-4"
-                >
+                <div v-for="category in categories" :key="category.id" class="mb-4">
                     <button
                         type="button"
-                        class="flex w-full items-center gap-1 px-2 py-1 text-xs font-semibold tracking-wide text-sidebar-foreground/70 uppercase hover:text-sidebar-foreground"
+                        class="text-sidebar-foreground/70 hover:text-sidebar-foreground flex w-full items-center gap-1 px-2 py-1 text-xs font-semibold tracking-wide uppercase"
                         @click="toggleCategory(category.id)"
                     >
                         <ChevronRight
@@ -161,11 +139,7 @@ const statusOptions = [
                             :size="12"
                             class="transition-transform"
                         />
-                        <ChevronDown
-                            v-else
-                            :size="12"
-                            class="transition-transform"
-                        />
+                        <ChevronDown v-else :size="12" class="transition-transform" />
                         {{ category.name }}
                     </button>
 
@@ -188,10 +162,7 @@ const statusOptions = [
                             </button>
                         </div>
 
-                        <div
-                            v-if="getVoiceChannels(category.channels).length > 0"
-                            class="mt-1 space-y-0.5"
-                        >
+                        <div v-if="getVoiceChannels(category.channels).length > 0" class="mt-1 space-y-0.5">
                             <VoiceChannelItem
                                 v-for="channel in getVoiceChannels(category.channels)"
                                 :key="channel.id"
@@ -205,37 +176,30 @@ const statusOptions = [
 
         <VoiceControlPanel />
 
-        <div class="relative border-t border-sidebar-border bg-sidebar-accent/30">
+        <div class="relative p-3">
+            <div v-if="showUserPopup" class="fixed inset-0 z-10" @click="showUserPopup = false"></div>
             <div
                 v-if="showUserPopup"
-                class="fixed inset-0 z-10"
-                @click="showUserPopup = false"
-            ></div>
-            <div
-                v-if="showUserPopup"
-                class="absolute right-0 bottom-full left-0 z-20 mb-2 rounded-lg border border-sidebar-border bg-popover p-2 shadow-lg"
+                class="border-sidebar-border bg-popover absolute right-0 bottom-full left-0 z-20 mx-3 mb-2 rounded-2xl border p-2 shadow-lg"
             >
                 <div class="mb-2 space-y-1">
                     <button
                         v-for="status in statusOptions"
                         :key="status.value"
                         type="button"
-                        class="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent"
+                        class="text-popover-foreground hover:bg-accent flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-colors"
                         @click="setStatus(status.value)"
                     >
-                        <span
-                            class="size-2.5 rounded-full"
-                            :class="status.color"
-                        ></span>
+                        <span class="size-2.5 rounded-full" :class="status.color"></span>
                         <span>{{ status.label }}</span>
                     </button>
                 </div>
 
-                <div class="my-2 border-t border-sidebar-border"></div>
+                <div class="border-sidebar-border my-2 border-t"></div>
 
                 <button
                     type="button"
-                    class="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent"
+                    class="text-popover-foreground hover:bg-accent flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-colors"
                     @click="router.push({ name: 'settings-profile' })"
                 >
                     <Settings :size="16" />
@@ -244,7 +208,7 @@ const statusOptions = [
 
                 <button
                     type="button"
-                    class="flex w-full items-center gap-3 rounded px-3 py-2 text-sm text-destructive transition-colors hover:bg-accent"
+                    class="text-destructive hover:bg-accent flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-colors"
                     @click="logout"
                 >
                     <LogOut :size="16" />
@@ -254,26 +218,23 @@ const statusOptions = [
 
             <button
                 type="button"
-                class="flex w-full items-center gap-3 px-3 py-3 transition-colors hover:bg-sidebar-accent/50"
+                class="border-sidebar-border bg-sidebar-accent hover:bg-sidebar-accent/80 flex w-full items-center gap-3 rounded-full border px-3 py-2 shadow-lg transition-colors"
                 @click="showUserPopup = !showUserPopup"
             >
                 <div
-                    class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+                    class="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
                 >
                     {{ user?.name?.[0]?.toUpperCase() || 'U' }}
                 </div>
                 <div class="min-w-0 flex-1 text-left">
-                    <div class="truncate text-sm font-medium text-sidebar-foreground">
+                    <div class="text-sidebar-foreground truncate text-sm font-medium">
                         {{ user?.username || user?.name }}
                     </div>
-                    <div class="truncate text-xs text-sidebar-foreground/60">
+                    <div class="text-sidebar-foreground/60 truncate text-xs">
                         {{ currentCustomStatus || currentStatus }}
                     </div>
                 </div>
-                <MoreVertical
-                    :size="20"
-                    class="shrink-0 text-sidebar-foreground/60"
-                />
+                <MoreVertical :size="20" class="text-sidebar-foreground/60 shrink-0" />
             </button>
         </div>
     </div>

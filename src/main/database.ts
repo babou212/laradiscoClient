@@ -1,6 +1,6 @@
-import { app, safeStorage } from 'electron';
-import Database from 'better-sqlite3';
 import { join } from 'path';
+import Database from 'better-sqlite3';
+import { app, safeStorage } from 'electron';
 
 export interface ServerConnection {
     id: number;
@@ -70,23 +70,15 @@ export function addServerConnection(name: string, host: string): ServerConnectio
     );
     stmt.run(name, host);
 
-    return db
-        .prepare('SELECT * FROM server_connections WHERE host = ?')
-        .get(host) as ServerConnection;
+    return db.prepare('SELECT * FROM server_connections WHERE host = ?').get(host) as ServerConnection;
 }
 
 export function getActiveServer(): ServerConnection | null {
-    return (
-        (db
-            .prepare('SELECT * FROM server_connections WHERE is_active = 1')
-            .get() as ServerConnection) ?? null
-    );
+    return (db.prepare('SELECT * FROM server_connections WHERE is_active = 1').get() as ServerConnection) ?? null;
 }
 
 export function getAllServers(): ServerConnection[] {
-    return db
-        .prepare('SELECT * FROM server_connections ORDER BY created_at DESC')
-        .all() as ServerConnection[];
+    return db.prepare('SELECT * FROM server_connections ORDER BY created_at DESC').all() as ServerConnection[];
 }
 
 export function setActiveServer(id: number): void {
@@ -127,9 +119,9 @@ export function saveAuthSession(
 }
 
 export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_token'> & { token: string }) | null {
-    const session = db
-        .prepare('SELECT * FROM auth_sessions WHERE server_id = ?')
-        .get(serverId) as AuthSession | undefined;
+    const session = db.prepare('SELECT * FROM auth_sessions WHERE server_id = ?').get(serverId) as
+        | AuthSession
+        | undefined;
 
     if (!session) return null;
 
@@ -157,9 +149,7 @@ export function removeAuthSession(serverId: number): void {
 }
 
 export function getSetting(key: string): string | null {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
-        | { value: string }
-        | undefined;
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
     return row?.value ?? null;
 }
 

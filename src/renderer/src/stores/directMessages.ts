@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useE2EE } from '@/composables/useE2EE';
 import api from '@/lib/api';
-import type { MessageData, MessagesResponse } from '@/types/chat';
+import type { MessageData } from '@/types/chat';
 
 export interface DmGroup {
     id: number;
@@ -15,6 +16,10 @@ export interface DmGroup {
         content: string;
         created_at: string;
         user_id: number;
+        is_encrypted?: boolean;
+        sender_device_id?: string;
+        decrypted_content?: string;
+        decrypt_error?: boolean;
     } | null;
     last_message_at: string | null;
 }
@@ -41,9 +46,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
 
     const selectedDmGroupId = computed(() => currentDmGroup.value?.id ?? null);
 
-    /**
-     * Fetch the list of DM groups for the sidebar.
-     */
     async function fetchDmGroups(): Promise<void> {
         isLoadingGroups.value = true;
         try {
@@ -56,9 +58,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    /**
-     * Select a DM group and fetch its messages.
-     */
     async function selectDmGroup(groupId: number): Promise<void> {
         isLoadingMessages.value = true;
         try {
@@ -77,9 +76,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    /**
-     * Load older messages (pagination).
-     */
     async function loadOlderMessages(): Promise<void> {
         if (!prevCursor.value || !currentDmGroup.value || isLoadingMore.value) return;
 
@@ -100,16 +96,11 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    /**
-     * Start or get an existing DM with a user.
-     * Returns the DM group ID.
-     */
     async function startOrGetDm(userId: number): Promise<number | null> {
         try {
             const response = await api.post('/direct-messages', { user_id: userId });
             const groupId = response.data.dm_group_id;
 
-            // Refresh the groups list so the new DM appears in sidebar
             await fetchDmGroups();
 
             return groupId;
@@ -119,34 +110,31 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    /**
-     * Add a message to the list (from Echo event or optimistic insert).
-     */
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
         if (!exists) {
             messages.value.push(message);
         }
 
-        // Update the sidebar's last message for this group
         const group = dmGroups.value.find((g) => g.id === currentDmGroup.value?.id);
         if (group) {
             group.last_message = {
                 content: message.content,
                 created_at: message.created_at,
                 user_id: message.user.id,
+                is_encrypted: message.is_encrypted,
+                sender_device_id: message.sender_device_id,
+                decrypted_content: message.decrypted_content,
             };
             group.last_message_at = message.created_at;
+
+            if (message.is_encrypted && !message.decrypted_content) {
+                decryptLastMessage(group).catch(() => {});
+            }
         }
     }
 
-    /**
-     * Update a message in the list.
-     */
-    function updateMessage(
-        messageOrId: MessageData | number,
-        partial?: Partial<MessageData>,
-    ): void {
+    function updateMessage(messageOrId: MessageData | number, partial?: Partial<MessageData>): void {
         if (typeof messageOrId === 'number') {
             const idx = messages.value.findIndex((m) => m.id === messageOrId);
             if (idx !== -1 && partial) {
@@ -162,17 +150,38 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    /**
-     * Remove a message from the list.
-     */
     function removeMessage(messageId: number): void {
         const idx = messages.value.findIndex((m) => m.id === messageId);
         if (idx !== -1) messages.value.splice(idx, 1);
     }
 
-    /**
-     * Clear current DM state (when navigating away).
-     */
+    async function decryptLastMessage(group: DmGroup): Promise<void> {
+        const lm = group.last_message;
+        if (!lm || !lm.is_encrypted || lm.decrypted_content || lm.decrypt_error) return;
+
+        const e2ee = useE2EE();
+        try {
+            const plaintext = await e2ee.decrypt(
+                lm.content,
+                lm.user_id,
+                lm.sender_device_id ?? '',
+                undefined,
+                group.id,
+            );
+            lm.decrypted_content = plaintext;
+        } catch {
+            lm.decrypt_error = true;
+        }
+    }
+
+    async function decryptLastMessages(): Promise<void> {
+        await Promise.allSettled(
+            dmGroups.value
+                .filter((g) => g.last_message?.is_encrypted && !g.last_message.decrypted_content)
+                .map((g) => decryptLastMessage(g)),
+        );
+    }
+
     function clearCurrentDm(): void {
         currentDmGroup.value = null;
         messages.value = [];
@@ -198,5 +207,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         updateMessage,
         removeMessage,
         clearCurrentDm,
+        decryptLastMessages,
     };
 });

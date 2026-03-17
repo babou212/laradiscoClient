@@ -57,8 +57,8 @@ export function initEcho(): Echo<'reverb'> {
     if (echoInstance) {
         try {
             echoInstance.disconnect();
-        } catch {
-            // Ignore errors during cleanup
+        } catch (error) {
+            console.error(error);
         }
         echoInstance = null;
     }
@@ -115,7 +115,6 @@ export function initEcho(): Echo<'reverb'> {
     return echoInstance;
 }
 
-
 export function getEcho(): Echo<'reverb'> {
     if (!echoInstance) {
         return initEcho();
@@ -131,8 +130,8 @@ export function disconnectEcho(): void {
     if (echoInstance) {
         try {
             echoInstance.disconnect();
-        } catch {
-            // Ignore errors during cleanup
+        } catch (error) {
+            console.error(error);
         }
         echoInstance = null;
         currentConfigKey = '';

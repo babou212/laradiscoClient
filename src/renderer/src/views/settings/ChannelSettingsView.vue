@@ -1,23 +1,9 @@
 <script setup lang="ts">
+import { ChevronDown, ChevronRight, Folder, Hash, Lock, Pencil, Plus, Shield, Trash2, Volume2 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
-import {
-    ChevronDown,
-    ChevronRight,
-    Folder,
-    Hash,
-    Lock,
-    Pencil,
-    Plus,
-    Shield,
-    Trash2,
-    Volume2,
-} from 'lucide-vue-next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import {
     Dialog,
     DialogContent,
@@ -26,6 +12,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import api from '@/lib/api';
 
 type Permission = { value: string; label: string };
@@ -138,9 +127,7 @@ const channelPermissions = [
 ];
 
 const availableOverrideRoles = computed(() => {
-    const existingRoleIds = new Set(
-        channelOverrides.value.filter((o) => o.role_id).map((o) => o.role_id),
-    );
+    const existingRoleIds = new Set(channelOverrides.value.filter((o) => o.role_id).map((o) => o.role_id));
     return roles.value.filter((r) => !existingRoleIds.has(r.id));
 });
 
@@ -401,11 +388,11 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="flex items-center justify-between border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
                     <h2 class="text-lg font-semibold">Channels</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-muted-foreground mt-1 text-sm">
                         Manage categories, channels, and per-channel permission overrides.
                     </p>
                 </div>
@@ -424,52 +411,57 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
             <div class="p-6">
                 <!-- Loading -->
                 <div v-if="isLoading" class="flex items-center justify-center py-8">
-                    <div class="text-sm text-muted-foreground">Loading channels...</div>
+                    <div class="text-muted-foreground text-sm">Loading channels...</div>
                 </div>
 
                 <!-- Empty -->
-                <div v-else-if="categories.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
-                    <div class="mb-3 rounded-full border border-border bg-muted p-3">
-                        <Hash class="h-6 w-6 text-muted-foreground" />
+                <div
+                    v-else-if="categories.length === 0"
+                    class="flex flex-col items-center justify-center py-8 text-center"
+                >
+                    <div class="border-border bg-muted mb-3 rounded-full border p-3">
+                        <Hash class="text-muted-foreground h-6 w-6" />
                     </div>
                     <p class="text-sm font-medium">No channels yet</p>
-                    <p class="mt-1 text-sm text-muted-foreground">
-                        Create a category and add channels to get started.
-                    </p>
+                    <p class="text-muted-foreground mt-1 text-sm">Create a category and add channels to get started.</p>
                 </div>
 
                 <!-- Category list -->
                 <div v-else class="space-y-4">
-                    <div
-                        v-for="category in categories"
-                        :key="category.id"
-                        class="rounded-lg border border-border"
-                    >
+                    <div v-for="category in categories" :key="category.id" class="border-border rounded-lg border">
                         <!-- Category Header -->
                         <div
-                            class="flex cursor-pointer items-center justify-between bg-muted/30 px-4 py-3"
+                            class="bg-muted/30 flex cursor-pointer items-center justify-between px-4 py-3"
                             @click="toggleCategory(category.id)"
                         >
                             <div class="flex items-center gap-2">
                                 <component
                                     :is="expandedCategories.has(category.id) ? ChevronDown : ChevronRight"
-                                    class="h-4 w-4 text-muted-foreground"
+                                    class="text-muted-foreground h-4 w-4"
                                 />
                                 <span class="text-sm font-semibold tracking-wider uppercase">
                                     {{ category.name }}
                                 </span>
-                                <span class="text-xs text-muted-foreground">
-                                    ({{ category.channels.length }})
-                                </span>
+                                <span class="text-muted-foreground text-xs"> ({{ category.channels.length }}) </span>
                             </div>
                             <div class="flex items-center gap-1" @click.stop>
-                                <Button variant="ghost" size="icon" class="h-7 w-7" @click="openCreateChannel(category.id)">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="h-7 w-7"
+                                    @click="openCreateChannel(category.id)"
+                                >
                                     <Plus class="h-3.5 w-3.5" />
                                 </Button>
                                 <Button variant="ghost" size="icon" class="h-7 w-7" @click="openEditCategory(category)">
                                     <Pencil class="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" class="h-7 w-7 text-destructive hover:text-destructive" @click="openDeleteCategory(category)">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="text-destructive hover:text-destructive h-7 w-7"
+                                    @click="openDeleteCategory(category)"
+                                >
                                     <Trash2 class="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -483,17 +475,16 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                 class="flex items-center justify-between px-4 py-3"
                             >
                                 <div class="flex items-center gap-3">
-                                    <component
-                                        :is="channelIcon(channel.type)"
-                                        class="h-4 w-4 text-muted-foreground"
-                                    />
+                                    <component :is="channelIcon(channel.type)" class="text-muted-foreground h-4 w-4" />
                                     <div>
                                         <div class="flex items-center gap-2">
                                             <span class="text-sm font-medium">{{ channel.name }}</span>
-                                            <Lock v-if="channel.is_private" class="h-3 w-3 text-muted-foreground" />
-                                            <Badge v-if="channel.is_private" variant="secondary" class="text-xs">Private</Badge>
+                                            <Lock v-if="channel.is_private" class="text-muted-foreground h-3 w-3" />
+                                            <Badge v-if="channel.is_private" variant="secondary" class="text-xs"
+                                                >Private</Badge
+                                            >
                                         </div>
-                                        <p v-if="channel.topic" class="text-xs text-muted-foreground">
+                                        <p v-if="channel.topic" class="text-muted-foreground text-xs">
                                             {{ channel.topic }}
                                         </p>
                                     </div>
@@ -502,16 +493,29 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                     <Button variant="ghost" size="icon" class="h-7 w-7" @click="openOverrides(channel)">
                                         <Shield class="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" class="h-7 w-7" @click="openEditChannel(channel)">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        class="h-7 w-7"
+                                        @click="openEditChannel(channel)"
+                                    >
                                         <Pencil class="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" class="h-7 w-7 text-destructive hover:text-destructive" @click="openDeleteChannel(channel)">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        class="text-destructive hover:text-destructive h-7 w-7"
+                                        @click="openDeleteChannel(channel)"
+                                    >
                                         <Trash2 class="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </div>
 
-                            <div v-if="category.channels.length === 0" class="px-4 py-4 text-center text-xs text-muted-foreground">
+                            <div
+                                v-if="category.channels.length === 0"
+                                class="text-muted-foreground px-4 py-4 text-center text-xs"
+                            >
                                 No channels in this category.
                             </div>
                         </div>
@@ -531,7 +535,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <div class="grid gap-2">
                         <Label for="ch-name">Name</Label>
                         <Input id="ch-name" v-model="channelForm.name" placeholder="channel-name" />
-                        <p v-if="channelErrors.name" class="text-sm text-destructive">{{ channelErrors.name }}</p>
+                        <p v-if="channelErrors.name" class="text-destructive text-sm">{{ channelErrors.name }}</p>
                     </div>
 
                     <div class="grid gap-2">
@@ -539,7 +543,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <select
                             id="ch-type"
                             v-model="channelForm.type"
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
                         >
                             <option value="text">Text</option>
                             <option value="voice">Voice</option>
@@ -556,7 +560,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <select
                             id="ch-category"
                             v-model="channelForm.category_id"
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
                         >
                             <option :value="null">None</option>
                             <option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -571,7 +575,9 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                             :model-value="channelForm.is_private"
                             @update:model-value="channelForm.is_private = !!$event"
                         />
-                        <Label for="ch-private" class="text-sm">Private channel (requires explicit role/user access)</Label>
+                        <Label for="ch-private" class="text-sm"
+                            >Private channel (requires explicit role/user access)</Label
+                        >
                     </div>
 
                     <DialogFooter>
@@ -593,7 +599,9 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <div class="grid gap-2">
                         <Label for="ech-name">Name</Label>
                         <Input id="ech-name" v-model="editChannelForm.name" />
-                        <p v-if="editChannelErrors.name" class="text-sm text-destructive">{{ editChannelErrors.name }}</p>
+                        <p v-if="editChannelErrors.name" class="text-destructive text-sm">
+                            {{ editChannelErrors.name }}
+                        </p>
                     </div>
 
                     <div class="grid gap-2">
@@ -601,7 +609,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <select
                             id="ech-type"
                             v-model="editChannelForm.type"
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
                         >
                             <option value="text">Text</option>
                             <option value="voice">Voice</option>
@@ -618,7 +626,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <select
                             id="ech-category"
                             v-model="editChannelForm.category_id"
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
                         >
                             <option :value="null">None</option>
                             <option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -629,7 +637,13 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
 
                     <div class="grid gap-2">
                         <Label for="ech-slowmode">Slowmode (seconds)</Label>
-                        <Input id="ech-slowmode" type="number" v-model.number="editChannelForm.slowmode_seconds" min="0" max="21600" />
+                        <Input
+                            id="ech-slowmode"
+                            type="number"
+                            v-model.number="editChannelForm.slowmode_seconds"
+                            min="0"
+                            max="21600"
+                        />
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -655,13 +669,15 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <DialogTitle>Delete Channel</DialogTitle>
                     <DialogDescription>
                         Are you sure you want to delete
-                        <strong>{{ deletingChannel?.name }}</strong>?
-                        All messages in this channel will be lost. This cannot be undone.
+                        <strong>{{ deletingChannel?.name }}</strong
+                        >? All messages in this channel will be lost. This cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                     <Button variant="outline" @click="showDeleteChannelDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteChannel">Delete Channel</Button>
+                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteChannel"
+                        >Delete Channel</Button
+                    >
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -677,10 +693,12 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <div class="grid gap-2">
                         <Label for="cat-name">Name</Label>
                         <Input id="cat-name" v-model="categoryForm.name" placeholder="Category name" />
-                        <p v-if="categoryErrors.name" class="text-sm text-destructive">{{ categoryErrors.name }}</p>
+                        <p v-if="categoryErrors.name" class="text-destructive text-sm">{{ categoryErrors.name }}</p>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showCreateCategoryDialog = false">Cancel</Button>
+                        <Button type="button" variant="outline" @click="showCreateCategoryDialog = false"
+                            >Cancel</Button
+                        >
                         <Button type="submit" :disabled="processing">Create</Button>
                     </DialogFooter>
                 </form>
@@ -698,7 +716,9 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <div class="grid gap-2">
                         <Label for="ecat-name">Name</Label>
                         <Input id="ecat-name" v-model="editCategoryForm.name" />
-                        <p v-if="editCategoryErrors.name" class="text-sm text-destructive">{{ editCategoryErrors.name }}</p>
+                        <p v-if="editCategoryErrors.name" class="text-destructive text-sm">
+                            {{ editCategoryErrors.name }}
+                        </p>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showEditCategoryDialog = false">Cancel</Button>
@@ -714,13 +734,15 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <DialogTitle>Delete Category</DialogTitle>
                     <DialogDescription>
                         Are you sure you want to delete
-                        <strong>{{ deletingCategory?.name }}</strong>?
-                        All channels in this category will also be deleted. This cannot be undone.
+                        <strong>{{ deletingCategory?.name }}</strong
+                        >? All channels in this category will also be deleted. This cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                     <Button variant="outline" @click="showDeleteCategoryDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteCategory">Delete Category</Button>
+                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteCategory"
+                        >Delete Category</Button
+                    >
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -731,14 +753,12 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <DialogTitle>Permission Overrides</DialogTitle>
                     <DialogDescription>
                         Manage permission overrides for
-                        <strong>#{{ overridesChannel?.name }}</strong>.
-                        Overrides allow or deny specific permissions for roles on this channel.
+                        <strong>#{{ overridesChannel?.name }}</strong
+                        >. Overrides allow or deny specific permissions for roles on this channel.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div v-if="loadingOverrides" class="py-4 text-center text-sm text-muted-foreground">
-                    Loading...
-                </div>
+                <div v-if="loadingOverrides" class="text-muted-foreground py-4 text-center text-sm">Loading...</div>
 
                 <div v-else class="space-y-4">
                     <div v-if="channelOverrides.length > 0" class="space-y-2">
@@ -746,7 +766,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <div
                             v-for="override in channelOverrides"
                             :key="override.id"
-                            class="rounded-lg border border-border p-3"
+                            class="border-border rounded-lg border p-3"
                         >
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -765,7 +785,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    class="h-7 w-7 text-destructive hover:text-destructive"
+                                    class="text-destructive hover:text-destructive h-7 w-7"
                                     @click="deleteOverride(override)"
                                 >
                                     <Trash2 class="h-3.5 w-3.5" />
@@ -801,7 +821,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                 <select
                                     id="ovr-role"
                                     v-model="overrideForm.role_id"
-                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
                                 >
                                     <option :value="null">Select a role...</option>
                                     <option v-for="role in availableOverrideRoles" :key="role.id" :value="role.id">
@@ -811,7 +831,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                             </div>
 
                             <div class="space-y-2">
-                                <p class="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                                     Permissions
                                 </p>
                                 <div class="grid gap-1.5">

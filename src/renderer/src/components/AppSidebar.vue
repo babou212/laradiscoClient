@@ -3,13 +3,7 @@ import { ChevronsUpDown, LayoutGrid } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import AppLogo from '@/components/AppLogo.vue';
-import UserInfo from '@/components/UserInfo.vue';
-import UserMenuContent from '@/components/UserMenuContent.vue';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
     Sidebar,
     SidebarContent,
@@ -23,6 +17,8 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import UserInfo from '@/components/UserInfo.vue';
+import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useAuthStore } from '@/stores/auth';
 import type { NavItem } from '@/types';
 
@@ -65,11 +61,7 @@ function isActiveRoute(href: string): boolean {
                 <SidebarGroupContent>
                     <SidebarMenu>
                         <SidebarMenuItem v-for="item in mainNavItems" :key="item.title">
-                            <SidebarMenuButton
-                                as-child
-                                :is-active="isActiveRoute(item.href)"
-                                :tooltip="item.title"
-                            >
+                            <SidebarMenuButton as-child :is-active="isActiveRoute(item.href)" :tooltip="item.title">
                                 <router-link :to="item.href">
                                     <component :is="item.icon" />
                                     <span>{{ item.title }}</span>
@@ -96,13 +88,7 @@ function isActiveRoute(href: string): boolean {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                             class="w-(--reka-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-                            :side="
-                                isMobile
-                                    ? 'bottom'
-                                    : state === 'collapsed'
-                                      ? 'left'
-                                      : 'bottom'
-                            "
+                            :side="isMobile ? 'bottom' : state === 'collapsed' ? 'left' : 'bottom'"
                             align="end"
                             :side-offset="4"
                         >

@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import api from '@/lib/api';
-import type {
-    Category,
-    Channel,
-    ChannelPermissions,
-    MessageData,
-    MessagesResponse,
-} from '@/types/chat';
+import type { Category, Channel, ChannelPermissions, MessageData, MessagesResponse } from '@/types/chat';
 
 export const useChatStore = defineStore('chat', () => {
     const categories = ref<Category[]>([]);
@@ -40,8 +34,7 @@ export const useChatStore = defineStore('chat', () => {
             const response = await api.get(`/channels/${channelId}`);
             if (response.data) {
                 currentChannel.value = response.data;
-                currentChannelPermissions.value =
-                    response.data.permissions ?? null;
+                currentChannelPermissions.value = response.data.permissions ?? null;
             }
         } catch (error) {
             console.error('Failed to fetch channel:', error);
@@ -64,10 +57,7 @@ export const useChatStore = defineStore('chat', () => {
     async function selectChannel(channelId: number): Promise<void> {
         isLoadingMessages.value = true;
         try {
-            const [, msgData] = await Promise.all([
-                fetchChannel(channelId),
-                fetchMessages(channelId),
-            ]);
+            const [, msgData] = await Promise.all([fetchChannel(channelId), fetchMessages(channelId)]);
 
             if (msgData) {
                 messages.value = msgData.data ?? [];
@@ -80,21 +70,14 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     async function loadOlderMessages(): Promise<void> {
-        if (!prevCursor.value || !currentChannel.value || isLoadingMore.value)
-            return;
+        if (!prevCursor.value || !currentChannel.value || isLoadingMore.value) return;
 
         isLoadingMore.value = true;
         try {
-            const msgData = await fetchMessages(
-                currentChannel.value.id,
-                prevCursor.value,
-            );
+            const msgData = await fetchMessages(currentChannel.value.id, prevCursor.value);
 
             if (msgData) {
-                messages.value = [
-                    ...(msgData.data ?? []),
-                    ...messages.value,
-                ];
+                messages.value = [...(msgData.data ?? []), ...messages.value];
                 prevCursor.value = msgData.prev_cursor ?? null;
             }
         } finally {
@@ -102,35 +85,15 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    async function sendMessage(
-        content: string,
-        replyToId?: number,
-    ): Promise<void> {
+    async function sendMessage(content: string, replyToId?: number): Promise<void> {
         if (!currentChannel.value) return;
 
-        const optimistic: MessageData = {
-            id: Date.now(),
-            content,
-            is_edited: false,
-            edited_at: null,
-            deleted_at: null,
-            reply_to_id: replyToId ?? null,
-            reply_to: null,
-            user: { id: 0, username: '', avatar_path: null }, // filled by caller
-            reactions: [],
-            created_at: new Date().toISOString(),
-        };
-
         try {
-            const response = await api.post(
-                `/channels/${currentChannel.value.id}/messages`,
-                {
-                    content,
-                    reply_to_id: replyToId,
-                },
-            );
+            const response = await api.post(`/channels/${currentChannel.value.id}/messages`, {
+                content,
+                reply_to_id: replyToId,
+            });
 
-            // Push the real server message (unwrapped from API envelope)
             if (response.data) {
                 messages.value.push(response.data);
             }
@@ -139,16 +102,10 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    async function editMessage(
-        messageId: number,
-        content: string,
-    ): Promise<void> {
+    async function editMessage(messageId: number, content: string): Promise<void> {
         if (!currentChannel.value) return;
         try {
-            await api.put(
-                `/channels/${currentChannel.value.id}/messages/${messageId}`,
-                { content },
-            );
+            await api.put(`/channels/${currentChannel.value.id}/messages/${messageId}`, { content });
             const msg = messages.value.find((m) => m.id === messageId);
             if (msg) {
                 msg.content = content;
@@ -163,9 +120,7 @@ export const useChatStore = defineStore('chat', () => {
     async function deleteMessage(messageId: number): Promise<void> {
         if (!currentChannel.value) return;
         try {
-            await api.delete(
-                `/channels/${currentChannel.value.id}/messages/${messageId}`,
-            );
+            await api.delete(`/channels/${currentChannel.value.id}/messages/${messageId}`);
             const idx = messages.value.findIndex((m) => m.id === messageId);
             if (idx !== -1) messages.value.splice(idx, 1);
         } catch (error) {
@@ -173,16 +128,12 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    async function toggleReaction(
-        messageId: number,
-        emoji: string,
-    ): Promise<void> {
+    async function toggleReaction(messageId: number, emoji: string): Promise<void> {
         if (!currentChannel.value) return;
         try {
-            const response = await api.post(
-                `/channels/${currentChannel.value.id}/messages/${messageId}/reactions`,
-                { emoji },
-            );
+            const response = await api.post(`/channels/${currentChannel.value.id}/messages/${messageId}/reactions`, {
+                emoji,
+            });
             const msg = messages.value.find((m) => m.id === messageId);
             if (msg && response.data) {
                 if (response.data.added) {
@@ -194,12 +145,9 @@ export const useChatStore = defineStore('chat', () => {
                         emoji,
                     });
                 } else {
-                    // Remove own reaction — find by current user and emoji
                     const { useAuthStore } = await import('./auth');
                     const currentUserId = useAuthStore().user?.id ?? 0;
-                    const idx = msg.reactions.findIndex(
-                        (r) => r.user_id === currentUserId && r.emoji === emoji,
-                    );
+                    const idx = msg.reactions.findIndex((r) => r.user_id === currentUserId && r.emoji === emoji);
                     if (idx !== -1) msg.reactions.splice(idx, 1);
                 }
             }
@@ -212,8 +160,8 @@ export const useChatStore = defineStore('chat', () => {
         if (!currentChannel.value) return;
         try {
             await api.post(`/channels/${currentChannel.value.id}/typing`);
-        } catch {
-            // non-critical
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -224,19 +172,14 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    function updateMessage(
-        messageOrId: MessageData | number,
-        partial?: Partial<MessageData>,
-    ): void {
+    function updateMessage(messageOrId: MessageData | number, partial?: Partial<MessageData>): void {
         if (typeof messageOrId === 'number') {
             const idx = messages.value.findIndex((m) => m.id === messageOrId);
             if (idx !== -1 && partial) {
                 Object.assign(messages.value[idx], partial);
             }
         } else {
-            const idx = messages.value.findIndex(
-                (m) => m.id === messageOrId.id,
-            );
+            const idx = messages.value.findIndex((m) => m.id === messageOrId.id);
             if (idx !== -1) {
                 messages.value[idx].content = messageOrId.content;
                 messages.value[idx].is_edited = true;

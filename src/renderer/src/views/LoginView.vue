@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import { useServerStore } from '@/stores/server';
-import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon } from 'lucide-vue-next';
-import AuthLayout from '@/layouts/AuthLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { useAuthStore } from '@/stores/auth';
+import { useServerStore } from '@/stores/server';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -20,9 +20,7 @@ const showPassword = ref(false);
 const serverName = computed(() => serverStore.activeServer?.name ?? 'Server');
 const serverHost = computed(() => serverStore.activeServer?.host ?? '');
 
-const canSubmit = computed(
-    () => email.value.trim() !== '' && password.value !== '' && !authStore.isLoggingIn,
-);
+const canSubmit = computed(() => email.value.trim() !== '' && password.value !== '' && !authStore.isLoggingIn);
 
 onMounted(() => {
     if (!serverStore.activeServer) {
@@ -49,7 +47,7 @@ function goBack(): void {
 
 <template>
     <AuthLayout title="Welcome Back" :description="`Sign in to ${serverName}`">
-        <p class="-mt-6 text-center text-xs text-muted-foreground/60">{{ serverHost }}</p>
+        <p class="text-muted-foreground/60 -mt-6 text-center text-xs">{{ serverHost }}</p>
 
         <form @submit.prevent="handleLogin" class="space-y-5">
             <div class="grid gap-2">
@@ -79,7 +77,7 @@ function goBack(): void {
                     <button
                         type="button"
                         @click="showPassword = !showPassword"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        class="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                         tabindex="-1"
                     >
                         <EyeOffIcon v-if="showPassword" class="size-4" />
@@ -90,7 +88,7 @@ function goBack(): void {
 
             <div
                 v-if="authStore.loginError"
-                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
             >
                 {{ authStore.loginError }}
             </div>
@@ -103,7 +101,7 @@ function goBack(): void {
                 </Button>
                 <router-link
                     :to="{ name: 'forgot-password' }"
-                    class="text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    class="text-muted-foreground hover:text-foreground text-center text-sm transition-colors"
                 >
                     Forgot your password?
                 </router-link>

@@ -1,9 +1,21 @@
 import { join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
+
+if (process.env.USER_DATA_DIR) {
+    app.setPath('userData', process.env.USER_DATA_DIR);
+}
+
+import { initE2ee } from './crypto';
 import { initDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
+import { initAutoUpdater } from './updater';
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+}
 
 function createWindow(): void {
     const isMac = process.platform === 'darwin';
@@ -16,9 +28,7 @@ function createWindow(): void {
         show: false,
         autoHideMenuBar: true,
 
-        ...(isMac
-            ? { titleBarStyle: 'hiddenInset' }
-            : { frame: false }),
+        ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: false }),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             sandbox: true,
@@ -60,12 +70,39 @@ function createWindow(): void {
     }
 }
 
+app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+        if (win.isMinimized()) win.restore();
+        win.focus();
+    }
+});
+
 app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
+    initE2ee();
     initPushToTalk();
+    initAutoUpdater();
 
     electronApp.setAppUserModelId('com.laradisco.client');
+
+    const defaultUserAgent = session.defaultSession.getUserAgent();
+    const cleanUserAgent = defaultUserAgent.replace(/\s*Electron\/[\w.]+/gi, '').replace(/\s*laradisco[^\s]*/gi, '');
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+        {
+            urls: [
+                'https://*.youtube.com/*',
+                'https://*.youtube-nocookie.com/*',
+                'https://*.googlevideo.com/*',
+                'https://*.google.com/*',
+            ],
+        },
+        (details, callback) => {
+            details.requestHeaders['User-Agent'] = cleanUserAgent;
+            callback({ requestHeaders: details.requestHeaders });
+        },
+    );
 
     const csp = [
         "default-src 'self'",
@@ -75,7 +112,7 @@ app.whenReady().then(() => {
         "img-src 'self' data: http: https: blob:",
         "font-src 'self' data:",
         "media-src 'self' blob: https:",
-        "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+        'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
         "worker-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
@@ -83,18 +120,23 @@ app.whenReady().then(() => {
     ].join('; ');
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-            responseHeaders: {
-                ...details.responseHeaders,
-                'Content-Security-Policy': [csp],
-                'X-Content-Type-Options': ['nosniff'],
-                'X-Frame-Options': ['DENY'],
-                'Referrer-Policy': ['strict-origin-when-cross-origin'],
-                'Permissions-Policy': [
-                    'microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()',
-                ],
-            },
-        });
+        const url = new URL(details.url);
+        const isAppPage = url.protocol === 'file:' || url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+        if (isAppPage) {
+            callback({
+                responseHeaders: {
+                    ...details.responseHeaders,
+                    'Content-Security-Policy': [csp],
+                    'X-Content-Type-Options': ['nosniff'],
+                    'X-Frame-Options': ['DENY'],
+                    'Referrer-Policy': ['strict-origin-when-cross-origin'],
+                    'Permissions-Policy': ['microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()'],
+                },
+            });
+        } else {
+            callback({ responseHeaders: details.responseHeaders });
+        }
     });
 
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
@@ -104,10 +146,7 @@ app.whenReady().then(() => {
 
     app.on('web-contents-created', (_event, contents) => {
         contents.on('will-navigate', (event, url) => {
-            const appOrigins = [
-                'http://localhost',
-                process.env['ELECTRON_RENDERER_URL'] ?? '',
-            ];
+            const appOrigins = ['http://localhost', process.env['ELECTRON_RENDERER_URL'] ?? ''];
             const isAllowed = appOrigins.some((o) => o && url.startsWith(o));
             if (!isAllowed && !url.startsWith('file://')) {
                 event.preventDefault();

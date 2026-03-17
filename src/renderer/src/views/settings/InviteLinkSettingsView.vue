@@ -1,9 +1,9 @@
 <!-- InviteLinkSettingsView - Invite link management -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
@@ -27,7 +27,11 @@ const { copy, copied, text: copiedText } = useClipboard();
 
 const baseUrl = computed(() => {
     const host = serverStore.activeHost ?? '';
-    const protocol = host.startsWith('http') ? '' : (host.includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://');
+    const protocol = host.startsWith('http')
+        ? ''
+        : host.includes('localhost') || host.includes('127.0.0.1')
+          ? 'http://'
+          : 'https://';
     return `${protocol}${host}/register?invite=`;
 });
 
@@ -86,11 +90,11 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="flex items-center justify-between border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
                     <h2 class="text-lg font-semibold">Invite Links</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-muted-foreground mt-1 text-sm">
                         Generate single-use invite links for new members. Links expire after 1 hour.
                     </p>
                 </div>
@@ -101,19 +105,17 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
             </div>
 
             <div class="p-6">
-                <div v-if="isLoading" class="text-sm text-muted-foreground">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
 
                 <div
                     v-else-if="inviteLinks.length === 0"
                     class="flex flex-col items-center justify-center py-8 text-center"
                 >
-                    <div class="mb-3 rounded-full border border-border bg-muted p-3">
-                        <Link2 class="h-6 w-6 text-muted-foreground" />
+                    <div class="border-border bg-muted mb-3 rounded-full border p-3">
+                        <Link2 class="text-muted-foreground h-6 w-6" />
                     </div>
                     <p class="text-sm font-medium">No invite links yet</p>
-                    <p class="mt-1 text-sm text-muted-foreground">
-                        Generate a link to invite someone to register.
-                    </p>
+                    <p class="text-muted-foreground mt-1 text-sm">Generate a link to invite someone to register.</p>
                 </div>
 
                 <div v-else class="space-y-3">
@@ -129,17 +131,19 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                     >
                         <div class="min-w-0 flex-1 space-y-1">
                             <div class="flex items-center gap-2">
-                                <code class="truncate text-xs text-muted-foreground">
+                                <code class="text-muted-foreground truncate text-xs">
                                     {{ baseUrl + link.token }}
                                 </code>
                             </div>
-                            <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <div class="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                                 <span>Created {{ formatDate(link.created_at) }}</span>
                                 <span>&middot;</span>
                                 <span>Expires {{ formatDate(link.expires_at) }}</span>
                                 <template v-if="link.used_by_user">
                                     <span>&middot;</span>
-                                    <span>Used by <strong>{{ link.used_by_user.name }}</strong></span>
+                                    <span
+                                        >Used by <strong>{{ link.used_by_user.name }}</strong></span
+                                    >
                                 </template>
                             </div>
                         </div>
@@ -154,7 +158,13 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                           : 'destructive'
                                 "
                             >
-                                {{ getStatus(link) === 'active' ? 'Active' : getStatus(link) === 'used' ? 'Used' : 'Expired' }}
+                                {{
+                                    getStatus(link) === 'active'
+                                        ? 'Active'
+                                        : getStatus(link) === 'used'
+                                          ? 'Used'
+                                          : 'Expired'
+                                }}
                             </Badge>
 
                             <Button
@@ -164,7 +174,10 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                 @click="copyInviteUrl(link.token)"
                                 class="h-8 w-8"
                             >
-                                <Check v-if="copied && copiedText === baseUrl + link.token" class="h-4 w-4 text-green-500" />
+                                <Check
+                                    v-if="copied && copiedText === baseUrl + link.token"
+                                    class="h-4 w-4 text-green-500"
+                                />
                                 <Copy v-else class="h-4 w-4" />
                             </Button>
 
@@ -173,7 +186,7 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                 variant="ghost"
                                 size="icon"
                                 @click="deleteLink(link)"
-                                class="h-8 w-8 text-destructive hover:text-destructive"
+                                class="text-destructive hover:text-destructive h-8 w-8"
                             >
                                 <Trash2 class="h-4 w-4" />
                             </Button>

@@ -1,14 +1,11 @@
 <!-- RoleSettingsView - Server role management -->
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { Pencil, Plus, Shield, Trash2, Users } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import {
     Dialog,
     DialogContent,
@@ -17,6 +14,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import api from '@/lib/api';
 
 type Permission = { value: string; label: string };
@@ -66,10 +66,35 @@ const createErrors = ref<Record<string, string>>({});
 const editErrors = ref<Record<string, string>>({});
 
 const permissionCategories = [
-    { label: 'General Server', permissions: ['manage_channels', 'manage_roles', 'manage_server', 'view_audit_log', 'manage_emojis'] },
-    { label: 'Membership', permissions: ['kick_members', 'ban_members', 'invite_members', 'change_nickname', 'manage_nicknames'] },
-    { label: 'Text Channels', permissions: ['view_channels', 'send_messages', 'send_thread_messages', 'create_threads', 'embed_links', 'attach_files', 'add_reactions', 'mention_everyone', 'manage_messages', 'manage_threads', 'read_message_history', 'pin_messages'] },
-    { label: 'Voice Channels', permissions: ['connect', 'speak', 'video', 'mute_members', 'deafen_members', 'move_members'] },
+    {
+        label: 'General Server',
+        permissions: ['manage_channels', 'manage_roles', 'manage_server', 'view_audit_log', 'manage_emojis'],
+    },
+    {
+        label: 'Membership',
+        permissions: ['kick_members', 'ban_members', 'invite_members', 'change_nickname', 'manage_nicknames'],
+    },
+    {
+        label: 'Text Channels',
+        permissions: [
+            'view_channels',
+            'send_messages',
+            'send_thread_messages',
+            'create_threads',
+            'embed_links',
+            'attach_files',
+            'add_reactions',
+            'mention_everyone',
+            'manage_messages',
+            'manage_threads',
+            'read_message_history',
+            'pin_messages',
+        ],
+    },
+    {
+        label: 'Voice Channels',
+        permissions: ['connect', 'speak', 'video', 'mute_members', 'deafen_members', 'move_members'],
+    },
     { label: 'Admin', permissions: ['administrator'] },
 ];
 
@@ -124,7 +149,14 @@ async function loadRoles() {
 }
 
 function openCreateDialog() {
-    createForm.value = { name: '', color: '#99AAB5', is_hoisted: false, position: 1, permissions: [], is_mentionable: true };
+    createForm.value = {
+        name: '',
+        color: '#99AAB5',
+        is_hoisted: false,
+        position: 1,
+        permissions: [],
+        is_mentionable: true,
+    };
     createErrors.value = {};
     showCreateDialog.value = true;
 }
@@ -217,11 +249,11 @@ async function confirmDelete() {
 
 <template>
     <div>
-        <div class="rounded-lg border bg-card">
-            <div class="flex items-center justify-between border-b bg-muted/50 px-6 py-4">
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
                     <h2 class="text-lg font-semibold">Roles</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-muted-foreground mt-1 text-sm">
                         Manage server roles and their permissions. Higher position roles outrank lower ones.
                     </p>
                 </div>
@@ -233,34 +265,42 @@ async function confirmDelete() {
 
             <div class="p-6">
                 <!-- Error banner -->
-                <div v-if="apiError" class="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div
+                    v-if="apiError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm"
+                >
                     {{ apiError }}
                 </div>
 
-                <div v-if="isLoading" class="text-sm text-muted-foreground">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
 
-                <div v-else-if="roles.length === 0 && !apiError" class="flex flex-col items-center justify-center py-8 text-center">
-                    <div class="mb-3 rounded-full border border-border bg-muted p-3">
-                        <Shield class="h-6 w-6 text-muted-foreground" />
+                <div
+                    v-else-if="roles.length === 0 && !apiError"
+                    class="flex flex-col items-center justify-center py-8 text-center"
+                >
+                    <div class="border-border bg-muted mb-3 rounded-full border p-3">
+                        <Shield class="text-muted-foreground h-6 w-6" />
                     </div>
                     <p class="text-sm font-medium">No roles yet</p>
-                    <p class="mt-1 text-sm text-muted-foreground">Create a role to manage permissions.</p>
+                    <p class="text-muted-foreground mt-1 text-sm">Create a role to manage permissions.</p>
                 </div>
 
                 <div v-else class="space-y-3">
                     <div
                         v-for="role in roles"
                         :key="role.id"
-                        class="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4"
+                        class="border-border bg-background flex items-center justify-between gap-4 rounded-lg border p-4"
                     >
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-3">
                                 <div class="h-4 w-4 shrink-0 rounded-full" :style="{ backgroundColor: role.color }" />
                                 <span class="font-medium">{{ role.name }}</span>
                                 <Badge v-if="role.is_default" variant="secondary">Default</Badge>
-                                <Badge v-if="getRolePermissions(role).includes('administrator')" variant="destructive">Admin</Badge>
+                                <Badge v-if="getRolePermissions(role).includes('administrator')" variant="destructive"
+                                    >Admin</Badge
+                                >
                             </div>
-                            <div class="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                            <div class="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
                                 <span class="flex items-center gap-1">
                                     <Users class="h-3 w-3" />
                                     {{ role.users_count }} {{ role.users_count === 1 ? 'member' : 'members' }}
@@ -279,7 +319,7 @@ async function confirmDelete() {
                                 variant="ghost"
                                 size="icon"
                                 @click="openDeleteDialog(role)"
-                                class="h-8 w-8 text-destructive hover:text-destructive"
+                                class="text-destructive hover:text-destructive h-8 w-8"
                             >
                                 <Trash2 class="h-4 w-4" />
                             </Button>
@@ -301,10 +341,13 @@ async function confirmDelete() {
                     <div class="grid gap-2">
                         <Label for="create-name">Name</Label>
                         <Input id="create-name" v-model="createForm.name" placeholder="Role name" />
-                        <p v-if="createErrors.name" class="text-sm text-destructive">{{ createErrors.name }}</p>
+                        <p v-if="createErrors.name" class="text-destructive text-sm">{{ createErrors.name }}</p>
                     </div>
 
-                    <div v-if="createErrors._general" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <div
+                        v-if="createErrors._general"
+                        class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                    >
                         {{ createErrors._general }}
                     </div>
 
@@ -312,7 +355,12 @@ async function confirmDelete() {
                         <div class="grid gap-2">
                             <Label for="create-color">Color</Label>
                             <div class="flex items-center gap-2">
-                                <input id="create-color" type="color" v-model="createForm.color" class="h-9 w-12 cursor-pointer rounded border border-input" />
+                                <input
+                                    id="create-color"
+                                    type="color"
+                                    v-model="createForm.color"
+                                    class="border-input h-9 w-12 cursor-pointer rounded border"
+                                />
                                 <Input v-model="createForm.color" class="font-mono text-xs" maxlength="7" />
                             </div>
                         </div>
@@ -324,11 +372,19 @@ async function confirmDelete() {
 
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2">
-                            <Checkbox id="create-hoisted" :model-value="createForm.is_hoisted" @update:model-value="createForm.is_hoisted = !!$event" />
+                            <Checkbox
+                                id="create-hoisted"
+                                :model-value="createForm.is_hoisted"
+                                @update:model-value="createForm.is_hoisted = !!$event"
+                            />
                             <Label for="create-hoisted" class="text-sm">Display separately</Label>
                         </div>
                         <div class="flex items-center gap-2">
-                            <Checkbox id="create-mentionable" :model-value="createForm.is_mentionable" @update:model-value="createForm.is_mentionable = !!$event" />
+                            <Checkbox
+                                id="create-mentionable"
+                                :model-value="createForm.is_mentionable"
+                                @update:model-value="createForm.is_mentionable = !!$event"
+                            />
                             <Label for="create-mentionable" class="text-sm">Mentionable</Label>
                         </div>
                     </div>
@@ -339,11 +395,23 @@ async function confirmDelete() {
                         <h3 class="mb-3 text-sm font-semibold">Permissions</h3>
                         <div class="space-y-4">
                             <div v-for="category in permissionCategories" :key="category.label">
-                                <p class="mb-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">{{ category.label }}</p>
+                                <p class="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
+                                    {{ category.label }}
+                                </p>
                                 <div class="space-y-2">
-                                    <div v-for="perm in category.permissions" :key="perm" class="flex items-center gap-2">
-                                        <Checkbox :id="`create-perm-${perm}`" :model-value="createForm.permissions.includes(perm)" @update:model-value="togglePermission(createForm, perm)" />
-                                        <Label :for="`create-perm-${perm}`" class="text-sm">{{ getPermissionLabel(perm) }}</Label>
+                                    <div
+                                        v-for="perm in category.permissions"
+                                        :key="perm"
+                                        class="flex items-center gap-2"
+                                    >
+                                        <Checkbox
+                                            :id="`create-perm-${perm}`"
+                                            :model-value="createForm.permissions.includes(perm)"
+                                            @update:model-value="togglePermission(createForm, perm)"
+                                        />
+                                        <Label :for="`create-perm-${perm}`" class="text-sm">{{
+                                            getPermissionLabel(perm)
+                                        }}</Label>
                                     </div>
                                 </div>
                             </div>
@@ -370,10 +438,13 @@ async function confirmDelete() {
                     <div class="grid gap-2">
                         <Label for="edit-name">Name</Label>
                         <Input id="edit-name" v-model="editForm.name" placeholder="Role name" />
-                        <p v-if="editErrors.name" class="text-sm text-destructive">{{ editErrors.name }}</p>
+                        <p v-if="editErrors.name" class="text-destructive text-sm">{{ editErrors.name }}</p>
                     </div>
 
-                    <div v-if="editErrors._general" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    <div
+                        v-if="editErrors._general"
+                        class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                    >
                         {{ editErrors._general }}
                     </div>
 
@@ -381,7 +452,12 @@ async function confirmDelete() {
                         <div class="grid gap-2">
                             <Label for="edit-color">Color</Label>
                             <div class="flex items-center gap-2">
-                                <input id="edit-color" type="color" v-model="editForm.color" class="h-9 w-12 cursor-pointer rounded border border-input" />
+                                <input
+                                    id="edit-color"
+                                    type="color"
+                                    v-model="editForm.color"
+                                    class="border-input h-9 w-12 cursor-pointer rounded border"
+                                />
                                 <Input v-model="editForm.color" class="font-mono text-xs" maxlength="7" />
                             </div>
                         </div>
@@ -393,11 +469,19 @@ async function confirmDelete() {
 
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2">
-                            <Checkbox id="edit-hoisted" :model-value="editForm.is_hoisted" @update:model-value="editForm.is_hoisted = !!$event" />
+                            <Checkbox
+                                id="edit-hoisted"
+                                :model-value="editForm.is_hoisted"
+                                @update:model-value="editForm.is_hoisted = !!$event"
+                            />
                             <Label for="edit-hoisted" class="text-sm">Display separately</Label>
                         </div>
                         <div class="flex items-center gap-2">
-                            <Checkbox id="edit-mentionable" :model-value="editForm.is_mentionable" @update:model-value="editForm.is_mentionable = !!$event" />
+                            <Checkbox
+                                id="edit-mentionable"
+                                :model-value="editForm.is_mentionable"
+                                @update:model-value="editForm.is_mentionable = !!$event"
+                            />
                             <Label for="edit-mentionable" class="text-sm">Mentionable</Label>
                         </div>
                     </div>
@@ -408,11 +492,23 @@ async function confirmDelete() {
                         <h3 class="mb-3 text-sm font-semibold">Permissions</h3>
                         <div class="space-y-4">
                             <div v-for="category in permissionCategories" :key="category.label">
-                                <p class="mb-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">{{ category.label }}</p>
+                                <p class="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
+                                    {{ category.label }}
+                                </p>
                                 <div class="space-y-2">
-                                    <div v-for="perm in category.permissions" :key="perm" class="flex items-center gap-2">
-                                        <Checkbox :id="`edit-perm-${perm}`" :model-value="editForm.permissions.includes(perm)" @update:model-value="togglePermission(editForm, perm)" />
-                                        <Label :for="`edit-perm-${perm}`" class="text-sm">{{ getPermissionLabel(perm) }}</Label>
+                                    <div
+                                        v-for="perm in category.permissions"
+                                        :key="perm"
+                                        class="flex items-center gap-2"
+                                    >
+                                        <Checkbox
+                                            :id="`edit-perm-${perm}`"
+                                            :model-value="editForm.permissions.includes(perm)"
+                                            @update:model-value="togglePermission(editForm, perm)"
+                                        />
+                                        <Label :for="`edit-perm-${perm}`" class="text-sm">{{
+                                            getPermissionLabel(perm)
+                                        }}</Label>
                                     </div>
                                 </div>
                             </div>
@@ -433,7 +529,8 @@ async function confirmDelete() {
                 <DialogHeader>
                     <DialogTitle>Delete Role</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete the role <strong>{{ deletingRole?.name }}</strong>? All users with this role will lose its permissions. This action cannot be undone.
+                        Are you sure you want to delete the role <strong>{{ deletingRole?.name }}</strong
+                        >? All users with this role will lose its permissions. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

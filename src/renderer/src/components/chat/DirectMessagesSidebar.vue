@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import api from '@/lib/api';
-import { usePresenceStore } from '@/stores/presence';
 import type { DmGroup } from '@/stores/directMessages';
-import type { UserStatusType } from '@/types';
+import { usePresenceStore } from '@/stores/presence';
 
 type Props = {
     dmGroups: DmGroup[];
@@ -22,7 +21,9 @@ const presenceStore = usePresenceStore();
 
 const showNewDmSearch = ref(false);
 const searchQuery = ref('');
-const searchResults = ref<Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>>([]);
+const searchResults = ref<Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>>(
+    [],
+);
 const isSearching = ref(false);
 
 const getStatusColor = (userId: number): string => {
@@ -104,14 +105,12 @@ const toggleNewDmSearch = () => {
 </script>
 
 <template>
-    <div class="flex h-full w-60 flex-col border-r border-sidebar-border bg-sidebar">
-        <div class="flex h-12 items-center justify-between border-b border-sidebar-border px-4 shadow-sm">
-            <h2 class="text-sm font-semibold text-sidebar-foreground">
-                Direct Messages
-            </h2>
+    <div class="border-sidebar-border bg-sidebar flex h-full w-60 flex-col border-r">
+        <div class="border-sidebar-border flex h-12 items-center justify-between border-b px-4 shadow-sm">
+            <h2 class="text-sidebar-foreground text-sm font-semibold">Direct Messages</h2>
             <button
                 type="button"
-                class="rounded p-1 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                class="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground rounded p-1 transition-colors"
                 title="New Message"
                 @click="toggleNewDmSearch"
             >
@@ -120,12 +119,12 @@ const toggleNewDmSearch = () => {
             </button>
         </div>
 
-        <div v-if="showNewDmSearch" class="border-b border-sidebar-border p-2">
+        <div v-if="showNewDmSearch" class="border-sidebar-border border-b p-2">
             <div class="relative">
-                <Search :size="14" class="absolute top-1/2 left-2.5 -translate-y-1/2 text-sidebar-foreground/50" />
+                <Search :size="14" class="text-sidebar-foreground/50 absolute top-1/2 left-2.5 -translate-y-1/2" />
                 <input
                     type="text"
-                    class="w-full rounded bg-sidebar-accent/50 py-1.5 pr-2 pl-8 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:bg-sidebar-accent focus:outline-none"
+                    class="bg-sidebar-accent/50 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:bg-sidebar-accent w-full rounded py-1.5 pr-2 pl-8 text-sm focus:outline-none"
                     placeholder="Find or start a conversation"
                     :value="searchQuery"
                     @input="handleSearch(($event.target as HTMLInputElement).value)"
@@ -136,31 +135,36 @@ const toggleNewDmSearch = () => {
                     v-for="user in searchResults"
                     :key="user.id"
                     type="button"
-                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+                    class="text-sidebar-foreground hover:bg-sidebar-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
                     @click="selectSearchUser(user.id)"
                 >
                     <div class="relative">
-                        <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                        <div
+                            class="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                        >
                             {{ user.username?.[0]?.toUpperCase() || '?' }}
                         </div>
                         <div
-                            class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-sidebar"
+                            class="border-sidebar absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2"
                             :class="getStatusColor(user.id)"
                         />
                     </div>
                     <span class="truncate">{{ user.display_name || user.username }}</span>
                 </button>
             </div>
-            <div v-else-if="searchQuery && !isSearching" class="px-2 py-3 text-center text-xs text-sidebar-foreground/50">
+            <div
+                v-else-if="searchQuery && !isSearching"
+                class="text-sidebar-foreground/50 px-2 py-3 text-center text-xs"
+            >
                 No users found
             </div>
         </div>
 
         <div class="flex-1 overflow-y-auto">
-            <div class="border-b border-sidebar-border px-2 py-2">
+            <div class="border-sidebar-border border-b px-2 py-2">
                 <button
                     type="button"
-                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    class="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm"
                     @click="$emit('switchToChannels')"
                 >
                     <ArrowLeft :size="18" />
@@ -169,10 +173,7 @@ const toggleNewDmSearch = () => {
             </div>
 
             <div class="p-2">
-                <div
-                    v-if="dmGroups.length === 0"
-                    class="px-2 py-8 text-center text-sm text-sidebar-foreground/50"
-                >
+                <div v-if="dmGroups.length === 0" class="text-sidebar-foreground/50 px-2 py-8 text-center text-sm">
                     <p>No direct messages yet</p>
                     <p class="mt-1 text-xs">Click + to start a conversation</p>
                 </div>
@@ -190,12 +191,14 @@ const toggleNewDmSearch = () => {
                     @click="$emit('selectDm', dm.id)"
                 >
                     <div class="relative">
-                        <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                        <div
+                            class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                        >
                             {{ dm.other_user?.username?.[0]?.toUpperCase() || '?' }}
                         </div>
                         <div
                             v-if="dm.other_user"
-                            class="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-sidebar"
+                            class="border-sidebar absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2"
                             :class="getStatusColor(dm.other_user.id)"
                         />
                     </div>
@@ -205,18 +208,23 @@ const toggleNewDmSearch = () => {
                             <span class="truncate text-sm font-medium">
                                 {{ dm.name }}
                             </span>
-                            <span
-                                v-if="dm.last_message_at"
-                                class="shrink-0 text-[10px] text-sidebar-foreground/50"
-                            >
+                            <span v-if="dm.last_message_at" class="text-sidebar-foreground/50 shrink-0 text-[10px]">
                                 {{ formatTime(dm.last_message_at) }}
                             </span>
                         </div>
-                        <p
-                            v-if="dm.last_message"
-                            class="truncate text-xs text-sidebar-foreground/60"
-                        >
-                            {{ truncateMessage(dm.last_message.content) }}
+                        <p v-if="dm.last_message" class="text-sidebar-foreground/60 truncate text-xs">
+                            <template v-if="dm.last_message.is_encrypted">
+                                {{
+                                    dm.last_message.decrypted_content
+                                        ? truncateMessage(dm.last_message.decrypted_content)
+                                        : dm.last_message.decrypt_error
+                                          ? '[Unable to decrypt]'
+                                          : '[Encrypted message]'
+                                }}
+                            </template>
+                            <template v-else>
+                                {{ truncateMessage(dm.last_message.content) }}
+                            </template>
                         </p>
                     </div>
                 </button>

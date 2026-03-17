@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Search } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { Search, X, Loader2 } from 'lucide-vue-next';
+import { nextTick, onMounted, ref, watch } from 'vue';
 
 interface Emits {
     (e: 'select', gifUrl: string): void;
@@ -12,7 +12,12 @@ const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
 const searchQuery = ref('');
 const gifs = ref<any[]>([]);
 const loading = ref(false);
+const loadingMore = ref(false);
 const selectedCategory = ref<string>('trending');
+const nextCursor = ref<string>('');
+const searchInputRef = ref<HTMLInputElement>();
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const categories = [
     { id: 'trending', label: 'Trending' },
@@ -23,38 +28,83 @@ const categories = [
     { id: 'angry', label: 'Angry' },
     { id: 'laugh', label: 'Laugh' },
     { id: 'dance', label: 'Dance' },
+    { id: 'thumbs up', label: 'Thumbs Up' },
+    { id: 'facepalm', label: 'Facepalm' },
 ];
 
-const fetchGifs = async (query?: string) => {
-    loading.value = true;
+const fetchGifs = async (query?: string, append = false) => {
+    if (append) {
+        loadingMore.value = true;
+    } else {
+        loading.value = true;
+        gifs.value = [];
+        nextCursor.value = '';
+    }
+
     try {
+        const pos = append && nextCursor.value ? `&pos=${nextCursor.value}` : '';
         const endpoint = query
-            ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${TENOR_API_KEY}&limit=20`
-            : `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=20`;
+            ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${TENOR_API_KEY}&limit=30&media_filter=tinygif,gif${pos}`
+            : `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=30&media_filter=tinygif,gif${pos}`;
 
         const response = await fetch(endpoint);
         const data = await response.json();
-        gifs.value = data.results || [];
+        const results = data.results || [];
+        nextCursor.value = data.next || '';
+
+        if (append) {
+            gifs.value = [...gifs.value, ...results];
+        } else {
+            gifs.value = results;
+        }
     } catch (error) {
         if (import.meta.env.DEV) {
             console.error('Error fetching GIFs:', error);
         }
-        gifs.value = [];
+        if (!append) {
+            gifs.value = [];
+        }
     } finally {
         loading.value = false;
+        loadingMore.value = false;
     }
 };
 
-const searchGifs = () => {
-    if (searchQuery.value.trim()) {
-        selectedCategory.value = '';
-        fetchGifs(searchQuery.value);
+const loadMore = () => {
+    if (loadingMore.value || !nextCursor.value) return;
+    const query =
+        searchQuery.value.trim() || (selectedCategory.value !== 'trending' ? selectedCategory.value : undefined);
+    fetchGifs(query, true);
+};
+
+const onScroll = (event: Event) => {
+    const el = event.target as HTMLElement;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+        loadMore();
     }
 };
+
+const clearSearch = () => {
+    searchQuery.value = '';
+    selectedCategory.value = 'trending';
+    fetchGifs();
+    searchInputRef.value?.focus();
+};
+
+watch(searchQuery, (val) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (!val.trim()) return;
+
+    debounceTimer = setTimeout(() => {
+        selectedCategory.value = '';
+        fetchGifs(val.trim());
+    }, 350);
+});
 
 const selectCategory = (categoryId: string) => {
     selectedCategory.value = categoryId;
     searchQuery.value = '';
+    if (debounceTimer) clearTimeout(debounceTimer);
     if (categoryId === 'trending') {
         fetchGifs();
     } else {
@@ -63,8 +113,7 @@ const selectCategory = (categoryId: string) => {
 };
 
 const selectGif = (gif: any) => {
-    const gifUrl =
-        gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
     if (gifUrl) {
         emit('select', gifUrl);
     }
@@ -72,32 +121,33 @@ const selectGif = (gif: any) => {
 
 onMounted(() => {
     fetchGifs();
+    nextTick(() => searchInputRef.value?.focus());
 });
 </script>
 
 <template>
-    <div
-        class="flex h-[450px] w-[400px] flex-col rounded-lg border border-border bg-background shadow-lg"
-    >
-        <div class="border-b border-border p-3">
+    <div class="border-border bg-background flex h-[450px] w-[400px] flex-col rounded-lg border shadow-lg">
+        <div class="border-border border-b p-3">
             <div class="relative">
-                <Search
-                    :size="16"
-                    class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                />
+                <Search :size="16" class="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2" />
                 <input
+                    ref="searchInputRef"
                     v-model="searchQuery"
                     type="text"
-                    placeholder="Search for GIFs"
-                    class="w-full rounded-md border border-input bg-background py-2 pr-3 pl-9 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    @keydown.enter="searchGifs"
+                    placeholder="Search GIFs..."
+                    class="border-input bg-background focus:ring-ring w-full rounded-md border py-2 pr-9 pl-9 text-sm outline-none focus:ring-2"
                 />
+                <button
+                    v-if="searchQuery"
+                    class="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+                    @click="clearSearch"
+                >
+                    <X :size="14" />
+                </button>
             </div>
         </div>
 
-        <div
-            class="scrollbar-thin flex gap-2 overflow-x-auto border-b border-border p-3"
-        >
+        <div class="scrollbar-thin border-border flex gap-1.5 overflow-x-auto border-b px-3 py-2">
             <button
                 v-for="category in categories"
                 :key="category.id"
@@ -112,34 +162,40 @@ onMounted(() => {
                 {{ category.label }}
             </button>
         </div>
-        
-        <div class="flex-1 overflow-y-auto p-3">
-            <div v-if="loading" class="flex h-full items-center justify-center">
-                <div class="text-sm text-muted-foreground">Loading...</div>
+
+        <div class="scrollbar-thin flex-1 overflow-y-auto p-2" @scroll="onScroll">
+            <div v-if="loading" class="columns-2 gap-2">
+                <div
+                    v-for="i in 8"
+                    :key="i"
+                    class="bg-accent mb-2 animate-pulse break-inside-avoid rounded-lg"
+                    :style="{ height: `${80 + (i % 3) * 40}px` }"
+                />
             </div>
-            <div
-                v-else-if="gifs.length === 0"
-                class="flex h-full items-center justify-center"
-            >
-                <div class="text-sm text-muted-foreground">No GIFs found</div>
+
+            <div v-else-if="gifs.length === 0" class="flex h-full flex-col items-center justify-center gap-2">
+                <Search :size="32" class="text-muted-foreground/50" />
+                <div class="text-muted-foreground text-sm">No GIFs found</div>
             </div>
-            <div v-else class="grid grid-cols-2 gap-2">
+
+            <div v-else class="columns-2 gap-2">
                 <button
                     v-for="gif in gifs"
                     :key="gif.id"
-                    class="relative aspect-square overflow-hidden rounded-lg bg-accent transition-all hover:ring-2 hover:ring-primary"
+                    class="bg-accent hover:ring-primary group mb-2 block w-full break-inside-avoid overflow-hidden rounded-lg transition-all hover:ring-2"
                     @click="selectGif(gif)"
                 >
                     <img
-                        :src="
-                            gif.media_formats?.tinygif?.url ||
-                            gif.media_formats?.gif?.url
-                        "
+                        :src="gif.media_formats?.tinygif?.url"
                         :alt="gif.content_description"
-                        class="h-full w-full object-cover"
+                        class="w-full object-cover transition-transform duration-200 group-hover:scale-105"
                         loading="lazy"
                     />
                 </button>
+
+                <div v-if="loadingMore" class="col-span-2 flex justify-center py-3">
+                    <Loader2 :size="20" class="text-muted-foreground animate-spin" />
+                </div>
             </div>
         </div>
     </div>

@@ -2,7 +2,6 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { uIOhook } from 'uiohook-napi';
 import type { UiohookKeyboardEvent } from 'uiohook-napi';
 
-
 interface PttConfig {
     keycode: number;
     requireCtrl: boolean;
@@ -18,13 +17,9 @@ let hookStarted = false;
 
 let keyUpDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-let keyCaptureResolve: ((result: {
-    keycode: number;
-    ctrlKey: boolean;
-    shiftKey: boolean;
-    altKey: boolean;
-    metaKey: boolean;
-}) => void) | null = null;
+let keyCaptureResolve:
+    | ((result: { keycode: number; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }) => void)
+    | null = null;
 
 function sendToAllWindows(channel: string, ...args: unknown[]): void {
     BrowserWindow.getAllWindows().forEach((w) => {
@@ -115,14 +110,17 @@ function stopHook(): void {
 export function initPushToTalk(): void {
     ipcMain.handle(
         'ptt:configure',
-        (_event, config: {
-            keycode: number | null;
-            ctrl: boolean;
-            shift: boolean;
-            alt: boolean;
-            meta: boolean;
-            enabled: boolean;
-        }) => {
+        (
+            _event,
+            config: {
+                keycode: number | null;
+                ctrl: boolean;
+                shift: boolean;
+                alt: boolean;
+                meta: boolean;
+                enabled: boolean;
+            },
+        ) => {
             pttIsCurrentlyDown = false;
             pttEnabled = config.enabled;
 

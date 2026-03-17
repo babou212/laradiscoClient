@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import DOMPurify from 'dompurify';
-import { CornerDownRight, Pencil, SmilePlus, Trash2 } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import { formatMessageDate } from '@/lib/utils';
-import type { MessageData, MessageReaction } from '@/types/chat';
+import { CornerDownRight, ExternalLink, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
+import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
+import { Skeleton } from '@/components/ui/skeleton';
+import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
+import { formatMessageDate } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth';
+import type { MessageData } from '@/types/chat';
 
 interface Props {
     message: MessageData;
@@ -34,19 +36,42 @@ const emit = defineEmits<Emits>();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-const isOwnMessage = computed(
-    () => props.message.user.id === currentUser.value?.id,
-);
+const isOwnMessage = computed(() => props.message.user.id === currentUser.value?.id);
 const canEdit = computed(() => isOwnMessage.value);
 const canDelete = computed(() => isOwnMessage.value || props.canManageMessages);
 const canReact = computed(() => props.canAddReactions !== false);
 const canReply = computed(() => props.canSendMessages !== false);
 
+const isDecrypting = computed(() => {
+    return props.message.is_encrypted && !props.message.decrypt_error && !props.message.decrypted_content;
+});
+
+const displayContent = computed(() => {
+    if (props.message.is_encrypted) {
+        if (props.message.decrypt_error) return '[Unable to decrypt this message]';
+        return props.message.decrypted_content ?? '';
+    }
+    return props.message.content;
+});
+
+const isReplyDecrypting = computed(() => {
+    if (!props.message.reply_to) return false;
+    const reply = props.message.reply_to;
+    return reply.is_encrypted && !reply.decrypt_error && !reply.decrypted_content;
+});
+
+const replyDisplayContent = computed(() => {
+    if (!props.message.reply_to) return '';
+    const reply = props.message.reply_to;
+    if (reply.is_encrypted) {
+        if (reply.decrypt_error) return '[Unable to decrypt]';
+        return reply.decrypted_content ?? '';
+    }
+    return reply.content;
+});
+
 const groupedReactions = computed(() => {
-    const map = new Map<
-        string,
-        { emoji: string; count: number; userReacted: boolean }
-    >();
+    const map = new Map<string, { emoji: string; count: number; userReacted: boolean }>();
     for (const r of props.message.reactions) {
         const existing = map.get(r.emoji);
         if (existing) {
@@ -61,6 +86,65 @@ const groupedReactions = computed(() => {
         }
     }
     return Array.from(map.values());
+});
+
+const messageRef = ref<HTMLElement | null>(null);
+const emojiPickerPosition = ref<'above' | 'below'>('above');
+
+watch(
+    () => props.showEmojiPicker,
+    async (show) => {
+        if (show && messageRef.value) {
+            await nextTick();
+            const rect = messageRef.value.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            emojiPickerPosition.value = rect.top < viewportHeight / 2 ? 'below' : 'above';
+        }
+    },
+);
+
+const copyToClipboard = (text: string): void => {
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+};
+
+const fallbackCopy = (text: string): void => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+};
+
+const handleCodeCopy = (e: MouseEvent) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.code-block-copy');
+    if (!btn) return;
+    const encoded = btn.dataset.code;
+    if (!encoded) return;
+    const tmp = document.createElement('textarea');
+    tmp.innerHTML = encoded;
+    copyToClipboard(tmp.value);
+    const original = btn.innerHTML;
+    btn.innerHTML = checkIcon;
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.innerHTML = original;
+        btn.classList.remove('copied');
+    }, 2000);
+};
+
+onMounted(() => {
+    messageRef.value?.addEventListener('click', handleCodeCopy);
+});
+
+onUnmounted(() => {
+    messageRef.value?.removeEventListener('click', handleCodeCopy);
 });
 
 const handleEditKeydown = (e: KeyboardEvent) => {
@@ -88,9 +172,8 @@ const extractYouTubeId = (url: string): string | null => {
 const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
 
 const youtubeVideoId = computed(() => {
-    const urlPattern =
-        /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/;
-    const match = props.message.content.match(urlPattern);
+    const urlPattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/;
+    const match = displayContent.value.match(urlPattern);
     if (match) {
         const id = extractYouTubeId(match[1]);
         return id && YOUTUBE_ID_REGEX.test(id) ? id : null;
@@ -98,98 +181,84 @@ const youtubeVideoId = computed(() => {
     return null;
 });
 
+const youtubeUrl = computed(() => {
+    if (!youtubeVideoId.value) return '';
+    return `https://www.youtube.com/watch?v=${youtubeVideoId.value}`;
+});
+
+const youtubeEmbedUrl = computed(() => {
+    if (!youtubeVideoId.value) return '';
+    return `https://www.youtube-nocookie.com/embed/${youtubeVideoId.value}?autoplay=1&rel=0`;
+});
+
+const youtubeActive = ref(false);
+
+const playYouTube = () => {
+    youtubeActive.value = true;
+};
+
+const openYouTube = () => {
+    if (youtubeUrl.value) {
+        window.open(youtubeUrl.value, '_blank');
+    }
+};
+
 const messageWithoutYoutubeUrl = computed(() => {
-    if (!youtubeVideoId.value) return props.message.content;
-    const urlPattern =
-        /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/g;
-    return props.message.content.replace(urlPattern, '').trim();
+    if (!youtubeVideoId.value) return displayContent.value;
+    const urlPattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/g;
+    return displayContent.value.replace(urlPattern, '').trim();
 });
 
 const isGifUrl = computed(() => {
     return (
-        props.message.content.match(/^https?:\/\/.*\.gif$/i) ||
-        props.message.content.includes('tenor.com') ||
-        props.message.content.includes('media.tenor.com')
+        displayContent.value.match(/^https?:\/\/.*\.gif$/i) ||
+        displayContent.value.includes('tenor.com') ||
+        displayContent.value.includes('media.tenor.com')
     );
 });
 
-const escapeHtml = (text: string): string =>
-    text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
-const parseMentions = (text: string): string => {
-    const escaped = escapeHtml(text);
-
-    const html = escaped.replace(/@(everyone|here|\w+)/g, (match, name) => {
-        const isSpecial = name === 'everyone' || name === 'here';
-        const classes = isSpecial
-            ? 'mention mention-special cursor-pointer rounded bg-primary/20 px-1 py-0.5 font-medium text-primary hover:bg-primary/30'
-            : 'mention mention-user cursor-pointer rounded bg-primary/20 px-1 py-0.5 font-medium text-primary hover:bg-primary/30';
-        const safeName = escapeHtml(name);
-        return `<span class="${classes}" data-mention="${safeName}">${escapeHtml(match)}</span>`;
-    });
-
-    return DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: ['span'],
-        ALLOWED_ATTR: ['class', 'data-mention'],
-    });
-};
-
 const renderedContent = computed(() => {
-    return parseMentions(props.message.content);
+    return renderMarkdownWithMentions(displayContent.value);
 });
 
 const renderedContentWithoutYoutube = computed(() => {
     if (!messageWithoutYoutubeUrl.value) return '';
-    return parseMentions(messageWithoutYoutubeUrl.value);
+    return renderMarkdownWithMentions(messageWithoutYoutubeUrl.value);
 });
 </script>
 
 <template>
-    <div class="group relative -mx-2 flex gap-3 rounded p-2 hover:bg-accent/50">
+    <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
         <div
-            class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+            class="bg-primary text-primary-foreground flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
         >
             {{ message.user.username[0].toUpperCase() }}
         </div>
 
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span class="text-sm font-semibold">
                     {{ message.user.username }}
                 </span>
-                <span class="text-xs text-muted-foreground">
+                <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}
                 </span>
-                <span
-                    v-if="message.is_edited"
-                    class="text-xs text-muted-foreground italic"
-                >
-                    (edited)
-                </span>
+                <EncryptionBadge :is-encrypted="message.is_encrypted" :decrypt-error="message.decrypt_error" />
+                <span v-if="message.is_edited" class="text-muted-foreground text-xs italic"> (edited) </span>
             </div>
 
             <div
                 v-if="message.reply_to"
-                class="mt-1 flex items-start gap-1.5 rounded border-l-2 border-primary/50 bg-accent/30 px-2 py-1.5 text-xs"
+                class="border-primary/50 bg-accent/30 mt-1 flex items-start gap-1.5 rounded border-l-2 px-2 py-1.5 text-xs"
             >
-                <CornerDownRight
-                    :size="14"
-                    class="mt-0.5 shrink-0 text-muted-foreground"
-                />
+                <CornerDownRight :size="14" class="text-muted-foreground mt-0.5 shrink-0" />
                 <div class="min-w-0 flex-1">
-                    <span class="font-medium text-primary">
+                    <span class="text-primary font-medium">
                         {{ message.reply_to.user.username }}
                     </span>
-                    <span class="block truncate text-muted-foreground">
-                        {{ message.reply_to.content.substring(0, 100)
-                        }}{{
-                            message.reply_to.content.length > 100 ? '...' : ''
-                        }}
+                    <Skeleton v-if="isReplyDecrypting" class="h-3 w-40" />
+                    <span v-else class="text-muted-foreground block truncate">
+                        {{ replyDisplayContent.substring(0, 100) }}{{ replyDisplayContent.length > 100 ? '...' : '' }}
                     </span>
                 </div>
             </div>
@@ -198,82 +267,90 @@ const renderedContentWithoutYoutube = computed(() => {
                 <textarea
                     :value="editContent"
                     rows="2"
-                    class="w-full resize-none rounded border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    @input="
-                        emit(
-                            'updateEditContent',
-                            ($event.target as HTMLTextAreaElement).value,
-                        )
-                    "
+                    class="border-input bg-background focus:ring-ring w-full resize-none rounded border px-3 py-2 text-sm outline-none focus:ring-2"
+                    @input="emit('updateEditContent', ($event.target as HTMLTextAreaElement).value)"
                     @keydown="handleEditKeydown"
                 />
-                <div
-                    class="mt-1 flex items-center gap-2 text-xs text-muted-foreground"
-                >
+                <div class="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                     <span
                         >escape to
-                        <button
-                            class="text-primary hover:underline"
-                            @click="emit('cancelEdit')"
-                        >
-                            cancel
-                        </button></span
+                        <button class="text-primary hover:underline" @click="emit('cancelEdit')">cancel</button></span
                     >
                     <span
                         >• enter to
-                        <button
-                            class="text-primary hover:underline"
-                            @click="emit('saveEdit')"
-                        >
-                            save
-                        </button></span
+                        <button class="text-primary hover:underline" @click="emit('saveEdit')">save</button></span
                     >
                 </div>
             </div>
 
             <div v-else class="mt-1">
-                <div
-                    v-if="isGifUrl"
-                    class="max-w-sm overflow-hidden rounded-lg"
-                >
-                    <img
-                        :src="message.content"
-                        alt="GIF"
-                        class="h-auto w-full"
-                        loading="lazy"
-                    />
+                <div v-if="isDecrypting" class="flex flex-col gap-1.5">
+                    <Skeleton class="h-4 w-3/4" />
+                    <Skeleton class="h-4 w-1/2" />
+                </div>
+                <div v-else-if="isGifUrl" class="max-w-sm overflow-hidden rounded-lg">
+                    <img :src="displayContent" alt="GIF" class="h-auto w-full" loading="lazy" />
                 </div>
 
                 <div
                     v-else-if="messageWithoutYoutubeUrl && !youtubeVideoId"
-                    class="text-sm wrap-break-word whitespace-pre-wrap"
+                    class="prose-chat text-sm wrap-break-word"
                     v-html="renderedContent"
                 />
 
                 <template v-else-if="youtubeVideoId">
                     <div
                         v-if="messageWithoutYoutubeUrl"
-                        class="mb-2 text-sm wrap-break-word whitespace-pre-wrap"
+                        class="prose-chat mb-2 text-sm wrap-break-word"
                         v-html="renderedContentWithoutYoutube"
                     />
-                    <div class="mt-2 max-w-md overflow-hidden rounded-lg">
-                        <iframe
-                            :src="`https://www.youtube.com/embed/${youtubeVideoId}`"
-                            class="aspect-video w-full"
-                            frameborder="0"
-                            sandbox="allow-scripts allow-same-origin allow-popups"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture;"
-                            allowfullscreen
-                            referrerpolicy="no-referrer"
-                        />
+                    <div class="border-border mt-2 max-w-md overflow-hidden rounded-lg border bg-black">
+                        <div class="relative aspect-video w-full">
+                            <iframe
+                                v-if="youtubeActive"
+                                :src="youtubeEmbedUrl"
+                                class="h-full w-full border-none"
+                                allow="
+                                    accelerometer;
+                                    autoplay;
+                                    clipboard-write;
+                                    encrypted-media;
+                                    gyroscope;
+                                    picture-in-picture;
+                                "
+                                allowfullscreen
+                            />
+                            <template v-else>
+                                <img
+                                    :src="`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`"
+                                    alt="YouTube video"
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
+                                />
+                                <button
+                                    class="group/yt absolute inset-0 flex items-center justify-center bg-black/30 transition-colors hover:bg-black/10 focus:outline-none"
+                                    @click="playYouTube"
+                                >
+                                    <div
+                                        class="flex size-14 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform group-hover/yt:scale-110"
+                                    >
+                                        <Play :size="28" class="ml-1 fill-white text-white" />
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+                        <button
+                            class="text-muted-foreground hover:text-foreground flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs"
+                            @click="openYouTube"
+                        >
+                            <ExternalLink :size="12" />
+                            <span>Open in browser</span>
+                        </button>
                     </div>
                 </template>
             </div>
 
-            <div
-                v-if="message.reactions?.length"
-                class="mt-1.5 flex flex-wrap gap-1"
-            >
+            <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">
                 <button
                     v-for="group in groupedReactions"
                     :key="group.emoji"
@@ -295,12 +372,12 @@ const renderedContentWithoutYoutube = computed(() => {
 
         <div
             v-if="!isEditing && (canReact || canReply || canEdit || canDelete)"
-            class="absolute -top-3 right-2 hidden gap-0.5 rounded border border-border bg-background p-0.5 shadow-sm group-hover:flex"
+            class="border-border bg-background absolute -top-3 right-2 hidden gap-0.5 rounded border p-0.5 shadow-sm group-hover:flex"
         >
             <button
                 v-if="canReact"
                 data-reaction-button
-                class="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                 title="Add reaction"
                 @click.stop="emit('toggleEmojiPicker')"
             >
@@ -308,7 +385,7 @@ const renderedContentWithoutYoutube = computed(() => {
             </button>
             <button
                 v-if="canReply"
-                class="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                 title="Reply"
                 @click="emit('reply')"
             >
@@ -316,7 +393,7 @@ const renderedContentWithoutYoutube = computed(() => {
             </button>
             <button
                 v-if="canEdit"
-                class="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                 title="Edit message"
                 @click="emit('startEdit')"
             >
@@ -324,7 +401,7 @@ const renderedContentWithoutYoutube = computed(() => {
             </button>
             <button
                 v-if="canDelete"
-                class="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
                 title="Delete message"
                 @click="emit('delete')"
             >
@@ -334,7 +411,8 @@ const renderedContentWithoutYoutube = computed(() => {
 
         <EmojiPicker
             v-if="showEmojiPicker"
-            class="emoji-picker-container absolute -top-3 right-20 z-10"
+            class="emoji-picker-container absolute right-20 z-10"
+            :class="emojiPickerPosition === 'above' ? 'bottom-full mb-1' : 'top-8'"
             @select="emit('toggleReaction', $event)"
         />
     </div>

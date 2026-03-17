@@ -2,8 +2,8 @@ import api from '@/lib/api';
 import { usePresenceStore } from '@/stores/presence';
 import type { UserStatusType } from '@/types';
 
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of inactivity → idle
-const ACTIVITY_THROTTLE_MS = 30_000; // Only check activity every 30s
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const ACTIVITY_THROTTLE_MS = 30_000;
 
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let lastActivityCheck = 0;
@@ -11,19 +11,11 @@ let currentAutoStatus: UserStatusType | null = null;
 let userManualStatus: UserStatusType | null = null;
 let started = false;
 
-const activityEvents = [
-    'mousemove',
-    'keydown',
-    'mousedown',
-    'touchstart',
-    'scroll',
-    'click',
-] as const;
+const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'] as const;
 
 function setStatus(status: UserStatusType): void {
     api.patch('/presence', { status }).catch(() => {});
 }
-
 
 function goIdle(): void {
     if (userManualStatus === 'dnd' || userManualStatus === 'offline') return;

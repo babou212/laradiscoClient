@@ -39,8 +39,8 @@ export function playPttActivateSound(volume = 0.25): void {
         osc2.connect(gain2);
         osc2.start(now + 0.07);
         osc2.stop(now + 0.15);
-    } catch {
-        // Silently ignore audio errors — PTT must still work
+    } catch (error) {
+        console.error(error);
     }
 }
 
@@ -61,7 +61,7 @@ export function playPttDeactivateSound(volume = 0.2): void {
         osc.connect(gain);
         osc.start(now);
         osc.stop(now + 0.1);
-    } catch {
-        // Silently ignore audio errors
+    } catch (error) {
+        console.error(error);
     }
 }

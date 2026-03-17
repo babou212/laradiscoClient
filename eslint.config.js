@@ -7,7 +7,7 @@ export default defineConfigWithVueTs(
     vue.configs['flat/essential'],
     vueTsConfigs.recommended,
     {
-        ignores: ['out', 'dist', 'node_modules', 'build'],
+        ignores: ['out', 'dist', 'node_modules', 'build', 'forge.config.ts', 'maker-pacman.ts'],
     },
     {
         plugins: {

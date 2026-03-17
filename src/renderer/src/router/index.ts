@@ -1,10 +1,11 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
+import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
-import { useServerStore } from '@/stores/server';
-import { initEcho, disconnectEcho, isEchoConnected } from '@/lib/echo';
+import { useE2eeStore } from '@/stores/e2ee';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
-import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
+import { useServerStore } from '@/stores/server';
 
 const router = createRouter({
     history: createWebHashHistory(),
@@ -116,7 +117,18 @@ const router = createRouter({
                     name: 'settings-invite-links',
                     component: () => import('@/views/settings/InviteLinkSettingsView.vue'),
                 },
+                {
+                    path: 'security',
+                    name: 'settings-security',
+                    component: () => import('@/views/settings/SecuritySettingsView.vue'),
+                },
             ],
+        },
+        {
+            path: '/e2ee-setup',
+            name: 'e2ee-setup',
+            component: () => import('@/components/e2ee/E2EESetupWizard.vue'),
+            meta: { requiresAuth: true },
         },
     ],
 });
@@ -181,6 +193,14 @@ router.beforeEach(async (to) => {
         }
         if (authStore.user) {
             connectRealtime(authStore.user.id);
+
+            const e2eeStore = useE2eeStore();
+            if (!e2eeStore.isReady && !e2eeStore.isSettingUp) {
+                await e2eeStore.initialize();
+            }
+            if (e2eeStore.needsSetup && to.name !== 'e2ee-setup') {
+                return { name: 'e2ee-setup' };
+            }
         }
     }
 

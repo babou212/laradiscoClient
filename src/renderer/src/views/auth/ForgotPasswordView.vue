@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useServerStore } from '@/stores/server';
+import axios from 'axios';
 import {
     ArrowLeftIcon,
     Loader2Icon,
@@ -11,12 +9,14 @@ import {
     ShieldCheckIcon,
     CheckCircle2Icon,
 } from 'lucide-vue-next';
-import AuthLayout from '@/layouts/AuthLayout.vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AuthLayout from '@/layouts/AuthLayout.vue';
 import api from '@/lib/api';
-import axios from 'axios';
+import { useServerStore } from '@/stores/server';
 
 const router = useRouter();
 const serverStore = useServerStore();
@@ -89,8 +89,7 @@ async function handleReset(): Promise<void> {
     } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 422) {
             const messages = err.response.data?.errors;
-            error.value =
-                messages?.code?.[0] ?? messages?.password?.[0] ?? messages?.email?.[0] ?? 'Invalid input.';
+            error.value = messages?.code?.[0] ?? messages?.password?.[0] ?? messages?.email?.[0] ?? 'Invalid input.';
         } else if (axios.isAxiosError(err) && err.response?.status === 429) {
             error.value = 'Too many requests. Please wait a moment and try again.';
         } else {
@@ -118,12 +117,12 @@ function goBack(): void {
         "
     >
         <div v-if="step === 'done'" class="flex flex-col items-center gap-5 text-center">
-            <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
-                <CheckCircle2Icon class="size-6 text-primary" />
+            <div class="bg-primary/10 flex size-12 items-center justify-center rounded-full">
+                <CheckCircle2Icon class="text-primary size-6" />
             </div>
             <div class="space-y-2">
-                <p class="text-sm text-foreground">Your password has been reset successfully.</p>
-                <p class="text-xs text-muted-foreground">You can now sign in with your new password.</p>
+                <p class="text-foreground text-sm">Your password has been reset successfully.</p>
+                <p class="text-muted-foreground text-xs">You can now sign in with your new password.</p>
             </div>
             <Button class="w-full" @click="goBack">Back to login</Button>
         </div>
@@ -132,9 +131,7 @@ function goBack(): void {
             <div class="grid gap-2">
                 <Label for="code">Reset Code</Label>
                 <div class="relative">
-                    <ShieldCheckIcon
-                        class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
-                    />
+                    <ShieldCheckIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="code"
                         v-model="code"
@@ -143,7 +140,7 @@ function goBack(): void {
                         autocomplete="one-time-code"
                         placeholder="000000"
                         maxlength="6"
-                        class="pl-9 tracking-widest text-center font-mono"
+                        class="pl-9 text-center font-mono tracking-widest"
                         :disabled="isSubmitting"
                         autofocus
                     />
@@ -165,7 +162,7 @@ function goBack(): void {
                     <button
                         type="button"
                         @click="showPassword = !showPassword"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        class="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                         tabindex="-1"
                     >
                         <EyeOffIcon v-if="showPassword" class="size-4" />
@@ -188,7 +185,7 @@ function goBack(): void {
 
             <div
                 v-if="error"
-                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
             >
                 {{ error }}
             </div>
@@ -204,7 +201,13 @@ function goBack(): void {
                     variant="ghost"
                     size="sm"
                     class="text-muted-foreground"
-                    @click="step = 'email'; code = ''; password = ''; passwordConfirmation = ''; error = null"
+                    @click="
+                        step = 'email';
+                        code = '';
+                        password = '';
+                        passwordConfirmation = '';
+                        error = null;
+                    "
                 >
                     Didn't receive a code? Try again
                 </Button>
@@ -219,9 +222,7 @@ function goBack(): void {
             <div class="grid gap-2">
                 <Label for="email">Email</Label>
                 <div class="relative">
-                    <MailIcon
-                        class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
-                    />
+                    <MailIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="email"
                         v-model="email"
@@ -237,7 +238,7 @@ function goBack(): void {
 
             <div
                 v-if="error"
-                class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
             >
                 {{ error }}
             </div>

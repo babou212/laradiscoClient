@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
+import { useE2eeStore } from '@/stores/e2ee';
 import { useServerStore } from '@/stores/server';
 
 function buildBaseUrl(host: string): string {
@@ -25,7 +26,7 @@ const api = axios.create({
     timeout: 15_000,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
     const serverStore = useServerStore();
     const authStore = useAuthStore();
 
@@ -37,18 +38,18 @@ api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${authStore.token}`;
     }
 
+    const e2eeStore = useE2eeStore();
+    if (e2eeStore.deviceId) {
+        config.headers['X-Device-Id'] = e2eeStore.deviceId;
+    }
+
     return config;
 });
 
 api.interceptors.response.use(
     (response) => {
         const body = response.data;
-        if (
-            body &&
-            typeof body === 'object' &&
-            !Array.isArray(body) &&
-            'data' in body
-        ) {
+        if (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body) {
             response.data = body.data;
         }
         return response;

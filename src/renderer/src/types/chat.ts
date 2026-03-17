@@ -1,5 +1,3 @@
-// Chat types - models for channels, messages, reactions, etc.
-
 export interface Category {
     id: number;
     name: string;
@@ -49,10 +47,19 @@ export interface MessageData {
         id: number;
         content: string;
         user: MessageUser;
+        is_encrypted?: boolean;
+        decrypted_content?: string;
+        decrypt_error?: boolean;
+        decrypt_attempts?: number;
     } | null;
     user: MessageUser;
     reactions: MessageReaction[];
     created_at: string;
+    is_encrypted?: boolean;
+    sender_device_id?: string;
+    decrypted_content?: string;
+    decrypt_error?: boolean;
+    decrypt_attempts?: number;
 }
 
 export interface MessagesResponse {
