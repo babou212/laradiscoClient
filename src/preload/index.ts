@@ -96,6 +96,15 @@ const api = {
         set: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value),
     },
 
+    messages: {
+        storePlaintext: (serverId: number, messageId: number, plaintext: string) =>
+            ipcRenderer.invoke('messages:storePlaintext', serverId, messageId, plaintext),
+        getPlaintext: (serverId: number, messageId: number) =>
+            ipcRenderer.invoke('messages:getPlaintext', serverId, messageId) as Promise<string | null>,
+        getPlaintexts: (serverId: number, messageIds: number[]) =>
+            ipcRenderer.invoke('messages:getPlaintexts', serverId, messageIds) as Promise<Record<number, string>>,
+    },
+
     window: {
         minimize: () => ipcRenderer.send('window:minimize'),
         maximize: () => ipcRenderer.send('window:maximize'),
@@ -151,82 +160,48 @@ const api = {
         },
     },
 
-    e2ee: {
+    mls: {
         isSetup: (serverId: number, userId?: number) =>
-            ipcRenderer.invoke('e2ee:isSetup', serverId, userId) as Promise<boolean>,
+            ipcRenderer.invoke('mls:isSetup', serverId, userId) as Promise<boolean>,
         getDeviceId: (serverId: number, userId?: number) =>
-            ipcRenderer.invoke('e2ee:getDeviceId', serverId, userId) as Promise<string | null>,
+            ipcRenderer.invoke('mls:getDeviceId', serverId, userId) as Promise<string | null>,
         setup: (serverId: number, deviceName: string, userId?: number) =>
-            ipcRenderer.invoke('e2ee:setup', serverId, deviceName, userId),
+            ipcRenderer.invoke('mls:setup', serverId, deviceName, userId),
         setupDevice: (serverId: number, deviceName: string, userId?: number) =>
-            ipcRenderer.invoke('e2ee:setupDevice', serverId, deviceName, userId),
-        getPublicKeys: (serverId: number) => ipcRenderer.invoke('e2ee:getPublicKeys', serverId),
-        encrypt: (params: { serverId: number; type: 'channel' | 'dm'; targetId: number; plaintext: string }) =>
-            ipcRenderer.invoke('e2ee:encrypt', params) as Promise<string>,
-        decrypt: (params: {
-            serverId: number;
-            payload: string;
-            senderId: number;
-            senderDeviceId: string;
-            channelId?: number;
-            dmGroupId?: number;
-        }) => ipcRenderer.invoke('e2ee:decrypt', params) as Promise<string>,
-        createSenderKey: (serverId: number, channelId: number) =>
-            ipcRenderer.invoke('e2ee:createSenderKey', serverId, channelId),
-        processSenderKeyDist: (params: {
-            serverId: number;
-            channelId: number;
-            senderId: string;
-            senderDeviceId: string;
-            distribution: unknown;
-        }) => ipcRenderer.invoke('e2ee:processSenderKeyDist', params),
-        backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('e2ee:backupKeys', serverId, pin),
-        restoreKeys: (serverId: number, backup: unknown, pin: string) =>
-            ipcRenderer.invoke('e2ee:restoreKeys', serverId, backup, pin),
-        autoUpdateBackup: (serverId: number) => ipcRenderer.invoke('e2ee:autoUpdateBackup', serverId),
-        hasBackupKey: (serverId: number) => ipcRenderer.invoke('e2ee:hasBackupKey', serverId) as Promise<boolean>,
-        clearBackupKey: (serverId?: number) => ipcRenderer.invoke('e2ee:clearBackupKey', serverId),
-        rotateSignedPreKey: (serverId: number) => ipcRenderer.invoke('e2ee:rotateSignedPreKey', serverId),
-        generatePreKeys: (serverId: number, count: number) =>
-            ipcRenderer.invoke('e2ee:generatePreKeys', serverId, count),
-        wipe: (serverId: number) => ipcRenderer.invoke('e2ee:wipe', serverId),
+            ipcRenderer.invoke('mls:setupDevice', serverId, deviceName, userId),
+        encrypt: (params: { serverId: number; groupId: string; plaintext: string }) =>
+            ipcRenderer.invoke('mls:encrypt', params),
+        decrypt: (params: { serverId: number; groupId: string; messageBytes: string }) =>
+            ipcRenderer.invoke('mls:decrypt', params),
+        createGroup: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:createGroup', params),
+        joinGroup: (params: { serverId: number; welcomeBytes: string; ratchetTreeBytes: string }) =>
+            ipcRenderer.invoke('mls:joinGroup', params),
+        addMember: (params: { serverId: number; groupId: string; keyPackageBytes: string }) =>
+            ipcRenderer.invoke('mls:addMember', params),
+        removeMember: (params: { serverId: number; groupId: string; leafIndices: number[] }) =>
+            ipcRenderer.invoke('mls:removeMember', params),
+        processMessage: (params: { serverId: number; groupId: string; messageBytes: string }) =>
+            ipcRenderer.invoke('mls:processMessage', params),
+        selfUpdate: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:selfUpdate', params),
+        mergeCommit: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:mergeCommit', params),
+        clearPendingCommit: (params: { serverId: number; groupId: string }) =>
+            ipcRenderer.invoke('mls:clearPendingCommit', params),
+        generateKeyPackages: (serverId: number, count: number) =>
+            ipcRenderer.invoke('mls:generateKeyPackages', serverId, count),
+        getGroupInfo: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:getGroupInfo', params),
+        backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('mls:backupKeys', serverId, pin),
+        restoreKeys: (serverId: number, backup: unknown, pin: string, userId?: number) =>
+            ipcRenderer.invoke('mls:restoreKeys', serverId, backup, pin, userId),
+        autoUpdateBackup: (serverId: number) => ipcRenderer.invoke('mls:autoUpdateBackup', serverId),
+        hasBackupKey: (serverId: number) => ipcRenderer.invoke('mls:hasBackupKey', serverId) as Promise<boolean>,
+        clearBackupKey: (serverId?: number) => ipcRenderer.invoke('mls:clearBackupKey', serverId),
+        wipe: (serverId: number) => ipcRenderer.invoke('mls:wipe', serverId),
         wipeForUserMismatch: (serverId: number, userId: number) =>
-            ipcRenderer.invoke('e2ee:wipeForUserMismatch', serverId, userId) as Promise<boolean>,
-        invalidateChannelSenderKeys: (serverId: number, channelId: number) =>
-            ipcRenderer.invoke('e2ee:invalidateChannelSenderKeys', serverId, channelId),
-        encryptSenderKeyDist: (params: {
-            distribution: { distributionId: string; chainKey: string; signingPublicKey: string; chainIndex: number };
-            recipientDeviceIdentityKey: string;
-        }) =>
-            ipcRenderer.invoke('e2ee:encryptSenderKeyDist', params) as Promise<{
-                encryptedDistribution: string;
-                ephemeralPublicKey: string;
-                nonce: string;
-            }>,
-        decryptSenderKeyDist: (params: {
-            serverId: number;
-            encryptedDistribution: string;
-            ephemeralPublicKey: string;
-            nonce: string;
-        }) =>
-            ipcRenderer.invoke('e2ee:decryptSenderKeyDist', params) as Promise<{
-                distributionId: string;
-                chainKey: string;
-                signingPublicKey: string;
-                chainIndex: number;
-            }>,
-        generateSearchTokens: (params: {
-            serverId: number;
-            type: 'channel' | 'dm';
-            targetId: number;
-            plaintext: string;
-        }) => ipcRenderer.invoke('e2ee:generateSearchTokens', params) as Promise<string[]>,
-        generateSearchTrapdoor: (params: {
-            serverId: number;
-            type: 'channel' | 'dm';
-            targetId: number;
-            query: string;
-        }) => ipcRenderer.invoke('e2ee:generateSearchTrapdoor', params) as Promise<string[]>,
+            ipcRenderer.invoke('mls:wipeForUserMismatch', serverId, userId) as Promise<boolean>,
+        generateSearchTokens: (params: { serverId: number; conversationId: string; plaintext: string }) =>
+            ipcRenderer.invoke('mls:generateSearchTokens', params) as Promise<string[]>,
+        generateSearchTrapdoor: (params: { serverId: number; conversationId: string; query: string }) =>
+            ipcRenderer.invoke('mls:generateSearchTrapdoor', params) as Promise<string[]>,
     },
 };
 

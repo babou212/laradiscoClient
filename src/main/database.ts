@@ -55,6 +55,15 @@ export function initDatabase(): void {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS sent_messages (
+            server_id INTEGER NOT NULL,
+            message_id INTEGER NOT NULL,
+            plaintext TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (server_id, message_id),
+            FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
+        );
     `);
 }
 
@@ -87,7 +96,26 @@ export function setActiveServer(id: number): void {
 }
 
 export function removeServer(id: number): void {
+    db.prepare('DELETE FROM sent_messages WHERE server_id = ?').run(id);
     db.prepare('DELETE FROM server_connections WHERE id = ?').run(id);
+}
+
+function requireSafeStorage(): void {
+    if (!safeStorage.isEncryptionAvailable()) {
+        throw new Error(
+            'OS keychain encryption is not available. LaraDisco requires a working keychain (GNOME Keyring, macOS Keychain, or Windows DPAPI) to protect sensitive data.',
+        );
+    }
+}
+
+function encryptString(value: string): string {
+    requireSafeStorage();
+    return safeStorage.encryptString(value).toString('base64');
+}
+
+function decryptString(encrypted: string): string {
+    requireSafeStorage();
+    return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
 }
 
 export function saveAuthSession(
@@ -98,12 +126,8 @@ export function saveAuthSession(
     userAvatar: string | null,
     token: string,
 ): void {
-    let encryptedToken: string;
-    if (safeStorage.isEncryptionAvailable()) {
-        encryptedToken = safeStorage.encryptString(token).toString('base64');
-    } else {
-        encryptedToken = Buffer.from(token).toString('base64');
-    }
+    const encryptedToken = encryptString(token);
+    const encryptedEmail = encryptString(userEmail);
 
     db.prepare(
         `INSERT INTO auth_sessions (server_id, user_id, user_name, user_email, user_avatar, encrypted_token)
@@ -115,7 +139,7 @@ export function saveAuthSession(
             user_avatar = excluded.user_avatar,
             encrypted_token = excluded.encrypted_token,
             created_at = datetime('now')`,
-    ).run(serverId, userId, userName, userEmail, userAvatar, encryptedToken);
+    ).run(serverId, userId, userName, encryptedEmail, userAvatar, encryptedToken);
 }
 
 export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_token'> & { token: string }) | null {
@@ -125,19 +149,15 @@ export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_
 
     if (!session) return null;
 
-    let token: string;
-    if (safeStorage.isEncryptionAvailable()) {
-        token = safeStorage.decryptString(Buffer.from(session.encrypted_token, 'base64'));
-    } else {
-        token = Buffer.from(session.encrypted_token, 'base64').toString();
-    }
+    const token = decryptString(session.encrypted_token);
+    const userEmail = decryptString(session.user_email);
 
     return {
         id: session.id,
         server_id: session.server_id,
         user_id: session.user_id,
         user_name: session.user_name,
-        user_email: session.user_email,
+        user_email: userEmail,
         user_avatar: session.user_avatar,
         token,
         created_at: session.created_at,
@@ -157,4 +177,40 @@ export function setSetting(key: string, value: string): void {
     db.prepare(
         'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
     ).run(key, value);
+}
+
+export function storeSentMessage(serverId: number, messageId: number, plaintext: string): void {
+    const encrypted = encryptString(plaintext);
+    db.prepare(
+        'INSERT INTO sent_messages (server_id, message_id, plaintext) VALUES (?, ?, ?) ON CONFLICT(server_id, message_id) DO UPDATE SET plaintext = excluded.plaintext',
+    ).run(serverId, messageId, encrypted);
+}
+
+export function getSentMessage(serverId: number, messageId: number): string | null {
+    const row = db
+        .prepare('SELECT plaintext FROM sent_messages WHERE server_id = ? AND message_id = ?')
+        .get(serverId, messageId) as { plaintext: string } | undefined;
+    if (!row) return null;
+    return decryptString(row.plaintext);
+}
+
+export function getSentMessages(serverId: number, messageIds: number[]): Map<number, string> {
+    const result = new Map<number, string>();
+    if (messageIds.length === 0) return result;
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    const rows = db
+        .prepare(
+            `SELECT message_id, plaintext FROM sent_messages WHERE server_id = ? AND message_id IN (${placeholders})`,
+        )
+        .all(serverId, ...messageIds) as Array<{ message_id: number; plaintext: string }>;
+
+    for (const row of rows) {
+        result.set(row.message_id, decryptString(row.plaintext));
+    }
+    return result;
+}
+
+export function deleteSentMessages(serverId: number): void {
+    db.prepare('DELETE FROM sent_messages WHERE server_id = ?').run(serverId);
 }

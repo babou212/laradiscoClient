@@ -75,11 +75,10 @@ function eventLabel(eventType: string): string {
         identity_created: 'Identity Created',
         device_registered: 'Device Registered',
         device_revoked: 'Device Revoked',
-        prekey_uploaded: 'Prekeys Uploaded',
-        prekey_consumed: 'Prekey Consumed',
         backup_created: 'Key Backup Created',
         backup_restored: 'Key Backup Restored',
-        sender_key_distributed: 'Sender Key Distributed',
+        key_package_uploaded: 'Key Packages Uploaded',
+        signed_prekey_rotated: 'Signed Prekey Rotated',
     };
     return labels[eventType] ?? eventType.replace(/_/g, ' ');
 }

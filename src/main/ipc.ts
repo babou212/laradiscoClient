@@ -3,13 +3,17 @@ import {
     addServerConnection,
     getActiveServer,
     getAllServers,
+    deleteSentMessages,
     getAuthSession,
     getSetting,
+    getSentMessage,
+    getSentMessages,
     removeAuthSession,
     removeServer,
     saveAuthSession,
     setActiveServer,
     setSetting,
+    storeSentMessage,
 } from './database';
 
 function buildBaseUrl(host: string): string {
@@ -287,6 +291,7 @@ export function registerIpcHandlers(): void {
             }
             removeAuthSession(serverId);
         }
+        deleteSentMessages(serverId);
         return { success: true };
     });
 
@@ -318,6 +323,22 @@ export function registerIpcHandlers(): void {
     ipcMain.handle('settings:set', async (_event, key: string, value: string) => {
         setSetting(key, value);
         return { success: true };
+    });
+
+    ipcMain.handle(
+        'messages:storePlaintext',
+        async (_event, serverId: number, messageId: number, plaintext: string) => {
+            storeSentMessage(serverId, messageId, plaintext);
+        },
+    );
+
+    ipcMain.handle('messages:getPlaintext', async (_event, serverId: number, messageId: number) => {
+        return getSentMessage(serverId, messageId);
+    });
+
+    ipcMain.handle('messages:getPlaintexts', async (_event, serverId: number, messageIds: number[]) => {
+        const map = getSentMessages(serverId, messageIds);
+        return Object.fromEntries(map);
     });
 
     ipcMain.on('notifications:show', (_event, payload: { title: string; body: string; notificationId: string }) => {

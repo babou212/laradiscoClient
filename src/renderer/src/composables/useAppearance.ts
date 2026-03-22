@@ -45,10 +45,10 @@ export async function initializeTheme(): Promise<void> {
     }
 
     const savedTheme = (await window.api.settings.get('theme')) as Theme | null;
-    applyTheme(savedTheme || 'default');
+    applyTheme(savedTheme || 'default-dark');
 }
 
-const theme = ref<Theme>('default');
+const theme = ref<Theme>('default-dark');
 
 export function useAppearance(): UseAppearanceReturn {
     onMounted(async () => {

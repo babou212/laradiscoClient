@@ -6,7 +6,6 @@ import MessageInput from './MessageInput.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { useE2EE } from '@/composables/useE2EE';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
@@ -185,7 +184,7 @@ const scrollToBottom = (force = false) => {
 
 let currentChannelListener: string | null = null;
 
-let senderKeyFetchPromise: Promise<void> | null = null;
+let groupReadyPromise: Promise<void> | null = null;
 
 let pendingDecryptRetryTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -202,19 +201,14 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
     if (!echo) return;
 
     if (e2eeStore.isReady) {
-        if (isDm) {
-            senderKeyFetchPromise = e2ee
-                .fetchAndProcessDmSenderKeys(channelId)
-                .then(() => {})
-                .catch(() => {});
-        } else {
-            senderKeyFetchPromise = e2ee
-                .fetchAndProcessSenderKeys(channelId)
-                .then(() => {})
-                .catch(() => {});
-        }
+        const groupId = isDm ? `dm:${channelId}` : `channel:${channelId}`;
+        const type = isDm ? 'dm' : 'channel';
+        groupReadyPromise = e2ee
+            .ensureGroupReady(groupId, channelId, type)
+            .then(() => {})
+            .catch(() => {});
     } else {
-        senderKeyFetchPromise = null;
+        groupReadyPromise = null;
     }
 
     currentChannelListener = isDm ? `direct-message.${channelId}` : `channel.${channelId}`;
@@ -282,47 +276,26 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
             };
 
             if (data.message.is_encrypted && e2eeStore.isReady) {
-                try {
-                    let senderDeviceId = data.message.sender_device_id ?? '';
-                    if (!senderDeviceId) {
-                        try {
-                            const parsed = JSON.parse(data.message.content);
-                            senderDeviceId = parsed.sender_device_id ?? '';
-                        } catch (error) {
-                            console.error(error);
-                        }
-                    }
-                    const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
-                    let plaintext: string;
-                    try {
-                        plaintext = await e2ee.decrypt(
-                            data.message.content,
-                            data.message.user.id,
-                            senderDeviceId,
-                            channelIdForDecrypt,
-                            data.message.id,
-                        );
-                    } catch (firstErr) {
-                        const errMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
-                        if (errMsg.includes('Need sender key distribution') && channelIdForDecrypt != null) {
-                            await e2ee.fetchAndProcessSenderKeys(channelIdForDecrypt);
-                            plaintext = await e2ee.decrypt(
-                                data.message.content,
-                                data.message.user.id,
-                                senderDeviceId,
-                                channelIdForDecrypt,
-                                data.message.id,
-                            );
-                        } else {
-                            throw firstErr;
-                        }
-                    }
-                    update.decrypted_content = plaintext;
-                    update.decrypt_error = false;
-                } catch (decryptErr) {
-                    const errMsg = decryptErr instanceof Error ? decryptErr.message : String(decryptErr);
-                    if (errMsg.includes('Need sender key distribution')) {
+                const ourDeviceId = await e2ee.getDeviceId();
+                if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
+                    const temp: MessageData[] = [
+                        { ...data.message, decrypted_content: undefined, decrypt_error: false },
+                    ];
+                    await e2ee.lookupSentPlaintexts(temp);
+                    if (temp[0].decrypted_content) {
+                        update.decrypted_content = temp[0].decrypted_content;
+                        update.decrypt_error = false;
                     } else {
+                        update.decrypt_error = true;
+                    }
+                } else {
+                    try {
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        const plaintext = await e2ee.decrypt(data.message.content, chId, dmId);
+                        update.decrypted_content = plaintext;
+                        update.decrypt_error = false;
+                    } catch {
                         update.decrypt_error = true;
                     }
                 }
@@ -361,10 +334,11 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 msg.pinned_at = new Date().toISOString();
             }
             if (showPinnedMessages.value) {
-                fetchPinnedMessages().then(() => {
+                fetchPinnedMessages().then(async () => {
                     if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
                         const chId = props.isDm ? undefined : props.channel?.id;
                         const dmId = props.isDm ? props.channel?.id : undefined;
+                        await e2ee.lookupSentPlaintexts(pinnedMessages.value);
                         e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
                     }
                 });
@@ -400,48 +374,28 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 typingUsers.delete(data.user_id);
             }
         })
-        .listen('SenderKeyNeeded', async () => {
+        .listen(
+            'MlsMessageReceived',
+            async (data: { group_id: string; message_type: string; epoch: number; sender_device_id: string }) => {
+                if (e2eeStore.isReady) {
+                    try {
+                        await e2ee.handleMlsMessage(data.group_id, data);
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            },
+        )
+        .listen('MlsWelcomeReady', async () => {
             if (e2eeStore.isReady) {
                 try {
-                    if (isDm) {
-                        await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                    } else {
-                        await e2ee.ensureSenderKeyDistributed(channelId, true);
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-            }
-        })
-        .listen('SenderKeyDistributed', async () => {
-            if (e2eeStore.isReady && props.channel?.id) {
-                try {
-                    if (isDm) {
-                        await e2ee.fetchAndProcessDmSenderKeys(channelId, true);
-                        await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
-                    } else {
-                        await e2ee.fetchAndProcessSenderKeys(channelId, true);
-                        await e2ee.retryPendingDecryptions(activeMessages.value, channelId);
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-            }
-        })
-        .listen('DmSenderKeyNeeded', async () => {
-            if (isDm && e2eeStore.isReady) {
-                try {
-                    await e2ee.ensureDmSenderKeyDistributed(channelId, true);
-                } catch (error) {
-                    console.error(error);
-                }
-            }
-        })
-        .listen('DmSenderKeyDistributed', async () => {
-            if (isDm && e2eeStore.isReady && props.channel?.id) {
-                try {
-                    await e2ee.fetchAndProcessDmSenderKeys(channelId, true);
-                    await e2ee.retryPendingDecryptions(activeMessages.value, undefined, channelId);
+                    await e2ee.handleWelcome();
+                    const chId = props.isDm ? undefined : props.channel?.id;
+                    const dmId = props.isDm ? props.channel?.id : undefined;
+                    await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
                 } catch (error) {
                     console.error(error);
                 }
@@ -480,7 +434,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
 
 const leaveChannel = () => {
     clearPendingDecryptRetry();
-    senderKeyFetchPromise = null;
+    groupReadyPromise = null;
     if (currentChannelListener) {
         const echo = getEcho();
         if (echo) {
@@ -512,12 +466,13 @@ watch(
 watch(isStoreLoadingMessages, async (loading, wasLoading) => {
     if (wasLoading && !loading) {
         if (e2eeStore.isReady && props.channel?.id) {
-            if (senderKeyFetchPromise) {
-                await senderKeyFetchPromise;
-                senderKeyFetchPromise = null;
+            if (groupReadyPromise) {
+                await groupReadyPromise;
+                groupReadyPromise = null;
             }
             const channelIdForDecrypt = props.isDm ? undefined : props.channel.id;
             const dmGroupIdForDecrypt = props.isDm ? props.channel.id : undefined;
+            await e2ee.lookupSentPlaintexts(activeMessages.value);
             await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
 
             clearPendingDecryptRetry();
@@ -535,7 +490,7 @@ watch(isStoreLoadingMessages, async (loading, wasLoading) => {
                     if (props.channel?.id) {
                         const chId = props.isDm ? undefined : props.channel.id;
                         const dmId = props.isDm ? props.channel.id : undefined;
-                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId, retryCount === 1);
+                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
                     }
                 }, 15_000);
             }
@@ -582,6 +537,7 @@ const handleScroll = async () => {
         await activeLoadOlderMessages();
 
         if (e2eeStore.isReady) {
+            await e2ee.lookupSentPlaintexts(activeMessages.value);
             const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
             const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
             await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
@@ -707,6 +663,7 @@ const sendMessage = async (content: string) => {
             const serverMsg = response.data as MessageData;
             if (serverMsg.is_encrypted) {
                 serverMsg.decrypted_content = content;
+                e2ee.storeSentPlaintext(serverMsg.id, content).catch(() => {});
             }
             const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
             if (idx !== -1) {
@@ -789,6 +746,9 @@ const saveEdit = async (message: MessageData) => {
             is_encrypted: isEncrypted,
             decrypted_content: isEncrypted ? editContent.value : undefined,
         });
+        if (isEncrypted) {
+            e2ee.storeSentPlaintext(message.id, editContent.value).catch(() => {});
+        }
         cancelEdit();
     } catch (error) {
         console.error('Failed to edit message:', error);
@@ -864,6 +824,7 @@ const togglePinnedPanel = async () => {
         if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
             const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
             const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
+            await e2ee.lookupSentPlaintexts(pinnedMessages.value);
             await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
         }
     }
@@ -891,6 +852,7 @@ const togglePin = async (message: MessageData) => {
                 if (e2eeStore.isReady) {
                     const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
                     const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
+                    await e2ee.lookupSentPlaintexts(pinnedMessages.value);
                     await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
                 }
             }
@@ -945,7 +907,6 @@ const emitTyping = () => {
                 <div class="flex-1">
                     <h2 class="flex items-center gap-1.5 font-semibold">
                         {{ channel?.name || 'Select a channel' }}
-                        <EncryptionBadge v-if="e2eeStore.isReady" :is-encrypted="true" />
                     </h2>
                     <p v-if="channel?.topic" class="text-muted-foreground text-xs">
                         {{ channel.topic }}

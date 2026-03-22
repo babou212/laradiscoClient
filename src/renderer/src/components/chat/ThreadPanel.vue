@@ -4,7 +4,6 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import TypingIndicator from './TypingIndicator.vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
@@ -113,19 +112,26 @@ const joinThread = (threadId: number) => {
             };
 
             if (data.message.is_encrypted && e2eeStore.isReady) {
-                try {
-                    const senderDeviceId = data.message.sender_device_id ?? '';
-                    const plaintext = await e2ee.decrypt(
-                        data.message.content,
-                        data.message.user.id,
-                        senderDeviceId,
-                        props.channelId,
-                        undefined,
-                    );
-                    update.decrypted_content = plaintext;
-                    update.decrypt_error = false;
-                } catch {
-                    update.decrypt_error = true;
+                const ourDeviceId = await e2ee.getDeviceId();
+                if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
+                    const temp: MessageData[] = [
+                        { ...data.message, decrypted_content: undefined, decrypt_error: false },
+                    ];
+                    await e2ee.lookupSentPlaintexts(temp);
+                    if (temp[0].decrypted_content) {
+                        update.decrypted_content = temp[0].decrypted_content;
+                        update.decrypt_error = false;
+                    } else {
+                        update.decrypt_error = true;
+                    }
+                } else {
+                    try {
+                        const plaintext = await e2ee.decrypt(data.message.content, props.channelId);
+                        update.decrypted_content = plaintext;
+                        update.decrypt_error = false;
+                    } catch {
+                        update.decrypt_error = true;
+                    }
                 }
             }
 
@@ -221,6 +227,7 @@ const handleScroll = async () => {
         await threadStore.loadOlderMessages(props.channelId);
 
         if (e2eeStore.isReady) {
+            await e2ee.lookupSentPlaintexts(threadStore.threadMessages);
             await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
         }
 
@@ -249,6 +256,7 @@ watch(
     async (loading, wasLoading) => {
         if (wasLoading && !loading) {
             if (e2eeStore.isReady) {
+                await e2ee.lookupSentPlaintexts(threadStore.threadMessages);
                 await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
             }
             scrollToBottom(true);
@@ -332,7 +340,10 @@ const sendReply = async (content: string) => {
     const reply = await threadStore.sendReply(props.channelId, threadStore.parentMessage.id, messageContent, extra);
 
     if (reply) {
-        if (reply.is_encrypted) reply.decrypted_content = content;
+        if (reply.is_encrypted) {
+            reply.decrypted_content = content;
+            e2ee.storeSentPlaintext(reply.id, content).catch(() => {});
+        }
         const idx = threadStore.threadMessages.findIndex((m) => m.id === optimistic.id);
         if (idx !== -1) threadStore.threadMessages.splice(idx, 1, reply);
     } else {
@@ -368,6 +379,9 @@ const saveEdit = async (message: MessageData) => {
 
         await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, contentToSend, extra);
 
+        if (isEncrypted) {
+            e2ee.storeSentPlaintext(message.id, editContent.value).catch(() => {});
+        }
         threadStore.updateThreadMessage(message.id, {
             decrypted_content: isEncrypted ? editContent.value : undefined,
         });
@@ -424,7 +438,6 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             <div class="flex items-center gap-2">
                 <MessageSquareText :size="18" class="text-primary" />
                 <span class="text-sm font-semibold">Thread</span>
-                <EncryptionBadge v-if="e2eeStore.isReady" :is-encrypted="true" />
             </div>
             <div class="flex items-center gap-1">
                 <button
