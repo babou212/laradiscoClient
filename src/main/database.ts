@@ -61,7 +61,8 @@ export function initDatabase(): void {
             message_id INTEGER NOT NULL,
             plaintext TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            PRIMARY KEY (server_id, message_id)
+            PRIMARY KEY (server_id, message_id),
+            FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
         );
     `);
 }
@@ -95,6 +96,7 @@ export function setActiveServer(id: number): void {
 }
 
 export function removeServer(id: number): void {
+    db.prepare('DELETE FROM sent_messages WHERE server_id = ?').run(id);
     db.prepare('DELETE FROM server_connections WHERE id = ?').run(id);
 }
 

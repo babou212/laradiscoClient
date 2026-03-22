@@ -190,8 +190,8 @@ const api = {
             ipcRenderer.invoke('mls:generateKeyPackages', serverId, count),
         getGroupInfo: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:getGroupInfo', params),
         backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('mls:backupKeys', serverId, pin),
-        restoreKeys: (serverId: number, backup: unknown, pin: string) =>
-            ipcRenderer.invoke('mls:restoreKeys', serverId, backup, pin),
+        restoreKeys: (serverId: number, backup: unknown, pin: string, userId?: number) =>
+            ipcRenderer.invoke('mls:restoreKeys', serverId, backup, pin, userId),
         autoUpdateBackup: (serverId: number) => ipcRenderer.invoke('mls:autoUpdateBackup', serverId),
         hasBackupKey: (serverId: number) => ipcRenderer.invoke('mls:hasBackupKey', serverId) as Promise<boolean>,
         clearBackupKey: (serverId?: number) => ipcRenderer.invoke('mls:clearBackupKey', serverId),

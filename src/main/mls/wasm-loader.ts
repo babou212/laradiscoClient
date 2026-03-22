@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type * as WasmTypes from './wasm/openmls_wasm';
 
 const _require = createRequire(import.meta.url);
-const wasmPath = join(__dirname, 'mls', 'wasm', 'openmls_wasm.js');
+const wasmPath = join(__dirname, 'wasm', 'openmls_wasm.js');
 const wasm = _require(wasmPath);
 
 export const Provider: typeof WasmTypes.Provider = wasm.Provider;

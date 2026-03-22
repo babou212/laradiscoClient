@@ -1,5 +1,6 @@
-import type { RemoteParticipant, VideoEncoding } from 'livekit-client';
+import type { RemoteParticipant, VideoCodec, VideoEncoding } from 'livekit-client';
 import {
+    AudioPresets,
     ConnectionQuality,
     Room,
     RoomEvent,
@@ -379,7 +380,15 @@ export const useVoiceStore = defineStore('voice', () => {
             const { data } = await api.post(`/channels/${channelId}/voice/join`);
             const { token, url } = data;
 
-            room = new Room({ dynacast: true });
+            room = new Room({
+                dynacast: true,
+                publishDefaults: {
+                    videoCodec: 'vp9' as VideoCodec,
+                    backupCodec: { codec: 'vp8' },
+                    videoEncoding: VideoPresets.h720.encoding,
+                    screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 },
+                },
+            });
             wireRoomEvents(room);
 
             await room.connect(url, token);
@@ -395,7 +404,12 @@ export const useVoiceStore = defineStore('voice', () => {
                     echoCancellation: echoCancellation.value,
                     autoGainControl: autoGainControl.value,
                 });
-                if (room) await room.localParticipant.publishTrack(micTrack);
+                if (room)
+                    await room.localParticipant.publishTrack(micTrack, {
+                        audioPreset: AudioPresets.speech,
+                        dtx: true,
+                        red: true,
+                    });
             } catch (micErr) {
                 console.warn('[Voice] Selected mic unavailable, falling back to default:', micErr);
                 try {
@@ -404,7 +418,12 @@ export const useVoiceStore = defineStore('voice', () => {
                         echoCancellation: echoCancellation.value,
                         autoGainControl: autoGainControl.value,
                     });
-                    if (room) await room.localParticipant.publishTrack(fallbackTrack);
+                    if (room)
+                        await room.localParticipant.publishTrack(fallbackTrack, {
+                            audioPreset: AudioPresets.speech,
+                            dtx: true,
+                            red: true,
+                        });
                 } catch (fallbackErr) {
                     console.warn('[Voice] No microphone available — joining without mic:', fallbackErr);
                 }
@@ -463,9 +482,12 @@ export const useVoiceStore = defineStore('voice', () => {
                 await room.localParticipant.publishTrack(videoTrack, {
                     source: Track.Source.ScreenShare,
                     name: 'screen',
-                    simulcast: true,
+                    videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
+                    backupCodec: { codec: 'vp8' },
                     videoSimulcastLayers: preset.simulcastLayers,
+                    simulcast: true,
+                    scalabilityMode: 'L3T3_KEY',
                 });
             }
 
@@ -473,6 +495,9 @@ export const useVoiceStore = defineStore('voice', () => {
                 await room.localParticipant.publishTrack(audioTrack, {
                     source: Track.Source.ScreenShareAudio,
                     name: 'screen-audio',
+                    audioPreset: AudioPresets.musicHighQualityStereo,
+                    dtx: false,
+                    red: true,
                 });
             }
 

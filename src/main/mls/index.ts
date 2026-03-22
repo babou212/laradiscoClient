@@ -481,11 +481,12 @@ function registerMlsIpcHandlers(): void {
                 argon2Params: { memory: number; iterations: number; parallelism: number };
             },
             pin: string,
+            userId?: number,
         ) => {
             const bundle = await decryptKeyBackup(backup, pin, serverId);
             if (!bundle) return { success: false, error: 'Wrong PIN' };
 
-            restoreFromBundle(serverId, bundle);
+            restoreFromBundle(serverId, bundle, userId);
             clearStateCache(serverId);
             return { success: true };
         },
@@ -531,7 +532,7 @@ function buildBackupBundle(state: MlsState): MlsKeyBackupBundle {
     };
 }
 
-function restoreFromBundle(serverId: number, bundle: MlsKeyBackupBundle): void {
+function restoreFromBundle(serverId: number, bundle: MlsKeyBackupBundle, userId?: number): void {
     if (bundle.version !== 3) {
         throw new Error(`Unsupported backup version: ${bundle.version}`);
     }
@@ -552,7 +553,7 @@ function restoreFromBundle(serverId: number, bundle: MlsKeyBackupBundle): void {
     const identityBytes = Uint8Array.from(Buffer.from(bundle.identityBytes, 'base64'));
     Identity.from_bytes(provider, identityBytes);
 
-    saveIdentity(serverId, bundle.sourceDeviceId, 'restored', null, identityBytes);
+    saveIdentity(serverId, bundle.sourceDeviceId, 'restored', userId ?? null, identityBytes);
     saveProviderState(serverId, provider.to_bytes());
 }
 
