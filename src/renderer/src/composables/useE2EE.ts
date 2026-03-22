@@ -633,7 +633,6 @@ export function useE2EE() {
                 argon2Params: data.argon2_params,
             },
             pin,
-            getUserId(),
         );
     }
 
