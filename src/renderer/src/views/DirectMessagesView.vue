@@ -6,11 +6,20 @@ import DirectMessagesSidebar from '@/components/chat/DirectMessagesSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
+import { useVoiceStore } from '@/stores/voice';
 
 const route = useRoute();
 const router = useRouter();
 const dmStore = useDirectMessagesStore();
 const presenceStore = usePresenceStore();
+const voiceStore = useVoiceStore();
+
+const showChannelScreenShare = computed(
+    () =>
+        voiceStore.screenShareViewMode === 'channel' &&
+        voiceStore.activeScreenShareView !== null &&
+        voiceStore.screenShareParticipants.length > 0,
+);
 
 const channelForPanel = computed(() => {
     if (!dmStore.currentDmGroup) return undefined;
@@ -71,7 +80,9 @@ const handleStartDm = async (userId: number) => {
             @start-dm="handleStartDm"
         />
 
-        <MessagesPanel v-if="dmStore.currentDmGroup" :channel="channelForPanel" :is-dm="true" />
+        <div v-if="showChannelScreenShare" id="screen-share-channel-target" class="flex min-h-0 flex-1 flex-col" />
+
+        <MessagesPanel v-else-if="dmStore.currentDmGroup" :channel="channelForPanel" :is-dm="true" />
 
         <div v-else class="bg-background flex flex-1 flex-col items-center justify-center text-center">
             <div class="text-muted-foreground">

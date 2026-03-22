@@ -36,6 +36,23 @@ export interface MessageReaction {
     emoji: string;
 }
 
+export interface ThreadPreview {
+    id: number;
+    message_count: number;
+    last_message_at: string;
+    is_following?: boolean;
+    last_reply?: {
+        id: number;
+        content: string;
+        user: MessageUser;
+        created_at: string;
+        is_encrypted?: boolean;
+        sender_device_id?: string;
+        decrypted_content?: string;
+        decrypt_error?: boolean;
+    } | null;
+}
+
 export interface MessageData {
     id: number;
     content: string;
@@ -43,6 +60,8 @@ export interface MessageData {
     edited_at: string | null;
     deleted_at: string | null;
     reply_to_id: number | null;
+    thread_id?: number | null;
+    thread?: ThreadPreview | null;
     reply_to?: {
         id: number;
         content: string;
@@ -55,6 +74,9 @@ export interface MessageData {
     user: MessageUser;
     reactions: MessageReaction[];
     created_at: string;
+    is_pinned?: boolean;
+    pinned_at?: string | null;
+    pinned_by?: MessageUser | null;
     is_encrypted?: boolean;
     sender_device_id?: string;
     decrypted_content?: string;

@@ -93,6 +93,11 @@ const router = createRouter({
                     component: () => import('@/views/settings/VoiceSettingsView.vue'),
                 },
                 {
+                    path: 'screen-share',
+                    name: 'settings-screen-share',
+                    component: () => import('@/views/settings/ScreenShareSettingsView.vue'),
+                },
+                {
                     path: 'two-factor',
                     name: 'settings-two-factor',
                     component: () => import('@/views/settings/TwoFactorSettingsView.vue'),

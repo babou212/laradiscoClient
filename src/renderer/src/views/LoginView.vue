@@ -105,6 +105,12 @@ function goBack(): void {
                 >
                     Forgot your password?
                 </router-link>
+                <router-link
+                    :to="{ name: 'register' }"
+                    class="text-muted-foreground hover:text-foreground text-center text-sm transition-colors"
+                >
+                    Don't have an account? Sign up
+                </router-link>
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
                     <ArrowLeftIcon class="size-3" />
                     Change server

@@ -22,6 +22,7 @@ const sidebarNavItems: SettingsNavItem[] = [
     { title: 'Security', routeName: 'settings-security' },
     { title: 'Appearance', routeName: 'settings-appearance' },
     { title: 'Voice', routeName: 'settings-voice' },
+    { title: 'Screen Share', routeName: 'settings-screen-share' },
     { title: 'Notifications', routeName: 'settings-notifications' },
 ];
 

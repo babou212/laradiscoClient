@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron';
+import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell } from 'electron';
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
@@ -140,9 +140,21 @@ app.whenReady().then(() => {
     });
 
     session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-        const allowed = ['media', 'mediaKeySystem'];
+        const allowed = ['media', 'mediaKeySystem', 'display-capture'];
         callback(allowed.includes(permission));
     });
+
+    session.defaultSession.setDisplayMediaRequestHandler(
+        async (_request, callback) => {
+            const sources = await desktopCapturer.getSources({ types: ['screen'] });
+            if (sources.length > 0) {
+                callback({ video: sources[0], audio: 'loopback' });
+            } else {
+                callback(null as unknown as Electron.Streams);
+            }
+        },
+        { useSystemPicker: true },
+    );
 
     app.on('web-contents-created', (_event, contents) => {
         contents.on('will-navigate', (event, url) => {

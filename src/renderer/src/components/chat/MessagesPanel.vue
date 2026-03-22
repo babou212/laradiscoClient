@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Hash, MessageSquare, Search } from 'lucide-vue-next';
+import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
@@ -16,7 +17,8 @@ import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
-import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
+import { useThreadStore } from '@/stores/thread';
+import type { MessageData, MessageReaction, ChannelPermissions, ThreadPreview } from '@/types/chat';
 
 type ChannelData = {
     id: number;
@@ -33,10 +35,16 @@ type Props = {
     channel?: ChannelData;
     isDm?: boolean;
     channelPermissions?: ChannelPermissions;
+    usersCollapsed?: boolean;
 };
+
+const emit = defineEmits<{
+    toggleUsersCollapsed: [];
+}>();
 
 const props = withDefaults(defineProps<Props>(), {
     isDm: false,
+    usersCollapsed: false,
 });
 
 const authStore = useAuthStore();
@@ -44,11 +52,16 @@ const chatStore = useChatStore();
 const dmStore = useDirectMessagesStore();
 const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
+const threadStore = useThreadStore();
 const e2ee = useE2EE();
 const { generateTokensForMessage } = useEncryptedSearch();
 const currentUser = computed(() => authStore.user);
 const sendError = ref<string | null>(null);
+
 const showSearch = ref(false);
+const showPinnedMessages = ref(false);
+const pinnedMessages = ref<MessageData[]>([]);
+const isLoadingPinned = ref(false);
 const rateLimitedUntil = ref<number | null>(null);
 const rateLimitCountdown = ref(0);
 let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
@@ -341,6 +354,31 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 }
             }
         })
+        .listen('MessagePinned', (data: { message_id: number; pinned_by?: { id: number; username: string } }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.message_id);
+            if (msg) {
+                msg.is_pinned = true;
+                msg.pinned_at = new Date().toISOString();
+            }
+            if (showPinnedMessages.value) {
+                fetchPinnedMessages().then(() => {
+                    if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
+                    }
+                });
+            }
+        })
+        .listen('MessageUnpinned', (data: { message_id: number }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.message_id);
+            if (msg) {
+                msg.is_pinned = false;
+                msg.pinned_at = null;
+            }
+            const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === data.message_id);
+            if (pinnedIdx !== -1) pinnedMessages.value.splice(pinnedIdx, 1);
+        })
         .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
             if (data.user_id === currentUser.value?.id) return;
 
@@ -408,7 +446,36 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     console.error(error);
                 }
             }
-        });
+        })
+        .listen(
+            'ThreadUpdated',
+            (data: {
+                message_id: number;
+                thread: { id: number; message_count: number; last_message_at: string };
+                last_reply?: {
+                    id: number;
+                    content: string;
+                    user: { id: number; username: string; avatar_path: string | null };
+                    created_at: string;
+                    is_encrypted?: boolean;
+                    sender_device_id?: string;
+                };
+            }) => {
+                const msg = activeMessages.value.find((m) => m.id === data.message_id);
+                if (msg) {
+                    const threadPreview: ThreadPreview = {
+                        id: data.thread.id,
+                        message_count: data.thread.message_count,
+                        last_message_at: data.thread.last_message_at,
+                        is_following: msg.thread?.is_following,
+                    };
+                    if (data.last_reply) {
+                        threadPreview.last_reply = data.last_reply;
+                    }
+                    msg.thread = threadPreview;
+                }
+            },
+        );
 };
 
 const leaveChannel = () => {
@@ -430,6 +497,9 @@ watch(
         if (newId) {
             joinChannel(newId, props.isDm);
             userIsNearBottom.value = true;
+            showPinnedMessages.value = false;
+            pinnedMessages.value = [];
+            threadStore.closeThread();
 
             if (oldId !== undefined) {
                 scrollToBottom(true);
@@ -655,6 +725,11 @@ const sendMessage = async (content: string) => {
     }
 };
 
+const openThread = (message: MessageData) => {
+    if (!props.channel?.id || props.isDm) return;
+    threadStore.openThread(props.channel.id, message);
+};
+
 const startReply = (message: MessageData) => {
     replyingToMessage.value = message;
 };
@@ -766,6 +841,85 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
     }
 };
 
+const fetchPinnedMessages = async () => {
+    if (!props.channel?.id) return;
+    isLoadingPinned.value = true;
+    try {
+        const endpoint = props.isDm
+            ? `/direct-messages/${props.channel.id}/pins`
+            : `/channels/${props.channel.id}/pins`;
+        const response = await api.get(endpoint);
+        pinnedMessages.value = response.data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch pinned messages:', error);
+    } finally {
+        isLoadingPinned.value = false;
+    }
+};
+
+const togglePinnedPanel = async () => {
+    showPinnedMessages.value = !showPinnedMessages.value;
+    if (showPinnedMessages.value) {
+        await fetchPinnedMessages();
+        if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
+            const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
+            const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
+            await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+        }
+    }
+};
+
+const togglePin = async (message: MessageData) => {
+    if (!props.channel?.id) return;
+    const endpoint = props.isDm
+        ? `/direct-messages/${props.channel.id}/messages/${message.id}/pin`
+        : `/channels/${props.channel.id}/messages/${message.id}/pin`;
+
+    try {
+        if (message.is_pinned) {
+            await api.delete(endpoint);
+            message.is_pinned = false;
+            message.pinned_at = null;
+            const idx = pinnedMessages.value.findIndex((m) => m.id === message.id);
+            if (idx !== -1) pinnedMessages.value.splice(idx, 1);
+        } else {
+            await api.post(endpoint);
+            message.is_pinned = true;
+            message.pinned_at = new Date().toISOString();
+            if (showPinnedMessages.value) {
+                await fetchPinnedMessages();
+                if (e2eeStore.isReady) {
+                    const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
+                    const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
+                    await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to toggle pin:', error);
+    }
+};
+
+const unpinFromPanel = async (messageId: number) => {
+    if (!props.channel?.id) return;
+    const endpoint = props.isDm
+        ? `/direct-messages/${props.channel.id}/messages/${messageId}/pin`
+        : `/channels/${props.channel.id}/messages/${messageId}/pin`;
+
+    try {
+        await api.delete(endpoint);
+        const idx = pinnedMessages.value.findIndex((m) => m.id === messageId);
+        if (idx !== -1) pinnedMessages.value.splice(idx, 1);
+        const msg = activeMessages.value.find((m) => m.id === messageId);
+        if (msg) {
+            msg.is_pinned = false;
+            msg.pinned_at = null;
+        }
+    } catch (error) {
+        console.error('Failed to unpin message:', error);
+    }
+};
+
 const emitTyping = () => {
     if (!props.channel?.id) return;
     if (typingDebounceTimer) return;
@@ -783,113 +937,147 @@ const emitTyping = () => {
 </script>
 
 <template>
-    <div class="bg-background relative flex h-full min-h-0 flex-1 flex-col">
-        <div class="border-border flex h-12 items-center border-b px-4 shadow-sm">
-            <Hash v-if="!isDm" :size="20" class="text-muted-foreground mr-2" />
-            <MessageSquare v-else :size="20" class="text-muted-foreground mr-2" />
-            <div class="flex-1">
-                <h2 class="flex items-center gap-1.5 font-semibold">
-                    {{ channel?.name || 'Select a channel' }}
-                    <EncryptionBadge v-if="e2eeStore.isReady" :is-encrypted="true" />
-                </h2>
-                <p v-if="channel?.topic" class="text-muted-foreground text-xs">
-                    {{ channel.topic }}
-                </p>
-            </div>
-
-            <div class="ml-4 flex items-center gap-2">
-                <button
-                    v-if="e2eeStore.isReady"
-                    class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
-                    :class="{ 'bg-muted text-foreground': showSearch }"
-                    title="Search messages"
-                    @click="showSearch = !showSearch"
-                >
-                    <Search :size="18" />
-                </button>
-                <NotificationBell />
-            </div>
-        </div>
-
-        <div
-            ref="messagesContainer"
-            class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
-            @scroll="handleScroll"
-        >
-            <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
-                <div class="text-muted-foreground text-center">
-                    <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
-                    <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
-                    <p class="text-lg font-semibold">
-                        {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
+    <div class="flex h-full min-h-0 flex-1">
+        <div class="bg-background relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
+            <div class="border-border flex h-12 items-center border-b px-4 shadow-sm">
+                <Hash v-if="!isDm" :size="20" class="text-muted-foreground mr-2" />
+                <MessageSquare v-else :size="20" class="text-muted-foreground mr-2" />
+                <div class="flex-1">
+                    <h2 class="flex items-center gap-1.5 font-semibold">
+                        {{ channel?.name || 'Select a channel' }}
+                        <EncryptionBadge v-if="e2eeStore.isReady" :is-encrypted="true" />
+                    </h2>
+                    <p v-if="channel?.topic" class="text-muted-foreground text-xs">
+                        {{ channel.topic }}
                     </p>
-                    <p class="text-sm">This is the start of your conversation.</p>
+                </div>
+
+                <div class="ml-4 flex items-center gap-2">
+                    <div class="relative">
+                        <button
+                            class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
+                            :class="{ 'bg-muted text-foreground': showPinnedMessages }"
+                            title="Pinned messages"
+                            @click="togglePinnedPanel"
+                        >
+                            <Pin :size="18" />
+                        </button>
+                        <PinnedMessagesPanel
+                            v-if="showPinnedMessages && channel"
+                            :pinned-messages="pinnedMessages"
+                            :is-loading="isLoadingPinned"
+                            :can-unpin="isDm || (channelPermissions?.canPinMessages ?? false)"
+                            @close="showPinnedMessages = false"
+                            @unpin="unpinFromPanel"
+                        />
+                    </div>
+                    <button
+                        v-if="e2eeStore.isReady"
+                        class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
+                        :class="{ 'bg-muted text-foreground': showSearch }"
+                        title="Search messages"
+                        @click="showSearch = !showSearch"
+                    >
+                        <Search :size="18" />
+                    </button>
+                    <NotificationBell />
+                    <button
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                        :title="usersCollapsed ? 'Show members' : 'Hide members'"
+                        @click="emit('toggleUsersCollapsed')"
+                    >
+                        <PanelRightOpen v-if="usersCollapsed" :size="16" />
+                        <PanelRightClose v-else :size="16" />
+                    </button>
                 </div>
             </div>
 
-            <div v-else class="space-y-1">
-                <div v-if="isLoadingMore" class="flex justify-center py-2">
-                    <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"></div>
+            <div
+                ref="messagesContainer"
+                class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+                @scroll="handleScroll"
+            >
+                <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
+                    <div class="text-muted-foreground text-center">
+                        <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
+                        <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
+                        <p class="text-lg font-semibold">
+                            {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
+                        </p>
+                        <p class="text-sm">This is the start of your conversation.</p>
+                    </div>
                 </div>
 
-                <Message
-                    v-for="message in activeMessages"
-                    :key="message.id"
-                    :message="message"
-                    :is-editing="editingMessageId === message.id"
-                    :edit-content="editContent"
-                    :show-emoji-picker="emojiPickerMessageId === message.id"
-                    :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                    :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                    :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                    @start-edit="startEdit(message)"
-                    @cancel-edit="cancelEdit"
-                    @save-edit="saveEdit(message)"
-                    @delete="deleteMessage(message)"
-                    @reply="startReply(message)"
-                    @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
-                    @toggle-emoji-picker="
-                        emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
-                    "
-                    @update-edit-content="editContent = $event"
-                />
+                <div v-else class="space-y-1">
+                    <div v-if="isLoadingMore" class="flex justify-center py-2">
+                        <div
+                            class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                        ></div>
+                    </div>
+
+                    <Message
+                        v-for="message in activeMessages"
+                        :key="message.id"
+                        :message="message"
+                        :is-editing="editingMessageId === message.id"
+                        :edit-content="editContent"
+                        :show-emoji-picker="emojiPickerMessageId === message.id"
+                        :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                        :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
+                        :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                        :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                        :show-thread-button="!isDm"
+                        @start-edit="startEdit(message)"
+                        @cancel-edit="cancelEdit"
+                        @save-edit="saveEdit(message)"
+                        @delete="deleteMessage(message)"
+                        @reply="startReply(message)"
+                        @open-thread="openThread(message)"
+                        @toggle-pin="togglePin(message)"
+                        @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
+                        @toggle-emoji-picker="
+                            emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
+                        "
+                        @update-edit-content="editContent = $event"
+                    />
+                </div>
+                <div ref="bottomSentinel" class="h-0 w-0" />
             </div>
-            <div ref="bottomSentinel" class="h-0 w-0" />
+
+            <TypingIndicator :typing-users="typingUsers" />
+
+            <!-- Send error banner -->
+            <div
+                v-if="sendError"
+                class="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 border-t px-4 py-2 text-sm"
+            >
+                <span class="flex-1">{{ sendError }}</span>
+                <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="sendError = null">
+                    Dismiss
+                </button>
+            </div>
+
+            <MessageInput
+                v-if="isDm || channelPermissions?.canSendMessages !== false"
+                :channel-name="channel?.name"
+                :replying-to="replyingToMessage"
+                :disabled="isRateLimited"
+                @send="sendMessage"
+                @typing="emitTyping"
+                @cancel-reply="replyingToMessage = null"
+            />
+            <div v-else class="border-border bg-muted/50 text-muted-foreground border-t px-4 py-3 text-center text-sm">
+                You do not have permission to send messages in this channel.
+            </div>
+
+            <SearchMessages
+                v-if="showSearch && channel"
+                :conversation-type="isDm ? 'dm' : 'channel'"
+                :conversation-id="channel.id"
+                :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
+                @close="showSearch = false"
+                @navigate-to-message="(id) => {}"
+            />
         </div>
-
-        <TypingIndicator :typing-users="typingUsers" />
-
-        <!-- Send error banner -->
-        <div
-            v-if="sendError"
-            class="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 border-t px-4 py-2 text-sm"
-        >
-            <span class="flex-1">{{ sendError }}</span>
-            <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="sendError = null">
-                Dismiss
-            </button>
-        </div>
-
-        <MessageInput
-            v-if="isDm || channelPermissions?.canSendMessages !== false"
-            :channel-name="channel?.name"
-            :replying-to="replyingToMessage"
-            :disabled="isRateLimited"
-            @send="sendMessage"
-            @typing="emitTyping"
-            @cancel-reply="replyingToMessage = null"
-        />
-        <div v-else class="border-border bg-muted/50 text-muted-foreground border-t px-4 py-3 text-center text-sm">
-            You do not have permission to send messages in this channel.
-        </div>
-
-        <SearchMessages
-            v-if="showSearch && channel"
-            :conversation-type="isDm ? 'dm' : 'channel'"
-            :conversation-id="channel.id"
-            :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
-            @close="showSearch = false"
-            @navigate-to-message="(id) => {}"
-        />
     </div>
 </template>

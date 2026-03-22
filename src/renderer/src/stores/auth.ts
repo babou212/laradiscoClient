@@ -122,6 +122,51 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function register(
+        inviteToken: string,
+        name: string,
+        username: string,
+        email: string,
+        password: string,
+        passwordConfirmation: string,
+    ): Promise<boolean> {
+        const serverStore = useServerStore();
+        if (!serverStore.activeServer) {
+            loginError.value = 'No server connection';
+            return false;
+        }
+
+        isLoggingIn.value = true;
+        loginError.value = null;
+
+        try {
+            const result = await window.api.auth.register(
+                serverStore.activeServer.host,
+                serverStore.activeServer.id,
+                inviteToken,
+                name,
+                username,
+                email,
+                password,
+                passwordConfirmation,
+            );
+
+            if (result.success && result.user && result.token) {
+                user.value = result.user;
+                token.value = result.token;
+                return true;
+            }
+
+            loginError.value = result.error ?? 'Registration failed';
+            return false;
+        } catch {
+            loginError.value = 'Unexpected error during registration';
+            return false;
+        } finally {
+            isLoggingIn.value = false;
+        }
+    }
+
     async function logout(): Promise<void> {
         const serverStore = useServerStore();
 
@@ -153,6 +198,7 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated,
         restoreSession,
         login,
+        register,
         verifyTwoFactor,
         logout,
         clearError,
