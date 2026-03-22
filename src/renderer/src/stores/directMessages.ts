@@ -13,6 +13,7 @@ export interface DmGroup {
         avatar_path: string | null;
     } | null;
     last_message: {
+        id: number;
         content: string;
         created_at: string;
         user_id: number;
@@ -119,6 +120,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         const group = dmGroups.value.find((g) => g.id === currentDmGroup.value?.id);
         if (group) {
             group.last_message = {
+                id: message.id,
                 content: message.content,
                 created_at: message.created_at,
                 user_id: message.user.id,
@@ -160,14 +162,29 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         if (!lm || !lm.is_encrypted || lm.decrypted_content || lm.decrypt_error) return;
 
         const e2ee = useE2EE();
+
+        // MLS cannot decrypt own messages — look up from local DB instead
+        const ourDeviceId = await e2ee.getDeviceId();
+        if (ourDeviceId && lm.sender_device_id === ourDeviceId) {
+            const temp: MessageData[] = [
+                {
+                    id: lm.id,
+                    content: lm.content,
+                    is_encrypted: true,
+                    sender_device_id: lm.sender_device_id,
+                } as MessageData,
+            ];
+            await e2ee.lookupSentPlaintexts(temp);
+            if (temp[0].decrypted_content) {
+                lm.decrypted_content = temp[0].decrypted_content;
+            } else {
+                lm.decrypt_error = true;
+            }
+            return;
+        }
+
         try {
-            const plaintext = await e2ee.decrypt(
-                lm.content,
-                lm.user_id,
-                lm.sender_device_id ?? '',
-                undefined,
-                group.id,
-            );
+            const plaintext = await e2ee.decrypt(lm.content, undefined, group.id);
             lm.decrypted_content = plaintext;
         } catch {
             lm.decrypt_error = true;

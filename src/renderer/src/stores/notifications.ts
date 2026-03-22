@@ -207,25 +207,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
         const serverId = serverStore.activeServer?.id;
         if (!serverId) return;
 
-        let senderDeviceId = data.sender_device_id ?? '';
-        if (!senderDeviceId) {
-            try {
-                const parsed = JSON.parse(data.content);
-                senderDeviceId = parsed.sender_device_id ?? '';
-            } catch (error) {
-                console.error(error);
-            }
-        }
+        const groupId = data.dm_group_id != null ? `dm:${data.dm_group_id}` : `channel:${data.channel_id}`;
 
         try {
-            const plaintext = await window.api.e2ee.decrypt({
+            const result = await window.api.mls.decrypt({
                 serverId,
-                payload: data.content,
-                senderId: data.sender_id,
-                senderDeviceId,
-                channelId: data.channel_id,
-                dmGroupId: data.dm_group_id,
+                groupId,
+                messageBytes: data.content,
             });
+            const plaintext = result.payload ?? undefined;
             data.decrypted_content = plaintext;
 
             const existing = notifications.value.find((n) => n.id === notification.id);

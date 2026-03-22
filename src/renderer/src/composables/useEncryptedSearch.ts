@@ -25,10 +25,10 @@ export function useEncryptedSearch() {
         plaintext: string,
     ): Promise<string[]> {
         try {
-            return await window.api.e2ee.generateSearchTokens({
+            const conversationId = type === 'dm' ? `dm:${targetId}` : `channel:${targetId}`;
+            return await window.api.mls.generateSearchTokens({
                 serverId: getServerId(),
-                type,
-                targetId,
+                conversationId,
                 plaintext,
             });
         } catch {
@@ -54,10 +54,10 @@ export function useEncryptedSearch() {
         searchError.value = null;
 
         try {
-            const tokens = await window.api.e2ee.generateSearchTrapdoor({
+            const conversationId = type === 'dm' ? `dm:${targetId}` : `channel:${targetId}`;
+            const tokens = await window.api.mls.generateSearchTrapdoor({
                 serverId: getServerId(),
-                type,
-                targetId,
+                conversationId,
                 query,
             });
 
@@ -150,6 +150,10 @@ export function useEncryptedSearch() {
         targetId: number,
         messages: MessageData[],
     ): Promise<MessageData[]> {
+        // Look up own-message plaintexts from local DB first —
+        // MLS cannot decrypt messages sent by our own device.
+        await e2ee.lookupSentPlaintexts(messages);
+
         const results: MessageData[] = [];
 
         for (const msg of messages) {
@@ -157,8 +161,6 @@ export function useEncryptedSearch() {
                 try {
                     const decrypted = await e2ee.decrypt(
                         msg.content,
-                        msg.user.id,
-                        msg.sender_device_id ?? '',
                         type === 'channel' ? targetId : undefined,
                         type === 'dm' ? targetId : undefined,
                     );

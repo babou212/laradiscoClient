@@ -1,6 +1,22 @@
 import { argon2id } from 'hash-wasm';
-import { encrypt, decrypt } from './aes-gcm';
-import type { KeyBackupBundle } from './types';
+
+export interface MlsKeyBackupBundle {
+    version: 3;
+    identityBytes: string;
+    providerBytes: string;
+    sourceDeviceId: string;
+}
+
+export interface EncryptedKeyBackup {
+    encryptedBundle: string;
+    salt: string;
+    nonce: string;
+    argon2Params: {
+        memory: number;
+        iterations: number;
+        parallelism: number;
+    };
+}
 
 const ARGON2_PARAMS = {
     memory: 262144,
@@ -9,15 +25,13 @@ const ARGON2_PARAMS = {
     hashLength: 32,
 };
 
-const cachedBackupKeys = new Map<number, { key: Uint8Array<ArrayBuffer>; salt: Uint8Array<ArrayBuffer> }>();
+const cachedBackupKeys = new Map<number, { key: Uint8Array; salt: Uint8Array }>();
 
-export function cacheBackupKey(serverId: number, key: Uint8Array<ArrayBuffer>, salt: Uint8Array<ArrayBuffer>): void {
+export function cacheBackupKey(serverId: number, key: Uint8Array, salt: Uint8Array): void {
     cachedBackupKeys.set(serverId, { key: new Uint8Array(key), salt: new Uint8Array(salt) });
 }
 
-export function getCachedBackupKey(
-    serverId: number,
-): { key: Uint8Array<ArrayBuffer>; salt: Uint8Array<ArrayBuffer> } | null {
+export function getCachedBackupKey(serverId: number): { key: Uint8Array; salt: Uint8Array } | null {
     return cachedBackupKeys.get(serverId) ?? null;
 }
 
@@ -33,11 +47,7 @@ export function hasCachedBackupKey(serverId: number): boolean {
     return cachedBackupKeys.has(serverId);
 }
 
-async function deriveKeyFromPIN(
-    pin: string,
-    salt: Uint8Array<ArrayBuffer>,
-    params = ARGON2_PARAMS,
-): Promise<Uint8Array<ArrayBuffer>> {
+async function deriveKeyFromPIN(pin: string, salt: Uint8Array, params = ARGON2_PARAMS): Promise<Uint8Array> {
     const hash = await argon2id({
         password: pin,
         salt,
@@ -47,38 +57,57 @@ async function deriveKeyFromPIN(
         hashLength: params.hashLength,
         outputType: 'binary',
     });
-
     return new Uint8Array(hash);
 }
 
-export interface EncryptedKeyBackup {
-    encryptedBundle: string;
-    salt: string;
-    nonce: string;
-    argon2Params: {
-        memory: number;
-        iterations: number;
-        parallelism: number;
-    };
+async function aesGcmEncrypt(
+    key: Uint8Array,
+    plaintext: Uint8Array,
+): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }> {
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const keyBuf = key as Uint8Array<ArrayBuffer>;
+    const cryptoKey = await crypto.subtle.importKey('raw', keyBuf, { name: 'AES-GCM', length: 256 }, false, [
+        'encrypt',
+    ]);
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: nonce },
+        cryptoKey,
+        plaintext as Uint8Array<ArrayBuffer>,
+    );
+    return { ciphertext: new Uint8Array(encrypted), nonce };
+}
+
+async function aesGcmDecrypt(key: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
+    const keyBuf = key as Uint8Array<ArrayBuffer>;
+    const cryptoKey = await crypto.subtle.importKey('raw', keyBuf, { name: 'AES-GCM', length: 256 }, false, [
+        'decrypt',
+    ]);
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: nonce as Uint8Array<ArrayBuffer> },
+        cryptoKey,
+        ciphertext as Uint8Array<ArrayBuffer>,
+    );
+    return new Uint8Array(decrypted);
 }
 
 export async function encryptKeyBackup(
-    bundle: KeyBackupBundle,
+    bundle: MlsKeyBackupBundle,
     pin: string,
     serverId?: number,
 ): Promise<EncryptedKeyBackup> {
-    const bundleJson = JSON.stringify(bundle);
-    const bundleBytes = new TextEncoder().encode(bundleJson);
+    if (!pin || pin.length < 6) {
+        throw new Error('PIN must be at least 6 characters');
+    }
 
+    const bundleBytes = new TextEncoder().encode(JSON.stringify(bundle));
     const salt = crypto.getRandomValues(new Uint8Array(32));
-
     const encryptionKey = await deriveKeyFromPIN(pin, salt);
 
     if (serverId != null) {
         cacheBackupKey(serverId, encryptionKey, salt);
     }
 
-    const { ciphertext, nonce } = await encrypt(encryptionKey, bundleBytes);
+    const { ciphertext, nonce } = await aesGcmEncrypt(encryptionKey, bundleBytes);
 
     return {
         encryptedBundle: Buffer.from(ciphertext).toString('base64'),
@@ -96,44 +125,44 @@ export async function decryptKeyBackup(
     backup: EncryptedKeyBackup,
     pin: string,
     serverId?: number,
-): Promise<KeyBackupBundle | null> {
+): Promise<MlsKeyBackupBundle | null> {
+    if (!pin || pin.length < 6) {
+        return null;
+    }
+
     try {
         const salt = new Uint8Array(Buffer.from(backup.salt, 'base64'));
         const encryptedBundle = new Uint8Array(Buffer.from(backup.encryptedBundle, 'base64'));
         const nonce = new Uint8Array(Buffer.from(backup.nonce, 'base64'));
 
-        const backupParams = backup.argon2Params;
         const encryptionKey = await deriveKeyFromPIN(pin, salt, {
-            memory: backupParams.memory,
-            iterations: backupParams.iterations,
-            parallelism: backupParams.parallelism,
+            memory: backup.argon2Params.memory,
+            iterations: backup.argon2Params.iterations,
+            parallelism: backup.argon2Params.parallelism,
             hashLength: ARGON2_PARAMS.hashLength,
         });
 
-        const bundleBytes = await decrypt(encryptionKey, encryptedBundle, nonce);
+        const bundleBytes = await aesGcmDecrypt(encryptionKey, encryptedBundle, nonce);
 
         if (serverId != null) {
             cacheBackupKey(serverId, encryptionKey, salt);
         }
 
-        const bundleJson = new TextDecoder().decode(bundleBytes);
-        return JSON.parse(bundleJson) as KeyBackupBundle;
+        return JSON.parse(new TextDecoder().decode(bundleBytes)) as MlsKeyBackupBundle;
     } catch {
         return null;
     }
 }
 
 export async function encryptKeyBackupWithCachedKey(
-    bundle: KeyBackupBundle,
+    bundle: MlsKeyBackupBundle,
     serverId: number,
 ): Promise<EncryptedKeyBackup | null> {
     const cached = getCachedBackupKey(serverId);
     if (!cached) return null;
 
-    const bundleJson = JSON.stringify(bundle);
-    const bundleBytes = new TextEncoder().encode(bundleJson);
-
-    const { ciphertext, nonce } = await encrypt(cached.key, bundleBytes);
+    const bundleBytes = new TextEncoder().encode(JSON.stringify(bundle));
+    const { ciphertext, nonce } = await aesGcmEncrypt(cached.key, bundleBytes);
 
     return {
         encryptedBundle: Buffer.from(ciphertext).toString('base64'),

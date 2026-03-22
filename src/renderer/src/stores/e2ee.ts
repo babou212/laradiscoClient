@@ -43,6 +43,7 @@ export const useE2eeStore = defineStore('e2ee', () => {
 
             if (setup) {
                 deviceId.value = await e2ee.getDeviceId();
+                await e2ee.ensureDeviceRegistered();
                 performMaintenance();
 
                 if (maintenanceInterval) clearInterval(maintenanceInterval);
@@ -91,8 +92,6 @@ export const useE2eeStore = defineStore('e2ee', () => {
                 },
                 6 * 60 * 60 * 1000,
             );
-
-            e2ee.bulkFetchSenderKeysAfterRestore().catch(() => {});
 
             return true;
         } catch (err: any) {
@@ -177,15 +176,9 @@ export const useE2eeStore = defineStore('e2ee', () => {
 
     async function performMaintenance(): Promise<void> {
         try {
-            await e2ee.checkAndReplenishPrekeys();
+            await e2ee.checkAndReplenishKeyPackages();
         } catch (err) {
-            console.error('Pre-key replenishment failed:', err);
-        }
-
-        try {
-            await e2ee.rotateSignedPrekeyIfNeeded();
-        } catch (err) {
-            console.error('Signed pre-key rotation failed:', err);
+            console.error('Key package replenishment failed:', err);
         }
     }
 

@@ -6,9 +6,9 @@ if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
 }
 
-import { initE2ee } from './crypto';
 import { initDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
+import { initMls } from './mls';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
 import { initAutoUpdater } from './updater';
 
@@ -81,7 +81,7 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
-    initE2ee();
+    initMls();
     initPushToTalk();
     initAutoUpdater();
 

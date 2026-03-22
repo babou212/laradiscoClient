@@ -164,115 +164,104 @@ interface UpdaterApi {
     removeAllListeners: () => void;
 }
 
-interface E2eeSetupResult {
-    userIdentityKey: string;
+interface MlsSetupResult {
     deviceId: string;
     deviceName: string;
-    deviceIdentityKey: string;
-    identitySignature: string;
-    signedPrekey: string;
-    signedPrekeyId: number;
-    signedPrekeySignature: string;
-    oneTimePrekeys: Array<{ prekeyId: number; publicKey: string }>;
+    identityBytes: string;
+    identityKey: string;
+    keyPackages: Array<{ key_package_bytes: string; key_package_hash: string }>;
 }
 
-interface E2eePublicKeys {
-    userIdentityKey: string;
-    deviceIdentityKey: string;
-    deviceId: string;
-}
-
-interface E2eeEncryptParams {
-    serverId: number;
-    type: 'channel' | 'dm';
-    targetId: number;
-    plaintext: string;
-}
-
-interface E2eeDecryptParams {
-    serverId: number;
-    payload: string;
-    senderId: number;
-    senderDeviceId: string;
-    channelId?: number;
-    dmGroupId?: number;
-}
-
-interface E2eeKeyBackup {
+interface MlsKeyBackup {
     encryptedBundle: string;
     salt: string;
     nonce: string;
     argon2Params: { memory: number; iterations: number; parallelism: number };
 }
 
-interface E2eeSenderKeyDistribution {
-    distributionId: string;
-    chainKey: string;
-    signingPublicKey: string;
-    chainIndex: number;
+interface MlsGroupInfo {
+    groupId: string;
+    epoch: number;
+    isActive: boolean;
+    ownLeafIndex: number;
+    members: Array<{
+        index: number;
+        identity: string;
+        signatureKey: string;
+    }>;
 }
 
-interface E2eeApi {
+interface MlsApi {
     isSetup: (serverId: number, userId?: number) => Promise<boolean>;
     getDeviceId: (serverId: number, userId?: number) => Promise<string | null>;
-    setup: (serverId: number, deviceName: string, userId?: number) => Promise<E2eeSetupResult>;
-    setupDevice: (serverId: number, deviceName: string, userId?: number) => Promise<E2eeSetupResult>;
-    getPublicKeys: (serverId: number) => Promise<E2eePublicKeys | null>;
-    encrypt: (params: E2eeEncryptParams) => Promise<string>;
-    decrypt: (params: E2eeDecryptParams) => Promise<string>;
-    createSenderKey: (serverId: number, channelId: number) => Promise<E2eeSenderKeyDistribution>;
-    processSenderKeyDist: (params: {
+    setup: (serverId: number, deviceName: string, userId?: number) => Promise<MlsSetupResult>;
+    setupDevice: (serverId: number, deviceName: string, userId?: number) => Promise<MlsSetupResult>;
+    encrypt: (params: { serverId: number; groupId: string; plaintext: string }) => Promise<{
+        message_bytes: string;
+        epoch: number;
+    }>;
+    decrypt: (params: { serverId: number; groupId: string; messageBytes: string }) => Promise<{
+        msgType: string;
+        payload: string | null;
+    }>;
+    createGroup: (params: { serverId: number; groupId: string }) => Promise<{
+        groupId: string;
+        epoch: number;
+        memberCount: number;
+    }>;
+    joinGroup: (params: {
         serverId: number;
-        channelId: number;
-        senderId: string;
-        senderDeviceId: string;
-        distribution: E2eeSenderKeyDistribution;
-    }) => Promise<{ success: boolean }>;
-    backupKeys: (serverId: number, pin: string) => Promise<E2eeKeyBackup>;
-    restoreKeys: (
+        welcomeBytes: string;
+        ratchetTreeBytes: string;
+    }) => Promise<{ groupId: string; epoch: number; memberCount: number }>;
+    addMember: (params: { serverId: number; groupId: string; keyPackageBytes: string }) => Promise<{
+        proposal: string;
+        commit: string;
+        welcome: string;
+        ratchetTree: string;
+        epoch: number;
+    }>;
+    removeMember: (params: {
+        serverId: number;
+        groupId: string;
+        leafIndices: number[];
+    }) => Promise<{ commit: string; epoch: number }>;
+    processMessage: (params: {
+        serverId: number;
+        groupId: string;
+        messageBytes: string;
+    }) => Promise<{ msgType: string; payload: string | null; epoch: number }>;
+    selfUpdate: (params: { serverId: number; groupId: string }) => Promise<{
+        commit: string;
+        welcome: string | null;
+        epoch: number;
+    }>;
+    mergeCommit: (params: { serverId: number; groupId: string }) => Promise<{ epoch: number }>;
+    clearPendingCommit: (params: { serverId: number; groupId: string }) => Promise<{ success: boolean }>;
+    generateKeyPackages: (
         serverId: number,
-        backup: E2eeKeyBackup,
-        pin: string,
-    ) => Promise<{ success: boolean; error?: string }>;
-    autoUpdateBackup: (serverId: number) => Promise<E2eeKeyBackup | null>;
+        count: number,
+    ) => Promise<Array<{ key_package_bytes: string; key_package_hash: string }>>;
+    getGroupInfo: (params: { serverId: number; groupId: string }) => Promise<MlsGroupInfo | null>;
+    backupKeys: (serverId: number, pin: string) => Promise<MlsKeyBackup>;
+    restoreKeys: (serverId: number, backup: MlsKeyBackup, pin: string) => Promise<{ success: boolean; error?: string }>;
+    autoUpdateBackup: (serverId: number) => Promise<MlsKeyBackup | null>;
     hasBackupKey: (serverId: number) => Promise<boolean>;
     clearBackupKey: (serverId?: number) => Promise<{ success: boolean }>;
-    rotateSignedPreKey: (serverId: number) => Promise<{
-        deviceId: string;
-        signedPrekey: string;
-        signedPrekeyId: number;
-        signedPrekeySignature: string;
-    }>;
-    generatePreKeys: (serverId: number, count: number) => Promise<Array<{ prekeyId: number; publicKey: string }>>;
     wipe: (serverId: number) => Promise<{ success: boolean }>;
     wipeForUserMismatch: (serverId: number, userId: number) => Promise<boolean>;
-    invalidateChannelSenderKeys: (serverId: number, channelId: number) => Promise<{ success: boolean }>;
-    encryptSenderKeyDist: (params: {
-        distribution: E2eeSenderKeyDistribution;
-        recipientDeviceIdentityKey: string;
-    }) => Promise<{
-        encryptedDistribution: string;
-        ephemeralPublicKey: string;
-        nonce: string;
-    }>;
-    decryptSenderKeyDist: (params: {
-        serverId: number;
-        encryptedDistribution: string;
-        ephemeralPublicKey: string;
-        nonce: string;
-    }) => Promise<E2eeSenderKeyDistribution>;
     generateSearchTokens: (params: {
         serverId: number;
-        type: 'channel' | 'dm';
-        targetId: number;
+        conversationId: string;
         plaintext: string;
     }) => Promise<string[]>;
-    generateSearchTrapdoor: (params: {
-        serverId: number;
-        type: 'channel' | 'dm';
-        targetId: number;
-        query: string;
-    }) => Promise<string[]>;
+    generateSearchTrapdoor: (params: { serverId: number; conversationId: string; query: string }) => Promise<string[]>;
+}
+
+interface MessagesApi {
+    storePlaintext: (serverId: number, messageId: number, plaintext: string) => Promise<void>;
+    getPlaintext: (serverId: number, messageId: number) => Promise<string | null>;
+    getPlaintexts: (serverId: number, messageIds: number[]) => Promise<Record<number, string>>;
 }
 
 interface AppApi {
@@ -284,7 +273,8 @@ interface AppApi {
     settings: SettingsApi;
     window: WindowApi;
     updater: UpdaterApi;
-    e2ee: E2eeApi;
+    mls: MlsApi;
+    messages: MessagesApi;
 }
 
 declare global {
