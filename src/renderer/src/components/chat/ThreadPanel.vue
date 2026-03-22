@@ -120,7 +120,7 @@ const joinThread = (threadId: number) => {
                         data.message.user.id,
                         senderDeviceId,
                         props.channelId,
-                        data.message.id,
+                        undefined,
                     );
                     update.decrypted_content = plaintext;
                     update.decrypt_error = false;

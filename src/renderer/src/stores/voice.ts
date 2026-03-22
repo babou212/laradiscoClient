@@ -292,24 +292,28 @@ export const useVoiceStore = defineStore('voice', () => {
         });
         r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
             if (track.source === Track.Source.ScreenShare) {
+                const wrappedTrack = { mediaStreamTrack: track.mediaStreamTrack };
                 const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
                 if (existing) {
-                    existing.videoTrack = track;
+                    existing.videoTrack = wrappedTrack;
                 } else {
                     screenShareParticipants.value = [
                         ...screenShareParticipants.value,
                         {
                             identity: participant.identity,
                             displayName: participant.name || participant.identity,
-                            videoTrack: track,
+                            videoTrack: wrappedTrack,
                             audioTrack: null,
                         },
                     ];
                 }
+                if (!activeScreenShareView.value) {
+                    activeScreenShareView.value = participant.identity;
+                }
             } else if (track.source === Track.Source.ScreenShareAudio) {
                 const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
                 if (existing) {
-                    existing.audioTrack = track;
+                    existing.audioTrack = { mediaStreamTrack: track.mediaStreamTrack };
                     screenShareParticipants.value = [...screenShareParticipants.value];
                 }
             }
@@ -508,7 +512,10 @@ export const useVoiceStore = defineStore('voice', () => {
         const pubs = [...room.localParticipant.trackPublications.values()];
         for (const pub of pubs) {
             if (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.ScreenShareAudio) {
-                await room.localParticipant.unpublishTrack(pub.track!.mediaStreamTrack);
+                const track = pub.track;
+                if (track && track.mediaStreamTrack) {
+                    await room.localParticipant.unpublishTrack(track.mediaStreamTrack);
+                }
             }
         }
 

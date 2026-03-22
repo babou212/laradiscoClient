@@ -146,9 +146,9 @@ app.whenReady().then(() => {
 
     session.defaultSession.setDisplayMediaRequestHandler(
         async (_request, callback) => {
-            const sources = await desktopCapturer.getSources({ types: ['screen'] });
+            const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
             if (sources.length > 0) {
-                callback({ video: sources[0], audio: 'loopback' });
+                callback({ video: sources[0] });
             } else {
                 callback(null as unknown as Electron.Streams);
             }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Monitor, AppWindow, X } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 
 interface ScreenSource {
@@ -28,9 +28,16 @@ const windows = computed(() => props.sources.filter((s) => s.id.startsWith('wind
 
 const displayedSources = computed(() => (activeTab.value === 'screens' ? screens.value : windows.value));
 
-if (screens.value.length > 0) {
-    selectedSourceId.value = screens.value[0].id;
-}
+watch(
+    [screens, activeTab],
+    () => {
+        const current = activeTab.value === 'screens' ? screens.value : windows.value;
+        if (!selectedSourceId.value || !current.some((s) => s.id === selectedSourceId.value)) {
+            selectedSourceId.value = current[0]?.id ?? null;
+        }
+    },
+    { immediate: true },
+);
 
 function confirm() {
     if (selectedSourceId.value) {
