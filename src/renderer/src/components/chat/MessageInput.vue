@@ -8,6 +8,7 @@ import type { MessageData } from '@/types/chat';
 
 interface Props {
     channelName?: string;
+    placeholder?: string;
     replyingTo?: MessageData | null;
     disabled?: boolean;
 }
@@ -269,7 +270,9 @@ onUnmounted(() => {
                     class="placeholder:text-muted-foreground flex-1 resize-none bg-transparent py-1.5 text-sm outline-none"
                     :class="{ 'cursor-not-allowed opacity-50': props.disabled }"
                     :placeholder="
-                        props.disabled ? 'Sending too fast — please wait…' : `Message #${channelName || 'channel'}`
+                        props.disabled
+                            ? 'Sending too fast — please wait…'
+                            : props.placeholder || `Message #${channelName || 'channel'}`
                     "
                     :disabled="props.disabled"
                     @keydown="handleKeydown"

@@ -1,13 +1,10 @@
-<!-- InviteLinkSettingsView - Invite link management -->
-
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
-import { useServerStore } from '@/stores/server';
 
 type InviteLink = {
     id: number;
@@ -19,21 +16,10 @@ type InviteLink = {
     created_at: string;
 };
 
-const serverStore = useServerStore();
 const inviteLinks = ref<InviteLink[]>([]);
 const isLoading = ref(true);
 
 const { copy, copied, text: copiedText } = useClipboard();
-
-const baseUrl = computed(() => {
-    const host = serverStore.activeHost ?? '';
-    const protocol = host.startsWith('http')
-        ? ''
-        : host.includes('localhost') || host.includes('127.0.0.1')
-          ? 'http://'
-          : 'https://';
-    return `${protocol}${host}/register?invite=`;
-});
 
 onMounted(async () => {
     await loadLinks();
@@ -69,8 +55,8 @@ async function deleteLink(inviteLink: InviteLink) {
     }
 }
 
-function copyInviteUrl(token: string) {
-    copy(baseUrl.value + token);
+function copyToken(token: string) {
+    copy(token);
 }
 
 function formatDate(dateString: string): string {
@@ -132,7 +118,7 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                         <div class="min-w-0 flex-1 space-y-1">
                             <div class="flex items-center gap-2">
                                 <code class="text-muted-foreground truncate text-xs">
-                                    {{ baseUrl + link.token }}
+                                    {{ link.token }}
                                 </code>
                             </div>
                             <div class="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
@@ -171,13 +157,10 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                 v-if="getStatus(link) === 'active'"
                                 variant="ghost"
                                 size="icon"
-                                @click="copyInviteUrl(link.token)"
+                                @click="copyToken(link.token)"
                                 class="h-8 w-8"
                             >
-                                <Check
-                                    v-if="copied && copiedText === baseUrl + link.token"
-                                    class="h-4 w-4 text-green-500"
-                                />
+                                <Check v-if="copied && copiedText === link.token" class="h-4 w-4 text-green-500" />
                                 <Copy v-else class="h-4 w-4" />
                             </Button>
 

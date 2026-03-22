@@ -445,6 +445,14 @@ export function useE2EE() {
         ) {
             await decryptReplyTo(message.reply_to, channelId, dmGroupId);
         }
+
+        if (
+            message.thread?.last_reply?.is_encrypted &&
+            message.thread.last_reply.decrypted_content === undefined &&
+            !message.thread.last_reply.decrypt_error
+        ) {
+            await decryptThreadLastReply(message.thread.last_reply, channelId, dmGroupId);
+        }
     }
 
     async function decryptReplyTo(
@@ -458,6 +466,30 @@ export function useE2EE() {
             senderDeviceId = parsed.sender_device_id ?? '';
         } catch (error) {
             console.error(error);
+        }
+
+        try {
+            const plaintext = await decrypt(reply.content, reply.user.id, senderDeviceId, channelId, dmGroupId);
+            reply.decrypted_content = plaintext;
+            reply.decrypt_error = false;
+        } catch {
+            reply.decrypt_error = true;
+        }
+    }
+
+    async function decryptThreadLastReply(
+        reply: NonNullable<NonNullable<MessageData['thread']>['last_reply']>,
+        channelId?: number,
+        dmGroupId?: number,
+    ): Promise<void> {
+        let senderDeviceId = reply.sender_device_id ?? '';
+        if (!senderDeviceId) {
+            try {
+                const parsed = JSON.parse(reply.content);
+                senderDeviceId = parsed.sender_device_id ?? '';
+            } catch (error) {
+                console.error(error);
+            }
         }
 
         try {

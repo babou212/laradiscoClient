@@ -116,7 +116,7 @@ const statusSections = computed(() => {
 </script>
 
 <template>
-    <div class="border-border bg-sidebar flex h-full w-60 flex-col border-l">
+    <div class="border-border bg-sidebar flex h-full w-full flex-col border-l">
         <div class="flex-1 overflow-y-auto px-2 py-4">
             <div v-for="section in statusSections" :key="section.key" class="mb-2">
                 <button

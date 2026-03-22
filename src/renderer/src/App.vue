@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
-import { RouterView } from 'vue-router';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
+import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
 import { usePresenceStore } from '@/stores/presence';
+
+const route = useRoute();
+const isSettingsPage = computed(() => route.path.startsWith('/settings'));
 
 const presenceStore = usePresenceStore();
 
@@ -26,4 +30,7 @@ onUnmounted(() => {
         <RouterView />
     </div>
     <NotificationToast />
+    <div v-show="!isSettingsPage">
+        <ScreenShareViewer />
+    </div>
 </template>

@@ -114,7 +114,7 @@ const statusOptions = [
 </script>
 
 <template>
-    <div class="bg-sidebar flex h-full w-60 flex-col">
+    <div class="bg-sidebar flex h-full w-full flex-col">
         <div class="flex-1 overflow-y-auto">
             <div class="px-2 py-2">
                 <button

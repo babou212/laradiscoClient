@@ -70,6 +70,23 @@ interface AuthApi {
     getSession: (serverId: number) => Promise<AuthSession | null>;
     logout: (host: string, serverId: number) => Promise<{ success: boolean }>;
     validate: (host: string, token: string) => Promise<{ valid: boolean; user?: AuthUser }>;
+    validateInvite: (host: string, token: string) => Promise<{ success: boolean; error?: string }>;
+    register: (
+        host: string,
+        serverId: number,
+        inviteToken: string,
+        name: string,
+        username: string,
+        email: string,
+        password: string,
+        passwordConfirmation: string,
+    ) => Promise<{
+        success: boolean;
+        user?: AuthUser;
+        token?: string;
+        error?: string;
+        errors?: Record<string, string[]>;
+    }>;
 }
 
 interface PttCapturedKey {
@@ -111,6 +128,20 @@ interface WindowApi {
 interface NotificationsApi {
     show: (payload: { title: string; body: string; notificationId: string }) => void;
     onClicked: (callback: (notificationId: string) => void) => void;
+    removeAllListeners: () => void;
+}
+
+interface ScreenSource {
+    id: string;
+    name: string;
+    thumbnail: string;
+    appIcon: string | null;
+    display_id: string;
+}
+
+interface ScreenApi {
+    onShowPicker: (callback: (sources: ScreenSource[]) => void) => void;
+    selectSource: (sourceId: string | null) => void;
     removeAllListeners: () => void;
 }
 
@@ -249,6 +280,7 @@ interface AppApi {
     auth: AuthApi;
     ptt: PttApi;
     notifications: NotificationsApi;
+    screen: ScreenApi;
     settings: SettingsApi;
     window: WindowApi;
     updater: UpdaterApi;

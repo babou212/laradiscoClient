@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import { CornerDownRight, ExternalLink, Pencil, Play, SmilePlus, Trash2 } from 'lucide-vue-next';
+import {
+    CornerDownRight,
+    ExternalLink,
+    MessageSquareText,
+    Pencil,
+    Pin,
+    PinOff,
+    Play,
+    SmilePlus,
+    Trash2,
+} from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
+import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
@@ -15,8 +26,10 @@ interface Props {
     editContent: string;
     showEmojiPicker: boolean;
     canManageMessages?: boolean;
+    canPinMessages?: boolean;
     canAddReactions?: boolean;
     canSendMessages?: boolean;
+    showThreadButton?: boolean;
 }
 
 interface Emits {
@@ -25,12 +38,16 @@ interface Emits {
     (e: 'saveEdit'): void;
     (e: 'delete'): void;
     (e: 'reply'): void;
+    (e: 'openThread'): void;
+    (e: 'togglePin'): void;
     (e: 'toggleReaction', emoji: string): void;
     (e: 'toggleEmojiPicker'): void;
     (e: 'updateEditContent', content: string): void;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    showThreadButton: true,
+});
 const emit = defineEmits<Emits>();
 
 const authStore = useAuthStore();
@@ -39,8 +56,10 @@ const currentUser = computed(() => authStore.user);
 const isOwnMessage = computed(() => props.message.user.id === currentUser.value?.id);
 const canEdit = computed(() => isOwnMessage.value);
 const canDelete = computed(() => isOwnMessage.value || props.canManageMessages);
+const canPin = computed(() => props.canPinMessages === true);
 const canReact = computed(() => props.canAddReactions !== false);
 const canReply = computed(() => props.canSendMessages !== false);
+const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
 const isDecrypting = computed(() => {
     return props.message.is_encrypted && !props.message.decrypt_error && !props.message.decrypted_content;
@@ -244,6 +263,10 @@ const renderedContentWithoutYoutube = computed(() => {
                     {{ formatMessageDate(message.created_at) }}
                 </span>
                 <EncryptionBadge :is-encrypted="message.is_encrypted" :decrypt-error="message.decrypt_error" />
+                <span v-if="message.is_pinned" class="text-primary/70 inline-flex items-center gap-0.5 text-xs">
+                    <Pin :size="12" />
+                    pinned
+                </span>
                 <span v-if="message.is_edited" class="text-muted-foreground text-xs italic"> (edited) </span>
             </div>
 
@@ -288,8 +311,8 @@ const renderedContentWithoutYoutube = computed(() => {
                     <Skeleton class="h-4 w-3/4" />
                     <Skeleton class="h-4 w-1/2" />
                 </div>
-                <div v-else-if="isGifUrl" class="max-w-sm overflow-hidden rounded-lg">
-                    <img :src="displayContent" alt="GIF" class="h-auto w-full" loading="lazy" />
+                <div v-else-if="isGifUrl" class="w-fit overflow-hidden rounded-lg">
+                    <img :src="displayContent" alt="GIF" class="h-auto max-w-sm" loading="lazy" />
                 </div>
 
                 <div
@@ -368,10 +391,16 @@ const renderedContentWithoutYoutube = computed(() => {
                     <span>{{ group.count }}</span>
                 </button>
             </div>
+
+            <ThreadPreviewBadge
+                v-if="showThreadButton && message.thread"
+                :thread="message.thread"
+                @open-thread="emit('openThread')"
+            />
         </div>
 
         <div
-            v-if="!isEditing && (canReact || canReply || canEdit || canDelete)"
+            v-if="!isEditing && (canReact || canReply || canPin || canEdit || canDelete)"
             class="border-border bg-background absolute -top-3 right-2 hidden gap-0.5 rounded border p-0.5 shadow-sm group-hover:flex"
         >
             <button
@@ -390,6 +419,23 @@ const renderedContentWithoutYoutube = computed(() => {
                 @click="emit('reply')"
             >
                 <CornerDownRight :size="16" />
+            </button>
+            <button
+                v-if="canThread"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                title="Reply in Thread"
+                @click="emit('openThread')"
+            >
+                <MessageSquareText :size="16" />
+            </button>
+            <button
+                v-if="canPin"
+                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                :title="message.is_pinned ? 'Unpin message' : 'Pin message'"
+                @click="emit('togglePin')"
+            >
+                <PinOff v-if="message.is_pinned" :size="16" />
+                <Pin v-else :size="16" />
             </button>
             <button
                 v-if="canEdit"

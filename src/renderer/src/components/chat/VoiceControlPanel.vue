@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { Mic, MicOff, Volume2, VolumeOff, PhoneOff } from 'lucide-vue-next';
+import { Mic, MicOff, Volume2, VolumeOff, PhoneOff, MonitorUp, MonitorOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
+
+function toggleScreenShare() {
+    if (voiceStore.isScreenSharing) {
+        voiceStore.stopScreenShare();
+    } else {
+        voiceStore.startScreenShare();
+    }
+}
 
 const qualityInfo = computed(() => {
     switch (voiceStore.connectionQuality) {
@@ -80,6 +88,21 @@ const qualityInfo = computed(() => {
             >
                 <VolumeOff v-if="voiceStore.isSoundMuted" :size="15" />
                 <Volume2 v-else :size="15" />
+            </button>
+
+            <button
+                type="button"
+                class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
+                :class="
+                    voiceStore.isScreenSharing
+                        ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
+                "
+                :title="voiceStore.isScreenSharing ? 'Stop Sharing' : 'Share Screen'"
+                @click="toggleScreenShare"
+            >
+                <MonitorOff v-if="voiceStore.isScreenSharing" :size="15" />
+                <MonitorUp v-else :size="15" />
             </button>
         </div>
     </div>

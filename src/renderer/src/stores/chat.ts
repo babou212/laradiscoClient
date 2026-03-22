@@ -13,6 +13,8 @@ export const useChatStore = defineStore('chat', () => {
     const isLoadingChannels = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
+    const pinnedMessages = ref<MessageData[]>([]);
+    const isLoadingPinned = ref(false);
     const serverName = ref<string>('Laradisco');
 
     const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
@@ -165,6 +167,48 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
+    async function fetchPinnedMessages(channelId: number): Promise<void> {
+        isLoadingPinned.value = true;
+        try {
+            const response = await api.get(`/channels/${channelId}/pins`);
+            pinnedMessages.value = response.data ?? [];
+        } catch (error) {
+            console.error('Failed to fetch pinned messages:', error);
+        } finally {
+            isLoadingPinned.value = false;
+        }
+    }
+
+    async function pinMessage(channelId: number, messageId: number): Promise<void> {
+        try {
+            await api.post(`/channels/${channelId}/messages/${messageId}/pin`);
+            const msg = messages.value.find((m) => m.id === messageId);
+            if (msg) {
+                msg.is_pinned = true;
+                msg.pinned_at = new Date().toISOString();
+            }
+        } catch (error) {
+            console.error('Failed to pin message:', error);
+            throw error;
+        }
+    }
+
+    async function unpinMessage(channelId: number, messageId: number): Promise<void> {
+        try {
+            await api.delete(`/channels/${channelId}/messages/${messageId}/pin`);
+            const msg = messages.value.find((m) => m.id === messageId);
+            if (msg) {
+                msg.is_pinned = false;
+                msg.pinned_at = null;
+            }
+            const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === messageId);
+            if (pinnedIdx !== -1) pinnedMessages.value.splice(pinnedIdx, 1);
+        } catch (error) {
+            console.error('Failed to unpin message:', error);
+            throw error;
+        }
+    }
+
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
         if (!exists) {
@@ -203,6 +247,8 @@ export const useChatStore = defineStore('chat', () => {
         isLoadingChannels,
         isLoadingMessages,
         isLoadingMore,
+        pinnedMessages,
+        isLoadingPinned,
         serverName,
         selectedChannelId,
         fetchCategories,
@@ -215,6 +261,9 @@ export const useChatStore = defineStore('chat', () => {
         deleteMessage,
         toggleReaction,
         emitTyping,
+        fetchPinnedMessages,
+        pinMessage,
+        unpinMessage,
         addMessage,
         updateMessage,
         removeMessage,

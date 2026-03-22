@@ -1,15 +1,19 @@
-import type { RemoteParticipant } from 'livekit-client';
+import type { RemoteParticipant, VideoEncoding } from 'livekit-client';
 import {
     ConnectionQuality,
     Room,
     RoomEvent,
     type RemoteTrackPublication,
     ConnectionState,
+    Track,
+    VideoPreset,
+    VideoPresets,
     createLocalAudioTrack,
 } from 'livekit-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import api from '@/lib/api';
+import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 
 export interface VoiceParticipant {
@@ -18,7 +22,63 @@ export interface VoiceParticipant {
     displayName: string;
     isSpeaking: boolean;
     isMuted: boolean;
+    isScreenSharing: boolean;
 }
+
+export interface ScreenShareTrack {
+    mediaStreamTrack: MediaStreamTrack;
+}
+
+export interface ScreenShareParticipant {
+    identity: string;
+    displayName: string;
+    videoTrack: ScreenShareTrack;
+    audioTrack: ScreenShareTrack | null;
+}
+
+export type ScreenShareQualityPreset = 'low' | 'medium' | 'high' | 'source';
+
+export type ScreenShareViewMode = 'pip' | 'channel' | 'fullscreen';
+
+export const SCREEN_SHARE_PRESETS: Record<
+    ScreenShareQualityPreset,
+    {
+        width: number;
+        height: number;
+        frameRate: number;
+        encoding: VideoEncoding;
+        simulcastLayers: VideoPreset[];
+    }
+> = {
+    low: {
+        width: 1280,
+        height: 720,
+        frameRate: 30,
+        encoding: VideoPresets.h720.encoding,
+        simulcastLayers: [VideoPresets.h360],
+    },
+    medium: {
+        width: 1920,
+        height: 1080,
+        frameRate: 30,
+        encoding: VideoPresets.h1080.encoding,
+        simulcastLayers: [VideoPresets.h720, VideoPresets.h360],
+    },
+    high: {
+        width: 1920,
+        height: 1080,
+        frameRate: 60,
+        encoding: { maxBitrate: 3_000_000, maxFramerate: 60 },
+        simulcastLayers: [new VideoPreset(1280, 720, 1_500_000, 60), new VideoPreset(640, 360, 600_000, 30)],
+    },
+    source: {
+        width: 0,
+        height: 0,
+        frameRate: 60,
+        encoding: { maxBitrate: 3_000_000, maxFramerate: 60 },
+        simulcastLayers: [new VideoPreset(1920, 1080, 1_500_000, 60), new VideoPreset(1280, 720, 800_000, 30)],
+    },
+};
 
 interface VoiceChannel {
     id: number;
@@ -51,10 +111,18 @@ export const useVoiceStore = defineStore('voice', () => {
     const echoCancellation = ref(true);
     const autoGainControl = ref(true);
 
+    const isScreenSharing = ref(false);
+    const screenShareQuality = ref<ScreenShareQualityPreset>('high');
+    const screenShareParticipants = ref<ScreenShareParticipant[]>([]);
+    const activeScreenShareView = ref<string | null>(null);
+    const screenShareViewMode = ref<ScreenShareViewMode>('pip');
+    const screenShareAudioMuted = ref(true);
+    let screenShareStream: MediaStream | null = null;
+
     let pttActive = false;
 
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId, ns, ec, agc] = await Promise.all([
+        const [enabled, key, keycode, modifiers, sound, micId, ns, ec, agc, ssQuality] = await Promise.all([
             window.api.settings.get('voice:pttEnabled'),
             window.api.settings.get('voice:pttKey'),
             window.api.settings.get('voice:pttKeycode'),
@@ -64,6 +132,7 @@ export const useVoiceStore = defineStore('voice', () => {
             window.api.settings.get('voice:noiseSuppression'),
             window.api.settings.get('voice:echoCancellation'),
             window.api.settings.get('voice:autoGainControl'),
+            window.api.settings.get('voice:screenShareQuality'),
         ]);
 
         pttEnabled.value = enabled === 'true';
@@ -81,6 +150,9 @@ export const useVoiceStore = defineStore('voice', () => {
         noiseSuppression.value = ns !== 'false';
         echoCancellation.value = ec !== 'false';
         autoGainControl.value = agc !== 'false';
+        if (ssQuality && ssQuality in SCREEN_SHARE_PRESETS) {
+            screenShareQuality.value = ssQuality as ScreenShareQualityPreset;
+        }
     }
 
     let room: Room | null = null;
@@ -107,12 +179,68 @@ export const useVoiceStore = defineStore('voice', () => {
                     displayName: p.display_name,
                     isSpeaking: false,
                     isMuted: false,
+                    isScreenSharing: false,
                 }));
                 channelParticipantsMap.value.set(channelId, mapped);
             }
         } catch (error) {
             console.error('Failed to fetch voice participants:', error);
         }
+    }
+
+    let subscribedChannelIds: number[] = [];
+
+    function subscribeToVoiceChannels(voiceChannelIds: number[]): void {
+        unsubscribeFromVoiceChannels();
+        const echo = getEcho();
+
+        for (const channelId of voiceChannelIds) {
+            echo.private(`voice.channel.${channelId}`)
+                .listen(
+                    '.voice.joined',
+                    (data: {
+                        user: { id: number; username: string; display_name: string; avatar_path: string | null };
+                        channel_id: number;
+                    }) => {
+                        const participants = channelParticipantsMap.value.get(data.channel_id) ?? [];
+                        if (!participants.some((p) => p.id === data.user.id)) {
+                            channelParticipantsMap.value.set(data.channel_id, [
+                                ...participants,
+                                {
+                                    id: data.user.id,
+                                    username: data.user.username,
+                                    displayName: data.user.display_name,
+                                    isSpeaking: false,
+                                    isMuted: false,
+                                    isScreenSharing: false,
+                                },
+                            ]);
+                        }
+                    },
+                )
+                .listen('.voice.left', (data: { user_id: number; channel_id: number }) => {
+                    const participants = channelParticipantsMap.value.get(data.channel_id);
+                    if (participants) {
+                        const filtered = participants.filter((p) => p.id !== data.user_id);
+                        if (filtered.length > 0) {
+                            channelParticipantsMap.value.set(data.channel_id, filtered);
+                        } else {
+                            channelParticipantsMap.value.delete(data.channel_id);
+                        }
+                    }
+                });
+        }
+
+        subscribedChannelIds = voiceChannelIds;
+    }
+
+    function unsubscribeFromVoiceChannels(): void {
+        if (subscribedChannelIds.length === 0) return;
+        const echo = getEcho();
+        for (const channelId of subscribedChannelIds) {
+            echo.leave(`voice.channel.${channelId}`);
+        }
+        subscribedChannelIds = [];
     }
 
     function participantFromRemote(p: RemoteParticipant): VoiceParticipant {
@@ -122,6 +250,7 @@ export const useVoiceStore = defineStore('voice', () => {
             displayName: p.name || p.identity,
             isSpeaking: p.isSpeaking,
             isMuted: !p.isMicrophoneEnabled,
+            isScreenSharing: p.isScreenShareEnabled,
         };
     }
 
@@ -136,6 +265,7 @@ export const useVoiceStore = defineStore('voice', () => {
             displayName: local.name || local.identity,
             isSpeaking: local.isSpeaking,
             isMuted: isMicMuted.value,
+            isScreenSharing: isScreenSharing.value,
         });
 
         room.remoteParticipants.forEach((p) => {
@@ -151,9 +281,61 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function wireRoomEvents(r: Room): void {
         r.on(RoomEvent.ParticipantConnected, () => refreshParticipants());
-        r.on(RoomEvent.ParticipantDisconnected, () => refreshParticipants());
-        r.on(RoomEvent.TrackSubscribed, () => refreshParticipants());
-        r.on(RoomEvent.TrackUnsubscribed, () => refreshParticipants());
+        r.on(RoomEvent.ParticipantDisconnected, (participant) => {
+            screenShareParticipants.value = screenShareParticipants.value.filter(
+                (s) => s.identity !== participant.identity,
+            );
+            if (activeScreenShareView.value === participant.identity) {
+                activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
+            }
+            refreshParticipants();
+        });
+        r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+            if (track.source === Track.Source.ScreenShare) {
+                const wrappedTrack = { mediaStreamTrack: track.mediaStreamTrack };
+                const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
+                if (existing) {
+                    existing.videoTrack = wrappedTrack;
+                } else {
+                    screenShareParticipants.value = [
+                        ...screenShareParticipants.value,
+                        {
+                            identity: participant.identity,
+                            displayName: participant.name || participant.identity,
+                            videoTrack: wrappedTrack,
+                            audioTrack: null,
+                        },
+                    ];
+                }
+                if (!activeScreenShareView.value) {
+                    activeScreenShareView.value = participant.identity;
+                }
+            } else if (track.source === Track.Source.ScreenShareAudio) {
+                const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
+                if (existing) {
+                    existing.audioTrack = { mediaStreamTrack: track.mediaStreamTrack };
+                    screenShareParticipants.value = [...screenShareParticipants.value];
+                }
+            }
+            refreshParticipants();
+        });
+        r.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+            if (track.source === Track.Source.ScreenShare) {
+                screenShareParticipants.value = screenShareParticipants.value.filter(
+                    (s) => s.identity !== participant.identity,
+                );
+                if (activeScreenShareView.value === participant.identity) {
+                    activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
+                }
+            } else if (track.source === Track.Source.ScreenShareAudio) {
+                const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
+                if (existing) {
+                    existing.audioTrack = null;
+                    screenShareParticipants.value = [...screenShareParticipants.value];
+                }
+            }
+            refreshParticipants();
+        });
         r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
             const speakerIds = new Set(speakers.map((s) => s.identity));
             currentParticipants.value = currentParticipants.value.map((p) => ({
@@ -177,6 +359,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 currentChannel.value = null;
                 currentParticipants.value = [];
                 connectionQuality.value = ConnectionQuality.Unknown;
+                cleanupScreenShare();
                 room = null;
             }
         });
@@ -196,7 +379,7 @@ export const useVoiceStore = defineStore('voice', () => {
             const { data } = await api.post(`/channels/${channelId}/voice/join`);
             const { token, url } = data;
 
-            room = new Room();
+            room = new Room({ dynacast: true });
             wireRoomEvents(room);
 
             await room.connect(url, token);
@@ -243,11 +426,126 @@ export const useVoiceStore = defineStore('voice', () => {
         }
     }
 
+    function cleanupScreenShare(): void {
+        if (screenShareStream) {
+            screenShareStream.getTracks().forEach((t) => t.stop());
+            screenShareStream = null;
+        }
+        isScreenSharing.value = false;
+        screenShareParticipants.value = [];
+        activeScreenShareView.value = null;
+    }
+
+    async function startScreenShare(): Promise<void> {
+        if (!room || room.state !== ConnectionState.Connected) return;
+        if (isScreenSharing.value) return;
+
+        const preset = SCREEN_SHARE_PRESETS[screenShareQuality.value];
+        const videoConstraints: DisplayMediaStreamOptions['video'] = {};
+        if (preset.width > 0) {
+            (videoConstraints as MediaTrackConstraints).width = { max: preset.width };
+            (videoConstraints as MediaTrackConstraints).height = { max: preset.height };
+        }
+        (videoConstraints as MediaTrackConstraints).frameRate = { max: preset.frameRate };
+
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                audio: true,
+                video: videoConstraints,
+            });
+
+            screenShareStream = stream;
+
+            const videoTrack = stream.getVideoTracks()[0];
+            const audioTrack = stream.getAudioTracks()[0];
+
+            if (videoTrack) {
+                await room.localParticipant.publishTrack(videoTrack, {
+                    source: Track.Source.ScreenShare,
+                    name: 'screen',
+                    simulcast: true,
+                    videoEncoding: preset.encoding,
+                    videoSimulcastLayers: preset.simulcastLayers,
+                });
+            }
+
+            if (audioTrack) {
+                await room.localParticipant.publishTrack(audioTrack, {
+                    source: Track.Source.ScreenShareAudio,
+                    name: 'screen-audio',
+                });
+            }
+
+            videoTrack?.addEventListener('ended', () => {
+                stopScreenShare();
+            });
+
+            isScreenSharing.value = true;
+
+            const localIdentity = room.localParticipant.identity;
+            screenShareParticipants.value = [
+                ...screenShareParticipants.value,
+                {
+                    identity: localIdentity,
+                    displayName: room.localParticipant.name || localIdentity,
+                    videoTrack: { mediaStreamTrack: videoTrack },
+                    audioTrack: audioTrack ? { mediaStreamTrack: audioTrack } : null,
+                },
+            ];
+            if (!activeScreenShareView.value) {
+                activeScreenShareView.value = localIdentity;
+            }
+
+            refreshParticipants();
+            console.log('[Voice] Screen share started');
+        } catch (err) {
+            console.error('[Voice] Failed to start screen share:', err);
+        }
+    }
+
+    async function stopScreenShare(): Promise<void> {
+        if (!room || !isScreenSharing.value) {
+            cleanupScreenShare();
+            return;
+        }
+
+        const pubs = [...room.localParticipant.trackPublications.values()];
+        for (const pub of pubs) {
+            if (pub.source === Track.Source.ScreenShare || pub.source === Track.Source.ScreenShareAudio) {
+                const track = pub.track;
+                if (track && track.mediaStreamTrack) {
+                    await room.localParticipant.unpublishTrack(track.mediaStreamTrack);
+                }
+            }
+        }
+
+        if (screenShareStream) {
+            screenShareStream.getTracks().forEach((t) => t.stop());
+            screenShareStream = null;
+        }
+        isScreenSharing.value = false;
+
+        const localIdentity = room.localParticipant.identity;
+        screenShareParticipants.value = screenShareParticipants.value.filter((s) => s.identity !== localIdentity);
+        if (activeScreenShareView.value === localIdentity) {
+            activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
+        }
+
+        refreshParticipants();
+        console.log('[Voice] Screen share stopped');
+    }
+
+    function setScreenShareQuality(preset: ScreenShareQualityPreset): void {
+        screenShareQuality.value = preset;
+        window.api.settings.set('voice:screenShareQuality', preset);
+    }
+
     async function leaveChannel() {
         const oldRoom = room;
 
         room = null;
         pttActive = false;
+        cleanupScreenShare();
 
         if (oldRoom) {
             if (currentChannel.value) {
@@ -444,6 +742,8 @@ export const useVoiceStore = defineStore('voice', () => {
         getChannelParticipants,
         loadSettings,
         fetchVoiceParticipants,
+        subscribeToVoiceChannels,
+        unsubscribeFromVoiceChannels,
         joinChannel,
         leaveChannel,
         toggleMic,
@@ -459,5 +759,14 @@ export const useVoiceStore = defineStore('voice', () => {
         syncPttConfig,
         initPttListeners,
         cleanupPttListeners,
+        isScreenSharing,
+        screenShareQuality,
+        screenShareParticipants,
+        activeScreenShareView,
+        screenShareViewMode,
+        screenShareAudioMuted,
+        startScreenShare,
+        stopScreenShare,
+        setScreenShareQuality,
     };
 });

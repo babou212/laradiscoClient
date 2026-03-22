@@ -180,6 +180,93 @@ export function registerIpcHandlers(): void {
         },
     );
 
+    ipcMain.handle('auth:validateInvite', async (_event, host: string, token: string) => {
+        const url = `${buildBaseUrl(host)}/api/v1/auth/invite/${encodeURIComponent(token)}`;
+        try {
+            const response = await net.fetch(url, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+            });
+
+            const body = await response.json();
+
+            if (!response.ok) {
+                return { success: false, error: body.message || 'Invalid invite link' };
+            }
+
+            return { success: true, data: body.data };
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to validate invite';
+            return { success: false, error: message };
+        }
+    });
+
+    ipcMain.handle(
+        'auth:register',
+        async (
+            _event,
+            host: string,
+            serverId: number,
+            inviteToken: string,
+            name: string,
+            username: string,
+            email: string,
+            password: string,
+            passwordConfirmation: string,
+        ) => {
+            const url = `${buildBaseUrl(host)}/api/v1/auth/register`;
+            try {
+                const response = await net.fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        invite_token: inviteToken,
+                        name,
+                        username,
+                        email,
+                        password,
+                        password_confirmation: passwordConfirmation,
+                        device_name: `LaraDisco Desktop (${process.platform})`,
+                    }),
+                });
+
+                const body = await response.json();
+
+                if (!response.ok) {
+                    const errors = body.errors ?? {};
+                    const firstError =
+                        errors.invite_token?.[0] ||
+                        errors.name?.[0] ||
+                        errors.username?.[0] ||
+                        errors.email?.[0] ||
+                        errors.password?.[0] ||
+                        body.message ||
+                        'Registration failed';
+                    return { success: false, error: firstError, errors };
+                }
+
+                const data = body.data;
+
+                saveAuthSession(
+                    serverId,
+                    data.user.id,
+                    data.user.name,
+                    data.user.email,
+                    data.user.avatar_path,
+                    data.token,
+                );
+
+                return { success: true, user: data.user, token: data.token };
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Registration failed';
+                return { success: false, error: message };
+            }
+        },
+    );
+
     ipcMain.handle('auth:getSession', async (_event, serverId: number) => {
         return getAuthSession(serverId);
     });
