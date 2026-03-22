@@ -71,6 +71,22 @@ interface AuthApi {
     logout: (host: string, serverId: number) => Promise<{ success: boolean }>;
     validate: (host: string, token: string) => Promise<{ valid: boolean; user?: AuthUser }>;
     validateInvite: (host: string, token: string) => Promise<{ success: boolean; error?: string }>;
+    register: (
+        host: string,
+        serverId: number,
+        inviteToken: string,
+        name: string,
+        username: string,
+        email: string,
+        password: string,
+        passwordConfirmation: string,
+    ) => Promise<{
+        success: boolean;
+        user?: AuthUser;
+        token?: string;
+        error?: string;
+        errors?: Record<string, string[]>;
+    }>;
 }
 
 interface PttCapturedKey {
