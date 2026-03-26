@@ -1,5 +1,3 @@
-<!-- NotificationToast - Toast notifications for real-time events -->
-
 <script setup lang="ts">
 import { AtSign, Bell, MessageSquare, X } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
@@ -27,8 +25,7 @@ const getMentionLabel = (notification: ToastNotification): string => {
 const getDisplayContent = (notification: ToastNotification): string => {
     const { data } = notification;
     if (data.decrypted_content) return data.decrypted_content;
-    if (data.is_encrypted) return '[Encrypted message]';
-    return data.content;
+    return '[Encrypted message]';
 };
 
 const getDisplayPreview = (notification: ToastNotification): string => {

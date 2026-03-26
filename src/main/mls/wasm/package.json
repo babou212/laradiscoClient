@@ -1,5 +1,6 @@
 {
     "name": "openmls-wasm",
+    "type": "module",
     "collaborators": [
         "OpenMLS Authors"
     ],
@@ -15,5 +16,8 @@
         "openmls_wasm.d.ts"
     ],
     "main": "openmls_wasm.js",
-    "types": "openmls_wasm.d.ts"
+    "types": "openmls_wasm.d.ts",
+    "sideEffects": [
+        "./snippets/*"
+    ]
 }

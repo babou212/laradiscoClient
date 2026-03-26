@@ -15,7 +15,6 @@ export interface AppNotification {
         sender_username: string;
         sender_avatar: string | null;
         content: string;
-        is_encrypted?: boolean;
         sender_device_id?: string;
         decrypted_content?: string;
 
@@ -84,7 +83,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
             unreadCount.value = data.unread_count;
 
             for (const notification of notifications.value) {
-                if (notification.data.is_encrypted && !notification.data.decrypted_content) {
+                if (!notification.data.decrypted_content) {
                     tryDecryptNotification(notification);
                 }
             }
@@ -113,7 +112,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
                     sender_username: raw.sender_username as string,
                     sender_avatar: (raw.sender_avatar as string | null) ?? null,
                     content: raw.content as string,
-                    is_encrypted: raw.is_encrypted as boolean | undefined,
                     sender_device_id: raw.sender_device_id as string | undefined,
                     channel_id: raw.channel_id as number | undefined,
                     channel_name: raw.channel_name as string | undefined,
@@ -129,38 +127,21 @@ export const useNotificationsStore = defineStore('notifications', () => {
             notifications.value.unshift(notification);
             unreadCount.value++;
 
-            if (notification.data.is_encrypted) {
-                tryDecryptNotification(notification).then(() => {
-                    const prefs = preferences.value;
-                    const isDm = notification.data.notification_type === 'direct_message';
+            tryDecryptNotification(notification).then(() => {
+                const prefs = preferences.value;
+                const isDm = notification.data.notification_type === 'direct_message';
 
-                    if (isDm && !prefs.enable_dm_notifications) return;
-                    if (!isDm && !prefs.enable_mention_notifications) return;
+                if (isDm && !prefs.enable_dm_notifications) return;
+                if (!isDm && !prefs.enable_mention_notifications) return;
 
-                    if (prefs.enable_browser_notifications) {
-                        showNativeNotification(notification);
-                    }
+                if (prefs.enable_browser_notifications) {
+                    showNativeNotification(notification);
+                }
 
-                    if (prefs.enable_toast_notifications) {
-                        addToast(notification);
-                    }
-                });
-                return;
-            }
-
-            const prefs = preferences.value;
-            const isDm = notification.data.notification_type === 'direct_message';
-
-            if (isDm && !prefs.enable_dm_notifications) return;
-            if (!isDm && !prefs.enable_mention_notifications) return;
-
-            if (prefs.enable_browser_notifications) {
-                showNativeNotification(notification);
-            }
-
-            if (prefs.enable_toast_notifications) {
-                addToast(notification);
-            }
+                if (prefs.enable_toast_notifications) {
+                    addToast(notification);
+                }
+            });
         });
 
         isConnected.value = true;
@@ -198,32 +179,27 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const tryDecryptNotification = async (notification: AppNotification): Promise<void> => {
         const { data } = notification;
-        if (!data.is_encrypted) return;
 
         const e2eeStore = useE2eeStore();
         if (!e2eeStore.isReady) return;
 
         const serverStore = useServerStore();
         const serverId = serverStore.activeServer?.id;
-        if (!serverId) return;
-
-        const groupId = data.dm_group_id != null ? `dm:${data.dm_group_id}` : `channel:${data.channel_id}`;
+        if (!serverId || !data.message_id) return;
 
         try {
-            const result = await window.api.mls.decrypt({
-                serverId,
-                groupId,
-                messageBytes: data.content,
-            });
-            const plaintext = result.payload ?? undefined;
-            data.decrypted_content = plaintext;
+            const cached = await window.api.messages.getDecryptedBatch(serverId, [data.message_id]);
+            const plaintext = cached[data.message_id];
+            if (plaintext) {
+                data.decrypted_content = plaintext;
 
-            const existing = notifications.value.find((n) => n.id === notification.id);
-            if (existing) {
-                existing.data.decrypted_content = plaintext;
+                const existing = notifications.value.find((n) => n.id === notification.id);
+                if (existing) {
+                    existing.data.decrypted_content = plaintext;
+                }
             }
         } catch (err) {
-            console.warn('Failed to decrypt notification content:', err);
+            console.warn('Failed to look up decrypted notification content:', err);
         }
     };
 
@@ -273,7 +249,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
             title = `${mentionLabel} in #${data.channel_name}`;
         }
 
-        const displayContent = data.decrypted_content ?? (data.is_encrypted ? null : data.content);
+        const displayContent = data.decrypted_content ?? null;
         const body = displayContent
             ? `${data.sender_username}: ${displayContent.substring(0, 100)}`
             : `${data.sender_username}: [Encrypted message]`;

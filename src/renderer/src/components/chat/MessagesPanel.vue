@@ -8,7 +8,6 @@ import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { useE2EE } from '@/composables/useE2EE';
-import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -53,7 +52,6 @@ const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
 const threadStore = useThreadStore();
 const e2ee = useE2EE();
-const { generateTokensForMessage } = useEncryptedSearch();
 const currentUser = computed(() => authStore.user);
 const sendError = ref<string | null>(null);
 
@@ -224,7 +222,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
 
             if (senderId === currentUser.value?.id) {
                 let msgSenderDeviceId = data.message.sender_device_id ?? '';
-                if (!msgSenderDeviceId && data.message.is_encrypted) {
+                if (!msgSenderDeviceId) {
                     try {
                         const parsed = JSON.parse(data.message.content);
                         msgSenderDeviceId = parsed.sender_device_id ?? '';
@@ -238,7 +236,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     return;
                 }
 
-                if (data.message.is_encrypted && e2eeStore.isReady) {
+                if (e2eeStore.isReady) {
                     try {
                         const chId = props.isDm ? undefined : props.channel?.id;
                         const dmId = props.isDm ? props.channel?.id : undefined;
@@ -248,7 +246,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                             data.message.decrypted_content = '[Message sent from another device]';
                         }
                     }
-                } else if (!data.message.is_encrypted) {
                 } else {
                     data.message.decrypted_content = '[Message sent from another device]';
                 }
@@ -258,7 +255,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 return;
             }
 
-            if (data.message.is_encrypted && e2eeStore.isReady) {
+            if (e2eeStore.isReady) {
                 const chId = props.isDm ? undefined : props.channel?.id;
                 const dmId = props.isDm ? props.channel?.id : undefined;
                 await e2ee.decryptMessageQueued(data.message, chId, dmId);
@@ -272,16 +269,15 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 content: data.message.content,
                 is_edited: true,
                 edited_at: data.message.edited_at,
-                is_encrypted: data.message.is_encrypted,
             };
 
-            if (data.message.is_encrypted && e2eeStore.isReady) {
+            if (e2eeStore.isReady) {
                 const ourDeviceId = await e2ee.getDeviceId();
                 if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
                     const temp: MessageData[] = [
                         { ...data.message, decrypted_content: undefined, decrypt_error: false },
                     ];
-                    await e2ee.lookupSentPlaintexts(temp);
+                    await e2ee.lookupDecryptedCache(temp);
                     if (temp[0].decrypted_content) {
                         update.decrypted_content = temp[0].decrypted_content;
                         update.decrypt_error = false;
@@ -292,7 +288,13 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     try {
                         const chId = props.isDm ? undefined : props.channel?.id;
                         const dmId = props.isDm ? props.channel?.id : undefined;
-                        const plaintext = await e2ee.decrypt(data.message.content, chId, dmId);
+                        const plaintext = await e2ee.decrypt(
+                            data.message.content,
+                            chId,
+                            dmId,
+                            data.message.id,
+                            data.message.user?.username,
+                        );
                         update.decrypted_content = plaintext;
                         update.decrypt_error = false;
                     } catch {
@@ -305,6 +307,7 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
         })
         .listen('MessageDeleted', (data: { message_id: number }) => {
             activeRemoveMessage(data.message_id);
+            e2ee.removeFromSearchIndex(data.message_id).catch(() => {});
         })
         .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
             const msg = activeMessages.value.find((m) => m.id === data.reaction.message_id);
@@ -338,7 +341,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
                         const chId = props.isDm ? undefined : props.channel?.id;
                         const dmId = props.isDm ? props.channel?.id : undefined;
-                        await e2ee.lookupSentPlaintexts(pinnedMessages.value);
                         e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
                     }
                 });
@@ -389,18 +391,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                 }
             },
         )
-        .listen('MlsWelcomeReady', async () => {
-            if (e2eeStore.isReady) {
-                try {
-                    await e2ee.handleWelcome();
-                    const chId = props.isDm ? undefined : props.channel?.id;
-                    const dmId = props.isDm ? props.channel?.id : undefined;
-                    await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
-                } catch (error) {
-                    console.error(error);
-                }
-            }
-        })
         .listen(
             'ThreadUpdated',
             (data: {
@@ -411,7 +401,6 @@ const joinChannel = (channelId: number, isDm: boolean = false) => {
                     content: string;
                     user: { id: number; username: string; avatar_path: string | null };
                     created_at: string;
-                    is_encrypted?: boolean;
                     sender_device_id?: string;
                 };
             }) => {
@@ -466,33 +455,50 @@ watch(
 watch(isStoreLoadingMessages, async (loading, wasLoading) => {
     if (wasLoading && !loading) {
         if (e2eeStore.isReady && props.channel?.id) {
-            if (groupReadyPromise) {
-                await groupReadyPromise;
-                groupReadyPromise = null;
-            }
-            const channelIdForDecrypt = props.isDm ? undefined : props.channel.id;
-            const dmGroupIdForDecrypt = props.isDm ? props.channel.id : undefined;
-            await e2ee.lookupSentPlaintexts(activeMessages.value);
-            await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+            await e2ee.lookupDecryptedCache(activeMessages.value);
 
-            clearPendingDecryptRetry();
-            {
-                let retryCount = 0;
-                pendingDecryptRetryTimer = setInterval(async () => {
-                    retryCount++;
-                    const hasPending = activeMessages.value.some(
-                        (m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error,
-                    );
-                    if (!hasPending || retryCount > 3) {
-                        clearPendingDecryptRetry();
-                        return;
-                    }
-                    if (props.channel?.id) {
-                        const chId = props.isDm ? undefined : props.channel.id;
-                        const dmId = props.isDm ? props.channel.id : undefined;
-                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
-                    }
-                }, 15_000);
+            const hasUnresolved = activeMessages.value.some(
+                (m) => m.decrypted_content === undefined && !m.decrypt_error,
+            );
+
+            if (hasUnresolved) {
+                if (groupReadyPromise) {
+                    await groupReadyPromise;
+                    groupReadyPromise = null;
+                }
+
+                const stillUnresolved = activeMessages.value.some(
+                    (m) => m.decrypted_content === undefined && !m.decrypt_error,
+                );
+                if (stillUnresolved) {
+                    const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+                    await e2ee.decryptGroupHistory(groupId);
+                    await e2ee.lookupDecryptedCache(activeMessages.value);
+                }
+
+                const channelIdForDecrypt = props.isDm ? undefined : props.channel.id;
+                const dmGroupIdForDecrypt = props.isDm ? props.channel.id : undefined;
+                await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+
+                clearPendingDecryptRetry();
+                {
+                    let retryCount = 0;
+                    pendingDecryptRetryTimer = setInterval(async () => {
+                        retryCount++;
+                        const hasPending = activeMessages.value.some(
+                            (m) => m.decrypted_content === undefined && !m.decrypt_error,
+                        );
+                        if (!hasPending || retryCount > 3) {
+                            clearPendingDecryptRetry();
+                            return;
+                        }
+                        if (props.channel?.id) {
+                            const chId = props.isDm ? undefined : props.channel.id;
+                            const dmId = props.isDm ? props.channel.id : undefined;
+                            await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
+                        }
+                    }, 15_000);
+                }
             }
         }
         userIsNearBottom.value = true;
@@ -537,7 +543,17 @@ const handleScroll = async () => {
         await activeLoadOlderMessages();
 
         if (e2eeStore.isReady) {
-            await e2ee.lookupSentPlaintexts(activeMessages.value);
+            await e2ee.lookupDecryptedCache(activeMessages.value);
+
+            const hasUnresolved = activeMessages.value.some(
+                (m) => m.decrypted_content === undefined && !m.decrypt_error,
+            );
+            if (hasUnresolved && props.channel?.id) {
+                const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+                await e2ee.decryptGroupHistory(groupId);
+                await e2ee.lookupDecryptedCache(activeMessages.value);
+            }
+
             const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
             const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
             await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
@@ -569,7 +585,6 @@ const sendMessage = async (content: string) => {
     const mentionMeta = extractMentionMetadata(content);
 
     let messageContent = content;
-    let isEncrypted = false;
 
     if (!e2eeStore.isReady) {
         sendError.value = 'Encryption is not set up. Please complete E2EE setup before sending messages.';
@@ -579,43 +594,45 @@ const sendMessage = async (content: string) => {
     try {
         if (props.isDm) {
             messageContent = await e2ee.encryptForDM(props.channel.id, content);
-            isEncrypted = true;
         } else {
             messageContent = await e2ee.encryptForChannel(props.channel.id, content);
-            isEncrypted = true;
         }
     } catch {
         sendError.value = 'Failed to encrypt message. Please try again.';
         return;
     }
 
+    let historyCiphertext: string | undefined;
+    try {
+        const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+        historyCiphertext = await e2ee.encryptHistory(groupId, content);
+    } catch {
+        // History encryption is best-effort; don't block the message
+    }
+
     const data: {
-        content: string;
+        message_bytes: string;
         reply_to_id?: number;
-        is_encrypted?: boolean;
         sender_device_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
         mention_here?: boolean;
-        search_tokens?: string[];
+        history_ciphertext?: string;
+        epoch?: number;
     } = {
-        content: messageContent,
-        is_encrypted: isEncrypted,
+        message_bytes: messageContent,
     };
 
-    if (isEncrypted) {
+    {
         const senderDeviceId = await e2ee.getDeviceId();
         if (senderDeviceId) data.sender_device_id = senderDeviceId;
     }
 
-    if (isEncrypted && props.channel?.id) {
-        const tokens = await generateTokensForMessage(props.isDm ? 'dm' : 'channel', props.channel.id, content);
-        if (tokens.length > 0) {
-            data.search_tokens = tokens;
-        }
+    if (historyCiphertext) {
+        data.history_ciphertext = historyCiphertext;
     }
 
-    if (isEncrypted) {
+    {
         if (mentionMeta.mentionEveryone) {
             data.mention_everyone = true;
         } else if (mentionMeta.mentionHere) {
@@ -648,7 +665,6 @@ const sendMessage = async (content: string) => {
         },
         reactions: [],
         created_at: new Date().toISOString(),
-        is_encrypted: isEncrypted,
         decrypted_content: content,
     };
 
@@ -661,10 +677,12 @@ const sendMessage = async (content: string) => {
 
         if (response.data) {
             const serverMsg = response.data as MessageData;
-            if (serverMsg.is_encrypted) {
-                serverMsg.decrypted_content = content;
-                e2ee.storeSentPlaintext(serverMsg.id, content).catch(() => {});
-            }
+            serverMsg.decrypted_content = content;
+            e2ee.cacheDecryptedContent(serverMsg.id, content, {
+                conversationType: props.isDm ? 'dm' : 'channel',
+                conversationId: props.channel!.id,
+                userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+            }).catch(() => {});
             const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
             if (idx !== -1) {
                 activeMessages.value.splice(idx, 1, serverMsg);
@@ -693,7 +711,7 @@ const startReply = (message: MessageData) => {
 
 const startEdit = (message: MessageData) => {
     editingMessageId.value = message.id;
-    editContent.value = message.is_encrypted ? (message.decrypted_content ?? message.content) : message.content;
+    editContent.value = message.decrypted_content ?? message.content;
 };
 
 const cancelEdit = () => {
@@ -710,45 +728,41 @@ const saveEdit = async (message: MessageData) => {
 
     try {
         let contentToSend = editContent.value;
-        let isEncrypted = false;
+        if (!e2eeStore.isReady) return;
 
-        if (e2eeStore.isReady) {
-            try {
-                if (props.isDm) {
-                    contentToSend = await e2ee.encryptForDM(props.channel.id, editContent.value);
-                    isEncrypted = true;
-                } else {
-                    contentToSend = await e2ee.encryptForChannel(props.channel.id, editContent.value);
-                    isEncrypted = true;
-                }
-            } catch {
-                return;
+        try {
+            if (props.isDm) {
+                contentToSend = await e2ee.encryptForDM(props.channel.id, editContent.value);
+            } else {
+                contentToSend = await e2ee.encryptForChannel(props.channel.id, editContent.value);
             }
+        } catch {
+            return;
+        }
+
+        let historyCiphertext: string | undefined;
+        try {
+            const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+            historyCiphertext = await e2ee.encryptHistory(groupId, editContent.value);
+        } catch {
+            // Best-effort
         }
 
         await api.put(endpoint, {
-            content: contentToSend,
-            is_encrypted: isEncrypted,
-            ...(isEncrypted && { sender_device_id: await e2ee.getDeviceId() }),
-            ...(isEncrypted &&
-                props.channel?.id && {
-                    search_tokens: await generateTokensForMessage(
-                        props.isDm ? 'dm' : 'channel',
-                        props.channel.id,
-                        editContent.value,
-                    ),
-                }),
+            message_bytes: contentToSend,
+            sender_device_id: await e2ee.getDeviceId(),
+            ...(historyCiphertext && { history_ciphertext: historyCiphertext }),
         });
         activeUpdateMessage(message.id, {
-            content: contentToSend,
             is_edited: true,
             edited_at: new Date().toISOString(),
-            is_encrypted: isEncrypted,
-            decrypted_content: isEncrypted ? editContent.value : undefined,
+            decrypted_content: editContent.value,
         });
-        if (isEncrypted) {
-            e2ee.storeSentPlaintext(message.id, editContent.value).catch(() => {});
-        }
+        e2ee.cacheDecryptedContent(message.id, editContent.value, {
+            conversationType: props.isDm ? 'dm' : 'channel',
+            conversationId: props.channel!.id,
+            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+        }).catch(() => {});
         cancelEdit();
     } catch (error) {
         console.error('Failed to edit message:', error);
@@ -765,6 +779,7 @@ const deleteMessage = async (message: MessageData) => {
     try {
         await api.delete(endpoint);
         activeRemoveMessage(message.id);
+        e2ee.removeFromSearchIndex(message.id).catch(() => {});
     } catch (error) {
         console.error('Failed to delete message:', error);
     }
@@ -824,7 +839,6 @@ const togglePinnedPanel = async () => {
         if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
             const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
             const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
-            await e2ee.lookupSentPlaintexts(pinnedMessages.value);
             await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
         }
     }
@@ -852,7 +866,6 @@ const togglePin = async (message: MessageData) => {
                 if (e2eeStore.isReady) {
                     const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
                     const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
-                    await e2ee.lookupSentPlaintexts(pinnedMessages.value);
                     await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
                 }
             }
@@ -1007,7 +1020,6 @@ const emitTyping = () => {
 
             <TypingIndicator :typing-users="typingUsers" />
 
-            <!-- Send error banner -->
             <div
                 v-if="sendError"
                 class="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 border-t px-4 py-2 text-sm"

@@ -2,7 +2,6 @@
 import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
-import type { MessageData } from '@/types/chat';
 
 type Props = {
     conversationType: 'channel' | 'dm';
@@ -50,28 +49,6 @@ function handleClose() {
     clearSearch();
     searchQuery.value = '';
     emit('close');
-}
-
-function getDisplayContent(message: MessageData): string {
-    const content = message.decrypted_content || message.content;
-    if (content.length > 200) return content.substring(0, 200) + '…';
-    return content;
-}
-
-function formatTimestamp(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-        return 'Yesterday';
-    } else if (days < 7) {
-        return date.toLocaleDateString([], { weekday: 'short' });
-    }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -147,7 +124,7 @@ onUnmounted(() => {
                         <Search :size="32" class="text-muted-foreground/50" />
                         <p class="text-muted-foreground text-sm">Type to search messages</p>
                         <p class="text-muted-foreground/70 text-xs">
-                            Search uses encrypted tokens — the server never sees your query
+                            Search is fully local — works offline, never leaves your device
                         </p>
                     </div>
 
@@ -165,22 +142,16 @@ onUnmounted(() => {
                     <div v-else class="divide-border divide-y">
                         <button
                             v-for="result in searchResults"
-                            :key="result.id"
+                            :key="result.messageId"
                             class="hover:bg-muted/50 flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors"
-                            @click="handleNavigate(result.id)"
+                            @click="handleNavigate(result.messageId)"
                         >
                             <div class="flex items-center gap-2">
                                 <span class="text-foreground text-xs font-medium">
-                                    {{ result.user?.username ?? 'Unknown' }}
-                                </span>
-                                <span class="text-muted-foreground text-xs">
-                                    {{ formatTimestamp(result.created_at) }}
+                                    {{ result.userName || 'Unknown' }}
                                 </span>
                             </div>
-                            <p v-if="!result.decrypt_error" class="text-muted-foreground line-clamp-2 text-xs">
-                                {{ getDisplayContent(result) }}
-                            </p>
-                            <p v-else class="text-destructive/70 text-xs italic">Could not decrypt message</p>
+                            <p class="text-muted-foreground line-clamp-2 text-xs">{{ result.snippet }}</p>
                         </button>
 
                         <!-- Load More -->

@@ -56,13 +56,23 @@ export function initDatabase(): void {
             value TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS sent_messages (
+        CREATE TABLE IF NOT EXISTS decrypted_messages (
             server_id INTEGER NOT NULL,
             message_id INTEGER NOT NULL,
             plaintext TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (server_id, message_id),
             FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS message_search USING fts5(
+            content,
+            server_id UNINDEXED,
+            message_id UNINDEXED,
+            conversation_type UNINDEXED,
+            conversation_id UNINDEXED,
+            user_name UNINDEXED,
+            tokenize='unicode61 remove_diacritics 2'
         );
     `);
 }
@@ -96,7 +106,6 @@ export function setActiveServer(id: number): void {
 }
 
 export function removeServer(id: number): void {
-    db.prepare('DELETE FROM sent_messages WHERE server_id = ?').run(id);
     db.prepare('DELETE FROM server_connections WHERE id = ?').run(id);
 }
 
@@ -149,19 +158,24 @@ export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_
 
     if (!session) return null;
 
-    const token = decryptString(session.encrypted_token);
-    const userEmail = decryptString(session.user_email);
+    try {
+        const token = decryptString(session.encrypted_token);
+        const userEmail = decryptString(session.user_email);
 
-    return {
-        id: session.id,
-        server_id: session.server_id,
-        user_id: session.user_id,
-        user_name: session.user_name,
-        user_email: userEmail,
-        user_avatar: session.user_avatar,
-        token,
-        created_at: session.created_at,
-    };
+        return {
+            id: session.id,
+            server_id: session.server_id,
+            user_id: session.user_id,
+            user_name: session.user_name,
+            user_email: userEmail,
+            user_avatar: session.user_avatar,
+            token,
+            created_at: session.created_at,
+        };
+    } catch {
+        db.prepare('DELETE FROM auth_sessions WHERE server_id = ?').run(serverId);
+        return null;
+    }
 }
 
 export function removeAuthSession(serverId: number): void {
@@ -179,29 +193,29 @@ export function setSetting(key: string, value: string): void {
     ).run(key, value);
 }
 
-export function storeSentMessage(serverId: number, messageId: number, plaintext: string): void {
+export function storeDecryptedMessage(serverId: number, messageId: number, plaintext: string): void {
     const encrypted = encryptString(plaintext);
     db.prepare(
-        'INSERT INTO sent_messages (server_id, message_id, plaintext) VALUES (?, ?, ?) ON CONFLICT(server_id, message_id) DO UPDATE SET plaintext = excluded.plaintext',
+        'INSERT INTO decrypted_messages (server_id, message_id, plaintext) VALUES (?, ?, ?) ON CONFLICT(server_id, message_id) DO UPDATE SET plaintext = excluded.plaintext',
     ).run(serverId, messageId, encrypted);
 }
 
-export function getSentMessage(serverId: number, messageId: number): string | null {
+export function getDecryptedMessage(serverId: number, messageId: number): string | null {
     const row = db
-        .prepare('SELECT plaintext FROM sent_messages WHERE server_id = ? AND message_id = ?')
+        .prepare('SELECT plaintext FROM decrypted_messages WHERE server_id = ? AND message_id = ?')
         .get(serverId, messageId) as { plaintext: string } | undefined;
     if (!row) return null;
     return decryptString(row.plaintext);
 }
 
-export function getSentMessages(serverId: number, messageIds: number[]): Map<number, string> {
+export function getDecryptedMessages(serverId: number, messageIds: number[]): Map<number, string> {
     const result = new Map<number, string>();
     if (messageIds.length === 0) return result;
 
     const placeholders = messageIds.map(() => '?').join(',');
     const rows = db
         .prepare(
-            `SELECT message_id, plaintext FROM sent_messages WHERE server_id = ? AND message_id IN (${placeholders})`,
+            `SELECT message_id, plaintext FROM decrypted_messages WHERE server_id = ? AND message_id IN (${placeholders})`,
         )
         .all(serverId, ...messageIds) as Array<{ message_id: number; plaintext: string }>;
 
@@ -211,6 +225,104 @@ export function getSentMessages(serverId: number, messageIds: number[]): Map<num
     return result;
 }
 
-export function deleteSentMessages(serverId: number): void {
-    db.prepare('DELETE FROM sent_messages WHERE server_id = ?').run(serverId);
+export function deleteDecryptedMessages(serverId: number): void {
+    db.prepare('DELETE FROM decrypted_messages WHERE server_id = ?').run(serverId);
+}
+
+export interface SearchIndexParams {
+    serverId: number;
+    messageId: number;
+    conversationType: 'channel' | 'dm';
+    conversationId: number;
+    userName: string;
+    plaintext: string;
+}
+
+export function indexMessageForSearch(params: SearchIndexParams): void {
+    const { serverId, messageId, conversationType, conversationId, userName, plaintext } = params;
+    db.prepare(`DELETE FROM message_search WHERE server_id = ? AND message_id = ?`).run(
+        String(serverId),
+        String(messageId),
+    );
+    db.prepare(
+        `INSERT INTO message_search (content, server_id, message_id, conversation_type, conversation_id, user_name)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(plaintext, String(serverId), String(messageId), conversationType, String(conversationId), userName);
+}
+
+export function removeMessageFromSearchIndex(serverId: number, messageId: number): void {
+    db.prepare(`DELETE FROM message_search WHERE server_id = ? AND message_id = ?`).run(
+        String(serverId),
+        String(messageId),
+    );
+}
+
+export interface SearchResult {
+    messageId: number;
+    serverId: number;
+    snippet: string;
+    conversationType: string;
+    conversationId: number;
+    userName: string;
+}
+
+export function searchMessages(
+    serverId: number,
+    conversationType: 'channel' | 'dm',
+    conversationId: number,
+    query: string,
+    limit: number = 50,
+    offset: number = 0,
+): SearchResult[] {
+    const ftsQuery = buildFtsQuery(query);
+    if (!ftsQuery) return [];
+
+    const rows = db
+        .prepare(
+            `SELECT message_id, server_id, conversation_type, conversation_id, user_name,
+                    snippet(message_search, 0, '', '', '…', 30) as snippet
+             FROM message_search
+             WHERE message_search MATCH ?
+               AND server_id = ?
+               AND conversation_type = ?
+               AND conversation_id = ?
+             ORDER BY rank
+             LIMIT ? OFFSET ?`,
+        )
+        .all(ftsQuery, String(serverId), conversationType, String(conversationId), limit, offset) as Array<{
+        message_id: string;
+        server_id: string;
+        conversation_type: string;
+        conversation_id: string;
+        user_name: string;
+        snippet: string;
+    }>;
+
+    return rows.map((r) => ({
+        messageId: Number(r.message_id),
+        serverId: Number(r.server_id),
+        snippet: r.snippet,
+        conversationType: r.conversation_type,
+        conversationId: Number(r.conversation_id),
+        userName: r.user_name,
+    }));
+}
+
+function buildFtsQuery(raw: string): string {
+    const cleaned = raw.replace(/[^\p{L}\p{N}\s*"]/gu, '').trim();
+    if (!cleaned) return '';
+
+    // If user already uses FTS5 syntax (quotes, *), pass through
+    if (cleaned.includes('"') || cleaned.includes('*')) {
+        return cleaned;
+    }
+
+    // Auto-add prefix matching for each term
+    const terms = cleaned.split(/\s+/).filter((t) => t.length >= 1);
+    if (terms.length === 0) return '';
+    return terms.map((t) => `"${t}"*`).join(' ');
+}
+
+export function clearSearchIndex(serverId: number): void {
+    db.prepare(`DELETE FROM message_search WHERE server_id = ?`).run(String(serverId));
 }

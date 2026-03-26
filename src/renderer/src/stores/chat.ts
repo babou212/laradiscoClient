@@ -87,12 +87,12 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    async function sendMessage(content: string, replyToId?: number): Promise<void> {
+    async function sendMessage(messageBytes: string, replyToId?: number): Promise<void> {
         if (!currentChannel.value) return;
 
         try {
             const response = await api.post(`/channels/${currentChannel.value.id}/messages`, {
-                content,
+                message_bytes: messageBytes,
                 reply_to_id: replyToId,
             });
 
@@ -104,13 +104,14 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    async function editMessage(messageId: number, content: string): Promise<void> {
+    async function editMessage(messageId: number, messageBytes: string): Promise<void> {
         if (!currentChannel.value) return;
         try {
-            await api.put(`/channels/${currentChannel.value.id}/messages/${messageId}`, { content });
+            await api.put(`/channels/${currentChannel.value.id}/messages/${messageId}`, {
+                message_bytes: messageBytes,
+            });
             const msg = messages.value.find((m) => m.id === messageId);
             if (msg) {
-                msg.content = content;
                 msg.is_edited = true;
                 msg.edited_at = new Date().toISOString();
             }

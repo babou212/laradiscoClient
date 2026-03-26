@@ -63,19 +63,18 @@ export const useThreadStore = defineStore('thread', () => {
     async function sendReply(
         channelId: number,
         messageId: number,
-        content: string,
+        messageBytes: string,
         extra?: {
-            is_encrypted?: boolean;
             sender_device_id?: string;
-            search_tokens?: string[];
             mention_user_ids?: number[];
             mention_everyone?: boolean;
             mention_here?: boolean;
+            history_ciphertext?: string;
         },
     ): Promise<MessageData | null> {
         try {
             const response = await api.post(`/channels/${channelId}/messages/${messageId}/thread`, {
-                content,
+                message_bytes: messageBytes,
                 ...extra,
             });
             const reply = response.data as MessageData;
@@ -91,7 +90,6 @@ export const useThreadStore = defineStore('thread', () => {
                         content: reply.content,
                         user: reply.user,
                         created_at: reply.created_at,
-                        is_encrypted: reply.is_encrypted,
                         sender_device_id: reply.sender_device_id,
                     },
                 };
@@ -108,23 +106,21 @@ export const useThreadStore = defineStore('thread', () => {
         channelId: number,
         threadId: number,
         messageId: number,
-        content: string,
+        messageBytes: string,
         extra?: {
-            is_encrypted?: boolean;
             sender_device_id?: string;
-            search_tokens?: string[];
+            history_ciphertext?: string;
         },
     ): Promise<void> {
         try {
-            await api.put(`/channels/${channelId}/threads/${threadId}/messages/${messageId}`, { content, ...extra });
+            await api.put(`/channels/${channelId}/threads/${threadId}/messages/${messageId}`, {
+                message_bytes: messageBytes,
+                ...extra,
+            });
             const msg = threadMessages.value.find((m) => m.id === messageId);
             if (msg) {
-                msg.content = content;
                 msg.is_edited = true;
                 msg.edited_at = new Date().toISOString();
-                if (extra?.is_encrypted) {
-                    msg.is_encrypted = true;
-                }
             }
         } catch (error) {
             console.error('Failed to edit thread message:', error);

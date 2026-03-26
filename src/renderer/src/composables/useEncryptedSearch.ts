@@ -1,16 +1,22 @@
 import { ref, type Ref } from 'vue';
-import { useE2EE } from './useE2EE';
-import api from '@/lib/api';
 import { useServerStore } from '@/stores/server';
-import type { MessageData } from '@/types/chat';
+
+interface LocalSearchResult {
+    messageId: number;
+    serverId: number;
+    snippet: string;
+    conversationType: string;
+    conversationId: number;
+    userName: string;
+}
 
 export function useEncryptedSearch() {
-    const e2ee = useE2EE();
-
     const isSearching: Ref<boolean> = ref(false);
-    const searchResults: Ref<MessageData[]> = ref([]);
+    const searchResults: Ref<LocalSearchResult[]> = ref([]);
     const searchError: Ref<string | null> = ref(null);
     const hasMore: Ref<boolean> = ref(false);
+    const currentOffset: Ref<number> = ref(0);
+    const pageSize = 50;
 
     function getServerId(): number {
         const serverStore = useServerStore();
@@ -19,79 +25,32 @@ export function useEncryptedSearch() {
         return id;
     }
 
-    async function generateTokensForMessage(
-        type: 'channel' | 'dm',
-        targetId: number,
-        plaintext: string,
-    ): Promise<string[]> {
-        try {
-            const conversationId = type === 'dm' ? `dm:${targetId}` : `channel:${targetId}`;
-            return await window.api.mls.generateSearchTokens({
-                serverId: getServerId(),
-                conversationId,
-                plaintext,
-            });
-        } catch {
-            return [];
-        }
-    }
-
-    async function searchInConversation(
-        type: 'channel' | 'dm',
-        targetId: number,
-        query: string,
-        beforeId?: number,
-        limit: number = 50,
-    ): Promise<void> {
+    async function searchInConversation(type: 'channel' | 'dm', targetId: number, query: string): Promise<void> {
         if (!query.trim()) {
             searchResults.value = [];
             searchError.value = null;
             hasMore.value = false;
+            currentOffset.value = 0;
             return;
         }
 
         isSearching.value = true;
         searchError.value = null;
+        currentOffset.value = 0;
 
         try {
-            const conversationId = type === 'dm' ? `dm:${targetId}` : `channel:${targetId}`;
-            const tokens = await window.api.mls.generateSearchTrapdoor({
+            const results = await window.api.messages.searchLocal({
                 serverId: getServerId(),
-                conversationId,
+                conversationType: type,
+                conversationId: targetId,
                 query,
+                limit: pageSize + 1,
+                offset: 0,
             });
 
-            if (tokens.length === 0) {
-                searchResults.value = [];
-                hasMore.value = false;
-                return;
-            }
-
-            const response = await api.post('/e2ee/search', {
-                conversation_type: type,
-                conversation_id: targetId,
-                tokens,
-                limit,
-                ...(beforeId ? { before_id: beforeId } : {}),
-            });
-
-            const data = response.data as {
-                message_ids: number[];
-                has_more: boolean;
-            };
-
-            hasMore.value = data.has_more;
-
-            if (data.message_ids.length === 0) {
-                searchResults.value = [];
-                return;
-            }
-
-            const messages = await fetchMessagesByIds(type, targetId, data.message_ids);
-
-            const decrypted = await decryptSearchResults(type, targetId, messages);
-
-            searchResults.value = decrypted;
+            hasMore.value = results.length > pageSize;
+            searchResults.value = results.slice(0, pageSize);
+            currentOffset.value = pageSize;
         } catch (err: any) {
             searchError.value = err?.message || 'Search failed. Please try again.';
             searchResults.value = [];
@@ -101,85 +60,28 @@ export function useEncryptedSearch() {
     }
 
     async function loadMoreResults(type: 'channel' | 'dm', targetId: number, query: string): Promise<void> {
-        if (!hasMore.value || searchResults.value.length === 0) return;
+        if (!hasMore.value) return;
 
-        const lastId = Math.min(...searchResults.value.map((m) => m.id));
-
-        const previousResults = [...searchResults.value];
-
-        await searchInConversation(type, targetId, query, lastId);
-
-        searchResults.value = [...previousResults, ...searchResults.value];
-    }
-
-    async function fetchMessagesByIds(
-        type: 'channel' | 'dm',
-        targetId: number,
-        messageIds: number[],
-    ): Promise<MessageData[]> {
-        const endpoint =
-            type === 'dm' ? `/direct-messages/${targetId}/messages/batch` : `/channels/${targetId}/messages/batch`;
+        isSearching.value = true;
 
         try {
-            const response = await api.post(endpoint, { message_ids: messageIds });
-            const data = response.data;
-            return Array.isArray(data) ? data : ((data as any)?.data ?? []);
-        } catch {
-            const endpoint2 = type === 'dm' ? `/direct-messages/${targetId}` : `/channels/${targetId}/messages`;
+            const results = await window.api.messages.searchLocal({
+                serverId: getServerId(),
+                conversationType: type,
+                conversationId: targetId,
+                query,
+                limit: pageSize + 1,
+                offset: currentOffset.value,
+            });
 
-            const response = await api.get(endpoint2);
-            const rawData = response.data;
-
-            let allMessages: MessageData[];
-            if (Array.isArray(rawData)) {
-                allMessages = rawData;
-            } else if (type === 'dm') {
-                allMessages = (rawData as any)?.messages ?? [];
-            } else {
-                allMessages = (rawData as any)?.data ?? [];
-                if (!Array.isArray(allMessages)) allMessages = [];
-            }
-
-            const idSet = new Set(messageIds);
-            return allMessages.filter((m) => idSet.has(m.id));
+            hasMore.value = results.length > pageSize;
+            searchResults.value = [...searchResults.value, ...results.slice(0, pageSize)];
+            currentOffset.value += pageSize;
+        } catch (err: any) {
+            searchError.value = err?.message || 'Failed to load more results.';
+        } finally {
+            isSearching.value = false;
         }
-    }
-
-    async function decryptSearchResults(
-        type: 'channel' | 'dm',
-        targetId: number,
-        messages: MessageData[],
-    ): Promise<MessageData[]> {
-        // Look up own-message plaintexts from local DB first —
-        // MLS cannot decrypt messages sent by our own device.
-        await e2ee.lookupSentPlaintexts(messages);
-
-        const results: MessageData[] = [];
-
-        for (const msg of messages) {
-            if (msg.is_encrypted && !msg.decrypted_content) {
-                try {
-                    const decrypted = await e2ee.decrypt(
-                        msg.content,
-                        type === 'channel' ? targetId : undefined,
-                        type === 'dm' ? targetId : undefined,
-                    );
-                    results.push({
-                        ...msg,
-                        decrypted_content: decrypted,
-                    });
-                } catch {
-                    results.push({
-                        ...msg,
-                        decrypt_error: true,
-                    });
-                }
-            } else {
-                results.push(msg);
-            }
-        }
-
-        return results;
     }
 
     function clearSearch(): void {
@@ -187,6 +89,7 @@ export function useEncryptedSearch() {
         searchError.value = null;
         hasMore.value = false;
         isSearching.value = false;
+        currentOffset.value = 0;
     }
 
     return {
@@ -194,7 +97,6 @@ export function useEncryptedSearch() {
         searchResults,
         searchError,
         hasMore,
-        generateTokensForMessage,
         searchInConversation,
         loadMoreResults,
         clearSearch,

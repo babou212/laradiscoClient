@@ -1,5 +1,3 @@
-<!-- NotificationBell - Notification indicator and dropdown -->
-
 <script setup lang="ts">
 import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
@@ -26,8 +24,7 @@ const getMentionLabel = (notification: AppNotification): string => {
 const getDisplayContent = (notification: AppNotification): string => {
     const { data } = notification;
     if (data.decrypted_content) return data.decrypted_content;
-    if (data.is_encrypted) return '[Encrypted message]';
-    return data.content;
+    return '[Encrypted message]';
 };
 
 const handleNotificationClick = async (notification: AppNotification) => {

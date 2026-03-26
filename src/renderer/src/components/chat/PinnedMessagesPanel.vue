@@ -37,11 +37,8 @@ onBeforeUnmount(() => {
 });
 
 const displayContent = (message: MessageData): string => {
-    if (message.is_encrypted) {
-        if (message.decrypt_error) return '[Unable to decrypt this message]';
-        return message.decrypted_content ?? '';
-    }
-    return message.content;
+    if (message.decrypt_error) return '[Unable to decrypt this message]';
+    return message.decrypted_content ?? '';
 };
 
 const renderedContent = (message: MessageData): string => {
@@ -103,10 +100,7 @@ const renderedContent = (message: MessageData): string => {
                                 <span class="text-muted-foreground text-[10px]">
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>
-                                <EncryptionBadge
-                                    :is-encrypted="message.is_encrypted"
-                                    :decrypt-error="message.decrypt_error"
-                                />
+                                <EncryptionBadge :decrypt-error="message.decrypt_error" />
                             </div>
                             <div class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="renderedContent(message)" />
                         </div>

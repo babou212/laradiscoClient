@@ -35,10 +35,7 @@ const props = defineProps<Props>();
 
 const replyPreviewContent = computed(() => {
     if (!props.replyingTo) return '';
-    if (props.replyingTo.is_encrypted) {
-        return props.replyingTo.decrypted_content ?? '[Encrypted message]';
-    }
-    return props.replyingTo.content;
+    return props.replyingTo.decrypted_content ?? '[Encrypted message]';
 });
 
 const sendMessage = () => {
