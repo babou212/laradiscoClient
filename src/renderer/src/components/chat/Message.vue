@@ -62,31 +62,25 @@ const canReply = computed(() => props.canSendMessages !== false);
 const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
 const isDecrypting = computed(() => {
-    return props.message.is_encrypted && !props.message.decrypt_error && !props.message.decrypted_content;
+    return !props.message.decrypt_error && !props.message.decrypted_content;
 });
 
 const displayContent = computed(() => {
-    if (props.message.is_encrypted) {
-        if (props.message.decrypt_error) return '[Unable to decrypt this message]';
-        return props.message.decrypted_content ?? '';
-    }
-    return props.message.content;
+    if (props.message.decrypt_error) return '[Unable to decrypt this message]';
+    return props.message.decrypted_content ?? '';
 });
 
 const isReplyDecrypting = computed(() => {
     if (!props.message.reply_to) return false;
     const reply = props.message.reply_to;
-    return reply.is_encrypted && !reply.decrypt_error && !reply.decrypted_content;
+    return !reply.decrypt_error && !reply.decrypted_content;
 });
 
 const replyDisplayContent = computed(() => {
     if (!props.message.reply_to) return '';
     const reply = props.message.reply_to;
-    if (reply.is_encrypted) {
-        if (reply.decrypt_error) return '[Unable to decrypt]';
-        return reply.decrypted_content ?? '';
-    }
-    return reply.content;
+    if (reply.decrypt_error) return '[Unable to decrypt]';
+    return reply.decrypted_content ?? '';
 });
 
 const groupedReactions = computed(() => {
@@ -262,7 +256,7 @@ const renderedContentWithoutYoutube = computed(() => {
                 <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}
                 </span>
-                <EncryptionBadge :is-encrypted="message.is_encrypted" :decrypt-error="message.decrypt_error" />
+                <EncryptionBadge :decrypt-error="message.decrypt_error" />
                 <span v-if="message.is_pinned" class="text-primary/70 inline-flex items-center gap-0.5 text-xs">
                     <Pin :size="12" />
                     pinned

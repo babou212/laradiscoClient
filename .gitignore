@@ -1,5 +1,6 @@
 node_modules
 out
+out2
 dist
 build
 *.log

@@ -8,7 +8,7 @@ function copyWasmPlugin() {
     return {
         name: 'copy-wasm',
         closeBundle() {
-            const outDir = resolve('out/main/wasm');
+            const outDir = resolve('out2/main/wasm');
             if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
             const srcDir = resolve('src/main/mls/wasm');
             for (const file of ['openmls_wasm.js', 'openmls_wasm_bg.wasm', 'package.json']) {
@@ -21,6 +21,7 @@ function copyWasmPlugin() {
 export default defineConfig({
     main: {
         build: {
+            outDir: 'out2/main',
             externalizeDeps: true,
         },
         plugins: [copyWasmPlugin()],
@@ -32,6 +33,7 @@ export default defineConfig({
     },
     preload: {
         build: {
+            outDir: 'out2/preload',
             externalizeDeps: false,
             rollupOptions: {
                 external: ['electron'],

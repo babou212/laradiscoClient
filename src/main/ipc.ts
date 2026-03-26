@@ -3,17 +3,19 @@ import {
     addServerConnection,
     getActiveServer,
     getAllServers,
-    deleteSentMessages,
     getAuthSession,
     getSetting,
-    getSentMessage,
-    getSentMessages,
     removeAuthSession,
     removeServer,
     saveAuthSession,
     setActiveServer,
     setSetting,
-    storeSentMessage,
+    storeDecryptedMessage,
+    getDecryptedMessages,
+    indexMessageForSearch,
+    removeMessageFromSearchIndex,
+    searchMessages,
+    clearSearchIndex,
 } from './database';
 
 function buildBaseUrl(host: string): string {
@@ -291,7 +293,6 @@ export function registerIpcHandlers(): void {
             }
             removeAuthSession(serverId);
         }
-        deleteSentMessages(serverId);
         return { success: true };
     });
 
@@ -326,19 +327,64 @@ export function registerIpcHandlers(): void {
     });
 
     ipcMain.handle(
-        'messages:storePlaintext',
+        'messages:storeDecrypted',
         async (_event, serverId: number, messageId: number, plaintext: string) => {
-            storeSentMessage(serverId, messageId, plaintext);
+            storeDecryptedMessage(serverId, messageId, plaintext);
         },
     );
 
-    ipcMain.handle('messages:getPlaintext', async (_event, serverId: number, messageId: number) => {
-        return getSentMessage(serverId, messageId);
+    ipcMain.handle('messages:getDecryptedBatch', async (_event, serverId: number, messageIds: number[]) => {
+        const map = getDecryptedMessages(serverId, messageIds);
+        return Object.fromEntries(map);
     });
 
-    ipcMain.handle('messages:getPlaintexts', async (_event, serverId: number, messageIds: number[]) => {
-        const map = getSentMessages(serverId, messageIds);
-        return Object.fromEntries(map);
+    ipcMain.handle(
+        'messages:indexForSearch',
+        async (
+            _event,
+            params: {
+                serverId: number;
+                messageId: number;
+                conversationType: 'channel' | 'dm';
+                conversationId: number;
+                userName: string;
+                plaintext: string;
+            },
+        ) => {
+            indexMessageForSearch(params);
+        },
+    );
+
+    ipcMain.handle('messages:removeFromSearchIndex', async (_event, serverId: number, messageId: number) => {
+        removeMessageFromSearchIndex(serverId, messageId);
+    });
+
+    ipcMain.handle(
+        'messages:searchLocal',
+        async (
+            _event,
+            params: {
+                serverId: number;
+                conversationType: 'channel' | 'dm';
+                conversationId: number;
+                query: string;
+                limit?: number;
+                offset?: number;
+            },
+        ) => {
+            return searchMessages(
+                params.serverId,
+                params.conversationType,
+                params.conversationId,
+                params.query,
+                params.limit ?? 50,
+                params.offset ?? 0,
+            );
+        },
+    );
+
+    ipcMain.handle('messages:clearSearchIndex', async (_event, serverId: number) => {
+        clearSearchIndex(serverId);
     });
 
     ipcMain.on('notifications:show', (_event, payload: { title: string; body: string; notificationId: string }) => {

@@ -3,13 +3,12 @@ import { Lock } from 'lucide-vue-next';
 import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 defineProps<{
-    isEncrypted?: boolean;
     decryptError?: boolean;
 }>();
 </script>
 
 <template>
-    <TooltipProvider v-if="isEncrypted">
+    <TooltipProvider>
         <Tooltip>
             <TooltipTrigger as-child>
                 <span class="inline-flex items-center">

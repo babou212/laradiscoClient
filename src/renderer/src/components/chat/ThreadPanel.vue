@@ -6,7 +6,6 @@ import MessageInput from './MessageInput.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
-import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
@@ -30,7 +29,6 @@ const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
 const threadStore = useThreadStore();
 const e2ee = useE2EE();
-const { generateTokensForMessage } = useEncryptedSearch();
 
 const currentUser = computed(() => authStore.user);
 const messagesContainer = ref<HTMLElement>();
@@ -48,11 +46,8 @@ let currentThreadListener: string | null = null;
 const parentDisplayContent = computed(() => {
     const msg = threadStore.parentMessage;
     if (!msg) return '';
-    if (msg.is_encrypted) {
-        if (msg.decrypt_error) return '[Unable to decrypt this message]';
-        return msg.decrypted_content ?? '';
-    }
-    return msg.content;
+    if (msg.decrypt_error) return '[Unable to decrypt this message]';
+    return msg.decrypted_content ?? '';
 });
 
 const parentRendered = computed(() => renderMarkdownWithMentions(parentDisplayContent.value));
@@ -60,7 +55,7 @@ const parentRendered = computed(() => renderMarkdownWithMentions(parentDisplayCo
 const isParentDecrypting = computed(() => {
     const msg = threadStore.parentMessage;
     if (!msg) return false;
-    return msg.is_encrypted && !msg.decrypt_error && !msg.decrypted_content;
+    return !msg.decrypt_error && !msg.decrypted_content;
 });
 
 function extractMentionMetadata(content: string): {
@@ -96,7 +91,7 @@ const joinThread = (threadId: number) => {
                 if (!msgDeviceId || !ourDeviceId || msgDeviceId === ourDeviceId) return;
             }
 
-            if (data.message.is_encrypted && e2eeStore.isReady) {
+            if (e2eeStore.isReady) {
                 await e2ee.decryptMessageQueued(data.message, props.channelId, undefined);
             }
 
@@ -108,16 +103,15 @@ const joinThread = (threadId: number) => {
                 content: data.message.content,
                 is_edited: true,
                 edited_at: data.message.edited_at,
-                is_encrypted: data.message.is_encrypted,
             };
 
-            if (data.message.is_encrypted && e2eeStore.isReady) {
+            if (e2eeStore.isReady) {
                 const ourDeviceId = await e2ee.getDeviceId();
                 if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
                     const temp: MessageData[] = [
                         { ...data.message, decrypted_content: undefined, decrypt_error: false },
                     ];
-                    await e2ee.lookupSentPlaintexts(temp);
+                    await e2ee.lookupDecryptedCache(temp);
                     if (temp[0].decrypted_content) {
                         update.decrypted_content = temp[0].decrypted_content;
                         update.decrypt_error = false;
@@ -126,7 +120,12 @@ const joinThread = (threadId: number) => {
                     }
                 } else {
                     try {
-                        const plaintext = await e2ee.decrypt(data.message.content, props.channelId);
+                        const plaintext = await e2ee.decrypt(
+                            data.message.content,
+                            props.channelId,
+                            undefined,
+                            data.message.id,
+                        );
                         update.decrypted_content = plaintext;
                         update.decrypt_error = false;
                     } catch {
@@ -227,7 +226,6 @@ const handleScroll = async () => {
         await threadStore.loadOlderMessages(props.channelId);
 
         if (e2eeStore.isReady) {
-            await e2ee.lookupSentPlaintexts(threadStore.threadMessages);
             await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
         }
 
@@ -256,7 +254,6 @@ watch(
     async (loading, wasLoading) => {
         if (wasLoading && !loading) {
             if (e2eeStore.isReady) {
-                await e2ee.lookupSentPlaintexts(threadStore.threadMessages);
                 await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
             }
             scrollToBottom(true);
@@ -285,7 +282,6 @@ const sendReply = async (content: string) => {
 
     const mentionMeta = extractMentionMetadata(content);
     let messageContent = content;
-    let isEncrypted = false;
 
     if (!e2eeStore.isReady) {
         sendError.value = 'Encryption is not set up.';
@@ -294,22 +290,27 @@ const sendReply = async (content: string) => {
 
     try {
         messageContent = await e2ee.encryptForChannel(props.channelId, content);
-        isEncrypted = true;
     } catch {
         sendError.value = 'Failed to encrypt message.';
         return;
     }
 
-    const extra: Record<string, any> = {
-        is_encrypted: isEncrypted,
-    };
+    let historyCiphertext: string | undefined;
+    try {
+        historyCiphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, content);
+    } catch {
+        // Best-effort
+    }
 
-    if (isEncrypted) {
+    const extra: Record<string, any> = {};
+
+    if (historyCiphertext) {
+        extra.history_ciphertext = historyCiphertext;
+    }
+
+    {
         const senderDeviceId = await e2ee.getDeviceId();
         if (senderDeviceId) extra.sender_device_id = senderDeviceId;
-
-        const tokens = await generateTokensForMessage('channel', props.channelId, content);
-        if (tokens.length > 0) extra.search_tokens = tokens;
 
         if (mentionMeta.mentionEveryone) extra.mention_everyone = true;
         else if (mentionMeta.mentionHere) extra.mention_here = true;
@@ -330,7 +331,6 @@ const sendReply = async (content: string) => {
         },
         reactions: [],
         created_at: new Date().toISOString(),
-        is_encrypted: isEncrypted,
         decrypted_content: content,
     };
 
@@ -340,10 +340,12 @@ const sendReply = async (content: string) => {
     const reply = await threadStore.sendReply(props.channelId, threadStore.parentMessage.id, messageContent, extra);
 
     if (reply) {
-        if (reply.is_encrypted) {
-            reply.decrypted_content = content;
-            e2ee.storeSentPlaintext(reply.id, content).catch(() => {});
-        }
+        reply.decrypted_content = content;
+        e2ee.cacheDecryptedContent(reply.id, content, {
+            conversationType: 'channel',
+            conversationId: props.channelId,
+            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+        }).catch(() => {});
         const idx = threadStore.threadMessages.findIndex((m) => m.id === optimistic.id);
         if (idx !== -1) threadStore.threadMessages.splice(idx, 1, reply);
     } else {
@@ -354,7 +356,7 @@ const sendReply = async (content: string) => {
 
 const startEdit = (message: MessageData) => {
     editingMessageId.value = message.id;
-    editContent.value = message.is_encrypted ? (message.decrypted_content ?? message.content) : message.content;
+    editContent.value = message.decrypted_content ?? message.content;
 };
 
 const cancelEdit = () => {
@@ -365,25 +367,26 @@ const cancelEdit = () => {
 const saveEdit = async (message: MessageData) => {
     if (!editContent.value.trim() || !threadStore.activeThread) return;
     try {
-        let contentToSend = editContent.value;
-        let isEncrypted = false;
-        const extra: Record<string, any> = {};
+        if (!e2eeStore.isReady) return;
 
-        if (e2eeStore.isReady) {
-            contentToSend = await e2ee.encryptForChannel(props.channelId, editContent.value);
-            isEncrypted = true;
-            extra.is_encrypted = true;
-            extra.sender_device_id = await e2ee.getDeviceId();
-            extra.search_tokens = await generateTokensForMessage('channel', props.channelId, editContent.value);
+        const extra: Record<string, any> = {};
+        const contentToSend = await e2ee.encryptForChannel(props.channelId, editContent.value);
+        extra.sender_device_id = await e2ee.getDeviceId();
+        try {
+            extra.history_ciphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, editContent.value);
+        } catch {
+            // Best-effort
         }
 
         await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, contentToSend, extra);
 
-        if (isEncrypted) {
-            e2ee.storeSentPlaintext(message.id, editContent.value).catch(() => {});
-        }
+        e2ee.cacheDecryptedContent(message.id, editContent.value, {
+            conversationType: 'channel',
+            conversationId: props.channelId,
+            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+        }).catch(() => {});
         threadStore.updateThreadMessage(message.id, {
-            decrypted_content: isEncrypted ? editContent.value : undefined,
+            decrypted_content: editContent.value,
         });
         cancelEdit();
     } catch (error) {
@@ -394,6 +397,7 @@ const saveEdit = async (message: MessageData) => {
 const deleteMessage = async (message: MessageData) => {
     if (!threadStore.activeThread) return;
     await threadStore.deleteMessage(props.channelId, threadStore.activeThread.id, message.id);
+    e2ee.removeFromSearchIndex(message.id).catch(() => {});
 };
 
 const toggleReaction = async (message: MessageData, emoji: string) => {

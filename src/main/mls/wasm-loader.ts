@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
@@ -6,6 +7,11 @@ import type * as WasmTypes from './wasm/openmls_wasm';
 const _require = createRequire(import.meta.url);
 const wasmPath = join(__dirname, 'wasm', 'openmls_wasm.js');
 const wasm = _require(wasmPath);
+
+// Load and initialize the WASM binary synchronously before using any classes
+const wasmBinaryPath = join(__dirname, 'wasm', 'openmls_wasm_bg.wasm');
+const wasmBytes = readFileSync(wasmBinaryPath);
+wasm.initSync(wasmBytes);
 
 export const Provider: typeof WasmTypes.Provider = wasm.Provider;
 export type Provider = WasmTypes.Provider;

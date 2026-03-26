@@ -1,5 +1,7 @@
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useChatStore } from '@/stores/chat';
+import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useServerStore } from '@/stores/server';
 import type { MessageData } from '@/types/chat';
 
@@ -122,6 +124,7 @@ export function useE2EE() {
     const groupReadyCache = new Map<string, number>();
     const GROUP_READY_CACHE_TTL = 5 * 60_000;
     const inFlightGroupSetup = new Map<string, Promise<void>>();
+    const perGroupSetupChain = new Map<string, Promise<void>>();
 
     async function ensureGroupReady(groupId: string, targetId: number, type: 'channel' | 'dm'): Promise<void> {
         const now = Date.now();
@@ -131,7 +134,14 @@ export function useE2EE() {
         const existing = inFlightGroupSetup.get(groupId);
         if (existing) return existing;
 
-        const promise = _doEnsureGroupReady(groupId, targetId, type).finally(() => {
+        const prev = perGroupSetupChain.get(groupId) ?? Promise.resolve();
+        const promise = new Promise<void>((resolve, reject) => {
+            const chained = prev.then(
+                () => _doEnsureGroupReady(groupId, targetId, type).then(resolve, reject),
+                () => _doEnsureGroupReady(groupId, targetId, type).then(resolve, reject),
+            );
+            perGroupSetupChain.set(groupId, chained);
+        }).finally(() => {
             inFlightGroupSetup.delete(groupId);
         });
         inFlightGroupSetup.set(groupId, promise);
@@ -143,37 +153,212 @@ export function useE2EE() {
 
         const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
         if (groupInfo) {
-            groupReadyCache.set(groupId, Date.now());
-            await catchUpGroup(groupId, groupInfo.epoch);
+            const caught = await catchUpGroup(groupId, groupInfo.epoch);
+            if (!caught) {
+                console.warn('[E2EE] Catch-up failed for stale local group, deleting and rejoining:', groupId);
+                await window.api.mls.deleteGroup({ serverId, groupId });
+                groupReadyCache.delete(groupId);
+            } else {
+                groupReadyCache.set(groupId, Date.now());
+                decryptGroupHistory(groupId).catch((err) => {
+                    console.error(`[E2EE] History sync failed for ${groupId}:`, err);
+                });
+                return;
+            }
+        }
+
+        const pendingWelcome = await _fetchWelcomeForGroup(groupId);
+        if (pendingWelcome) {
+            await _joinAndCatchUp(serverId, groupId, pendingWelcome.welcome_bytes, pendingWelcome.ratchet_tree_bytes);
             return;
         }
 
-        try {
-            const welcomeResponse = await api.get('/e2ee/mls/welcome');
-            const welcomes: Array<{
-                id: number;
-                group_id: string;
-                welcome_bytes: string;
-                ratchet_tree_bytes: string;
-            }> = welcomeResponse.data ?? [];
+        const ourDeviceId = await getDeviceId();
+        const encodedGroupId = encodeURIComponent(groupId);
+        let groupExists = false;
+        let isOwnGroup = false;
 
-            const matching = welcomes.find((w) => w.group_id === groupId);
-            if (matching) {
-                await window.api.mls.joinGroup({
-                    serverId,
-                    welcomeBytes: matching.welcome_bytes,
-                    ratchetTreeBytes: matching.ratchet_tree_bytes,
-                });
-                groupReadyCache.set(groupId, Date.now());
-                scheduleAutoBackup();
+        try {
+            const statusResponse = await api.get(`/e2ee/mls/groups/${encodedGroupId}/status`);
+            const status = statusResponse.data;
+            groupExists = status?.exists === true;
+            isOwnGroup = status?.is_own_group === true;
+
+            if (groupExists && status?.has_welcome) {
+                const welcome = await _fetchWelcomeForGroup(groupId);
+                if (welcome) {
+                    await _joinAndCatchUp(serverId, groupId, welcome.welcome_bytes, welcome.ratchet_tree_bytes);
+                    return;
+                }
+            }
+
+            if (groupExists && !isOwnGroup) {
+                await _requestJoinAndWait(serverId, groupId, encodedGroupId, ourDeviceId);
                 return;
             }
-        } catch (error) {
-            console.error('Failed to fetch welcome messages:', error);
+        } catch (statusErr) {
+            console.warn('[E2EE] Group status check failed, falling back to claim:', statusErr);
         }
 
         await window.api.mls.createGroup({ serverId, groupId });
 
+        try {
+            await api.post(`/e2ee/mls/groups/${encodedGroupId}/claim`, {
+                device_id: ourDeviceId,
+            });
+        } catch (claimErr: any) {
+            if (claimErr.response?.status === 409) {
+                await window.api.mls.deleteGroup({ serverId, groupId });
+                groupReadyCache.delete(groupId);
+
+                if (claimErr.response?.data?.has_welcome) {
+                    const welcome = await _fetchWelcomeForGroup(groupId);
+                    if (welcome) {
+                        await _joinAndCatchUp(serverId, groupId, welcome.welcome_bytes, welcome.ratchet_tree_bytes);
+                        return;
+                    }
+                }
+
+                await _requestJoinAndWait(serverId, groupId, encodedGroupId, ourDeviceId);
+                return;
+            }
+            await window.api.mls.deleteGroup({ serverId, groupId });
+            throw claimErr;
+        }
+
+        await _addGroupMembers(serverId, groupId, encodedGroupId, targetId, type, ourDeviceId);
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+    }
+
+    const pendingWelcomesCache = new Map<
+        string,
+        { group_id: string; welcome_bytes: string; ratchet_tree_bytes: string }
+    >();
+    let _welcomeFetchChain: Promise<void> = Promise.resolve();
+
+    async function _fetchWelcomeForGroup(
+        groupId: string,
+    ): Promise<{ group_id: string; welcome_bytes: string; ratchet_tree_bytes: string } | undefined> {
+        return new Promise<{ group_id: string; welcome_bytes: string; ratchet_tree_bytes: string } | undefined>(
+            (resolve) => {
+                _welcomeFetchChain = _welcomeFetchChain.then(async () => {
+                    const cached = pendingWelcomesCache.get(groupId);
+                    if (cached) {
+                        pendingWelcomesCache.delete(groupId);
+                        resolve(cached);
+                        return;
+                    }
+
+                    try {
+                        const welcomeResponse = await api.get('/e2ee/mls/welcome');
+                        const welcomes: Array<{
+                            group_id: string;
+                            welcome_bytes: string;
+                            ratchet_tree_bytes: string;
+                        }> = welcomeResponse.data ?? [];
+                        for (const w of welcomes) {
+                            pendingWelcomesCache.set(w.group_id, w);
+                        }
+                    } catch (error) {
+                        console.error('[E2EE] Failed to fetch welcome messages:', error);
+                    }
+
+                    const result = pendingWelcomesCache.get(groupId);
+                    if (result) {
+                        pendingWelcomesCache.delete(groupId);
+                    }
+                    resolve(result);
+                });
+            },
+        );
+    }
+
+    async function _joinAndCatchUp(
+        serverId: number,
+        groupId: string,
+        welcomeBytes: string,
+        ratchetTreeBytes: string,
+    ): Promise<void> {
+        await window.api.mls.joinGroup({ serverId, welcomeBytes, ratchetTreeBytes });
+
+        const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
+        if (groupInfo) {
+            await catchUpGroup(groupId, groupInfo.epoch);
+        }
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+        decryptGroupHistory(groupId).catch((err) => {
+            console.error(`[E2EE] History sync failed for ${groupId}:`, err);
+        });
+    }
+
+    async function _requestJoinAndWait(
+        serverId: number,
+        groupId: string,
+        encodedGroupId: string,
+        ourDeviceId: string | null,
+    ): Promise<void> {
+        try {
+            await api.post(`/e2ee/mls/groups/${encodedGroupId}/join-request`, {
+                device_id: ourDeviceId,
+            });
+        } catch (joinReqErr) {
+            console.warn('[E2EE] Failed to submit join request:', joinReqErr);
+        }
+
+        const maxAttempts = 10;
+        const baseDelay = 2000;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.min(attempt + 1, 5)));
+
+            const existingGroup = await window.api.mls.getGroupInfo({ serverId, groupId });
+            if (existingGroup) {
+                groupReadyCache.set(groupId, Date.now());
+                return;
+            }
+
+            const welcome = await _fetchWelcomeForGroup(groupId);
+            if (welcome) {
+                await _joinAndCatchUp(serverId, groupId, welcome.welcome_bytes, welcome.ratchet_tree_bytes);
+                return;
+            }
+        }
+
+        console.warn('[E2EE] No welcome after join-request polling, force-reclaiming group:', groupId);
+        await window.api.mls.createGroup({ serverId, groupId });
+        try {
+            await api.post(`/e2ee/mls/groups/${encodedGroupId}/claim`, {
+                device_id: ourDeviceId,
+                force: true,
+            });
+        } catch (reclaimErr: any) {
+            await window.api.mls.deleteGroup({ serverId, groupId });
+            if (reclaimErr.response?.status === 409) {
+                console.warn('[E2EE] Force-reclaim blocked by grace period. Will retry on next access:', groupId);
+                return;
+            }
+            throw reclaimErr;
+        }
+
+        const type = groupId.startsWith('dm:') ? 'dm' : 'channel';
+        const targetId = Number(groupId.split(':')[1]);
+        await _addGroupMembers(serverId, groupId, encodedGroupId, targetId, type, ourDeviceId);
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+    }
+
+    async function _addGroupMembers(
+        serverId: number,
+        groupId: string,
+        encodedGroupId: string,
+        targetId: number,
+        type: 'channel' | 'dm',
+        ourDeviceId: string | null,
+    ): Promise<void> {
         const membersEndpoint =
             type === 'dm'
                 ? `/e2ee/dm-groups/${targetId}/members/bundles`
@@ -185,8 +370,7 @@ export function useE2EE() {
             devices: Array<{ device_id: string }>;
         }> = membersResponse.data ?? [];
 
-        const ourDeviceId = await getDeviceId();
-        const encodedGroupId = encodeURIComponent(groupId);
+        const failedMembers: Array<{ userId: number; deviceId: string; error: string }> = [];
 
         for (const member of members) {
             for (const device of member.devices) {
@@ -198,7 +382,17 @@ export function useE2EE() {
                     });
                     const packages = kpResponse.data ?? [];
                     const keyPackage = packages.find((p: any) => p.device_id === device.device_id) ?? packages[0];
-                    if (!keyPackage?.key_package_bytes) continue;
+                    if (!keyPackage?.key_package_bytes) {
+                        console.warn(
+                            `[E2EE] No key packages available for ${member.user_id}/${device.device_id}, skipping`,
+                        );
+                        failedMembers.push({
+                            userId: member.user_id,
+                            deviceId: device.device_id,
+                            error: 'No key packages available',
+                        });
+                        continue;
+                    }
 
                     const result = await window.api.mls.addMember({
                         serverId,
@@ -214,41 +408,58 @@ export function useE2EE() {
                             epoch: result.epoch,
                         });
 
+                        const mergeResult = await window.api.mls.mergeCommit({ serverId, groupId });
+
                         await api.post(`/e2ee/mls/groups/${encodedGroupId}/welcome`, {
                             recipient_user_id: member.user_id,
                             recipient_device_id: device.device_id,
                             welcome_bytes: result.welcome,
-                            ratchet_tree_bytes: result.ratchetTree,
+                            ratchet_tree_bytes: mergeResult.ratchetTree,
                         });
 
-                        // Server accepted — now safe to merge locally
-                        await window.api.mls.mergeCommit({ serverId, groupId });
+                        api.post(`/e2ee/mls/groups/${encodedGroupId}/join-request/fulfill`, {
+                            device_id: device.device_id,
+                        }).catch(() => {});
                     } catch (serverError) {
-                        // Server rejected — roll back the pending commit
                         await window.api.mls.clearPendingCommit({ serverId, groupId });
                         throw serverError;
                     }
                 } catch (error) {
-                    console.error(`Failed to add member ${member.user_id}/${device.device_id}:`, error);
+                    const errMsg = error instanceof Error ? error.message : String(error);
+                    console.error(`[E2EE] Failed to add member ${member.user_id}/${device.device_id}:`, errMsg);
+                    failedMembers.push({
+                        userId: member.user_id,
+                        deviceId: device.device_id,
+                        error: errMsg,
+                    });
                 }
             }
         }
 
-        groupReadyCache.set(groupId, Date.now());
-        scheduleAutoBackup();
+        if (failedMembers.length > 0) {
+            console.warn(`[E2EE] Failed to add ${failedMembers.length} member(s) to group ${groupId}:`, failedMembers);
+        }
     }
 
     async function catchUpGroup(groupId: string, currentEpoch: number): Promise<boolean> {
         const serverId = getServerId();
-        const ourDeviceId = await getDeviceId();
         try {
             const response = await api.get(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/messages`, {
-                params: { since_epoch: currentEpoch, message_type: 'commit' },
+                params: { since_epoch: currentEpoch - 1, message_type: 'commit' },
             });
-            const messages: Array<{ message_bytes: string; sender_device_id: string }> = response.data ?? [];
+            const messages: Array<{ message_bytes: string; sender_device_id: string; epoch: number }> =
+                response.data ?? [];
+
+            messages.sort((a, b) => a.epoch - b.epoch);
+
+            const ourDeviceId = await getDeviceId();
 
             let processed = 0;
             for (const msg of messages) {
+                if (ourDeviceId && msg.sender_device_id === ourDeviceId) {
+                    continue;
+                }
+
                 try {
                     await window.api.mls.processMessage({
                         serverId,
@@ -256,32 +467,24 @@ export function useE2EE() {
                         messageBytes: msg.message_bytes,
                     });
                     processed++;
+                    currentEpoch++;
                 } catch (error) {
                     const errMsg = error instanceof Error ? error.message : String(error);
 
-                    // Own commits that were already applied locally will fail —
-                    // this is expected and safe to skip.
-                    if (ourDeviceId && msg.sender_device_id === ourDeviceId) {
-                        console.debug('[E2EE] Skipping already-applied own commit');
+                    if (errMsg.includes('epoch differs') || errMsg.includes('Message epoch')) {
+                        console.debug('[E2EE] Skipping already-applied commit (epoch mismatch)');
+                        currentEpoch++;
                         continue;
                     }
 
-                    // AEAD decryption errors on non-own commits typically mean the
-                    // commit was already processed (e.g. the server returned it
-                    // again because the since_epoch filter is inclusive of the
-                    // current epoch). Check if the group has advanced past it —
-                    // if so, it's safe to skip and continue with the next commit.
                     if (errMsg.includes('AEAD decryption')) {
-                        const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
-                        if (groupInfo && groupInfo.epoch > currentEpoch) {
-                            console.debug('[E2EE] Skipping already-processed commit (AEAD error, epoch advanced)');
-                            currentEpoch = groupInfo.epoch;
-                            continue;
-                        }
+                        console.error(
+                            '[E2EE] AEAD failure on commit — possible diverged group state, aborting catch-up:',
+                            error,
+                        );
+                        return false;
                     }
 
-                    // A non-own commit genuinely failed — subsequent commits depend
-                    // on this one, so stop processing to avoid corrupting group state.
                     console.error('[E2EE] Failed to process commit, aborting catch-up:', error);
                     return false;
                 }
@@ -319,7 +522,21 @@ export function useE2EE() {
         return result.message_bytes;
     }
 
-    async function decrypt(encryptedContent: string, channelId?: number, dmGroupId?: number): Promise<string> {
+    async function encryptHistory(groupId: string, plaintext: string): Promise<string> {
+        const serverId = getServerId();
+        return window.api.mls.encryptHistory({ serverId, groupId, plaintext });
+    }
+
+    async function decrypt(
+        encryptedContent: string,
+        channelId?: number,
+        dmGroupId?: number,
+        messageId?: number,
+        userName?: string,
+    ): Promise<string> {
+        if (!encryptedContent) {
+            throw new Error('No encrypted content to decrypt');
+        }
         const serverId = getServerId();
         const groupId = groupIdFor(channelId, dmGroupId);
 
@@ -333,20 +550,67 @@ export function useE2EE() {
             throw new Error('Decryption returned no payload');
         }
 
+        if (messageId != null) {
+            window.api.messages.storeDecrypted(serverId, messageId, result.payload).catch(() => {});
+            const conversationId = dmGroupId ?? channelId;
+            if (conversationId != null) {
+                window.api.messages
+                    .indexForSearch({
+                        serverId,
+                        messageId,
+                        conversationType: dmGroupId != null ? 'dm' : 'channel',
+                        conversationId,
+                        userName: userName ?? '',
+                        plaintext: result.payload,
+                    })
+                    .catch(() => {});
+            }
+        }
+
         return result.payload;
     }
 
+    async function lookupDecryptedCache(messages: MessageData[]): Promise<void> {
+        const serverId = getServerId();
+        const needLookup = messages.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
+        if (needLookup.length === 0) return;
+
+        const ids = needLookup.map((m) => m.id);
+        try {
+            const cached = await window.api.messages.getDecryptedBatch(serverId, ids);
+
+            for (const m of needLookup) {
+                const pt = cached[m.id];
+                if (pt != null) {
+                    m.decrypted_content = pt;
+                    m.decrypt_error = false;
+                }
+            }
+        } catch (err) {
+            console.error('[E2EE] lookupDecryptedCache FAILED:', err);
+        }
+    }
+
     async function decryptMessage(message: MessageData, channelId?: number, dmGroupId?: number): Promise<void> {
-        if (!message.is_encrypted) return;
         if (message.decrypted_content !== undefined) return;
         if (message.decrypt_error) return;
+        if (!message.content) {
+            console.warn('[E2EE] decryptMessage: no content for message', message.id);
+            message.decrypt_error = true;
+            return;
+        }
 
-        // MLS cannot decrypt messages sent by our own device — the protocol
-        // excludes the sender from the recipient list by design.
         if (message.sender_device_id) {
             const ourDeviceId = await getDeviceId();
             if (ourDeviceId && message.sender_device_id === ourDeviceId) {
-                message.decrypt_error = true;
+                const serverId = getServerId();
+                const cached = await window.api.messages.getDecryptedBatch(serverId, [message.id]);
+                if (cached[message.id] != null) {
+                    message.decrypted_content = cached[message.id];
+                    message.decrypt_error = false;
+                } else {
+                    message.decrypt_error = true;
+                }
                 return;
             }
         }
@@ -355,24 +619,37 @@ export function useE2EE() {
         message.decrypt_attempts = (message.decrypt_attempts ?? 0) + 1;
 
         try {
-            const plaintext = await decrypt(message.content, channelId, dmGroupId);
+            const plaintext = await decrypt(message.content, channelId, dmGroupId, message.id, message.user?.username);
             message.decrypted_content = plaintext;
             message.decrypt_error = false;
         } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
+            console.warn(
+                '[E2EE] decryptMessage failed for msg',
+                message.id,
+                'channelId=',
+                channelId,
+                'dmGroupId=',
+                dmGroupId,
+                'error=',
+                errMsg,
+            );
 
-            // Own-message error is not retryable — fail immediately
             if (errMsg.includes('Cannot decrypt own messages')) {
                 message.decrypt_error = true;
                 return;
             }
 
-            // Generation too old means the ratchet key was already consumed
-            // (duplicate message or message arrived after its generation was
-            // skipped). Catching up can't fix this — fail immediately.
-            if (errMsg.includes('Generation is too old')) {
-                console.warn('[E2EE] Generation too old (message already processed or skipped):', message.id);
-                message.decrypt_error = true;
+            const isForwardSecrecy = errMsg.includes('forward secrecy') || errMsg.includes('Generation is too old');
+            if (isForwardSecrecy) {
+                const cached = await _lookupSingleDecryptedCache(message.id);
+                if (cached != null) {
+                    message.decrypted_content = cached;
+                    message.decrypt_error = false;
+                } else {
+                    console.warn('[E2EE] Forward secrecy — key consumed and no cache for message:', message.id);
+                    message.decrypt_error = true;
+                }
                 return;
             }
 
@@ -389,47 +666,78 @@ export function useE2EE() {
                         groupReadyCache.delete(groupId);
                         await ensureGroupReady(groupId, targetId, type);
                     } else {
-                        // Epoch mismatch or AEAD error — catch up on missed commits
                         const serverId = getServerId();
                         const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
                         if (groupInfo) {
                             const caught = await catchUpGroup(groupId, groupInfo.epoch);
                             if (!caught) {
-                                // Catch-up failed — don't waste a retry
-                                return;
+                                console.warn(
+                                    '[E2EE] Catch-up failed — deleting diverged group and rejoining:',
+                                    groupId,
+                                );
+                                await window.api.mls.deleteGroup({ serverId, groupId });
+                                groupReadyCache.delete(groupId);
+                                try {
+                                    await ensureGroupReady(groupId, targetId, type);
+                                } catch (rejoinErr) {
+                                    console.error('[E2EE] Rejoin after divergence failed:', rejoinErr);
+                                    const cached = await _lookupSingleDecryptedCache(message.id);
+                                    if (cached != null) {
+                                        message.decrypted_content = cached;
+                                        message.decrypt_error = false;
+                                    }
+                                    return;
+                                }
                             }
                         }
                     }
 
-                    const plaintext = await decrypt(message.content, channelId, dmGroupId);
+                    const plaintext = await decrypt(message.content, channelId, dmGroupId, message.id);
                     message.decrypted_content = plaintext;
                     message.decrypt_error = false;
                     return;
                 } catch {
-                    // Still can't decrypt after catching up
+                    const cached = await _lookupSingleDecryptedCache(message.id);
+                    if (cached != null) {
+                        message.decrypted_content = cached;
+                        message.decrypt_error = false;
+                        return;
+                    }
                 }
             }
 
             if (message.decrypt_attempts >= MAX_DECRYPT_ATTEMPTS) {
-                message.decrypted_content = undefined;
-                message.decrypt_error = true;
+                const cached = await _lookupSingleDecryptedCache(message.id);
+                if (cached != null) {
+                    message.decrypted_content = cached;
+                    message.decrypt_error = false;
+                } else {
+                    message.decrypted_content = undefined;
+                    message.decrypt_error = true;
+                }
             }
         }
 
-        if (
-            message.reply_to?.is_encrypted &&
-            message.reply_to.decrypted_content === undefined &&
-            !message.reply_to.decrypt_error
-        ) {
+        if (message.reply_to && message.reply_to.decrypted_content === undefined && !message.reply_to.decrypt_error) {
             await decryptReplyTo(message.reply_to, channelId, dmGroupId);
         }
 
         if (
-            message.thread?.last_reply?.is_encrypted &&
+            message.thread?.last_reply &&
             message.thread.last_reply.decrypted_content === undefined &&
             !message.thread.last_reply.decrypt_error
         ) {
             await decryptThreadLastReply(message.thread.last_reply, channelId, dmGroupId);
+        }
+    }
+
+    async function _lookupSingleDecryptedCache(messageId: number): Promise<string | null> {
+        try {
+            const serverId = getServerId();
+            const cached = await window.api.messages.getDecryptedBatch(serverId, [messageId]);
+            return cached[messageId] ?? null;
+        } catch {
+            return null;
         }
     }
 
@@ -439,11 +747,17 @@ export function useE2EE() {
         dmGroupId?: number,
     ): Promise<void> {
         try {
-            const plaintext = await decrypt(reply.content, channelId, dmGroupId);
+            const plaintext = await decrypt(reply.content, channelId, dmGroupId, reply.id);
             reply.decrypted_content = plaintext;
             reply.decrypt_error = false;
         } catch {
-            reply.decrypt_error = true;
+            const cached = await _lookupSingleDecryptedCache(reply.id);
+            if (cached != null) {
+                reply.decrypted_content = cached;
+                reply.decrypt_error = false;
+            } else {
+                reply.decrypt_error = true;
+            }
         }
     }
 
@@ -453,22 +767,22 @@ export function useE2EE() {
         dmGroupId?: number,
     ): Promise<void> {
         try {
-            const plaintext = await decrypt(reply.content, channelId, dmGroupId);
+            const plaintext = await decrypt(reply.content, channelId, dmGroupId, reply.id);
             reply.decrypted_content = plaintext;
             reply.decrypt_error = false;
         } catch {
-            reply.decrypt_error = true;
+            const cached = await _lookupSingleDecryptedCache(reply.id);
+            if (cached != null) {
+                reply.decrypted_content = cached;
+                reply.decrypt_error = false;
+            } else {
+                reply.decrypt_error = true;
+            }
         }
     }
 
     const groupOpQueues = new Map<string, Promise<void>>();
 
-    /**
-     * Serializes all MLS operations (decrypt, encrypt, commit processing) for
-     * the same group. This prevents race conditions where a commit advances the
-     * epoch while a decrypt is in flight, or two concurrent decrypts consume
-     * the same ratchet generation.
-     */
     function enqueueGroupOp(
         channelId: number | undefined,
         dmGroupId: number | undefined,
@@ -486,14 +800,13 @@ export function useE2EE() {
         return next;
     }
 
-    // Backwards-compatible alias
     const enqueueDecryption = enqueueGroupOp;
 
     async function decryptMessages(messages: MessageData[], channelId?: number, dmGroupId?: number): Promise<void> {
         return enqueueDecryption(channelId, dmGroupId, async () => {
-            const encrypted = messages.filter(
-                (m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error,
-            );
+            await lookupDecryptedCache(messages);
+
+            const encrypted = messages.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
             if (encrypted.length === 0) return;
 
             for (const m of encrypted) {
@@ -513,11 +826,14 @@ export function useE2EE() {
         channelId?: number,
         dmGroupId?: number,
     ): Promise<void> {
-        const pending = messages.filter((m) => m.is_encrypted && m.decrypted_content === undefined && !m.decrypt_error);
+        const pending = messages.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
         if (pending.length === 0) return;
 
         return enqueueDecryption(channelId, dmGroupId, async () => {
-            for (const m of pending) {
+            await lookupDecryptedCache(pending);
+
+            const stillPending = pending.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
+            for (const m of stillPending) {
                 await decryptMessage(m, channelId, dmGroupId);
             }
         });
@@ -527,27 +843,40 @@ export function useE2EE() {
         groupId: string,
         data: { message_type: string; epoch: number; sender_device_id: string },
     ): Promise<void> {
-        // Application messages are decrypted on-demand via decrypt() — nothing to do here.
-        // Only commit/proposal messages need processing to advance group state.
         if (data.message_type === 'application') return;
 
-        // Ignore our own commits — we already merged them locally.
         const ourDeviceId = await getDeviceId();
         if (ourDeviceId && data.sender_device_id === ourDeviceId) return;
 
-        // Parse groupId to get channelId/dmGroupId for queue key
         const channelId = groupId.startsWith('channel:') ? Number(groupId.slice(8)) : undefined;
         const dmGroupId = groupId.startsWith('dm:') ? Number(groupId.slice(3)) : undefined;
 
-        // Serialize commit processing with decryptions to prevent epoch
-        // from advancing while a decrypt is in flight.
         return enqueueDecryption(channelId, dmGroupId, async () => {
             const serverId = getServerId();
             try {
                 const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
                 if (!groupInfo) return;
 
-                await catchUpGroup(groupId, groupInfo.epoch);
+                const caught = await catchUpGroup(groupId, groupInfo.epoch);
+
+                if (caught) {
+                    let storeMessages: MessageData[] = [];
+                    if (channelId != null) {
+                        const chatStore = useChatStore();
+                        if (chatStore.currentChannel?.id === channelId) {
+                            storeMessages = chatStore.messages;
+                        }
+                    } else if (dmGroupId != null) {
+                        const dmStore = useDirectMessagesStore();
+                        if (dmStore.currentDmGroup?.id === dmGroupId) {
+                            storeMessages = dmStore.messages;
+                        }
+                    }
+                    const pending = storeMessages.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
+                    for (const m of pending) {
+                        await decryptMessage(m, channelId, dmGroupId);
+                    }
+                }
             } catch (error) {
                 console.error('Failed to process MLS message:', error);
             }
@@ -566,12 +895,7 @@ export function useE2EE() {
 
             for (const w of welcomes) {
                 try {
-                    await window.api.mls.joinGroup({
-                        serverId,
-                        welcomeBytes: w.welcome_bytes,
-                        ratchetTreeBytes: w.ratchet_tree_bytes,
-                    });
-                    groupReadyCache.set(w.group_id, Date.now());
+                    await _joinAndCatchUp(serverId, w.group_id, w.welcome_bytes, w.ratchet_tree_bytes);
                 } catch (error) {
                     console.error(`Failed to join group ${w.group_id}:`, error);
                 }
@@ -583,6 +907,246 @@ export function useE2EE() {
         } catch (error) {
             console.error('Failed to fetch welcome messages:', error);
         }
+    }
+
+    async function decryptGroupHistory(groupId: string): Promise<number> {
+        const serverId = getServerId();
+        const encodedGroupId = encodeURIComponent(groupId);
+        const conversationType: 'channel' | 'dm' = groupId.startsWith('dm:') ? 'dm' : 'channel';
+        const conversationId = Number(groupId.split(':')[1]);
+        let decrypted = 0;
+        let beforeId: number | undefined;
+
+        while (true) {
+            const params: Record<string, string | number> = { limit: 200 };
+            if (beforeId) params.before_id = beforeId;
+
+            const response = await api.get(`/e2ee/mls/groups/${encodedGroupId}/history`, { params });
+            const messages: Array<{ id: number; history_ciphertext: string }> = response.data ?? [];
+
+            if (messages.length === 0) break;
+
+            const batch = messages.map((m) => ({ id: m.id, ciphertext: m.history_ciphertext }));
+            const results = await window.api.mls.decryptHistoryBatch({ serverId, groupId, messages: batch });
+
+            for (const [idStr, plaintext] of Object.entries(results)) {
+                const messageId = Number(idStr);
+                window.api.messages.storeDecrypted(serverId, messageId, plaintext).catch(() => {});
+                window.api.messages
+                    .indexForSearch({
+                        serverId,
+                        messageId,
+                        conversationType,
+                        conversationId,
+                        userName: '',
+                        plaintext,
+                    })
+                    .catch(() => {});
+                decrypted++;
+            }
+
+            beforeId = messages[messages.length - 1].id;
+
+            if (messages.length < 200) break;
+        }
+
+        return decrypted;
+    }
+
+    async function enrollNewDevice(newDeviceId: string): Promise<void> {
+        const serverId = getServerId();
+        const ourDeviceId = await getDeviceId();
+        if (!ourDeviceId || newDeviceId === ourDeviceId) return;
+
+        let groupIds: string[];
+        try {
+            const response = await api.get('/e2ee/mls/user-groups');
+            groupIds = response.data ?? [];
+        } catch (error) {
+            console.error('[E2EE] Failed to fetch user groups for enrollment:', error);
+            return;
+        }
+
+        const userId = getUserId();
+        if (!userId) return;
+
+        let keyPackage: { device_id: string; key_package_bytes: string; key_package_hash: string } | undefined;
+        try {
+            const kpResponse = await api.get(`/e2ee/mls/key-packages/${userId}`, {
+                params: { device_id: newDeviceId },
+            });
+            const packages = kpResponse.data ?? [];
+            keyPackage = packages.find((p: any) => p.device_id === newDeviceId) ?? packages[0];
+        } catch (error) {
+            console.error('[E2EE] Failed to fetch key package for new device:', error);
+            return;
+        }
+
+        if (!keyPackage?.key_package_bytes) {
+            console.warn('[E2EE] No key package available for new device:', newDeviceId);
+            return;
+        }
+
+        let enrolledCount = 0;
+        for (const groupId of groupIds) {
+            const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
+            if (!groupInfo) continue;
+
+            const channelId = groupId.startsWith('channel:') ? Number(groupId.slice(8)) : undefined;
+            const dmGroupId = groupId.startsWith('dm:') ? Number(groupId.slice(3)) : undefined;
+
+            try {
+                await enqueueGroupOp(channelId, dmGroupId, async () => {
+                    let kp = keyPackage!;
+                    if (enrolledCount > 0) {
+                        const kpResponse = await api.get(`/e2ee/mls/key-packages/${userId}`, {
+                            params: { device_id: newDeviceId },
+                        });
+                        const packages = kpResponse.data ?? [];
+                        kp = packages.find((p: any) => p.device_id === newDeviceId) ?? packages[0];
+                        if (!kp?.key_package_bytes) {
+                            console.warn('[E2EE] No more key packages for new device, stopping enrollment');
+                            return;
+                        }
+                    }
+
+                    const encodedGroupId = encodeURIComponent(groupId);
+                    const result = await window.api.mls.addMember({
+                        serverId,
+                        groupId,
+                        keyPackageBytes: kp.key_package_bytes,
+                    });
+
+                    try {
+                        await api.post(`/e2ee/mls/groups/${encodedGroupId}/messages`, {
+                            device_id: ourDeviceId,
+                            message_type: 'commit',
+                            message_bytes: result.commit,
+                            epoch: result.epoch,
+                        });
+
+                        const mergeResult = await window.api.mls.mergeCommit({ serverId, groupId });
+
+                        await api.post(`/e2ee/mls/groups/${encodedGroupId}/welcome`, {
+                            recipient_user_id: userId,
+                            recipient_device_id: newDeviceId,
+                            welcome_bytes: result.welcome,
+                            ratchet_tree_bytes: mergeResult.ratchetTree,
+                        });
+
+                        enrolledCount++;
+                        console.log(`[E2EE] Enrolled new device ${newDeviceId} into group ${groupId}`);
+                    } catch (serverError) {
+                        await window.api.mls.clearPendingCommit({ serverId, groupId });
+                        throw serverError;
+                    }
+                });
+            } catch (error) {
+                console.error(`[E2EE] Failed to enroll device ${newDeviceId} in group ${groupId}:`, error);
+            }
+        }
+
+        if (enrolledCount > 0) {
+            scheduleAutoBackup();
+            console.log(`[E2EE] Enrolled new device ${newDeviceId} into ${enrolledCount} groups`);
+        }
+    }
+
+    async function handleJoinRequest(
+        groupId: string,
+        requesterUserId: number,
+        requesterDeviceId: string,
+    ): Promise<void> {
+        const serverId = getServerId();
+        const ourDeviceId = await getDeviceId();
+        if (!ourDeviceId) return;
+
+        const setupInFlight = inFlightGroupSetup.get(groupId);
+        if (setupInFlight) {
+            await setupInFlight.catch(() => {});
+        }
+
+        const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
+        if (!groupInfo) {
+            console.debug(`[E2EE] Ignoring join request for group ${groupId} — not in local storage`);
+            return;
+        }
+
+        const channelId = groupId.startsWith('channel:') ? Number(groupId.slice(8)) : undefined;
+        const dmGroupId = groupId.startsWith('dm:') ? Number(groupId.slice(3)) : undefined;
+
+        await enqueueGroupOp(channelId, dmGroupId, async () => {
+            const freshGroupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
+            if (!freshGroupInfo) {
+                console.debug(`[E2EE] Group ${groupId} disappeared before handling join request`);
+                return;
+            }
+
+            const requesterIdentity = `${requesterUserId}:${requesterDeviceId}`;
+            const alreadyMember = freshGroupInfo.members.some(
+                (m: { identity: string }) => m.identity === requesterIdentity,
+            );
+            if (alreadyMember) {
+                console.debug(`[E2EE] Requester ${requesterIdentity} already in group ${groupId}, skipping add`);
+                api.post(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/join-request/fulfill`, {
+                    device_id: requesterDeviceId,
+                }).catch(() => {});
+                return;
+            }
+
+            let keyPackage: { device_id: string; key_package_bytes: string } | undefined;
+            try {
+                const kpResponse = await api.get(`/e2ee/mls/key-packages/${requesterUserId}`, {
+                    params: { device_id: requesterDeviceId },
+                });
+                const packages = kpResponse.data ?? [];
+                keyPackage = packages.find((p: any) => p.device_id === requesterDeviceId) ?? packages[0];
+            } catch (error) {
+                console.error('[E2EE] Failed to fetch key package for join requester:', error);
+                return;
+            }
+
+            if (!keyPackage?.key_package_bytes) {
+                console.warn(`[E2EE] No key package for join requester ${requesterUserId}/${requesterDeviceId}`);
+                return;
+            }
+
+            const encodedGroupId = encodeURIComponent(groupId);
+
+            const result = await window.api.mls.addMember({
+                serverId,
+                groupId,
+                keyPackageBytes: keyPackage.key_package_bytes,
+            });
+
+            try {
+                await api.post(`/e2ee/mls/groups/${encodedGroupId}/messages`, {
+                    device_id: ourDeviceId,
+                    message_type: 'commit',
+                    message_bytes: result.commit,
+                    epoch: result.epoch,
+                });
+
+                const mergeResult = await window.api.mls.mergeCommit({ serverId, groupId });
+
+                await api.post(`/e2ee/mls/groups/${encodedGroupId}/welcome`, {
+                    recipient_user_id: requesterUserId,
+                    recipient_device_id: requesterDeviceId,
+                    welcome_bytes: result.welcome,
+                    ratchet_tree_bytes: mergeResult.ratchetTree,
+                });
+
+                api.post(`/e2ee/mls/groups/${encodedGroupId}/join-request/fulfill`, {
+                    device_id: requesterDeviceId,
+                }).catch(() => {});
+
+                console.log(`[E2EE] Fulfilled join request for ${requesterUserId}/${requesterDeviceId} in ${groupId}`);
+                scheduleAutoBackup();
+            } catch (serverError) {
+                await window.api.mls.clearPendingCommit({ serverId, groupId });
+                throw serverError;
+            }
+        });
     }
 
     async function backupExists(): Promise<boolean> {
@@ -617,14 +1181,28 @@ export function useE2EE() {
     async function restoreKeys(pin: string): Promise<{ success: boolean; error?: string }> {
         const serverId = getServerId();
 
-        const response = await api.get('/e2ee/keys/backup');
+        let response;
+        try {
+            response = await api.get('/e2ee/keys/backup');
+        } catch (err: any) {
+            if (err.response?.status === 423) {
+                const lockData = err.response.data;
+                const remaining = lockData?.remaining_minutes ?? 60;
+                return {
+                    success: false,
+                    error: `Backup access is locked due to too many failed attempts. Try again in ${remaining} minutes or unlock via 2FA.`,
+                };
+            }
+            throw err;
+        }
+
         const data = response.data;
 
         if (!data) {
             return { success: false, error: 'No backup found' };
         }
 
-        return window.api.mls.restoreKeys(
+        const result = await window.api.mls.restoreKeys(
             serverId,
             {
                 encryptedBundle: data.encrypted_bundle,
@@ -633,7 +1211,30 @@ export function useE2EE() {
                 argon2Params: data.argon2_params,
             },
             pin,
+            getUserId(),
         );
+
+        if (result.success) {
+            try {
+                await api.post('/e2ee/keys/backup/confirm');
+            } catch {
+                // Non-fatal — counter reset is best-effort
+            }
+        }
+
+        return result;
+    }
+
+    async function unlockBackup(twoFactorCode: string): Promise<{ success: boolean; error?: string }> {
+        try {
+            await api.post('/e2ee/keys/backup/unlock', { two_factor_code: twoFactorCode });
+            return { success: true };
+        } catch (err: any) {
+            return {
+                success: false,
+                error: err.response?.data?.message ?? 'Failed to unlock backup',
+            };
+        }
     }
 
     async function deleteBackup() {
@@ -653,7 +1254,18 @@ export function useE2EE() {
         const exists = devices.some((d: { device_id: string }) => d.device_id === deviceId);
         if (exists) return;
 
-        // Device missing server-side — re-register it
+        const userId = getUserId();
+        if (userId) {
+            try {
+                await api.get(`/e2ee/identity/${userId}`);
+            } catch (err: any) {
+                if (err.response?.status === 404) {
+                    await wipe();
+                    throw new Error('Server E2EE state was reset. Please set up E2EE again.');
+                }
+            }
+        }
+
         try {
             await api.post('/e2ee/devices/register', {
                 device_id: deviceId,
@@ -661,7 +1273,6 @@ export function useE2EE() {
             });
         } catch (err: any) {
             if (err.response?.status === 409) {
-                // Already registered (race condition), ignore
                 return;
             }
             throw err;
@@ -749,35 +1360,86 @@ export function useE2EE() {
         await window.api.mls.clearBackupKey(serverId);
     }
 
-    async function storeSentPlaintext(messageId: number, plaintext: string): Promise<void> {
+    async function changePIN(oldPin: string, newPin: string): Promise<{ success: boolean; error?: string }> {
         const serverId = getServerId();
-        await window.api.messages.storePlaintext(serverId, messageId, plaintext);
+
+        let response;
+        try {
+            response = await api.get('/e2ee/keys/backup');
+        } catch (err: any) {
+            if (err.response?.status === 423) {
+                return { success: false, error: 'Backup is locked. Unlock via 2FA first.' };
+            }
+            return { success: false, error: 'Failed to fetch backup' };
+        }
+
+        const data = response.data;
+        if (!data) {
+            return { success: false, error: 'No backup found to change PIN for' };
+        }
+
+        // Decrypt with old PIN, re-encrypt with new PIN
+        const result = await window.api.mls.changePIN(
+            serverId,
+            {
+                encryptedBundle: data.encrypted_bundle,
+                salt: data.salt,
+                nonce: data.nonce,
+                argon2Params: data.argon2_params,
+            },
+            oldPin,
+            newPin,
+        );
+
+        if (!result.success) {
+            return { success: false, error: result.error ?? 'Wrong PIN' };
+        }
+
+        const backup = result.backup!;
+        const payload = {
+            encrypted_bundle: backup.encryptedBundle,
+            salt: backup.salt,
+            nonce: backup.nonce,
+            argon2_params: backup.argon2Params,
+        };
+
+        try {
+            await api.put('/e2ee/keys/backup', payload);
+        } catch {
+            return { success: false, error: 'Failed to upload re-encrypted backup' };
+        }
+
+        try {
+            await api.post('/e2ee/keys/backup/confirm');
+        } catch {
+            // Non-fatal
+        }
+
+        return { success: true };
     }
 
-    async function lookupSentPlaintexts(messages: MessageData[]): Promise<void> {
+    async function cacheDecryptedContent(
+        messageId: number,
+        plaintext: string,
+        metadata?: { conversationType: 'channel' | 'dm'; conversationId: number; userName: string },
+    ): Promise<void> {
         const serverId = getServerId();
-        const ownDeviceId = await getDeviceId();
-        if (!ownDeviceId) return;
-
-        const ownEncrypted = messages.filter(
-            (m) =>
-                m.is_encrypted &&
-                m.decrypted_content === undefined &&
-                !m.decrypt_error &&
-                m.sender_device_id === ownDeviceId,
-        );
-        if (ownEncrypted.length === 0) return;
-
-        const ids = ownEncrypted.map((m) => m.id);
-        const plaintexts = await window.api.messages.getPlaintexts(serverId, ids);
-
-        for (const m of ownEncrypted) {
-            const pt = plaintexts[m.id];
-            if (pt != null) {
-                m.decrypted_content = pt;
-                m.decrypt_error = false;
-            }
+        await window.api.messages.storeDecrypted(serverId, messageId, plaintext);
+        if (metadata) {
+            window.api.messages
+                .indexForSearch({
+                    serverId,
+                    messageId,
+                    ...metadata,
+                    plaintext,
+                })
+                .catch(() => {});
         }
+    }
+
+    async function removeFromSearchIndex(messageId: number): Promise<void> {
+        const serverId = getServerId();
+        await window.api.messages.removeFromSearchIndex(serverId, messageId);
     }
 
     return {
@@ -787,6 +1449,7 @@ export function useE2EE() {
         setupDevice,
         encryptForChannel,
         encryptForDM,
+        encryptHistory,
         decrypt,
         decryptMessage,
         decryptMessageQueued,
@@ -795,12 +1458,17 @@ export function useE2EE() {
         ensureGroupReady,
         handleMlsMessage,
         handleWelcome,
+        handleJoinRequest,
+        enrollNewDevice,
+        decryptGroupHistory,
         backupExists,
         backupKeys,
         restoreKeys,
         autoUpdateBackup,
         clearBackupKey,
         deleteBackup,
+        unlockBackup,
+        changePIN,
         ensureDeviceRegistered,
         fetchDevices,
         revokeDevice,
@@ -808,7 +1476,8 @@ export function useE2EE() {
         checkAndReplenishKeyPackages,
         wipe,
         wipeIfUserChanged,
-        storeSentPlaintext,
-        lookupSentPlaintexts,
+        cacheDecryptedContent,
+        removeFromSearchIndex,
+        lookupDecryptedCache,
     };
 }

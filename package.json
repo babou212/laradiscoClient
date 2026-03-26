@@ -7,7 +7,7 @@
     "main": "out/main/index.js",
     "scripts": {
         "dev": "electron-vite dev",
-        "dev:user2": "USER_DATA_DIR=/tmp/laradisco-user2 ELECTRON_RENDERER_URL=http://localhost:5173 npx electron .",
+        "dev:user2": "electron-vite build --config electron.vite.config.dev2.ts && USER_DATA_DIR=/tmp/laradisco-user2 ELECTRON_RENDERER_URL=http://localhost:5173 ./node_modules/.bin/electron out2/main/index.js",
         "build": "electron-vite build",
         "preview": "electron-vite preview",
         "package": "npm run build && electron-forge package",
@@ -20,7 +20,8 @@
         "lint": "eslint . --fix",
         "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
         "typecheck:renderer": "vue-tsc --noEmit -p tsconfig.renderer.json",
-        "typecheck": "npm run typecheck:node && npm run typecheck:renderer"
+        "typecheck": "npm run typecheck:node && npm run typecheck:renderer",
+        "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*"
     },
     "devDependencies": {
         "@electron-forge/cli": "^7.11.1",

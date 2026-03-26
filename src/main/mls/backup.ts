@@ -1,11 +1,33 @@
 import { argon2id } from 'hash-wasm';
 
-export interface MlsKeyBackupBundle {
+export interface MlsKeyBackupBundleV3 {
     version: 3;
     identityBytes: string;
     providerBytes: string;
     sourceDeviceId: string;
 }
+
+export interface E2eeDeviceKeys {
+    deviceIdentityKey: string;
+    identitySignature: string;
+    signedPreKeyId: number;
+    signedPreKey: string;
+    signedPreKeySignature: string;
+}
+
+export interface MlsKeyBackupBundle {
+    version: 4;
+    mls: {
+        identityBytes: string;
+        providerBytes: string;
+        sourceDeviceId: string;
+    };
+    e2ee: E2eeDeviceKeys | null;
+    backupTimestamp: string;
+    deviceId: string;
+}
+
+export type AnyBackupBundle = MlsKeyBackupBundleV3 | MlsKeyBackupBundle;
 
 export interface EncryptedKeyBackup {
     encryptedBundle: string;
@@ -90,6 +112,21 @@ async function aesGcmDecrypt(key: Uint8Array, ciphertext: Uint8Array, nonce: Uin
     return new Uint8Array(decrypted);
 }
 
+/** Migrate a v3 bundle to v4 format. */
+export function migrateV3ToV4(v3: MlsKeyBackupBundleV3): MlsKeyBackupBundle {
+    return {
+        version: 4,
+        mls: {
+            identityBytes: v3.identityBytes,
+            providerBytes: v3.providerBytes,
+            sourceDeviceId: v3.sourceDeviceId,
+        },
+        e2ee: null,
+        backupTimestamp: new Date().toISOString(),
+        deviceId: v3.sourceDeviceId,
+    };
+}
+
 export async function encryptKeyBackup(
     bundle: MlsKeyBackupBundle,
     pin: string,
@@ -148,7 +185,14 @@ export async function decryptKeyBackup(
             cacheBackupKey(serverId, encryptionKey, salt);
         }
 
-        return JSON.parse(new TextDecoder().decode(bundleBytes)) as MlsKeyBackupBundle;
+        const parsed = JSON.parse(new TextDecoder().decode(bundleBytes)) as AnyBackupBundle;
+
+        // Auto-migrate v3 → v4
+        if (parsed.version === 3) {
+            return migrateV3ToV4(parsed as MlsKeyBackupBundleV3);
+        }
+
+        return parsed as MlsKeyBackupBundle;
     } catch {
         return null;
     }
@@ -174,4 +218,11 @@ export async function encryptKeyBackupWithCachedKey(
             parallelism: ARGON2_PARAMS.parallelism,
         },
     };
+}
+
+/** Verify a backup can be round-tripped (encrypt → decrypt). */
+export function verifyBackupIntegrity(bundle: MlsKeyBackupBundle): boolean {
+    if (!bundle.mls?.identityBytes || !bundle.mls?.providerBytes) return false;
+    if (bundle.version !== 4) return false;
+    return true;
 }

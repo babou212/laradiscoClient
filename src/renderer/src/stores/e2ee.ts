@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useE2EE } from '@/composables/useE2EE';
+import { getEcho } from '@/lib/echo';
+import { useAuthStore } from '@/stores/auth';
 
 export interface E2eeDevice {
     id: number;
@@ -30,7 +32,87 @@ export const useE2eeStore = defineStore('e2ee', () => {
 
     const needsSetup = computed(() => !isReady.value && !isSettingUp.value);
 
+    const lastBackupAt = ref<string | null>(null);
+
+    const backupLocked = ref(false);
+
+    const isBackupStale = computed(() => {
+        if (!lastBackupAt.value) return true;
+        const lastBackup = new Date(lastBackupAt.value).getTime();
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        return lastBackup < oneDayAgo;
+    });
+
     let maintenanceInterval: ReturnType<typeof setInterval> | null = null;
+    let autoBackupInterval: ReturnType<typeof setInterval> | null = null;
+    let deviceAddedChannelName: string | null = null;
+
+    function listenForDeviceAdded(): void {
+        const authStore = useAuthStore();
+        const userId = authStore.user?.id;
+        if (!userId) return;
+
+        const echo = getEcho();
+        if (!echo) return;
+
+        deviceAddedChannelName = `App.Models.User.${userId}`;
+        echo.private(deviceAddedChannelName)
+            .listen('DeviceAdded', async (data: { user_id: number; device_id: string; device_name: string | null }) => {
+                if (!isReady.value) return;
+                if (data.device_id === deviceId.value) return;
+
+                console.log('[E2EE] New device detected, enrolling:', data.device_id);
+                try {
+                    await e2ee.enrollNewDevice(data.device_id);
+                } catch (error) {
+                    console.error('[E2EE] Failed to enroll new device:', error);
+                }
+            })
+            .listen(
+                'MlsJoinRequested',
+                async (data: { group_id: string; requester_user_id: number; requester_device_id: string }) => {
+                    if (!isReady.value) return;
+
+                    console.log(
+                        '[E2EE] Join request received for group:',
+                        data.group_id,
+                        'from device:',
+                        data.requester_device_id,
+                    );
+                    try {
+                        await e2ee.handleJoinRequest(data.group_id, data.requester_user_id, data.requester_device_id);
+                    } catch (error) {
+                        console.error('[E2EE] Failed to handle join request:', error);
+                    }
+                },
+            )
+            .listen('MlsWelcomeReady', async (data: { device_id: string; group_id: string }) => {
+                if (!isReady.value) return;
+                if (data.device_id && data.device_id !== deviceId.value) return;
+
+                console.log('[E2EE] Welcome ready for group:', data.group_id);
+                try {
+                    await e2ee.handleWelcome();
+                } catch (error) {
+                    console.error('[E2EE] Failed to handle welcome:', error);
+                }
+            });
+    }
+
+    function stopListeningForDeviceAdded(): void {
+        if (deviceAddedChannelName) {
+            try {
+                const echo = getEcho();
+                echo?.private(deviceAddedChannelName)
+                    .stopListening('DeviceAdded')
+                    .stopListening('MlsJoinRequested')
+                    .stopListening('MlsWelcomeReady');
+            } catch {
+                // Echo may already be disconnected
+            }
+            deviceAddedChannelName = null;
+        }
+    }
 
     async function initialize(): Promise<void> {
         try {
@@ -53,6 +135,9 @@ export const useE2eeStore = defineStore('e2ee', () => {
                     },
                     6 * 60 * 60 * 1000,
                 );
+
+                startAutoBackupTimer();
+                listenForDeviceAdded();
             }
         } catch {
             isReady.value = false;
@@ -93,6 +178,15 @@ export const useE2eeStore = defineStore('e2ee', () => {
                 6 * 60 * 60 * 1000,
             );
 
+            listenForDeviceAdded();
+            startAutoBackupTimer();
+
+            try {
+                await e2ee.handleWelcome();
+            } catch {
+                // Non-fatal — welcomes will arrive via SSE
+            }
+
             return true;
         } catch (err: any) {
             error.value = err.response?.data?.message ?? err.message ?? 'Device setup failed';
@@ -107,12 +201,35 @@ export const useE2eeStore = defineStore('e2ee', () => {
         try {
             const result = await e2ee.restoreKeys(pin);
             if (!result.success) {
+                if (result.error?.includes('locked')) {
+                    backupLocked.value = true;
+                }
                 error.value = result.error ?? 'Restore failed — check your PIN';
                 return false;
             }
+            backupLocked.value = false;
             return true;
         } catch (err: any) {
+            if (err.response?.status === 423 || err.message?.includes('locked')) {
+                backupLocked.value = true;
+            }
             error.value = err.message ?? 'Restore failed';
+            return false;
+        }
+    }
+
+    async function unlockBackup(twoFactorCode: string): Promise<boolean> {
+        error.value = null;
+        try {
+            const result = await e2ee.unlockBackup(twoFactorCode);
+            if (result.success) {
+                backupLocked.value = false;
+                return true;
+            }
+            error.value = result.error ?? 'Unlock failed';
+            return false;
+        } catch (err: any) {
+            error.value = err.message ?? 'Unlock failed';
             return false;
         }
     }
@@ -182,6 +299,30 @@ export const useE2eeStore = defineStore('e2ee', () => {
         }
     }
 
+    function startAutoBackupTimer(): void {
+        if (autoBackupInterval) clearInterval(autoBackupInterval);
+        autoBackupInterval = setInterval(
+            async () => {
+                try {
+                    const updated = await e2ee.autoUpdateBackup();
+                    if (updated) {
+                        lastBackupAt.value = new Date().toISOString();
+                    }
+                } catch (err) {
+                    console.error('[E2EE] Auto-backup failed:', err);
+                }
+            },
+            15 * 60 * 1000,
+        );
+    }
+
+    function stopAutoBackupTimer(): void {
+        if (autoBackupInterval) {
+            clearInterval(autoBackupInterval);
+            autoBackupInterval = null;
+        }
+    }
+
     async function deleteBackup(): Promise<boolean> {
         error.value = null;
         try {
@@ -195,11 +336,28 @@ export const useE2eeStore = defineStore('e2ee', () => {
     }
 
     async function wipeKeys(): Promise<void> {
+        stopAutoBackupTimer();
+        await e2ee.clearBackupKey();
         await e2ee.wipe();
         isReady.value = false;
         deviceId.value = null;
         devices.value = [];
         setupStep.value = 'check';
+    }
+
+    async function changePIN(oldPin: string, newPin: string): Promise<boolean> {
+        error.value = null;
+        try {
+            const result = await e2ee.changePIN(oldPin, newPin);
+            if (!result.success) {
+                error.value = result.error ?? 'PIN change failed';
+                return false;
+            }
+            return true;
+        } catch (err: any) {
+            error.value = err.message ?? 'PIN change failed';
+            return false;
+        }
     }
 
     function $reset(): void {
@@ -210,10 +368,14 @@ export const useE2eeStore = defineStore('e2ee', () => {
         devices.value = [];
         error.value = null;
         setupStep.value = 'check';
+        lastBackupAt.value = null;
+        backupLocked.value = false;
         if (maintenanceInterval) {
             clearInterval(maintenanceInterval);
             maintenanceInterval = null;
         }
+        stopAutoBackupTimer();
+        stopListeningForDeviceAdded();
     }
 
     return {
@@ -225,10 +387,14 @@ export const useE2eeStore = defineStore('e2ee', () => {
         error,
         setupStep,
         needsSetup,
+        lastBackupAt,
+        backupLocked,
+        isBackupStale,
         initialize,
         performSetup,
         performDeviceSetup,
         restoreFromBackup,
+        unlockBackup,
         createBackup,
         checkBackup,
         loadDevices,
@@ -237,6 +403,9 @@ export const useE2eeStore = defineStore('e2ee', () => {
         performMaintenance,
         deleteBackup,
         wipeKeys,
+        changePIN,
+        startAutoBackupTimer,
+        stopAutoBackupTimer,
         $reset,
     };
 });

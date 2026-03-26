@@ -1,6 +1,6 @@
 /* @ts-self-types="./openmls_wasm.d.ts" */
 
-class AddMessages {
+export class AddMessages {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(AddMessages.prototype);
@@ -28,22 +28,14 @@ class AddMessages {
     /**
      * @returns {Uint8Array}
      */
-    get proposal() {
-        const ret = wasm.addmessages_proposal(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @returns {Uint8Array}
-     */
     get welcome() {
         const ret = wasm.addmessages_welcome(this.__wbg_ptr);
         return ret;
     }
 }
 if (Symbol.dispose) AddMessages.prototype[Symbol.dispose] = AddMessages.prototype.free;
-exports.AddMessages = AddMessages;
 
-class Group {
+export class Group {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(Group.prototype);
@@ -62,8 +54,22 @@ class Group {
         wasm.__wbg_group_free(ptr, 0);
     }
     /**
-     * Discard a pending commit that was not accepted by the delivery service.
-     * This rolls back the group state so it can continue operating normally.
+     * @param {Provider} provider
+     * @param {Identity} sender
+     * @param {KeyPackage} new_member
+     * @returns {AddMessages}
+     */
+    add_member(provider, sender, new_member) {
+        _assertClass(provider, Provider);
+        _assertClass(sender, Identity);
+        _assertClass(new_member, KeyPackage);
+        const ret = wasm.group_add_member(this.__wbg_ptr, provider.__wbg_ptr, sender.__wbg_ptr, new_member.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return AddMessages.__wrap(ret[0]);
+    }
+    /**
      * @param {Provider} provider
      */
     clear_pending_commit(provider) {
@@ -104,10 +110,22 @@ class Group {
         const ptr0 = passStringToWasm0(group_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.group_create_new(provider.__wbg_ptr, founder.__wbg_ptr, ptr0, len0);
-        return Group.__wrap(ret);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return Group.__wrap(ret[0]);
     }
     /**
-     * Get the current epoch number.
+     * @param {Provider} provider
+     */
+    delete(provider) {
+        _assertClass(provider, Provider);
+        const ret = wasm.group_delete(this.__wbg_ptr, provider.__wbg_ptr);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * @returns {bigint}
      */
     epoch() {
@@ -143,7 +161,6 @@ class Group {
         return RatchetTree.__wrap(ret);
     }
     /**
-     * Get the group ID as bytes.
      * @returns {Uint8Array}
      */
     group_id() {
@@ -153,7 +170,6 @@ class Group {
         return v1;
     }
     /**
-     * Check if the group is still active (not evicted).
      * @returns {boolean}
      */
     is_active() {
@@ -179,7 +195,6 @@ class Group {
         return Group.__wrap(ret[0]);
     }
     /**
-     * Load a group from the provider's storage by group ID string.
      * @param {Provider} provider
      * @param {string} group_id
      * @returns {Group}
@@ -195,7 +210,6 @@ class Group {
         return Group.__wrap(ret[0]);
     }
     /**
-     * Get all current group members.
      * @returns {MemberInfo[]}
      */
     members() {
@@ -215,7 +229,6 @@ class Group {
         }
     }
     /**
-     * Get own leaf index in the group tree.
      * @returns {number}
      */
     own_leaf_index() {
@@ -240,28 +253,6 @@ class Group {
     /**
      * @param {Provider} provider
      * @param {Identity} sender
-     * @param {KeyPackage} new_member
-     * @returns {AddMessages}
-     */
-    propose_and_commit_add(provider, sender, new_member) {
-        _assertClass(provider, Provider);
-        _assertClass(sender, Identity);
-        _assertClass(new_member, KeyPackage);
-        const ret = wasm.group_propose_and_commit_add(
-            this.__wbg_ptr,
-            provider.__wbg_ptr,
-            sender.__wbg_ptr,
-            new_member.__wbg_ptr,
-        );
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        return AddMessages.__wrap(ret[0]);
-    }
-    /**
-     * Remove members by their leaf indices.
-     * @param {Provider} provider
-     * @param {Identity} sender
      * @param {Uint32Array} leaf_indices
      * @returns {RemoveMessages}
      */
@@ -277,7 +268,6 @@ class Group {
         return RemoveMessages.__wrap(ret[0]);
     }
     /**
-     * Perform a self-update (key rotation).
      * @param {Provider} provider
      * @param {Identity} sender
      * @returns {UpdateMessages}
@@ -293,9 +283,8 @@ class Group {
     }
 }
 if (Symbol.dispose) Group.prototype[Symbol.dispose] = Group.prototype.free;
-exports.Group = Group;
 
-class Identity {
+export class Identity {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(Identity.prototype);
@@ -314,7 +303,6 @@ class Identity {
         wasm.__wbg_identity_free(ptr, 0);
     }
     /**
-     * Restore an identity from bytes and register the keypair in the provider's storage.
      * @param {Provider} provider
      * @param {Uint8Array} bytes
      * @returns {Identity}
@@ -336,7 +324,10 @@ class Identity {
     key_package(provider) {
         _assertClass(provider, Provider);
         const ret = wasm.identity_key_package(this.__wbg_ptr, provider.__wbg_ptr);
-        return KeyPackage.__wrap(ret);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return KeyPackage.__wrap(ret[0]);
     }
     /**
      * @param {Provider} provider
@@ -355,7 +346,6 @@ class Identity {
         return this;
     }
     /**
-     * Serialize identity (keypair + credential name) to JSON bytes for backup/restore.
      * @returns {Uint8Array}
      */
     to_bytes() {
@@ -369,9 +359,8 @@ class Identity {
     }
 }
 if (Symbol.dispose) Identity.prototype[Symbol.dispose] = Identity.prototype.free;
-exports.Identity = Identity;
 
-class KeyPackage {
+export class KeyPackage {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(KeyPackage.prototype);
@@ -413,9 +402,8 @@ class KeyPackage {
     }
 }
 if (Symbol.dispose) KeyPackage.prototype[Symbol.dispose] = KeyPackage.prototype.free;
-exports.KeyPackage = KeyPackage;
 
-class MemberInfo {
+export class MemberInfo {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(MemberInfo.prototype);
@@ -469,9 +457,8 @@ class MemberInfo {
     }
 }
 if (Symbol.dispose) MemberInfo.prototype[Symbol.dispose] = MemberInfo.prototype.free;
-exports.MemberInfo = MemberInfo;
 
-class NoWelcomeError {
+export class NoWelcomeError {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -484,9 +471,8 @@ class NoWelcomeError {
     }
 }
 if (Symbol.dispose) NoWelcomeError.prototype[Symbol.dispose] = NoWelcomeError.prototype.free;
-exports.NoWelcomeError = NoWelcomeError;
 
-class ProcessedMessage {
+export class ProcessedMessage {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(ProcessedMessage.prototype);
@@ -533,9 +519,8 @@ class ProcessedMessage {
     }
 }
 if (Symbol.dispose) ProcessedMessage.prototype[Symbol.dispose] = ProcessedMessage.prototype.free;
-exports.ProcessedMessage = ProcessedMessage;
 
-class Provider {
+export class Provider {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(Provider.prototype);
@@ -554,7 +539,6 @@ class Provider {
         wasm.__wbg_provider_free(ptr, 0);
     }
     /**
-     * Restore a provider from serialized storage bytes.
      * @param {Uint8Array} bytes
      * @returns {Provider}
      */
@@ -574,8 +558,6 @@ class Provider {
         return this;
     }
     /**
-     * Serialize the provider's storage to bytes for persistence.
-     * This captures all group state, key material, and epoch secrets.
      * @returns {Uint8Array}
      */
     to_bytes() {
@@ -589,9 +571,8 @@ class Provider {
     }
 }
 if (Symbol.dispose) Provider.prototype[Symbol.dispose] = Provider.prototype.free;
-exports.Provider = Provider;
 
-class RatchetTree {
+export class RatchetTree {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(RatchetTree.prototype);
@@ -633,9 +614,8 @@ class RatchetTree {
     }
 }
 if (Symbol.dispose) RatchetTree.prototype[Symbol.dispose] = RatchetTree.prototype.free;
-exports.RatchetTree = RatchetTree;
 
-class RemoveMessages {
+export class RemoveMessages {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(RemoveMessages.prototype);
@@ -662,9 +642,8 @@ class RemoveMessages {
     }
 }
 if (Symbol.dispose) RemoveMessages.prototype[Symbol.dispose] = RemoveMessages.prototype.free;
-exports.RemoveMessages = RemoveMessages;
 
-class UpdateMessages {
+export class UpdateMessages {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
         const obj = Object.create(UpdateMessages.prototype);
@@ -698,12 +677,10 @@ class UpdateMessages {
     }
 }
 if (Symbol.dispose) UpdateMessages.prototype[Symbol.dispose] = UpdateMessages.prototype.free;
-exports.UpdateMessages = UpdateMessages;
 
-function greet() {
+export function greet() {
     wasm.greet();
 }
-exports.greet = greet;
 
 function __wbg_get_imports() {
     const import0 = {
@@ -1026,7 +1003,15 @@ function takeFromExternrefTable0(idx) {
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 cachedTextDecoder.decode();
+const MAX_SAFARI_DECODE_BYTES = 2146435072;
+let numBytesDecoded = 0;
 function decodeText(ptr, len) {
+    numBytesDecoded += len;
+    if (numBytesDecoded >= MAX_SAFARI_DECODE_BYTES) {
+        cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+        cachedTextDecoder.decode();
+        numBytesDecoded = len;
+    }
     return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
 }
 
@@ -1045,8 +1030,105 @@ if (!('encodeInto' in cachedTextEncoder)) {
 
 let WASM_VECTOR_LEN = 0;
 
-const wasmPath = `${__dirname}/openmls_wasm_bg.wasm`;
-const wasmBytes = require('fs').readFileSync(wasmPath);
-const wasmModule = new WebAssembly.Module(wasmBytes);
-let wasm = new WebAssembly.Instance(wasmModule, __wbg_get_imports()).exports;
-wasm.__wbindgen_start();
+let wasmModule, wasm;
+function __wbg_finalize_init(instance, module) {
+    wasm = instance.exports;
+    wasmModule = module;
+    cachedDataViewMemory0 = null;
+    cachedUint32ArrayMemory0 = null;
+    cachedUint8ArrayMemory0 = null;
+    wasm.__wbindgen_start();
+    return wasm;
+}
+
+async function __wbg_load(module, imports) {
+    if (typeof Response === 'function' && module instanceof Response) {
+        if (typeof WebAssembly.instantiateStreaming === 'function') {
+            try {
+                return await WebAssembly.instantiateStreaming(module, imports);
+            } catch (e) {
+                const validResponse = module.ok && expectedResponseType(module.type);
+
+                if (validResponse && module.headers.get('Content-Type') !== 'application/wasm') {
+                    console.warn(
+                        '`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n',
+                        e,
+                    );
+                } else {
+                    throw e;
+                }
+            }
+        }
+
+        const bytes = await module.arrayBuffer();
+        return await WebAssembly.instantiate(bytes, imports);
+    } else {
+        const instance = await WebAssembly.instantiate(module, imports);
+
+        if (instance instanceof WebAssembly.Instance) {
+            return { instance, module };
+        } else {
+            return instance;
+        }
+    }
+
+    function expectedResponseType(type) {
+        switch (type) {
+            case 'basic':
+            case 'cors':
+            case 'default':
+                return true;
+        }
+        return false;
+    }
+}
+
+function initSync(module) {
+    if (wasm !== undefined) return wasm;
+
+    if (module !== undefined) {
+        if (Object.getPrototypeOf(module) === Object.prototype) {
+            ({ module } = module);
+        } else {
+            console.warn('using deprecated parameters for `initSync()`; pass a single object instead');
+        }
+    }
+
+    const imports = __wbg_get_imports();
+    if (!(module instanceof WebAssembly.Module)) {
+        module = new WebAssembly.Module(module);
+    }
+    const instance = new WebAssembly.Instance(module, imports);
+    return __wbg_finalize_init(instance, module);
+}
+
+async function __wbg_init(module_or_path) {
+    if (wasm !== undefined) return wasm;
+
+    if (module_or_path !== undefined) {
+        if (Object.getPrototypeOf(module_or_path) === Object.prototype) {
+            ({ module_or_path } = module_or_path);
+        } else {
+            console.warn('using deprecated parameters for the initialization function; pass a single object instead');
+        }
+    }
+
+    if (module_or_path === undefined) {
+        module_or_path = new URL('openmls_wasm_bg.wasm', import.meta.url);
+    }
+    const imports = __wbg_get_imports();
+
+    if (
+        typeof module_or_path === 'string' ||
+        (typeof Request === 'function' && module_or_path instanceof Request) ||
+        (typeof URL === 'function' && module_or_path instanceof URL)
+    ) {
+        module_or_path = fetch(module_or_path);
+    }
+
+    const { instance, module } = await __wbg_load(await module_or_path, imports);
+
+    return __wbg_finalize_init(instance, module);
+}
+
+export { initSync, __wbg_init as default };

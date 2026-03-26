@@ -1,5 +1,5 @@
 /* tslint:disable */
-
+/* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_addmessages_free: (a: number, b: number) => void;
 export const __wbg_group_free: (a: number, b: number) => void;
@@ -13,8 +13,8 @@ export const __wbg_ratchettree_free: (a: number, b: number) => void;
 export const __wbg_removemessages_free: (a: number, b: number) => void;
 export const __wbg_updatemessages_free: (a: number, b: number) => void;
 export const addmessages_commit: (a: number) => any;
-export const addmessages_proposal: (a: number) => any;
 export const addmessages_welcome: (a: number) => any;
+export const group_add_member: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const group_clear_pending_commit: (a: number, b: number) => [number, number];
 export const group_create_message: (
     a: number,
@@ -24,6 +24,7 @@ export const group_create_message: (
     e: number,
 ) => [number, number, number, number];
 export const group_create_new: (a: number, b: number, c: number, d: number) => number;
+export const group_delete: (a: number, b: number) => [number, number];
 export const group_epoch: (a: number) => bigint;
 export const group_export_key: (
     a: number,
@@ -43,7 +44,6 @@ export const group_members: (a: number) => [number, number];
 export const group_merge_pending_commit: (a: number, b: number) => [number, number];
 export const group_own_leaf_index: (a: number) => number;
 export const group_process_message: (a: number, b: number, c: number, d: number) => [number, number, number];
-export const group_propose_and_commit_add: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const group_remove_members: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const group_self_update: (a: number, b: number, c: number) => [number, number, number];
 export const identity_from_bytes: (a: number, b: number, c: number) => [number, number, number];

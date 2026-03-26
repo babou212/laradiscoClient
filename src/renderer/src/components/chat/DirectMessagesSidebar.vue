@@ -213,18 +213,13 @@ const toggleNewDmSearch = () => {
                             </span>
                         </div>
                         <p v-if="dm.last_message" class="text-sidebar-foreground/60 truncate text-xs">
-                            <template v-if="dm.last_message.is_encrypted">
-                                {{
-                                    dm.last_message.decrypted_content
-                                        ? truncateMessage(dm.last_message.decrypted_content)
-                                        : dm.last_message.decrypt_error
-                                          ? '[Unable to decrypt]'
-                                          : '[Encrypted message]'
-                                }}
-                            </template>
-                            <template v-else>
-                                {{ truncateMessage(dm.last_message.content) }}
-                            </template>
+                            {{
+                                dm.last_message.decrypted_content
+                                    ? truncateMessage(dm.last_message.decrypted_content)
+                                    : dm.last_message.decrypt_error
+                                      ? '[Unable to decrypt]'
+                                      : '[Encrypted message]'
+                            }}
                         </p>
                     </div>
                 </button>

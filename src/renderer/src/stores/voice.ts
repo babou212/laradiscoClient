@@ -2,6 +2,7 @@ import type { RemoteParticipant, VideoCodec, VideoEncoding } from 'livekit-clien
 import {
     AudioPresets,
     ConnectionQuality,
+    ExternalE2EEKeyProvider,
     Room,
     RoomEvent,
     type RemoteTrackPublication,
@@ -378,10 +379,16 @@ export const useVoiceStore = defineStore('voice', () => {
             }
 
             const { data } = await api.post(`/channels/${channelId}/voice/join`);
-            const { token, url } = data;
+            const { token, url, e2ee_key } = data;
+
+            const keyProvider = new ExternalE2EEKeyProvider();
 
             room = new Room({
                 dynacast: true,
+                e2ee: {
+                    keyProvider,
+                    worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
+                },
                 publishDefaults: {
                     videoCodec: 'vp9' as VideoCodec,
                     backupCodec: { codec: 'vp8' },
@@ -391,6 +398,7 @@ export const useVoiceStore = defineStore('voice', () => {
             });
             wireRoomEvents(room);
 
+            await keyProvider.setKey(e2ee_key);
             await room.connect(url, token);
 
             try {
