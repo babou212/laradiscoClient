@@ -79,14 +79,23 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                             participant.isSpeaking ? 'bg-green-600 text-white' : 'bg-primary text-primary-foreground'
                         "
                     >
-                        {{ userNamesStore.getDisplayName(Number(participant.id), participant.displayName)?.[0]?.toUpperCase() || 'U' }}
+                        {{
+                            userNamesStore
+                                .getDisplayName(Number(participant.id), participant.displayName)?.[0]
+                                ?.toUpperCase() || 'U'
+                        }}
                     </AvatarFallback>
                 </Avatar>
                 <span
                     class="text-sidebar-foreground/70 truncate text-xs"
                     :class="{ 'text-sidebar-foreground': participant.isSpeaking }"
                 >
-                    {{ userNamesStore.getDisplayName(Number(participant.id), participant.displayName || participant.username) }}
+                    {{
+                        userNamesStore.getDisplayName(
+                            Number(participant.id),
+                            participant.displayName || participant.username,
+                        )
+                    }}
                 </span>
                 <div class="ml-auto flex shrink-0 items-center gap-1">
                     <Monitor
