@@ -1,6 +1,9 @@
-import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { acceptHMRUpdate, defineStore } from 'pinia';
+import { ref, computed, watch } from 'vue';
+import { useAvatarStore } from './avatar';
 import { useServerStore } from './server';
+import { useUserNamesStore } from './userNames';
+import type { AvatarUrls } from '@/types/chat';
 
 export interface AuthPermissions {
     canInviteMembers: boolean;
@@ -16,7 +19,7 @@ export interface AuthUser {
     name: string;
     username: string;
     email: string;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
     permissions?: AuthPermissions;
 }
 
@@ -28,6 +31,19 @@ export const useAuthStore = defineStore('auth', () => {
     const challengeToken = ref<string | null>(null);
 
     const isAuthenticated = computed(() => !!user.value && !!token.value);
+
+    watch(
+        user,
+        (newUser) => {
+            const avatarStore = useAvatarStore();
+            const userNamesStore = useUserNamesStore();
+            if (newUser) {
+                avatarStore.setAvatar(newUser.id, newUser.avatar_urls);
+                userNamesStore.setDisplayName(newUser.id, newUser.name || newUser.username);
+            }
+        },
+        { deep: true },
+    );
 
     async function restoreSession(): Promise<boolean> {
         const serverStore = useServerStore();
@@ -189,6 +205,14 @@ export const useAuthStore = defineStore('auth', () => {
         loginError.value = null;
     }
 
+    function $reset(): void {
+        user.value = null;
+        token.value = null;
+        isLoggingIn.value = false;
+        loginError.value = null;
+        challengeToken.value = null;
+    }
+
     return {
         user,
         token,
@@ -202,5 +226,10 @@ export const useAuthStore = defineStore('auth', () => {
         verifyTwoFactor,
         logout,
         clearError,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useAuthStore, import.meta.hot));
+}

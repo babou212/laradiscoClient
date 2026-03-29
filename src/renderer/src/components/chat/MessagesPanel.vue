@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
+import { useActiveStore } from '@/composables/useActiveStore';
+import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useE2EE } from '@/composables/useE2EE';
+import { usePinnedMessages } from '@/composables/usePinnedMessages';
+import { useRateLimit } from '@/composables/useRateLimit';
+import { useScrollManager } from '@/composables/useScrollManager';
+import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import api from '@/lib/api';
-import { getEcho } from '@/lib/echo';
+import { UploadingFileSchema } from '@/lib/message-schemas';
+import type { UploadingFile } from '@/lib/message-schemas';
+import type { StagedFile } from '@/lib/message-schemas';
 import { useAuthStore } from '@/stores/auth';
-import { useChatStore } from '@/stores/chat';
-import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
-import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
-import type { MessageData, MessageReaction, ChannelPermissions, ThreadPreview } from '@/types/chat';
+import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData } from '@/types/chat';
+import { extractMentionMetadata } from '@/utils/mentions';
+import { uploadWithProgress } from '@/utils/uploadWithProgress';
 
 type ChannelData = {
     id: number;
@@ -25,7 +32,7 @@ type ChannelData = {
     other_user?: {
         id: number;
         username: string;
-        avatar_path: string | null;
+        avatar_urls: AvatarUrls | null;
     };
 };
 
@@ -46,88 +53,88 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const authStore = useAuthStore();
-const chatStore = useChatStore();
-const dmStore = useDirectMessagesStore();
 const e2eeStore = useE2eeStore();
-const presenceStore = usePresenceStore();
-const threadStore = useThreadStore();
 const e2ee = useE2EE();
+const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
-const sendError = ref<string | null>(null);
 
-const showSearch = ref(false);
-const showPinnedMessages = ref(false);
-const pinnedMessages = ref<MessageData[]>([]);
-const isLoadingPinned = ref(false);
-const rateLimitedUntil = ref<number | null>(null);
-const rateLimitCountdown = ref(0);
-let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
+const channelId = computed(() => props.channel?.id);
+const isDmRef = computed(() => props.isDm);
 
-const isRateLimited = computed(() => rateLimitedUntil.value !== null && Date.now() < rateLimitedUntil.value);
+const { isRateLimited, sendError, startRateLimitCooldown } = useRateLimit();
 
-function startRateLimitCooldown(retryAfterSeconds: number): void {
-    rateLimitedUntil.value = Date.now() + retryAfterSeconds * 1000;
-    rateLimitCountdown.value = retryAfterSeconds;
-    sendError.value = `You're sending too many messages. Please wait ${retryAfterSeconds} seconds.`;
+const showSearch = shallowRef(false);
+const uploadingFiles = ref<UploadingFile[]>([]);
+const editingMessageId = shallowRef<number | null>(null);
+const editContent = shallowRef('');
+const emojiPickerMessageId = shallowRef<number | null>(null);
+const replyingToMessage = shallowRef<MessageData | null>(null);
 
-    if (rateLimitTimer) clearInterval(rateLimitTimer);
-    rateLimitTimer = setInterval(() => {
-        if (!rateLimitedUntil.value || Date.now() >= rateLimitedUntil.value) {
-            rateLimitedUntil.value = null;
-            rateLimitCountdown.value = 0;
-            sendError.value = null;
-            if (rateLimitTimer) {
-                clearInterval(rateLimitTimer);
-                rateLimitTimer = null;
-            }
-        } else {
-            rateLimitCountdown.value = Math.ceil((rateLimitedUntil.value - Date.now()) / 1000);
-            sendError.value = `You're sending too many messages. Please wait ${rateLimitCountdown.value}s.`;
+const activeStore = useActiveStore(isDmRef);
+const activeMessages = activeStore.messages;
+
+const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
+const virtualItemEls = shallowRef<Element[]>([]);
+
+const {
+    rowVirtualizer,
+    virtualItems,
+    totalSize,
+    isLoadingMore,
+    isVisible,
+    scrollToBottom,
+    resetToBottom,
+    handleScroll,
+} = useScrollManager(messagesContainer, activeMessages, virtualItemEls, async () => {
+    await activeStore.loadOlderMessages();
+    if (e2eeStore.isReady) {
+        await e2ee.lookupDecryptedCache(activeMessages.value);
+        const hasUnresolved = activeMessages.value.some((m) => m.decrypted_content === undefined && !m.decrypt_error);
+        if (hasUnresolved && channelId.value) {
+            const groupId = isDmRef.value ? `dm:${channelId.value}` : `channel:${channelId.value}`;
+            await e2ee.decryptGroupHistory(groupId);
+            await e2ee.lookupDecryptedCache(activeMessages.value);
         }
-    }, 1000);
-}
-
-function extractMentionMetadata(content: string): {
-    userIds: number[];
-    mentionEveryone: boolean;
-    mentionHere: boolean;
-} {
-    const mentionEveryone = /@everyone\b/.test(content);
-    const mentionHere = /@here\b/.test(content);
-
-    const userIds: number[] = [];
-    const matches = content.matchAll(/@(\w+)/g);
-    for (const match of matches) {
-        const name = match[1];
-        if (name === 'everyone' || name === 'here') continue;
-        const member = presenceStore.allMembers.find((m) => m.username?.toLowerCase() === name.toLowerCase());
-        if (member) {
-            userIds.push(member.id);
-        }
+        const chId = isDmRef.value ? undefined : channelId.value;
+        const dmId = isDmRef.value ? channelId.value : undefined;
+        await e2ee.decryptMessages(activeMessages.value, chId, dmId);
     }
+});
 
-    return { userIds: [...new Set(userIds)], mentionEveryone, mentionHere };
-}
+const typingIndicator = useTypingIndicator(
+    channelId,
+    isDmRef,
+    computed(() => currentUser.value?.id),
+);
+const { typingUsers, emitTyping } = typingIndicator;
 
-const activeMessages = computed(() => (props.isDm ? dmStore.messages : chatStore.messages));
-const activeAddMessage = (msg: MessageData) => (props.isDm ? dmStore.addMessage(msg) : chatStore.addMessage(msg));
-const activeUpdateMessage = (id: number, partial: Partial<MessageData>) =>
-    props.isDm ? dmStore.updateMessage(id, partial) : chatStore.updateMessage(id, partial);
-const activeRemoveMessage = (id: number) => (props.isDm ? dmStore.removeMessage(id) : chatStore.removeMessage(id));
-const activeLoadOlderMessages = () => (props.isDm ? dmStore.loadOlderMessages() : chatStore.loadOlderMessages());
+const {
+    pinnedMessages,
+    showPinnedMessages,
+    isLoadingPinned,
+    fetchAndDecryptPinned,
+    togglePinnedPanel,
+    togglePin,
+    unpinFromPanel,
+} = usePinnedMessages(channelId, isDmRef, activeMessages);
 
-const messagesContainer = ref<HTMLElement>();
-const editingMessageId = ref<number | null>(null);
-const editContent = ref('');
-const emojiPickerMessageId = ref<number | null>(null);
-const replyingToMessage = ref<MessageData | null>(null);
-const isLoadingMore = ref(false);
-const userIsNearBottom = ref(true);
-
-const isStoreLoadingMessages = computed(() => (props.isDm ? dmStore.isLoadingMessages : chatStore.isLoadingMessages));
-
-const typingUsers = reactive(new Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>());
-let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+useChannelRealtime({
+    channelId,
+    isDm: isDmRef,
+    messages: activeMessages,
+    isLoadingMessages: activeStore.isLoadingMessages,
+    addMessage: activeStore.addMessage,
+    updateMessage: activeStore.updateMessage,
+    removeMessage: activeStore.removeMessage,
+    scrollToBottom,
+    resetToBottom,
+    handleTypingEvent: typingIndicator.handleTypingEvent,
+    clearTypingUser: typingIndicator.clearTypingUser,
+    clearAll: typingIndicator.clearAll,
+    pinnedMessages,
+    showPinnedMessages,
+    fetchAndDecryptPinned,
+});
 
 const handleClickOutside = (e: MouseEvent) => {
     if (emojiPickerMessageId.value !== null) {
@@ -140,380 +147,9 @@ const handleClickOutside = (e: MouseEvent) => {
     }
 };
 
-const checkIfNearBottom = () => {
-    if (!messagesContainer.value) return true;
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
-    return scrollHeight - scrollTop - clientHeight < 150;
-};
-
-let scrollRetryTimer: ReturnType<typeof setInterval> | null = null;
-
-const cancelScrollRetry = () => {
-    if (scrollRetryTimer !== null) {
-        clearInterval(scrollRetryTimer);
-        scrollRetryTimer = null;
-    }
-};
-
-const scrollToBottom = (force = false) => {
-    cancelScrollRetry();
-
-    const doScroll = () => {
-        if (!messagesContainer.value) return;
-        if (!force && !userIsNearBottom.value) return;
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-    };
-
-    nextTick(() => {
-        doScroll();
-    });
-
-    if (force) {
-        let elapsed = 0;
-        scrollRetryTimer = setInterval(() => {
-            elapsed += 50;
-            doScroll();
-            if (elapsed >= 500) {
-                cancelScrollRetry();
-            }
-        }, 50);
-    }
-};
-
-let currentChannelListener: string | null = null;
-
-let groupReadyPromise: Promise<void> | null = null;
-
-let pendingDecryptRetryTimer: ReturnType<typeof setInterval> | null = null;
-
-const clearPendingDecryptRetry = () => {
-    if (pendingDecryptRetryTimer !== null) {
-        clearInterval(pendingDecryptRetryTimer);
-        pendingDecryptRetryTimer = null;
-    }
-};
-
-const joinChannel = (channelId: number, isDm: boolean = false) => {
-    leaveChannel();
-    const echo = getEcho();
-    if (!echo) return;
-
-    if (e2eeStore.isReady) {
-        const groupId = isDm ? `dm:${channelId}` : `channel:${channelId}`;
-        const type = isDm ? 'dm' : 'channel';
-        groupReadyPromise = e2ee
-            .ensureGroupReady(groupId, channelId, type)
-            .then(() => {})
-            .catch(() => {});
-    } else {
-        groupReadyPromise = null;
-    }
-
-    currentChannelListener = isDm ? `direct-message.${channelId}` : `channel.${channelId}`;
-
-    echo.join(currentChannelListener)
-        .listen('MessageSent', async (data: { message: MessageData }) => {
-            const senderId = data.message.user.id;
-            const existingTyping = typingUsers.get(senderId);
-            if (existingTyping) {
-                clearTimeout(existingTyping.timeout);
-                typingUsers.delete(senderId);
-            }
-
-            if (senderId === currentUser.value?.id) {
-                let msgSenderDeviceId = data.message.sender_device_id ?? '';
-                if (!msgSenderDeviceId) {
-                    try {
-                        const parsed = JSON.parse(data.message.content);
-                        msgSenderDeviceId = parsed.sender_device_id ?? '';
-                    } catch (error) {
-                        console.error(error);
-                    }
-                }
-                const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
-
-                if (!msgSenderDeviceId || !ourDeviceId || msgSenderDeviceId === ourDeviceId) {
-                    return;
-                }
-
-                if (e2eeStore.isReady) {
-                    try {
-                        const chId = props.isDm ? undefined : props.channel?.id;
-                        const dmId = props.isDm ? props.channel?.id : undefined;
-                        await e2ee.decryptMessageQueued(data.message, chId, dmId);
-                    } catch {
-                        if (!data.message.decrypted_content) {
-                            data.message.decrypted_content = '[Message sent from another device]';
-                        }
-                    }
-                } else {
-                    data.message.decrypted_content = '[Message sent from another device]';
-                }
-
-                activeAddMessage(data.message);
-                scrollToBottom();
-                return;
-            }
-
-            if (e2eeStore.isReady) {
-                const chId = props.isDm ? undefined : props.channel?.id;
-                const dmId = props.isDm ? props.channel?.id : undefined;
-                await e2ee.decryptMessageQueued(data.message, chId, dmId);
-            }
-
-            activeAddMessage(data.message);
-            scrollToBottom();
-        })
-        .listen('MessageEdited', async (data: { message: MessageData }) => {
-            const update: Partial<MessageData> = {
-                content: data.message.content,
-                is_edited: true,
-                edited_at: data.message.edited_at,
-            };
-
-            if (e2eeStore.isReady) {
-                const ourDeviceId = await e2ee.getDeviceId();
-                if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
-                    const temp: MessageData[] = [
-                        { ...data.message, decrypted_content: undefined, decrypt_error: false },
-                    ];
-                    await e2ee.lookupDecryptedCache(temp);
-                    if (temp[0].decrypted_content) {
-                        update.decrypted_content = temp[0].decrypted_content;
-                        update.decrypt_error = false;
-                    } else {
-                        update.decrypt_error = true;
-                    }
-                } else {
-                    try {
-                        const chId = props.isDm ? undefined : props.channel?.id;
-                        const dmId = props.isDm ? props.channel?.id : undefined;
-                        const plaintext = await e2ee.decrypt(
-                            data.message.content,
-                            chId,
-                            dmId,
-                            data.message.id,
-                            data.message.user?.username,
-                        );
-                        update.decrypted_content = plaintext;
-                        update.decrypt_error = false;
-                    } catch {
-                        update.decrypt_error = true;
-                    }
-                }
-            }
-
-            activeUpdateMessage(data.message.id, update);
-        })
-        .listen('MessageDeleted', (data: { message_id: number }) => {
-            activeRemoveMessage(data.message_id);
-            e2ee.removeFromSearchIndex(data.message_id).catch(() => {});
-        })
-        .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
-            const msg = activeMessages.value.find((m) => m.id === data.reaction.message_id);
-            if (msg) {
-                if (!msg.reactions) msg.reactions = [];
-                if (data.added) {
-                    const exists = msg.reactions.some(
-                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
-                    );
-                    if (!exists) {
-                        msg.reactions.push(data.reaction);
-                    }
-                } else {
-                    const idx = msg.reactions.findIndex(
-                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
-                    );
-                    if (idx !== -1) {
-                        msg.reactions.splice(idx, 1);
-                    }
-                }
-            }
-        })
-        .listen('MessagePinned', (data: { message_id: number; pinned_by?: { id: number; username: string } }) => {
-            const msg = activeMessages.value.find((m) => m.id === data.message_id);
-            if (msg) {
-                msg.is_pinned = true;
-                msg.pinned_at = new Date().toISOString();
-            }
-            if (showPinnedMessages.value) {
-                fetchPinnedMessages().then(async () => {
-                    if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
-                        const chId = props.isDm ? undefined : props.channel?.id;
-                        const dmId = props.isDm ? props.channel?.id : undefined;
-                        e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
-                    }
-                });
-            }
-        })
-        .listen('MessageUnpinned', (data: { message_id: number }) => {
-            const msg = activeMessages.value.find((m) => m.id === data.message_id);
-            if (msg) {
-                msg.is_pinned = false;
-                msg.pinned_at = null;
-            }
-            const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === data.message_id);
-            if (pinnedIdx !== -1) pinnedMessages.value.splice(pinnedIdx, 1);
-        })
-        .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
-            if (data.user_id === currentUser.value?.id) return;
-
-            if (data.is_typing) {
-                const existing = typingUsers.get(data.user_id);
-                if (existing) clearTimeout(existing.timeout);
-
-                const timeout = setTimeout(() => {
-                    typingUsers.delete(data.user_id);
-                }, 3000);
-
-                typingUsers.set(data.user_id, {
-                    username: data.username,
-                    timeout,
-                });
-            } else {
-                const existing = typingUsers.get(data.user_id);
-                if (existing) clearTimeout(existing.timeout);
-                typingUsers.delete(data.user_id);
-            }
-        })
-        .listen(
-            'MlsMessageReceived',
-            async (data: { group_id: string; message_type: string; epoch: number; sender_device_id: string }) => {
-                if (e2eeStore.isReady) {
-                    try {
-                        await e2ee.handleMlsMessage(data.group_id, data);
-                        const chId = props.isDm ? undefined : props.channel?.id;
-                        const dmId = props.isDm ? props.channel?.id : undefined;
-                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
-                    } catch (error) {
-                        console.error(error);
-                    }
-                }
-            },
-        )
-        .listen(
-            'ThreadUpdated',
-            (data: {
-                message_id: number;
-                thread: { id: number; message_count: number; last_message_at: string };
-                last_reply?: {
-                    id: number;
-                    content: string;
-                    user: { id: number; username: string; avatar_path: string | null };
-                    created_at: string;
-                    sender_device_id?: string;
-                };
-            }) => {
-                const msg = activeMessages.value.find((m) => m.id === data.message_id);
-                if (msg) {
-                    const threadPreview: ThreadPreview = {
-                        id: data.thread.id,
-                        message_count: data.thread.message_count,
-                        last_message_at: data.thread.last_message_at,
-                        is_following: msg.thread?.is_following,
-                    };
-                    if (data.last_reply) {
-                        threadPreview.last_reply = data.last_reply;
-                    }
-                    msg.thread = threadPreview;
-                }
-            },
-        );
-};
-
-const leaveChannel = () => {
-    clearPendingDecryptRetry();
-    groupReadyPromise = null;
-    if (currentChannelListener) {
-        const echo = getEcho();
-        if (echo) {
-            echo.leave(currentChannelListener);
-        }
-        currentChannelListener = null;
-    }
-    typingUsers.clear();
-};
-
-watch(
-    () => props.channel?.id,
-    (newId, oldId) => {
-        if (newId) {
-            joinChannel(newId, props.isDm);
-            userIsNearBottom.value = true;
-            showPinnedMessages.value = false;
-            pinnedMessages.value = [];
-            threadStore.closeThread();
-
-            if (oldId !== undefined) {
-                scrollToBottom(true);
-            }
-        }
-    },
-    { immediate: true },
-);
-
-watch(isStoreLoadingMessages, async (loading, wasLoading) => {
-    if (wasLoading && !loading) {
-        if (e2eeStore.isReady && props.channel?.id) {
-            await e2ee.lookupDecryptedCache(activeMessages.value);
-
-            const hasUnresolved = activeMessages.value.some(
-                (m) => m.decrypted_content === undefined && !m.decrypt_error,
-            );
-
-            if (hasUnresolved) {
-                if (groupReadyPromise) {
-                    await groupReadyPromise;
-                    groupReadyPromise = null;
-                }
-
-                const stillUnresolved = activeMessages.value.some(
-                    (m) => m.decrypted_content === undefined && !m.decrypt_error,
-                );
-                if (stillUnresolved) {
-                    const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-                    await e2ee.decryptGroupHistory(groupId);
-                    await e2ee.lookupDecryptedCache(activeMessages.value);
-                }
-
-                const channelIdForDecrypt = props.isDm ? undefined : props.channel.id;
-                const dmGroupIdForDecrypt = props.isDm ? props.channel.id : undefined;
-                await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
-
-                clearPendingDecryptRetry();
-                {
-                    let retryCount = 0;
-                    pendingDecryptRetryTimer = setInterval(async () => {
-                        retryCount++;
-                        const hasPending = activeMessages.value.some(
-                            (m) => m.decrypted_content === undefined && !m.decrypt_error,
-                        );
-                        if (!hasPending || retryCount > 3) {
-                            clearPendingDecryptRetry();
-                            return;
-                        }
-                        if (props.channel?.id) {
-                            const chId = props.isDm ? undefined : props.channel.id;
-                            const dmId = props.isDm ? props.channel.id : undefined;
-                            await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
-                        }
-                    }, 15_000);
-                }
-            }
-        }
-        userIsNearBottom.value = true;
-        scrollToBottom(true);
-    }
+watch(activeStore.isLoadingMessages, (loading) => {
+    if (loading) isVisible.value = false;
 });
-
-watch(
-    () => activeMessages.value.length,
-    () => {
-        if (!isLoadingMore.value && !isStoreLoadingMessages.value) {
-            scrollToBottom();
-        }
-    },
-);
 
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
@@ -521,59 +157,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    leaveChannel();
-    cancelScrollRetry();
-    clearPendingDecryptRetry();
-    if (rateLimitTimer) clearInterval(rateLimitTimer);
     document.removeEventListener('click', handleClickOutside);
 });
 
-let loadCooldown = false;
-const handleScroll = async () => {
-    if (!messagesContainer.value) return;
-
-    userIsNearBottom.value = checkIfNearBottom();
-
-    if (isLoadingMore.value || loadCooldown) return;
-
-    if (messagesContainer.value.scrollTop < 100) {
-        isLoadingMore.value = true;
-        const prevHeight = messagesContainer.value.scrollHeight;
-        const prevScrollTop = messagesContainer.value.scrollTop;
-        await activeLoadOlderMessages();
-
-        if (e2eeStore.isReady) {
-            await e2ee.lookupDecryptedCache(activeMessages.value);
-
-            const hasUnresolved = activeMessages.value.some(
-                (m) => m.decrypted_content === undefined && !m.decrypt_error,
-            );
-            if (hasUnresolved && props.channel?.id) {
-                const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-                await e2ee.decryptGroupHistory(groupId);
-                await e2ee.lookupDecryptedCache(activeMessages.value);
-            }
-
-            const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
-            const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
-            await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
-        }
-
-        await nextTick();
-        if (messagesContainer.value) {
-            const newHeight = messagesContainer.value.scrollHeight;
-            messagesContainer.value.scrollTop = newHeight - prevHeight + prevScrollTop;
-        }
-        isLoadingMore.value = false;
-
-        loadCooldown = true;
-        setTimeout(() => {
-            loadCooldown = false;
-        }, 500);
-    }
-};
-
-const sendMessage = async (content: string) => {
+const sendMessage = async (content: string, files: StagedFile[] = []) => {
     if (!props.channel?.id) return;
 
     if (isRateLimited.value) {
@@ -584,18 +171,199 @@ const sendMessage = async (content: string) => {
 
     const mentionMeta = extractMentionMetadata(content);
 
-    let messageContent = content;
-
     if (!e2eeStore.isReady) {
         sendError.value = 'Encryption is not set up. Please complete E2EE setup before sending messages.';
         return;
     }
 
+    if (files.length > 0) {
+        uploadingFiles.value = files.map((f) =>
+            UploadingFileSchema.parse({
+                id: f.id,
+                name: f.file.name,
+                size: f.file.size,
+                progress: 0,
+                status: 'preparing' as const,
+                preview: f.preview,
+            }),
+        );
+    }
+
+    const attachmentMetas: EncryptedAttachmentMeta[] = [];
+    const attachmentIds: string[] = [];
+
+    for (const staged of files) {
+        try {
+            const isImage = staged.file.type.startsWith('image/');
+            const isVideo = staged.file.type.startsWith('video/');
+
+            const presignEndpoint = props.isDm
+                ? `/direct-messages/${props.channel.id}/attachments/presign`
+                : `/channels/${props.channel.id}/attachments/presign`;
+
+            const presignResponse = await api.post(presignEndpoint, {
+                file_size: staged.file.size,
+                has_thumbnail: isImage || isVideo,
+            });
+
+            const { attachment_id, upload_url, upload_headers, thumbnail_upload_url, thumbnail_upload_headers } =
+                presignResponse.data;
+
+            {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) uploadingFiles.value[idx].progress = 5;
+            }
+
+            {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) {
+                    uploadingFiles.value[idx].status = 'encrypting';
+                    uploadingFiles.value[idx].progress = 15;
+                }
+            }
+            const fileBuffer = await staged.file.arrayBuffer();
+            const fileDataBase64 = btoa(
+                new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''),
+            );
+            const encrypted = await window.api.attachments.encrypt(fileDataBase64);
+
+            {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) {
+                    uploadingFiles.value[idx].status = 'uploading';
+                    uploadingFiles.value[idx].progress = 30;
+                }
+            }
+            const binaryData = Uint8Array.from(atob(encrypted.encrypted), (c) => c.charCodeAt(0));
+            const uploadResponse = await uploadWithProgress(
+                upload_url,
+                binaryData,
+                {
+                    'Content-Type': 'application/octet-stream',
+                    ...(upload_headers ?? {}),
+                },
+                (progress) => {
+                    const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                    if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.6);
+                },
+            );
+
+            if (!uploadResponse.ok) {
+                throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+            }
+
+            let thumbnailMeta: Partial<EncryptedAttachmentMeta> = {};
+            if (isImage && thumbnail_upload_url) {
+                const thumbResult = await window.api.attachments.generateThumbnail({
+                    fileDataBase64,
+                    mimeType: staged.file.type,
+                });
+
+                if (thumbResult) {
+                    const thumbBinary = Uint8Array.from(atob(thumbResult.thumbnailEncrypted), (c) => c.charCodeAt(0));
+                    const thumbResponse = await fetch(thumbnail_upload_url, {
+                        method: 'PUT',
+                        body: thumbBinary,
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            ...(thumbnail_upload_headers ?? {}),
+                        },
+                    });
+
+                    if (!thumbResponse.ok) {
+                        throw new Error(`Thumbnail upload failed with status ${thumbResponse.status}`);
+                    }
+
+                    thumbnailMeta = {
+                        thumbnail_key: thumbResult.thumbnailKey,
+                        thumbnail_iv: thumbResult.thumbnailIv,
+                        thumbnail_width: thumbResult.width,
+                        thumbnail_height: thumbResult.height,
+                    };
+                }
+            }
+
+            if (isVideo && thumbnail_upload_url) {
+                try {
+                    const videoThumb = await window.api.attachments.generateVideoThumbnail({
+                        fileDataBase64,
+                        mimeType: staged.file.type,
+                    });
+                    if (!videoThumb) throw new Error('ffmpeg returned no thumbnail');
+                    const thumbBase64 = videoThumb.dataUrl.split(',')[1];
+                    const thumbEncrypted = await window.api.attachments.encrypt(thumbBase64);
+
+                    const thumbBinary = Uint8Array.from(atob(thumbEncrypted.encrypted), (c) => c.charCodeAt(0));
+                    const thumbResponse = await fetch(thumbnail_upload_url, {
+                        method: 'PUT',
+                        body: thumbBinary,
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            ...(thumbnail_upload_headers ?? {}),
+                        },
+                    });
+
+                    if (!thumbResponse.ok) {
+                        throw new Error(`Video thumbnail upload failed with status ${thumbResponse.status}`);
+                    }
+
+                    thumbnailMeta = {
+                        thumbnail_key: thumbEncrypted.key,
+                        thumbnail_iv: thumbEncrypted.iv,
+                        thumbnail_width: videoThumb.width,
+                        thumbnail_height: videoThumb.height,
+                    };
+                } catch (err) {
+                    console.warn('Video thumbnail generation failed, continuing without thumbnail:', err);
+                }
+            }
+
+            {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) {
+                    uploadingFiles.value[idx].status = 'finishing';
+                    uploadingFiles.value[idx].progress = 95;
+                }
+            }
+            await api.post(`/attachments/${attachment_id}/confirm`);
+
+            attachmentIds.push(attachment_id);
+            attachmentMetas.push({
+                id: attachment_id,
+                key: encrypted.key,
+                iv: encrypted.iv,
+                file_name: staged.file.name,
+                mime_type: staged.file.type || 'application/octet-stream',
+                size: staged.file.size,
+                ...thumbnailMeta,
+                ...(staged.preview ? { thumbnail_data_url: staged.preview } : {}),
+            });
+        } catch (err) {
+            console.error('Failed to upload attachment:', err);
+            sendError.value = `Failed to upload ${staged.file.name}. Please try again.`;
+            uploadingFiles.value = [];
+            return;
+        }
+    }
+
+    uploadingFiles.value = [];
+
+    let messageContent = content;
+
+    const envelopeMetas: EncryptedAttachmentMeta[] | undefined =
+        attachmentMetas.length > 0
+            ? attachmentMetas.map((meta) => {
+                  const copy = { ...meta };
+                  delete copy.thumbnail_data_url;
+                  return copy;
+              })
+            : undefined;
+
     try {
         if (props.isDm) {
-            messageContent = await e2ee.encryptForDM(props.channel.id, content);
+            messageContent = await e2ee.encryptForDM(props.channel.id, content, envelopeMetas);
         } else {
-            messageContent = await e2ee.encryptForChannel(props.channel.id, content);
+            messageContent = await e2ee.encryptForChannel(props.channel.id, content, envelopeMetas);
         }
     } catch {
         sendError.value = 'Failed to encrypt message. Please try again.';
@@ -605,7 +373,7 @@ const sendMessage = async (content: string) => {
     let historyCiphertext: string | undefined;
     try {
         const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-        historyCiphertext = await e2ee.encryptHistory(groupId, content);
+        historyCiphertext = await e2ee.encryptHistory(groupId, content, envelopeMetas);
     } catch {
         // History encryption is best-effort; don't block the message
     }
@@ -619,9 +387,14 @@ const sendMessage = async (content: string) => {
         mention_here?: boolean;
         history_ciphertext?: string;
         epoch?: number;
+        attachment_ids?: string[];
     } = {
         message_bytes: messageContent,
     };
+
+    if (attachmentIds.length > 0) {
+        data.attachment_ids = attachmentIds;
+    }
 
     {
         const senderDeviceId = await e2ee.getDeviceId();
@@ -661,15 +434,16 @@ const sendMessage = async (content: string) => {
         user: {
             id: currentUser.value!.id,
             username: (currentUser.value as any)?.username ?? currentUser.value!.name,
-            avatar_path: null,
+            avatar_urls: null,
         },
         reactions: [],
         created_at: new Date().toISOString(),
         decrypted_content: content,
+        decrypted_attachments: attachmentMetas.length > 0 ? attachmentMetas : undefined,
     };
 
-    activeAddMessage(optimisticMessage);
-    scrollToBottom(true);
+    activeStore.addMessage(optimisticMessage);
+    nextTick(() => scrollToBottom(true));
     replyingToMessage.value = null;
 
     try {
@@ -678,18 +452,24 @@ const sendMessage = async (content: string) => {
         if (response.data) {
             const serverMsg = response.data as MessageData;
             serverMsg.decrypted_content = content;
-            e2ee.cacheDecryptedContent(serverMsg.id, content, {
-                conversationType: props.isDm ? 'dm' : 'channel',
-                conversationId: props.channel!.id,
-                userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
-            }).catch(() => {});
+            serverMsg.decrypted_attachments = attachmentMetas.length > 0 ? attachmentMetas : undefined;
+            e2ee.cacheDecryptedContent(
+                serverMsg.id,
+                content,
+                {
+                    conversationType: props.isDm ? 'dm' : 'channel',
+                    conversationId: props.channel!.id,
+                    userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+                },
+                envelopeMetas,
+            ).catch(() => {});
             const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
             if (idx !== -1) {
                 activeMessages.value.splice(idx, 1, serverMsg);
             }
         }
     } catch (error: any) {
-        activeRemoveMessage(optimisticMessage.id);
+        activeStore.removeMessage(optimisticMessage.id);
 
         if (error?.response?.status === 429) {
             const retryAfter = parseInt(error.response.headers?.['retry-after'] ?? '60', 10);
@@ -732,9 +512,17 @@ const saveEdit = async (message: MessageData) => {
 
         try {
             if (props.isDm) {
-                contentToSend = await e2ee.encryptForDM(props.channel.id, editContent.value);
+                contentToSend = await e2ee.encryptForDM(
+                    props.channel.id,
+                    editContent.value,
+                    message.decrypted_attachments,
+                );
             } else {
-                contentToSend = await e2ee.encryptForChannel(props.channel.id, editContent.value);
+                contentToSend = await e2ee.encryptForChannel(
+                    props.channel.id,
+                    editContent.value,
+                    message.decrypted_attachments,
+                );
             }
         } catch {
             return;
@@ -743,7 +531,7 @@ const saveEdit = async (message: MessageData) => {
         let historyCiphertext: string | undefined;
         try {
             const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-            historyCiphertext = await e2ee.encryptHistory(groupId, editContent.value);
+            historyCiphertext = await e2ee.encryptHistory(groupId, editContent.value, message.decrypted_attachments);
         } catch {
             // Best-effort
         }
@@ -753,16 +541,21 @@ const saveEdit = async (message: MessageData) => {
             sender_device_id: await e2ee.getDeviceId(),
             ...(historyCiphertext && { history_ciphertext: historyCiphertext }),
         });
-        activeUpdateMessage(message.id, {
+        activeStore.updateMessage(message.id, {
             is_edited: true,
             edited_at: new Date().toISOString(),
             decrypted_content: editContent.value,
         });
-        e2ee.cacheDecryptedContent(message.id, editContent.value, {
-            conversationType: props.isDm ? 'dm' : 'channel',
-            conversationId: props.channel!.id,
-            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
-        }).catch(() => {});
+        e2ee.cacheDecryptedContent(
+            message.id,
+            editContent.value,
+            {
+                conversationType: props.isDm ? 'dm' : 'channel',
+                conversationId: props.channel!.id,
+                userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+            },
+            message.decrypted_attachments,
+        ).catch(() => {});
         cancelEdit();
     } catch (error) {
         console.error('Failed to edit message:', error);
@@ -778,7 +571,7 @@ const deleteMessage = async (message: MessageData) => {
 
     try {
         await api.delete(endpoint);
-        activeRemoveMessage(message.id);
+        activeStore.removeMessage(message.id);
         e2ee.removeFromSearchIndex(message.id).catch(() => {});
     } catch (error) {
         console.error('Failed to delete message:', error);
@@ -814,100 +607,6 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
     } catch (error) {
         console.error('Failed to toggle reaction:', error);
     }
-};
-
-const fetchPinnedMessages = async () => {
-    if (!props.channel?.id) return;
-    isLoadingPinned.value = true;
-    try {
-        const endpoint = props.isDm
-            ? `/direct-messages/${props.channel.id}/pins`
-            : `/channels/${props.channel.id}/pins`;
-        const response = await api.get(endpoint);
-        pinnedMessages.value = response.data ?? [];
-    } catch (error) {
-        console.error('Failed to fetch pinned messages:', error);
-    } finally {
-        isLoadingPinned.value = false;
-    }
-};
-
-const togglePinnedPanel = async () => {
-    showPinnedMessages.value = !showPinnedMessages.value;
-    if (showPinnedMessages.value) {
-        await fetchPinnedMessages();
-        if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
-            const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
-            const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
-            await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
-        }
-    }
-};
-
-const togglePin = async (message: MessageData) => {
-    if (!props.channel?.id) return;
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages/${message.id}/pin`
-        : `/channels/${props.channel.id}/messages/${message.id}/pin`;
-
-    try {
-        if (message.is_pinned) {
-            await api.delete(endpoint);
-            message.is_pinned = false;
-            message.pinned_at = null;
-            const idx = pinnedMessages.value.findIndex((m) => m.id === message.id);
-            if (idx !== -1) pinnedMessages.value.splice(idx, 1);
-        } else {
-            await api.post(endpoint);
-            message.is_pinned = true;
-            message.pinned_at = new Date().toISOString();
-            if (showPinnedMessages.value) {
-                await fetchPinnedMessages();
-                if (e2eeStore.isReady) {
-                    const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
-                    const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
-                    await e2ee.decryptMessages(pinnedMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Failed to toggle pin:', error);
-    }
-};
-
-const unpinFromPanel = async (messageId: number) => {
-    if (!props.channel?.id) return;
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages/${messageId}/pin`
-        : `/channels/${props.channel.id}/messages/${messageId}/pin`;
-
-    try {
-        await api.delete(endpoint);
-        const idx = pinnedMessages.value.findIndex((m) => m.id === messageId);
-        if (idx !== -1) pinnedMessages.value.splice(idx, 1);
-        const msg = activeMessages.value.find((m) => m.id === messageId);
-        if (msg) {
-            msg.is_pinned = false;
-            msg.pinned_at = null;
-        }
-    } catch (error) {
-        console.error('Failed to unpin message:', error);
-    }
-};
-
-const emitTyping = () => {
-    if (!props.channel?.id) return;
-    if (typingDebounceTimer) return;
-
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/typing`
-        : `/channels/${props.channel.id}/typing`;
-
-    api.post(endpoint).catch(() => {});
-
-    typingDebounceTimer = setTimeout(() => {
-        typingDebounceTimer = null;
-    }, 2000);
 };
 </script>
 
@@ -969,8 +668,13 @@ const emitTyping = () => {
             <div
                 ref="messagesContainer"
                 class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+                :class="{ invisible: !isVisible }"
                 @scroll="handleScroll"
             >
+                <div v-if="isLoadingMore" class="flex justify-center py-2">
+                    <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"></div>
+                </div>
+
                 <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
                     <div class="text-muted-foreground text-center">
                         <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
@@ -982,40 +686,55 @@ const emitTyping = () => {
                     </div>
                 </div>
 
-                <div v-else class="space-y-1">
-                    <div v-if="isLoadingMore" class="flex justify-center py-2">
+                <div v-else :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
+                    <div
+                        :style="{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
+                        }"
+                    >
                         <div
-                            class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
-                        ></div>
+                            v-for="vRow in virtualItems"
+                            :key="vRow.index"
+                            :data-index="vRow.index"
+                            :ref="
+                                (el) => {
+                                    if (el) rowVirtualizer.measureElement(el as Element);
+                                }
+                            "
+                        >
+                            <Message
+                                :message="activeMessages[vRow.index]"
+                                :is-editing="editingMessageId === activeMessages[vRow.index].id"
+                                :edit-content="editContent"
+                                :show-emoji-picker="emojiPickerMessageId === activeMessages[vRow.index].id"
+                                :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                                :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
+                                :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                                :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                                :show-thread-button="!isDm"
+                                @start-edit="startEdit(activeMessages[vRow.index])"
+                                @cancel-edit="cancelEdit"
+                                @save-edit="saveEdit(activeMessages[vRow.index])"
+                                @delete="deleteMessage(activeMessages[vRow.index])"
+                                @reply="startReply(activeMessages[vRow.index])"
+                                @open-thread="openThread(activeMessages[vRow.index])"
+                                @toggle-pin="togglePin(activeMessages[vRow.index])"
+                                @toggle-reaction="(emoji) => toggleReaction(activeMessages[vRow.index], emoji)"
+                                @toggle-emoji-picker="
+                                    emojiPickerMessageId =
+                                        emojiPickerMessageId === activeMessages[vRow.index].id
+                                            ? null
+                                            : activeMessages[vRow.index].id
+                                "
+                                @update-edit-content="editContent = $event"
+                            />
+                        </div>
                     </div>
-
-                    <Message
-                        v-for="message in activeMessages"
-                        :key="message.id"
-                        :message="message"
-                        :is-editing="editingMessageId === message.id"
-                        :edit-content="editContent"
-                        :show-emoji-picker="emojiPickerMessageId === message.id"
-                        :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                        :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
-                        :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                        :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                        :show-thread-button="!isDm"
-                        @start-edit="startEdit(message)"
-                        @cancel-edit="cancelEdit"
-                        @save-edit="saveEdit(message)"
-                        @delete="deleteMessage(message)"
-                        @reply="startReply(message)"
-                        @open-thread="openThread(message)"
-                        @toggle-pin="togglePin(message)"
-                        @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
-                        @toggle-emoji-picker="
-                            emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
-                        "
-                        @update-edit-content="editContent = $event"
-                    />
                 </div>
-                <div ref="bottomSentinel" class="h-0 w-0" />
             </div>
 
             <TypingIndicator :typing-users="typingUsers" />
@@ -1035,6 +754,8 @@ const emitTyping = () => {
                 :channel-name="channel?.name"
                 :replying-to="replyingToMessage"
                 :disabled="isRateLimited"
+                :can-attach-files="isDm || channelPermissions?.canAttachFiles !== false"
+                :uploading-files="uploadingFiles"
                 @send="sendMessage"
                 @typing="emitTyping"
                 @cancel-reply="replyingToMessage = null"

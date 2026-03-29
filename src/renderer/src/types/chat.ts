@@ -23,10 +23,40 @@ export interface ChannelPermissions {
     canMentionEveryone: boolean;
 }
 
+export interface EncryptedAttachmentMeta {
+    id: string;
+    key: string; // base64 AES-256-GCM key
+    iv: string; // base64 IV
+    file_name: string;
+    mime_type: string;
+    size: number;
+    thumbnail_key?: string;
+    thumbnail_iv?: string;
+    thumbnail_width?: number;
+    thumbnail_height?: number;
+    thumbnail_data_url?: string; // local blob URL for optimistic rendering
+}
+
+export interface ServerAttachment {
+    id: string;
+    storage_path: string;
+    encrypted_size: number;
+    thumbnail_path: string | null;
+    thumbnail_size: number | null;
+    status: string;
+}
+
+export interface AvatarUrls {
+    thumb: string;
+    small: string;
+    medium: string;
+    original: string;
+}
+
 export interface MessageUser {
     id: number;
     username: string;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
 }
 
 export interface MessageReaction {
@@ -79,6 +109,8 @@ export interface MessageData {
     decrypted_content?: string;
     decrypt_error?: boolean;
     decrypt_attempts?: number;
+    encrypted_attachments?: ServerAttachment[];
+    decrypted_attachments?: EncryptedAttachmentMeta[];
 }
 
 export interface MessagesResponse {
@@ -94,7 +126,7 @@ export interface DirectMessageThread {
     other_user: {
         id: number;
         username: string;
-        avatar_path: string | null;
+        avatar_urls: AvatarUrls | null;
     };
     last_message?: {
         content: string;
@@ -106,12 +138,12 @@ export interface Mention {
     id: number;
     username: string;
     display_name: string;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
 }
 
 export interface VoiceChannelParticipant {
     id: number;
     username: string;
     display_name: string;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
 }

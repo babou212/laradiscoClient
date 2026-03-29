@@ -36,7 +36,7 @@ type Member = {
     name: string;
     username: string;
     email: string;
-    avatar_path: string | null;
+    avatar_urls: { thumb: string; small: string; medium: string } | null;
     display_name: string;
     roles: MemberRole[];
 };
@@ -163,7 +163,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </div>
 
             <div class="p-6">
-                <!-- Error banner -->
                 <div
                     v-if="apiError"
                     class="border-destructive/50 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm"
@@ -243,7 +242,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </div>
         </div>
 
-        <!-- Assign Role Dialog -->
         <Dialog v-model:open="showRoleDialog">
             <DialogContent class="sm:max-w-sm">
                 <DialogHeader>
@@ -254,7 +252,6 @@ function isDefaultRole(role: MemberRole): boolean {
                     </DialogDescription>
                 </DialogHeader>
 
-                <!-- Error in dialog -->
                 <div
                     v-if="roleError"
                     class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
@@ -284,7 +281,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </DialogContent>
         </Dialog>
 
-        <!-- Remove Role Dialog -->
         <Dialog v-model:open="showRemoveRoleDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -296,7 +292,6 @@ function isDefaultRole(role: MemberRole): boolean {
                     </DialogDescription>
                 </DialogHeader>
 
-                <!-- Error in dialog -->
                 <div
                     v-if="roleError"
                     class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"

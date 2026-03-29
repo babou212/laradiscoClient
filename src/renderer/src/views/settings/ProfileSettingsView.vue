@@ -4,6 +4,8 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import InputError from '@/components/InputError.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import AvatarCropDialog from '@/components/ui/AvatarCropDialog.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -19,8 +21,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 
 const authStore = useAuthStore();
+const avatarStore = useAvatarStore();
+const userNamesStore = useUserNamesStore();
 const router = useRouter();
 
 const name = ref('');
@@ -34,12 +40,49 @@ const deleteErrors = ref<Record<string, string>>({});
 const deleteProcessing = ref(false);
 const showDeleteDialog = ref(false);
 
+const showAvatarDialog = ref(false);
+const avatarUploading = ref(false);
+const avatarDeleting = ref(false);
+
 onMounted(() => {
     if (authStore.user) {
         name.value = authStore.user.name;
         email.value = authStore.user.email;
     }
 });
+
+function userInitials(): string {
+    const n = authStore.user?.name ?? '';
+    return n
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+}
+
+async function onAvatarSave(blob: Blob) {
+    avatarUploading.value = true;
+    try {
+        await avatarStore.uploadAvatar(blob);
+        showAvatarDialog.value = false;
+    } catch (err: any) {
+        console.error('Avatar upload failed:', err);
+    } finally {
+        avatarUploading.value = false;
+    }
+}
+
+async function deleteAvatar() {
+    avatarDeleting.value = true;
+    try {
+        await avatarStore.deleteAvatar();
+    } catch (err: any) {
+        console.error('Avatar delete failed:', err);
+    } finally {
+        avatarDeleting.value = false;
+    }
+}
 
 async function updateProfile() {
     processing.value = true;
@@ -51,6 +94,7 @@ async function updateProfile() {
         });
         if (response.data) {
             authStore.user = { ...authStore.user!, ...response.data };
+            userNamesStore.setDisplayName(authStore.user!.id, authStore.user!.name || authStore.user!.username);
         }
         recentlySuccessful.value = true;
         setTimeout(() => (recentlySuccessful.value = false), 3000);
@@ -88,7 +132,41 @@ async function deleteAccount() {
 
 <template>
     <div class="space-y-6">
-        <!-- Profile Information Card -->
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
+                <h2 class="text-lg font-semibold">Avatar</h2>
+                <p class="text-muted-foreground mt-1 text-sm">Your profile picture visible to other users</p>
+            </div>
+
+            <div class="flex items-center gap-6 p-6">
+                <Avatar class="h-20 w-20">
+                    <AvatarImage
+                        v-if="avatarStore.getCurrentUserAvatarUrl('medium')"
+                        :src="avatarStore.getCurrentUserAvatarUrl('medium')!"
+                        :alt="authStore.user?.name"
+                    />
+                    <AvatarFallback class="text-2xl">{{ userInitials() }}</AvatarFallback>
+                </Avatar>
+
+                <div class="flex flex-col gap-2">
+                    <Button size="sm" @click="showAvatarDialog = true">
+                        {{ avatarStore.getCurrentUserAvatarUrl() ? 'Change avatar' : 'Upload avatar' }}
+                    </Button>
+                    <Button
+                        v-if="avatarStore.getCurrentUserAvatarUrl()"
+                        variant="ghost"
+                        size="sm"
+                        :disabled="avatarDeleting"
+                        @click="deleteAvatar"
+                    >
+                        Remove avatar
+                    </Button>
+                </div>
+            </div>
+        </div>
+
+        <AvatarCropDialog v-model:open="showAvatarDialog" @save="onAvatarSave" />
+
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">Profile information</h2>
@@ -145,7 +223,6 @@ async function deleteAccount() {
             </div>
         </div>
 
-        <!-- Delete Account Card -->
         <div class="border-destructive/50 bg-card overflow-hidden rounded-lg border">
             <div class="border-destructive/50 bg-destructive/10 border-b px-6 py-4">
                 <h2 class="text-destructive text-lg font-semibold">Danger zone</h2>

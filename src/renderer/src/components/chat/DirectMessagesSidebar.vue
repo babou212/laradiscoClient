@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
 import { ref } from 'vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import api from '@/lib/api';
+import { useAvatarStore } from '@/stores/avatar';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 
@@ -18,12 +20,18 @@ const emit = defineEmits<{
 }>();
 
 const presenceStore = usePresenceStore();
+const avatarStore = useAvatarStore();
 
 const showNewDmSearch = ref(false);
 const searchQuery = ref('');
-const searchResults = ref<Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>>(
-    [],
-);
+const searchResults = ref<
+    Array<{
+        id: number;
+        username: string;
+        display_name: string;
+        avatar_urls: { thumb: string; small: string; medium: string } | null;
+    }>
+>([]);
 const isSearching = ref(false);
 
 const getStatusColor = (userId: number): string => {
@@ -139,11 +147,16 @@ const toggleNewDmSearch = () => {
                     @click="selectSearchUser(user.id)"
                 >
                     <div class="relative">
-                        <div
-                            class="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                        >
-                            {{ user.username?.[0]?.toUpperCase() || '?' }}
-                        </div>
+                        <Avatar class="size-7 shrink-0">
+                            <AvatarImage
+                                v-if="avatarStore.getAvatarUrl(user.id, 'thumb')"
+                                :src="avatarStore.getAvatarUrl(user.id, 'thumb')!"
+                                :alt="user.username"
+                            />
+                            <AvatarFallback class="bg-primary text-primary-foreground text-xs font-semibold">
+                                {{ user.username?.[0]?.toUpperCase() || '?' }}
+                            </AvatarFallback>
+                        </Avatar>
                         <div
                             class="border-sidebar absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2"
                             :class="getStatusColor(user.id)"
@@ -191,11 +204,16 @@ const toggleNewDmSearch = () => {
                     @click="$emit('selectDm', dm.id)"
                 >
                     <div class="relative">
-                        <div
-                            class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                        >
-                            {{ dm.other_user?.username?.[0]?.toUpperCase() || '?' }}
-                        </div>
+                        <Avatar class="size-9 shrink-0">
+                            <AvatarImage
+                                v-if="dm.other_user && avatarStore.getAvatarUrl(dm.other_user.id, 'thumb')"
+                                :src="avatarStore.getAvatarUrl(dm.other_user!.id, 'thumb')!"
+                                :alt="dm.other_user?.username"
+                            />
+                            <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
+                                {{ dm.other_user?.username?.[0]?.toUpperCase() || '?' }}
+                            </AvatarFallback>
+                        </Avatar>
                         <div
                             v-if="dm.other_user"
                             class="border-sidebar absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2"

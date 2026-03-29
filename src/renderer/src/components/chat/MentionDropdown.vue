@@ -7,7 +7,7 @@ export interface MentionUser {
     username: string;
     name: string;
     nickname: string | null;
-    avatar_path: string | null;
+    avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
 }
 
 interface Props {
@@ -56,7 +56,7 @@ const allItems = computed(() => {
         label: `@${u.username}`,
         value: u.username,
         description: u.nickname || u.name,
-        avatar_path: u.avatar_path,
+        avatar_urls: u.avatar_urls,
     }));
     return [...specials, ...userItems];
 });

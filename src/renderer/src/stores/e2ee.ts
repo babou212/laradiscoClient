@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useE2EE } from '@/composables/useE2EE';
 import { getEcho } from '@/lib/echo';
@@ -409,3 +409,7 @@ export const useE2eeStore = defineStore('e2ee', () => {
         $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useE2eeStore, import.meta.hot));
+}

@@ -1,23 +1,20 @@
 <script setup lang="ts">
-import {
-    CornerDownRight,
-    ExternalLink,
-    MessageSquareText,
-    Pencil,
-    Pin,
-    PinOff,
-    Play,
-    SmilePlus,
-    Trash2,
-} from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
-import EmojiPicker from './EmojiPicker.vue';
+import { useClipboard, useEventListener } from '@vueuse/core';
+import { Pin } from 'lucide-vue-next';
+import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
+import FileAttachment from './FileAttachment.vue';
+import MessageActions from './MessageActions.vue';
+import MessageReplyPreview from './MessageReplyPreview.vue';
+import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
 import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { MessageData } from '@/types/chat';
 
 interface Props {
@@ -32,25 +29,26 @@ interface Props {
     showThreadButton?: boolean;
 }
 
-interface Emits {
-    (e: 'startEdit'): void;
-    (e: 'cancelEdit'): void;
-    (e: 'saveEdit'): void;
-    (e: 'delete'): void;
-    (e: 'reply'): void;
-    (e: 'openThread'): void;
-    (e: 'togglePin'): void;
-    (e: 'toggleReaction', emoji: string): void;
-    (e: 'toggleEmojiPicker'): void;
-    (e: 'updateEditContent', content: string): void;
-}
-
 const props = withDefaults(defineProps<Props>(), {
     showThreadButton: true,
 });
-const emit = defineEmits<Emits>();
+
+const emit = defineEmits<{
+    startEdit: [];
+    cancelEdit: [];
+    saveEdit: [];
+    delete: [];
+    reply: [];
+    openThread: [];
+    togglePin: [];
+    toggleReaction: [emoji: string];
+    toggleEmojiPicker: [];
+    updateEditContent: [content: string];
+}>();
 
 const authStore = useAuthStore();
+const avatarStore = useAvatarStore();
+const userNamesStore = useUserNamesStore();
 const currentUser = computed(() => authStore.user);
 
 const isOwnMessage = computed(() => props.message.user.id === currentUser.value?.id);
@@ -62,7 +60,7 @@ const canReply = computed(() => props.canSendMessages !== false);
 const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
 const isDecrypting = computed(() => {
-    return !props.message.decrypt_error && !props.message.decrypted_content;
+    return !props.message.decrypt_error && props.message.decrypted_content === undefined;
 });
 
 const displayContent = computed(() => {
@@ -101,8 +99,8 @@ const groupedReactions = computed(() => {
     return Array.from(map.values());
 });
 
-const messageRef = ref<HTMLElement | null>(null);
-const emojiPickerPosition = ref<'above' | 'below'>('above');
+const messageRef = useTemplateRef<HTMLElement>('messageRef');
+const emojiPickerPosition = shallowRef<'above' | 'below'>('above');
 
 watch(
     () => props.showEmojiPicker,
@@ -116,24 +114,7 @@ watch(
     },
 );
 
-const copyToClipboard = (text: string): void => {
-    if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
-    } else {
-        fallbackCopy(text);
-    }
-};
-
-const fallbackCopy = (text: string): void => {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-};
+const { copy } = useClipboard({ legacy: true });
 
 const handleCodeCopy = (e: MouseEvent) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.code-block-copy');
@@ -142,7 +123,7 @@ const handleCodeCopy = (e: MouseEvent) => {
     if (!encoded) return;
     const tmp = document.createElement('textarea');
     tmp.innerHTML = encoded;
-    copyToClipboard(tmp.value);
+    copy(tmp.value);
     const original = btn.innerHTML;
     btn.innerHTML = checkIcon;
     btn.classList.add('copied');
@@ -152,13 +133,7 @@ const handleCodeCopy = (e: MouseEvent) => {
     }, 2000);
 };
 
-onMounted(() => {
-    messageRef.value?.addEventListener('click', handleCodeCopy);
-});
-
-onUnmounted(() => {
-    messageRef.value?.removeEventListener('click', handleCodeCopy);
-});
+useEventListener(messageRef, 'click', handleCodeCopy);
 
 const handleEditKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -204,18 +179,6 @@ const youtubeEmbedUrl = computed(() => {
     return `https://www.youtube-nocookie.com/embed/${youtubeVideoId.value}?autoplay=1&rel=0`;
 });
 
-const youtubeActive = ref(false);
-
-const playYouTube = () => {
-    youtubeActive.value = true;
-};
-
-const openYouTube = () => {
-    if (youtubeUrl.value) {
-        window.open(youtubeUrl.value, '_blank');
-    }
-};
-
 const messageWithoutYoutubeUrl = computed(() => {
     if (!youtubeVideoId.value) return displayContent.value;
     const urlPattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^\s]+)/g;
@@ -242,16 +205,21 @@ const renderedContentWithoutYoutube = computed(() => {
 
 <template>
     <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
-        <div
-            class="bg-primary text-primary-foreground flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-        >
-            {{ message.user.username[0].toUpperCase() }}
-        </div>
+        <Avatar class="size-10 shrink-0">
+            <AvatarImage
+                v-if="avatarStore.getAvatarUrl(message.user.id, 'small')"
+                :src="avatarStore.getAvatarUrl(message.user.id, 'small')!"
+                :alt="message.user.username"
+            />
+            <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
+                {{ userNamesStore.getDisplayName(message.user.id, message.user.username)[0].toUpperCase() }}
+            </AvatarFallback>
+        </Avatar>
 
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span class="text-sm font-semibold">
-                    {{ message.user.username }}
+                    {{ userNamesStore.getDisplayName(message.user.id, message.user.username) }}
                 </span>
                 <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}
@@ -264,21 +232,12 @@ const renderedContentWithoutYoutube = computed(() => {
                 <span v-if="message.is_edited" class="text-muted-foreground text-xs italic"> (edited) </span>
             </div>
 
-            <div
+            <MessageReplyPreview
                 v-if="message.reply_to"
-                class="border-primary/50 bg-accent/30 mt-1 flex items-start gap-1.5 rounded border-l-2 px-2 py-1.5 text-xs"
-            >
-                <CornerDownRight :size="14" class="text-muted-foreground mt-0.5 shrink-0" />
-                <div class="min-w-0 flex-1">
-                    <span class="text-primary font-medium">
-                        {{ message.reply_to.user.username }}
-                    </span>
-                    <Skeleton v-if="isReplyDecrypting" class="h-3 w-40" />
-                    <span v-else class="text-muted-foreground block truncate">
-                        {{ replyDisplayContent.substring(0, 100) }}{{ replyDisplayContent.length > 100 ? '...' : '' }}
-                    </span>
-                </div>
-            </div>
+                :username="message.reply_to.user.username"
+                :is-decrypting="isReplyDecrypting"
+                :content="replyDisplayContent"
+            />
 
             <div v-if="isEditing" class="mt-1">
                 <textarea
@@ -321,56 +280,19 @@ const renderedContentWithoutYoutube = computed(() => {
                         class="prose-chat mb-2 text-sm wrap-break-word"
                         v-html="renderedContentWithoutYoutube"
                     />
-                    <div class="border-border mt-2 max-w-md overflow-hidden rounded-lg border bg-black">
-                        <div class="relative aspect-video w-full">
-                            <iframe
-                                v-if="youtubeActive"
-                                :src="youtubeEmbedUrl"
-                                class="h-full w-full border-none"
-                                allow="
-                                    accelerometer;
-                                    autoplay;
-                                    clipboard-write;
-                                    encrypted-media;
-                                    gyroscope;
-                                    picture-in-picture;
-                                "
-                                allowfullscreen
-                            />
-                            <template v-else>
-                                <img
-                                    :src="`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`"
-                                    alt="YouTube video"
-                                    class="h-full w-full object-cover"
-                                    loading="lazy"
-                                />
-                                <button
-                                    class="group/yt absolute inset-0 flex items-center justify-center bg-black/30 transition-colors hover:bg-black/10 focus:outline-none"
-                                    @click="playYouTube"
-                                >
-                                    <div
-                                        class="flex size-14 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform group-hover/yt:scale-110"
-                                    >
-                                        <Play :size="28" class="ml-1 fill-white text-white" />
-                                    </div>
-                                </button>
-                            </template>
-                        </div>
-                        <button
-                            class="text-muted-foreground hover:text-foreground flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs"
-                            @click="openYouTube"
-                        >
-                            <ExternalLink :size="12" />
-                            <span>Open in browser</span>
-                        </button>
-                    </div>
+                    <MessageYoutubeEmbed :video-id="youtubeVideoId" :url="youtubeUrl" :embed-url="youtubeEmbedUrl" />
                 </template>
+            </div>
+
+            <div v-if="message.decrypted_attachments?.length" class="mt-2 flex flex-wrap gap-2">
+                <FileAttachment v-for="att in message.decrypted_attachments" :key="att.id" :attachment="att" />
             </div>
 
             <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">
                 <button
                     v-for="group in groupedReactions"
                     :key="group.emoji"
+                    v-memo="[group.emoji, group.count, group.userReacted, canReact]"
                     :disabled="!canReact"
                     class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
                     :class="[
@@ -393,67 +315,24 @@ const renderedContentWithoutYoutube = computed(() => {
             />
         </div>
 
-        <div
+        <MessageActions
             v-if="!isEditing && (canReact || canReply || canPin || canEdit || canDelete)"
-            class="border-border bg-background absolute -top-3 right-2 hidden gap-0.5 rounded border p-0.5 shadow-sm group-hover:flex"
-        >
-            <button
-                v-if="canReact"
-                data-reaction-button
-                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                title="Add reaction"
-                @click.stop="emit('toggleEmojiPicker')"
-            >
-                <SmilePlus :size="16" />
-            </button>
-            <button
-                v-if="canReply"
-                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                title="Reply"
-                @click="emit('reply')"
-            >
-                <CornerDownRight :size="16" />
-            </button>
-            <button
-                v-if="canThread"
-                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                title="Reply in Thread"
-                @click="emit('openThread')"
-            >
-                <MessageSquareText :size="16" />
-            </button>
-            <button
-                v-if="canPin"
-                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                :title="message.is_pinned ? 'Unpin message' : 'Pin message'"
-                @click="emit('togglePin')"
-            >
-                <PinOff v-if="message.is_pinned" :size="16" />
-                <Pin v-else :size="16" />
-            </button>
-            <button
-                v-if="canEdit"
-                class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                title="Edit message"
-                @click="emit('startEdit')"
-            >
-                <Pencil :size="16" />
-            </button>
-            <button
-                v-if="canDelete"
-                class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
-                title="Delete message"
-                @click="emit('delete')"
-            >
-                <Trash2 :size="16" />
-            </button>
-        </div>
-
-        <EmojiPicker
-            v-if="showEmojiPicker"
-            class="emoji-picker-container absolute right-20 z-10"
-            :class="emojiPickerPosition === 'above' ? 'bottom-full mb-1' : 'top-8'"
-            @select="emit('toggleReaction', $event)"
+            :can-react="canReact"
+            :can-reply="canReply"
+            :can-thread="canThread"
+            :can-pin="canPin"
+            :can-edit="canEdit"
+            :can-delete="canDelete"
+            :is-pinned="!!message.is_pinned"
+            :show-emoji-picker="showEmojiPicker"
+            :emoji-picker-position="emojiPickerPosition"
+            @toggle-reaction="emit('toggleReaction', $event)"
+            @reply="emit('reply')"
+            @open-thread="emit('openThread')"
+            @toggle-pin="emit('togglePin')"
+            @start-edit="emit('startEdit')"
+            @delete="emit('delete')"
+            @toggle-emoji-picker="emit('toggleEmojiPicker')"
         />
     </div>
 </template>

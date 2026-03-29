@@ -1,5 +1,6 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useAvatarStore } from './avatar';
 import api from '@/lib/api';
 import type { Category, Channel, ChannelPermissions, MessageData, MessagesResponse } from '@/types/chat';
 
@@ -65,6 +66,9 @@ export const useChatStore = defineStore('chat', () => {
                 messages.value = msgData.data ?? [];
                 nextCursor.value = msgData.next_cursor ?? null;
                 prevCursor.value = msgData.prev_cursor ?? null;
+
+                const avatarStore = useAvatarStore();
+                avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
             }
         } finally {
             isLoadingMessages.value = false;
@@ -214,6 +218,8 @@ export const useChatStore = defineStore('chat', () => {
         const exists = messages.value.some((m) => m.id === message.id);
         if (!exists) {
             messages.value.push(message);
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers([message.user]);
         }
     }
 
@@ -236,6 +242,21 @@ export const useChatStore = defineStore('chat', () => {
     function removeMessage(messageId: number): void {
         const idx = messages.value.findIndex((m) => m.id === messageId);
         if (idx !== -1) messages.value.splice(idx, 1);
+    }
+
+    function $reset(): void {
+        categories.value = [];
+        currentChannel.value = null;
+        currentChannelPermissions.value = null;
+        messages.value = [];
+        nextCursor.value = null;
+        prevCursor.value = null;
+        isLoadingChannels.value = false;
+        isLoadingMessages.value = false;
+        isLoadingMore.value = false;
+        pinnedMessages.value = [];
+        isLoadingPinned.value = false;
+        serverName.value = 'Laradisco';
     }
 
     return {
@@ -268,5 +289,10 @@ export const useChatStore = defineStore('chat', () => {
         addMessage,
         updateMessage,
         removeMessage,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useChatStore, import.meta.hot));
+}

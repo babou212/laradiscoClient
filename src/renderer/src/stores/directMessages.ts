@@ -1,8 +1,9 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useAvatarStore } from './avatar';
 import { useE2EE } from '@/composables/useE2EE';
 import api from '@/lib/api';
-import type { MessageData } from '@/types/chat';
+import type { AvatarUrls, MessageData } from '@/types/chat';
 
 export interface DmGroup {
     id: number;
@@ -10,7 +11,7 @@ export interface DmGroup {
     other_user: {
         id: number;
         username: string;
-        avatar_path: string | null;
+        avatar_urls: AvatarUrls | null;
     } | null;
     last_message: {
         id: number;
@@ -30,7 +31,7 @@ export interface CurrentDmGroup {
     other_user?: {
         id: number;
         username: string;
-        avatar_path: string | null;
+        avatar_urls: AvatarUrls | null;
     };
 }
 
@@ -51,6 +52,12 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         try {
             const response = await api.get('/direct-messages');
             dmGroups.value = response.data ?? [];
+
+            const avatarStore = useAvatarStore();
+            const users = dmGroups.value
+                .filter((dm) => dm.other_user)
+                .map((dm) => ({ id: dm.other_user!.id, avatar_urls: dm.other_user!.avatar_urls }));
+            avatarStore.hydrateFromUsers(users);
         } catch (error) {
             console.error('Failed to fetch DM groups:', error);
         } finally {
@@ -182,7 +189,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
 
         try {
             const plaintext = await e2ee.decrypt(lm.content, undefined, group.id, lm.id);
-            lm.decrypted_content = plaintext;
+            lm.decrypted_content = plaintext.text;
         } catch {
             lm.decrypt_error = true;
         }
@@ -201,6 +208,17 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         messages.value = [];
         nextCursor.value = null;
         prevCursor.value = null;
+    }
+
+    function $reset(): void {
+        dmGroups.value = [];
+        currentDmGroup.value = null;
+        messages.value = [];
+        nextCursor.value = null;
+        prevCursor.value = null;
+        isLoadingGroups.value = false;
+        isLoadingMessages.value = false;
+        isLoadingMore.value = false;
     }
 
     return {
@@ -222,5 +240,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         removeMessage,
         clearCurrentDm,
         decryptLastMessages,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useDirectMessagesStore, import.meta.hot));
+}

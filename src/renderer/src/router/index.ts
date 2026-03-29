@@ -135,6 +135,11 @@ const router = createRouter({
             component: () => import('@/components/e2ee/E2EESetupWizard.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'not-found',
+            redirect: { name: 'home' },
+        },
     ],
 });
 
@@ -176,15 +181,19 @@ router.beforeEach(async (to) => {
 
     if (!appInitialized) {
         appInitialized = true;
-        await serverStore.loadActiveServer();
-        await serverStore.loadAllServers();
+        try {
+            await serverStore.loadActiveServer();
+            await serverStore.loadAllServers();
 
-        if (serverStore.isConnected) {
-            await serverStore.pingServer(serverStore.activeHost!).catch(() => {});
-            const sessionRestored = await authStore.restoreSession();
-            if (sessionRestored && to.name === 'server-connect') {
-                return { name: 'home' };
+            if (serverStore.isConnected) {
+                await serverStore.pingServer(serverStore.activeHost!).catch(() => {});
+                const sessionRestored = await authStore.restoreSession();
+                if (sessionRestored && to.name === 'server-connect') {
+                    return { name: 'home' };
+                }
             }
+        } catch (error) {
+            console.error('App initialization failed:', error);
         }
     }
 
@@ -201,16 +210,16 @@ router.beforeEach(async (to) => {
 
             const e2eeStore = useE2eeStore();
             if (!e2eeStore.isReady && !e2eeStore.isSettingUp) {
-                await e2eeStore.initialize();
+                try {
+                    await e2eeStore.initialize();
+                } catch (error) {
+                    console.error('E2EE initialization failed:', error);
+                }
             }
             if (e2eeStore.needsSetup && to.name !== 'e2ee-setup') {
                 return { name: 'e2ee-setup' };
             }
         }
-    }
-
-    if (!to.meta.requiresAuth && realtimeConnected) {
-        disconnectRealtime();
     }
 
     if (to.meta.requiresServer && !serverStore.isConnected) {
@@ -223,6 +232,10 @@ router.beforeEach(async (to) => {
 
     if (to.name === 'server-connect' && serverStore.isConnected && authStore.isAuthenticated) {
         return { name: 'home' };
+    }
+
+    if (!to.meta.requiresAuth && realtimeConnected) {
+        disconnectRealtime();
     }
 });
 

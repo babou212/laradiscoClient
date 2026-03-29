@@ -1,20 +1,33 @@
 <script setup lang="ts">
-import { CodeXml, CornerDownRight, Send, Smile, X } from 'lucide-vue-next';
+import { CodeXml, CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
 import GifPicker from './GifPicker.vue';
 import MentionDropdown from './MentionDropdown.vue';
+import {
+    FileAddSchema,
+    GifUrlSchema,
+    MAX_FILES,
+    MAX_MESSAGE_LENGTH,
+    MentionValueSchema,
+    MessageSendSchema,
+} from '@/lib/message-schemas';
+import type { StagedFile, UploadingFile } from '@/lib/message-schemas';
 import type { MessageData } from '@/types/chat';
+
+export type { StagedFile, UploadingFile };
 
 interface Props {
     channelName?: string;
     placeholder?: string;
     replyingTo?: MessageData | null;
     disabled?: boolean;
+    canAttachFiles?: boolean;
+    uploadingFiles?: UploadingFile[];
 }
 
 interface Emits {
-    (e: 'send', content: string): void;
+    (e: 'send', content: string, files: StagedFile[]): void;
     (e: 'typing'): void;
     (e: 'cancelReply'): void;
 }
@@ -30,6 +43,10 @@ const mentionStartIndex = ref(-1);
 const textareaRef = ref<HTMLTextAreaElement>();
 const emojiPickerRef = ref<HTMLElement>();
 const gifPickerRef = ref<HTMLElement>();
+const fileInputRef = ref<HTMLInputElement>();
+const stagedFiles = ref<StagedFile[]>([]);
+const fileSizeError = ref<string | null>(null);
+let fileSizeErrorTimer: ReturnType<typeof setTimeout> | undefined;
 
 const props = defineProps<Props>();
 
@@ -38,10 +55,22 @@ const replyPreviewContent = computed(() => {
     return props.replyingTo.decrypted_content ?? '[Encrypted message]';
 });
 
+const charCount = computed(() => messageInput.value.length);
+const isOverLimit = computed(() => charCount.value > MAX_MESSAGE_LENGTH);
+const isMessageValid = computed(
+    () =>
+        !props.disabled &&
+        !isOverLimit.value &&
+        MessageSendSchema.safeParse({ content: messageInput.value, files: stagedFiles.value }).success,
+);
+
 const sendMessage = () => {
-    if (!messageInput.value.trim() || props.disabled) return;
-    emit('send', messageInput.value);
+    if (props.disabled) return;
+    const result = MessageSendSchema.safeParse({ content: messageInput.value, files: stagedFiles.value });
+    if (!result.success) return;
+    emit('send', messageInput.value, [...stagedFiles.value]);
     messageInput.value = '';
+    stagedFiles.value = [];
     showMentionDropdown.value = false;
     nextTick(adjustTextareaHeight);
 };
@@ -58,7 +87,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
+        if (isMessageValid.value) sendMessage();
     }
 };
 
@@ -85,6 +114,7 @@ const detectMention = () => {
 
 const onMentionSelect = (value: string) => {
     if (mentionStartIndex.value < 0) return;
+    if (!MentionValueSchema.safeParse(value).success) return;
 
     const before = messageInput.value.slice(0, mentionStartIndex.value);
     const cursorPos = textareaRef.value?.selectionStart || messageInput.value.length;
@@ -151,10 +181,91 @@ const insertCodeBlock = () => {
 };
 
 const onSelectGif = (gifUrl: string) => {
+    if (!GifUrlSchema.safeParse(gifUrl).success) return;
     messageInput.value = gifUrl;
     showGifPicker.value = false;
     sendMessage();
 };
+
+function addFiles(files: FileList | File[]) {
+    const rejected: string[] = [];
+    for (const file of Array.from(files)) {
+        if (stagedFiles.value.length >= MAX_FILES) break;
+        const fileResult = FileAddSchema.safeParse(file);
+        if (!fileResult.success) {
+            rejected.push(fileResult.error.issues[0]?.message ?? file.name);
+            continue;
+        }
+
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const staged: StagedFile = { file, id };
+
+        if (file.type.startsWith('image/')) {
+            staged.preview = URL.createObjectURL(file);
+        } else if (file.type.startsWith('video/')) {
+            file.arrayBuffer()
+                .then((buf) => {
+                    const fileDataBase64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ''));
+                    return window.api.attachments.generateVideoThumbnail({
+                        fileDataBase64,
+                        mimeType: file.type,
+                    });
+                })
+                .then((result) => {
+                    if (result) staged.preview = result.dataUrl;
+                })
+                .catch(() => {
+                    // Ignore - video will just show without a preview
+                });
+        }
+
+        stagedFiles.value.push(staged);
+    }
+
+    if (rejected.length > 0) {
+        fileSizeError.value =
+            rejected.length === 1
+                ? rejected[0]
+                : `${rejected.length} files exceed the 100 MB limit: ${rejected.join(', ')}`;
+        clearTimeout(fileSizeErrorTimer);
+        fileSizeErrorTimer = setTimeout(() => {
+            fileSizeError.value = null;
+        }, 5000);
+    }
+}
+
+function removeFile(id: string) {
+    const idx = stagedFiles.value.findIndex((f) => f.id === id);
+    if (idx !== -1) {
+        const removed = stagedFiles.value.splice(idx, 1)[0];
+        if (removed.preview) URL.revokeObjectURL(removed.preview);
+    }
+}
+
+function onFileSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (input.files) addFiles(input.files);
+    input.value = '';
+}
+
+function onDrop(e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer?.files) addFiles(e.dataTransfer.files);
+}
+
+function onDragOver(e: DragEvent) {
+    e.preventDefault();
+}
+
+function triggerFileInput() {
+    fileInputRef.value?.click();
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const handleClickOutside = (e: MouseEvent) => {
     if (showEmojiPicker.value && emojiPickerRef.value && !emojiPickerRef.value.contains(e.target as Node)) {
@@ -181,7 +292,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="px-4 pb-4">
+    <div class="px-4 pb-4" @drop="onDrop" @dragover="onDragOver">
+        <input ref="fileInputRef" type="file" multiple class="hidden" @change="onFileSelect" />
+
+        <div
+            v-if="fileSizeError"
+            class="border-destructive/30 bg-destructive/10 text-destructive mb-2 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+        >
+            <span class="flex-1">{{ fileSizeError }}</span>
+            <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="fileSizeError = null">
+                Dismiss
+            </button>
+        </div>
+
         <div
             v-if="replyingTo"
             class="border-border bg-accent/30 flex items-start gap-2 rounded-t-2xl border border-b-0 px-4 py-2"
@@ -218,71 +341,157 @@ onUnmounted(() => {
             </div>
 
             <div
-                class="border-input bg-background focus-within:ring-ring flex items-end gap-2 rounded-3xl border px-4 py-2 shadow-lg focus-within:ring-2"
+                class="border-input bg-background focus-within:ring-ring flex flex-col rounded-3xl border shadow-lg focus-within:ring-2"
             >
-                <button
-                    type="button"
-                    data-emoji-button
-                    class="shrink-0 rounded p-1.5 transition-colors"
-                    :class="
-                        showEmojiPicker
-                            ? 'bg-accent text-foreground'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    "
-                    @click="
-                        showEmojiPicker = !showEmojiPicker;
-                        showGifPicker = false;
-                    "
+                <!-- Staged files preview -->
+                <div v-if="stagedFiles.length > 0" class="flex flex-wrap gap-2 px-4 pt-3 pb-1">
+                    <div
+                        v-for="staged in stagedFiles"
+                        :key="staged.id"
+                        class="bg-muted group relative flex items-center gap-2 rounded-lg px-3 py-2"
+                    >
+                        <img v-if="staged.preview" :src="staged.preview" class="h-10 w-10 rounded object-cover" />
+                        <div v-else class="bg-accent flex h-10 w-10 items-center justify-center rounded text-xs">
+                            {{ staged.file.name.split('.').pop()?.toUpperCase() }}
+                        </div>
+                        <div class="max-w-[120px]">
+                            <div class="text-foreground truncate text-xs font-medium">{{ staged.file.name }}</div>
+                            <div class="text-muted-foreground text-[10px]">{{ formatFileSize(staged.file.size) }}</div>
+                        </div>
+                        <button
+                            class="text-muted-foreground hover:text-foreground absolute -top-1.5 -right-1.5 rounded-full bg-red-500/80 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                            @click="removeFile(staged.id)"
+                        >
+                            <X :size="12" />
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upload progress -->
+                <div
+                    v-if="props.uploadingFiles && props.uploadingFiles.length > 0"
+                    class="flex flex-col gap-2 px-4 pt-3 pb-1"
                 >
-                    <Smile :size="18" />
-                </button>
-                <button
-                    type="button"
-                    data-gif-button
-                    class="shrink-0 rounded p-1.5 transition-colors"
-                    :class="
-                        showGifPicker
-                            ? 'bg-accent text-foreground'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    "
-                    @click="
-                        showGifPicker = !showGifPicker;
-                        showEmojiPicker = false;
-                    "
-                >
-                    <span class="text-[11px] leading-none font-extrabold">GIF</span>
-                </button>
-                <button
-                    type="button"
-                    title="Insert code block"
-                    class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
-                    @click="insertCodeBlock"
-                >
-                    <CodeXml :size="18" />
-                </button>
-                <textarea
-                    ref="textareaRef"
-                    v-model="messageInput"
-                    rows="1"
-                    class="placeholder:text-muted-foreground flex-1 resize-none bg-transparent py-1.5 text-sm outline-none"
-                    :class="{ 'cursor-not-allowed opacity-50': props.disabled }"
-                    :placeholder="
-                        props.disabled
-                            ? 'Sending too fast — please wait…'
-                            : props.placeholder || `Message #${channelName || 'channel'}`
-                    "
-                    :disabled="props.disabled"
-                    @keydown="handleKeydown"
-                    @input="handleInput"
-                />
-                <button
-                    type="button"
-                    class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors disabled:opacity-50"
-                    :disabled="!messageInput.trim() || props.disabled"
-                    @click="sendMessage"
-                >
-                    <Send :size="18" />
-                </button>
+                    <div
+                        v-for="uf in props.uploadingFiles"
+                        :key="uf.id"
+                        class="bg-muted flex items-center gap-2 rounded-lg px-3 py-2"
+                    >
+                        <img v-if="uf.preview" :src="uf.preview" class="h-8 w-8 rounded object-cover" />
+                        <div
+                            v-else
+                            class="bg-accent flex h-8 w-8 shrink-0 items-center justify-center rounded text-[10px]"
+                        >
+                            {{ uf.name.split('.').pop()?.toUpperCase() }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-foreground truncate text-xs font-medium">{{ uf.name }}</span>
+                                <span class="text-muted-foreground shrink-0 text-[10px]">
+                                    {{
+                                        uf.status === 'preparing'
+                                            ? 'Preparing…'
+                                            : uf.status === 'encrypting'
+                                              ? 'Encrypting…'
+                                              : uf.status === 'finishing'
+                                                ? 'Finishing…'
+                                                : `${uf.progress}%`
+                                    }}
+                                </span>
+                            </div>
+                            <div class="bg-accent mt-1 h-1.5 w-full overflow-hidden rounded-full">
+                                <div
+                                    class="bg-primary h-full rounded-full transition-[width] duration-200 ease-out"
+                                    :style="{ width: `${uf.progress}%` }"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-end gap-2 px-4 py-2">
+                    <button
+                        type="button"
+                        data-emoji-button
+                        class="shrink-0 rounded p-1.5 transition-colors"
+                        :class="
+                            showEmojiPicker
+                                ? 'bg-accent text-foreground'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        "
+                        @click="
+                            showEmojiPicker = !showEmojiPicker;
+                            showGifPicker = false;
+                        "
+                    >
+                        <Smile :size="18" />
+                    </button>
+                    <button
+                        type="button"
+                        data-gif-button
+                        class="shrink-0 rounded p-1.5 transition-colors"
+                        :class="
+                            showGifPicker
+                                ? 'bg-accent text-foreground'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        "
+                        @click="
+                            showGifPicker = !showGifPicker;
+                            showEmojiPicker = false;
+                        "
+                    >
+                        <span class="text-[11px] leading-none font-extrabold">GIF</span>
+                    </button>
+                    <button
+                        type="button"
+                        title="Insert code block"
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
+                        @click="insertCodeBlock"
+                    >
+                        <CodeXml :size="18" />
+                    </button>
+                    <button
+                        v-if="canAttachFiles !== false"
+                        type="button"
+                        title="Attach file"
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
+                        @click="triggerFileInput"
+                    >
+                        <Paperclip :size="18" />
+                    </button>
+                    <div class="flex flex-1 flex-col">
+                        <textarea
+                            ref="textareaRef"
+                            v-model="messageInput"
+                            rows="1"
+                            class="placeholder:text-muted-foreground w-full resize-none bg-transparent py-1.5 text-sm outline-none"
+                            :class="{ 'cursor-not-allowed opacity-50': props.disabled }"
+                            :placeholder="
+                                props.disabled
+                                    ? 'Sending too fast — please wait…'
+                                    : props.placeholder || `Message #${channelName || 'channel'}`
+                            "
+                            :disabled="props.disabled"
+                            @keydown="handleKeydown"
+                            @input="handleInput"
+                        />
+                        <div
+                            v-if="charCount >= MAX_MESSAGE_LENGTH * 0.9"
+                            class="pb-0.5 text-right text-[10px] leading-none"
+                            :class="isOverLimit ? 'text-destructive font-medium' : 'text-muted-foreground'"
+                        >
+                            {{ charCount }}/{{ MAX_MESSAGE_LENGTH }}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors disabled:opacity-50"
+                        :disabled="!isMessageValid"
+                        @click="sendMessage"
+                    >
+                        <Send :size="18" />
+                    </button>
+                </div>
             </div>
         </div>
     </div>

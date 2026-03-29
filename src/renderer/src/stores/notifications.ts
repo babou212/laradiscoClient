@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
@@ -279,6 +279,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
         savePreferences(prefs);
     };
 
+    function $reset(): void {
+        disconnect();
+        notifications.value = [];
+        unreadCount.value = 0;
+        toasts.value = [];
+        isConnected.value = false;
+        preferences.value = loadPreferences();
+    }
+
     return {
         notifications,
         unreadCount,
@@ -293,5 +302,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
         markAsRead,
         markAllAsRead,
         dismissToast,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useNotificationsStore, import.meta.hot));
+}

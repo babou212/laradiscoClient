@@ -1,5 +1,7 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useAvatarStore } from './avatar';
+import { useUserNamesStore } from './userNames';
 import api from '@/lib/api';
 import { getEcho } from '@/lib/echo';
 import type { OnlineUser, UserStatusType } from '@/types';
@@ -45,6 +47,10 @@ export const usePresenceStore = defineStore('presence', () => {
         try {
             const response = await api.get('/members');
             serverMembers.value = response.data?.members ?? response.data ?? [];
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(serverMembers.value);
+            const userNamesStore = useUserNamesStore();
+            userNamesStore.hydrateFromUsers(serverMembers.value);
         } catch (error) {
             console.error(error);
         }
@@ -86,7 +92,7 @@ export const usePresenceStore = defineStore('presence', () => {
                 id: data.user_id,
                 username: data.username,
                 display_name: data.display_name ?? data.username,
-                avatar_path: data.avatar_path ?? null,
+                avatar_urls: data.avatar_urls ?? null,
                 status: data.status,
                 custom_status: data.custom_status,
             });
@@ -160,6 +166,12 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
+    function $reset(): void {
+        disconnect();
+        onlineUsers.value = [];
+        serverMembers.value = [];
+    }
+
     return {
         onlineUsers,
         serverMembers,
@@ -171,5 +183,10 @@ export const usePresenceStore = defineStore('presence', () => {
         fetchOnlineUsers,
         getUserStatus,
         updateUserStatus,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(usePresenceStore, import.meta.hot));
+}

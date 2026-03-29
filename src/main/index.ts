@@ -1,13 +1,26 @@
 import { join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell } from 'electron';
+import { app, BrowserWindow, desktopCapturer, ipcMain, protocol, session, shell } from 'electron';
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
 }
 
+app.commandLine.appendSwitch(
+    'enable-features',
+    ['VaapiVideoDecodeLinuxGL', 'VaapiVideoDecoder', 'PlatformHEVCDecoderSupport', 'VideoToolboxVideoDecoder'].join(
+        ',',
+    ),
+);
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+
+protocol.registerSchemesAsPrivileged([
+    { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },
+]);
+
 import { initDatabase } from './database';
-import { registerIpcHandlers } from './ipc';
+import { registerIpcHandlers, getVideoCache } from './ipc';
 import { initMls } from './mls';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
 import { initAutoUpdater } from './updater';
@@ -85,6 +98,42 @@ app.whenReady().then(() => {
     initPushToTalk();
     initAutoUpdater();
 
+    session.defaultSession.protocol.handle('app-video', (request) => {
+        const attachmentId = new URL(request.url).hostname;
+        const entry = getVideoCache(attachmentId);
+        if (!entry) {
+            return new Response(null, { status: 404 });
+        }
+
+        const rangeHeader = request.headers.get('Range');
+        if (rangeHeader) {
+            const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+            if (match) {
+                const start = parseInt(match[1], 10);
+                const end = match[2] ? parseInt(match[2], 10) : entry.data.length - 1;
+                const chunk = entry.data.subarray(start, end + 1);
+                return new Response(new Uint8Array(chunk), {
+                    status: 206,
+                    headers: {
+                        'Content-Type': entry.mimeType,
+                        'Content-Range': `bytes ${start}-${end}/${entry.data.length}`,
+                        'Accept-Ranges': 'bytes',
+                        'Content-Length': String(chunk.length),
+                    },
+                });
+            }
+        }
+
+        return new Response(new Uint8Array(entry.data), {
+            status: 200,
+            headers: {
+                'Content-Type': entry.mimeType,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': String(entry.data.length),
+            },
+        });
+    });
+
     electronApp.setAppUserModelId('com.laradisco.client');
 
     const defaultUserAgent = session.defaultSession.getUserAgent();
@@ -111,7 +160,7 @@ app.whenReady().then(() => {
         "connect-src 'self' http: https: ws: wss:",
         "img-src 'self' data: http: https: blob:",
         "font-src 'self' data:",
-        "media-src 'self' blob: https:",
+        "media-src 'self' blob: data: https: app-video:",
         'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
         "worker-src 'self' blob:",
         "object-src 'none'",

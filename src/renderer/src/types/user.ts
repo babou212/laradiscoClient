@@ -1,3 +1,5 @@
+import type { AvatarUrls } from './chat';
+
 export type UserStatusType = 'online' | 'idle' | 'dnd' | 'offline';
 
 export interface UserRole {
@@ -13,7 +15,7 @@ export interface UserProfile {
     email: string;
     email_verified_at: string | null;
     nickname: string | null;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
     about_me: string | null;
     custom_status: string | null;
     last_seen_at: string | null;
@@ -26,7 +28,7 @@ export interface OnlineUser {
     id: number;
     username: string;
     display_name: string;
-    avatar_path: string | null;
+    avatar_urls: AvatarUrls | null;
     custom_status: string | null;
     status?: UserStatusType;
 }

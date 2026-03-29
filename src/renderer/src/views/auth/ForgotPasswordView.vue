@@ -11,12 +11,31 @@ import {
 } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import api from '@/lib/api';
 import { useServerStore } from '@/stores/server';
+
+const emailSchema = z.object({
+    email: z.string().min(1, 'Email is required').email('Please enter a valid email address.'),
+});
+
+const resetSchema = z
+    .object({
+        code: z.string().length(6, 'Reset code must be 6 digits.').regex(/^\d+$/, 'Reset code must be numeric.'),
+        password: z.string().min(8, 'Password must be at least 8 characters.'),
+        passwordConfirmation: z.string().min(1, 'Please confirm your password.'),
+    })
+    .refine((d) => d.password === d.passwordConfirmation, {
+        message: 'Passwords do not match.',
+        path: ['passwordConfirmation'],
+    });
+
+type EmailFieldErrors = Partial<Record<keyof z.infer<typeof emailSchema>, string>>;
+type ResetFieldErrors = Partial<Record<keyof z.infer<typeof resetSchema>, string>>;
 
 const router = useRouter();
 const serverStore = useServerStore();
@@ -30,6 +49,8 @@ const passwordConfirmation = ref('');
 const showPassword = ref(false);
 const isSubmitting = ref(false);
 const error = ref<string | null>(null);
+const emailFieldErrors = ref<EmailFieldErrors>({});
+const resetFieldErrors = ref<ResetFieldErrors>({});
 
 const canSubmitEmail = computed(() => email.value.trim() !== '' && !isSubmitting.value);
 
@@ -48,15 +69,22 @@ onMounted(() => {
 });
 
 async function handleSendCode(): Promise<void> {
-    if (!canSubmitEmail.value) return;
-
-    isSubmitting.value = true;
+    emailFieldErrors.value = {};
     error.value = null;
 
-    try {
-        await api.post('/auth/forgot-password', {
-            email: email.value.trim(),
+    const result = emailSchema.safeParse({ email: email.value.trim() });
+    if (!result.success) {
+        result.error.issues.forEach((e: z.ZodIssue) => {
+            const field = e.path[0] as keyof EmailFieldErrors;
+            if (!emailFieldErrors.value[field]) emailFieldErrors.value[field] = e.message;
         });
+        return;
+    }
+
+    isSubmitting.value = true;
+
+    try {
+        await api.post('/auth/forgot-password', { email: result.data.email });
         step.value = 'code';
     } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 422) {
@@ -73,17 +101,30 @@ async function handleSendCode(): Promise<void> {
 }
 
 async function handleReset(): Promise<void> {
-    if (!canSubmitReset.value) return;
+    resetFieldErrors.value = {};
+    error.value = null;
+
+    const result = resetSchema.safeParse({
+        code: code.value.trim(),
+        password: password.value,
+        passwordConfirmation: passwordConfirmation.value,
+    });
+    if (!result.success) {
+        result.error.issues.forEach((e: z.ZodIssue) => {
+            const field = e.path[0] as keyof ResetFieldErrors;
+            if (!resetFieldErrors.value[field]) resetFieldErrors.value[field] = e.message;
+        });
+        return;
+    }
 
     isSubmitting.value = true;
-    error.value = null;
 
     try {
         await api.post('/auth/reset-password', {
             email: email.value.trim(),
-            code: code.value.trim(),
-            password: password.value,
-            password_confirmation: passwordConfirmation.value,
+            code: result.data.code,
+            password: result.data.password,
+            password_confirmation: result.data.passwordConfirmation,
         });
         step.value = 'done';
     } catch (err) {
@@ -141,10 +182,12 @@ function goBack(): void {
                         placeholder="000000"
                         maxlength="6"
                         class="pl-9 text-center font-mono tracking-widest"
+                        :class="{ 'border-destructive': resetFieldErrors.code }"
                         :disabled="isSubmitting"
                         autofocus
                     />
                 </div>
+                <p v-if="resetFieldErrors.code" class="text-destructive text-xs">{{ resetFieldErrors.code }}</p>
             </div>
 
             <div class="grid gap-2">
@@ -158,6 +201,7 @@ function goBack(): void {
                         autocomplete="new-password"
                         :disabled="isSubmitting"
                         class="pr-10"
+                        :class="{ 'border-destructive': resetFieldErrors.password }"
                     />
                     <button
                         type="button"
@@ -169,6 +213,7 @@ function goBack(): void {
                         <EyeIcon v-else class="size-4" />
                     </button>
                 </div>
+                <p v-if="resetFieldErrors.password" class="text-destructive text-xs">{{ resetFieldErrors.password }}</p>
             </div>
 
             <div class="grid gap-2">
@@ -180,7 +225,11 @@ function goBack(): void {
                     placeholder="••••••••"
                     autocomplete="new-password"
                     :disabled="isSubmitting"
+                    :class="{ 'border-destructive': resetFieldErrors.passwordConfirmation }"
                 />
+                <p v-if="resetFieldErrors.passwordConfirmation" class="text-destructive text-xs">
+                    {{ resetFieldErrors.passwordConfirmation }}
+                </p>
             </div>
 
             <div
@@ -207,6 +256,7 @@ function goBack(): void {
                         password = '';
                         passwordConfirmation = '';
                         error = null;
+                        resetFieldErrors = {};
                     "
                 >
                     Didn't receive a code? Try again
@@ -230,10 +280,12 @@ function goBack(): void {
                         placeholder="you@example.com"
                         autocomplete="email"
                         class="pl-9"
+                        :class="{ 'border-destructive': emailFieldErrors.email }"
                         :disabled="isSubmitting"
                         autofocus
                     />
                 </div>
+                <p v-if="emailFieldErrors.email" class="text-destructive text-xs">{{ emailFieldErrors.email }}</p>
             </div>
 
             <div

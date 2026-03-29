@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import TypingIndicator from './TypingIndicator.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
 import api from '@/lib/api';
@@ -11,6 +12,7 @@ import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
 import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
@@ -25,6 +27,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{ close: [] }>();
 
 const authStore = useAuthStore();
+const avatarStore = useAvatarStore();
 const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
 const threadStore = useThreadStore();
@@ -114,6 +117,7 @@ const joinThread = (threadId: number) => {
                     await e2ee.lookupDecryptedCache(temp);
                     if (temp[0].decrypted_content) {
                         update.decrypted_content = temp[0].decrypted_content;
+                        update.decrypted_attachments = temp[0].decrypted_attachments;
                         update.decrypt_error = false;
                     } else {
                         update.decrypt_error = true;
@@ -126,7 +130,8 @@ const joinThread = (threadId: number) => {
                             undefined,
                             data.message.id,
                         );
-                        update.decrypted_content = plaintext;
+                        update.decrypted_content = plaintext.text;
+                        update.decrypted_attachments = plaintext.attachments;
                         update.decrypt_error = false;
                     } catch {
                         update.decrypt_error = true;
@@ -327,7 +332,7 @@ const sendReply = async (content: string) => {
         user: {
             id: currentUser.value!.id,
             username: (currentUser.value as any)?.username ?? currentUser.value!.name,
-            avatar_path: null,
+            avatar_urls: null,
         },
         reactions: [],
         created_at: new Date().toISOString(),
@@ -464,11 +469,16 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 
         <div v-if="threadStore.parentMessage" class="border-border border-b p-3">
             <div class="flex items-start gap-2">
-                <div
-                    class="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                >
-                    {{ threadStore.parentMessage.user.username[0].toUpperCase() }}
-                </div>
+                <Avatar class="size-8 shrink-0">
+                    <AvatarImage
+                        v-if="avatarStore.getAvatarUrl(threadStore.parentMessage.user.id, 'small')"
+                        :src="avatarStore.getAvatarUrl(threadStore.parentMessage.user.id, 'small')!"
+                        :alt="threadStore.parentMessage.user.username"
+                    />
+                    <AvatarFallback class="bg-primary text-primary-foreground text-xs font-semibold">
+                        {{ threadStore.parentMessage.user.username[0].toUpperCase() }}
+                    </AvatarFallback>
+                </Avatar>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-1.5">
                         <span class="text-xs font-semibold">{{ threadStore.parentMessage.user.username }}</span>

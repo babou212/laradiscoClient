@@ -3,6 +3,8 @@ import { ipcRenderer } from 'electron';
 export const messagesApi = {
     storeDecrypted: (serverId: number, messageId: number, plaintext: string) =>
         ipcRenderer.invoke('messages:storeDecrypted', serverId, messageId, plaintext),
+    storeDecryptedIfAbsent: (serverId: number, messageId: number, plaintext: string) =>
+        ipcRenderer.invoke('messages:storeDecryptedIfAbsent', serverId, messageId, plaintext),
     getDecryptedBatch: (serverId: number, messageIds: number[]) =>
         ipcRenderer.invoke('messages:getDecryptedBatch', serverId, messageIds) as Promise<Record<number, string>>,
     indexForSearch: (params: {

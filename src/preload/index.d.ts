@@ -1,5 +1,6 @@
 import type { ElectronAPI } from '@electron-toolkit/preload';
 
+export type { AttachmentsApi } from './types/attachments';
 export type { ServerConnection, ServerApi } from './types/server';
 export type { AuthPermissions, AuthUser, AuthSession, AuthApi } from './types/auth';
 export type { PttCapturedKey, PttApi } from './types/ptt';
@@ -11,6 +12,7 @@ export type { UpdaterApi } from './types/updater';
 export type { MlsSetupResult, MlsKeyBackup, MlsGroupInfo, MlsApi } from './types/mls';
 export type { SearchResult, MessagesApi } from './types/messages';
 
+import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
 import type { MessagesApi } from './types/messages';
 import type { MlsApi } from './types/mls';
@@ -33,6 +35,7 @@ interface AppApi {
     updater: UpdaterApi;
     mls: MlsApi;
     messages: MessagesApi;
+    attachments: AttachmentsApi;
 }
 
 declare global {

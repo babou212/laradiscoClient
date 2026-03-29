@@ -12,7 +12,7 @@ export interface AuthUser {
     name: string;
     username: string;
     email: string;
-    avatar_path: string | null;
+    avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
     permissions?: AuthPermissions;
 }
 

@@ -2,6 +2,8 @@
 import { MessageSquare } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import api from '@/lib/api';
+import { useAvatarStore } from '@/stores/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { OnlineUser } from '@/types/user';
 
 type Props = {
@@ -15,6 +17,9 @@ const emit = defineEmits<{
     close: [];
     sendMessage: [userId: number];
 }>();
+
+const avatarStore = useAvatarStore();
+const userNamesStore = useUserNamesStore();
 
 const fullUser = ref<any>(null);
 const loading = ref(false);
@@ -60,13 +65,14 @@ const statusLabels: Record<string, string> = {
 
 const userInitials = computed(() => {
     if (!props.user) return '?';
-    return props.user.username?.[0]?.toUpperCase() || props.user.display_name?.[0]?.toUpperCase() || '?';
+    const name = userNamesStore.getDisplayName(props.user.id, props.user.display_name || props.user.username);
+    return name[0]?.toUpperCase() || '?';
 });
 
 const displayName = computed(() => {
     if (!props.user) return 'Unknown User';
-    const name = (props.user.display_name || props.user.username || '').trim();
-    return name || 'Unknown User';
+    const name = userNamesStore.getDisplayName(props.user.id, props.user.display_name || props.user.username);
+    return name.trim() || 'Unknown User';
 });
 
 const memberSince = computed(() => {
@@ -120,10 +126,14 @@ const handleClose = () => {
             <div class="relative -mt-10 px-4">
                 <div class="relative inline-block">
                     <div
-                        v-if="user.avatar_path"
+                        v-if="avatarStore.getAvatarUrl(user.id, 'medium')"
                         class="border-popover bg-muted size-20 overflow-hidden rounded-full border-4"
                     >
-                        <img :src="user.avatar_path" :alt="user.username" class="size-full object-cover" />
+                        <img
+                            :src="avatarStore.getAvatarUrl(user.id, 'medium')!"
+                            :alt="user.username"
+                            class="size-full object-cover"
+                        />
                     </div>
                     <div
                         v-else

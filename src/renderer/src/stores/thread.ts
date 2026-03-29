@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
 import api from '@/lib/api';
 import type { MessageData, MessagesResponse, ThreadPreview } from '@/types/chat';
@@ -210,6 +210,17 @@ export const useThreadStore = defineStore('thread', () => {
         if (idx !== -1) threadMessages.value.splice(idx, 1);
     }
 
+    function $reset(): void {
+        activeThread.value = null;
+        parentMessage.value = null;
+        threadMessages.value = [];
+        isLoadingThread.value = false;
+        isLoadingMessages.value = false;
+        isLoadingMore.value = false;
+        nextCursor.value = null;
+        prevCursor.value = null;
+    }
+
     return {
         activeThread,
         parentMessage,
@@ -231,5 +242,10 @@ export const useThreadStore = defineStore('thread', () => {
         addThreadMessage,
         updateThreadMessage,
         removeThreadMessage,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useThreadStore, import.meta.hot));
+}
