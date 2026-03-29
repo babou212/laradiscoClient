@@ -161,7 +161,7 @@ app.whenReady().then(() => {
         "img-src 'self' data: http: https: blob:",
         "font-src 'self' data:",
         "media-src 'self' blob: data: https: app-video:",
-        'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
+        'frame-src blob: https://www.youtube.com https://www.youtube-nocookie.com',
         "worker-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",

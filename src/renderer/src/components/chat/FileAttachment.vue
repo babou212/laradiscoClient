@@ -2,6 +2,7 @@
 import { Download, File, Image, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect } from 'vue';
 import AudioPlayer from './AudioPlayer.vue';
+import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
 import api from '@/lib/api';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
@@ -21,6 +22,7 @@ const fullImageLoading = shallowRef(false);
 const isImage = computed(() => props.attachment.mime_type.startsWith('image/'));
 const isAudio = computed(() => props.attachment.mime_type.startsWith('audio/'));
 const isVideo = computed(() => props.attachment.mime_type.startsWith('video/'));
+const isPdf = computed(() => props.attachment.mime_type === 'application/pdf');
 
 function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') lightboxOpen.value = false;
@@ -142,6 +144,8 @@ watch(
         <AudioPlayer v-if="isAudio" :attachment="attachment" />
 
         <VideoPlayer v-else-if="isVideo" :attachment="attachment" />
+
+        <PdfViewer v-else-if="isPdf" :attachment="attachment" />
 
         <div
             v-else-if="isImage && (thumbnailUrl || attachment.thumbnail_key)"
