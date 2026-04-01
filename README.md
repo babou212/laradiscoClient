@@ -47,11 +47,11 @@ A secure, cross-platform desktop communication app built with **Electron**, **Vu
 # Install dependencies
 npm install
 
-# Install dependencies
-npm run build
-
 # Start in development mode
 npm run dev
+
+# Build for Production
+npm run build
 ```
 
 The app will launch with hot-reload enabled for the renderer process.
