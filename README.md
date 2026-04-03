@@ -89,19 +89,25 @@ src/
 │       ├── state.ts       # MLS state management
 │       ├── storage.ts     # SQLite persistence for MLS
 │       ├── auto-backup.ts # Automatic backup scheduling
+│       ├── wasm-loader.ts # WASM module loader
 │       └── wasm/          # OpenMLS WASM binaries
 ├── preload/               # Context-isolated bridge APIs
 │   ├── apis/              # IPC API modules (auth, mls, window, etc.)
 │   └── types/             # TypeScript type definitions
 └── renderer/              # Vue 3 frontend
     └── src/
+        ├── api/           # API client modules (auth, channels, messages, etc.)
+        ├── assets/        # CSS (Tailwind, themes)
         ├── components/    # Vue components + shadcn-vue UI
         ├── composables/   # Vue composables
-        ├── layouts/       # Page layouts
+        ├── layouts/       # Page layouts (app, auth, settings)
+        ├── lib/           # Libraries (Echo, markdown, schemas)
+        ├── queries/       # TanStack Query functions
         ├── router/        # Vue Router configuration
         ├── stores/        # Pinia stores
-        ├── views/         # Page views
-        └── utils/         # Utility functions
+        ├── types/         # TypeScript type definitions
+        ├── utils/         # Utility functions
+        └── views/         # Page views (chat, auth, settings)
 ```
 
 ## Packaging & Distribution
