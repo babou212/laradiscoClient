@@ -259,10 +259,9 @@ export function indexMessageForSearch(params: SearchIndexParams): void {
         )?.user_name ||
         '';
 
-    db.prepare(`DELETE FROM message_search WHERE server_id = ? AND message_id = ?`).run(
-        String(serverId),
-        String(messageId),
-    );
+    db.prepare(
+        `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
+    ).run(String(serverId), String(messageId));
     db.prepare(
         `INSERT INTO message_search (content, server_id, message_id, conversation_type, conversation_id, user_name)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -270,10 +269,9 @@ export function indexMessageForSearch(params: SearchIndexParams): void {
 }
 
 export function removeMessageFromSearchIndex(serverId: number, messageId: number): void {
-    db.prepare(`DELETE FROM message_search WHERE server_id = ? AND message_id = ?`).run(
-        String(serverId),
-        String(messageId),
-    );
+    db.prepare(
+        `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
+    ).run(String(serverId), String(messageId));
 }
 
 export interface SearchResult {
@@ -317,14 +315,21 @@ export function searchMessages(
         snippet: string;
     }>;
 
-    return rows.map((r) => ({
-        messageId: Number(r.message_id),
-        serverId: Number(r.server_id),
-        snippet: r.snippet,
-        conversationType: r.conversation_type,
-        conversationId: Number(r.conversation_id),
-        userName: r.user_name,
-    }));
+    const seen = new Set<string>();
+    return rows
+        .filter((r) => {
+            if (seen.has(r.message_id)) return false;
+            seen.add(r.message_id);
+            return true;
+        })
+        .map((r) => ({
+            messageId: Number(r.message_id),
+            serverId: Number(r.server_id),
+            snippet: r.snippet,
+            conversationType: r.conversation_type,
+            conversationId: Number(r.conversation_id),
+            userName: r.user_name,
+        }));
 }
 
 function buildFtsQuery(raw: string): string {

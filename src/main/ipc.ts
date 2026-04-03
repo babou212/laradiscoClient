@@ -480,12 +480,12 @@ export function registerIpcHandlers(): void {
         'attachment:encrypt',
         async (
             _event,
-            fileDataBase64: string,
-        ): Promise<{ encrypted: string; key: string; iv: string; size: number }> => {
-            const data = Buffer.from(fileDataBase64, 'base64');
+            fileData: Uint8Array,
+        ): Promise<{ encrypted: Uint8Array<ArrayBuffer>; key: string; iv: string; size: number }> => {
+            const data = Buffer.from(fileData);
             const result = encryptFile(data);
             return {
-                encrypted: result.encrypted.toString('base64'),
+                encrypted: new Uint8Array(result.encrypted),
                 key: result.key,
                 iv: result.iv,
                 size: result.encrypted.length,
@@ -651,12 +651,12 @@ export function registerIpcHandlers(): void {
         'video:generateThumbnail',
         async (
             _event,
-            params: { fileDataBase64: string; mimeType: string },
+            params: { fileData: Uint8Array; mimeType: string },
         ): Promise<{ dataUrl: string; width: number; height: number } | null> => {
             const tmpDir = await mkdtemp(join(tmpdir(), 'laradisco-vthumb-'));
             try {
                 const inputPath = join(tmpDir, 'input');
-                await writeFile(inputPath, Buffer.from(params.fileDataBase64, 'base64'));
+                await writeFile(inputPath, Buffer.from(params.fileData));
 
                 const outputPath = join(tmpDir, 'thumb.webp');
 
@@ -709,10 +709,9 @@ export function registerIpcHandlers(): void {
         'attachment:generateThumbnail',
         async (
             _event,
-            params: { fileDataBase64: string; mimeType: string },
+            params: { fileData: Uint8Array; mimeType: string },
         ): Promise<{
-            thumbnailBase64: string;
-            thumbnailEncrypted: string;
+            thumbnailEncrypted: Uint8Array<ArrayBuffer>;
             thumbnailKey: string;
             thumbnailIv: string;
             thumbnailSize: number;
@@ -722,13 +721,12 @@ export function registerIpcHandlers(): void {
         } | null> => {
             if (!isImageMimeType(params.mimeType)) return null;
 
-            const data = Buffer.from(params.fileDataBase64, 'base64');
+            const data = Buffer.from(params.fileData);
             const thumb = await generateThumbnail(data);
             const encrypted = encryptFile(thumb.thumbnail);
 
             return {
-                thumbnailBase64: thumb.thumbnail.toString('base64'),
-                thumbnailEncrypted: encrypted.encrypted.toString('base64'),
+                thumbnailEncrypted: new Uint8Array(encrypted.encrypted),
                 thumbnailKey: encrypted.key,
                 thumbnailIv: encrypted.iv,
                 thumbnailSize: encrypted.encrypted.length,

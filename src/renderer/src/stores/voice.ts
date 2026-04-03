@@ -554,9 +554,6 @@ export const useVoiceStore = defineStore('voice', () => {
                     audioTrack: audioTrack ? { mediaStreamTrack: audioTrack } : null,
                 },
             ];
-            if (!activeScreenShareView.value) {
-                activeScreenShareView.value = localIdentity;
-            }
 
             refreshParticipants();
             console.log('[Voice] Screen share started');

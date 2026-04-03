@@ -1,6 +1,6 @@
 export interface AttachmentsApi {
-    encrypt(fileDataBase64: string): Promise<{
-        encrypted: string;
+    encrypt(fileData: Uint8Array): Promise<{
+        encrypted: Uint8Array<ArrayBuffer>;
         key: string;
         iv: string;
         size: number;
@@ -23,13 +23,12 @@ export interface AttachmentsApi {
     cleanupVideo(attachmentId: string): Promise<void>;
 
     generateVideoThumbnail(params: {
-        fileDataBase64: string;
+        fileData: Uint8Array;
         mimeType: string;
     }): Promise<{ dataUrl: string; width: number; height: number } | null>;
 
-    generateThumbnail(params: { fileDataBase64: string; mimeType: string }): Promise<{
-        thumbnailBase64: string;
-        thumbnailEncrypted: string;
+    generateThumbnail(params: { fileData: Uint8Array; mimeType: string }): Promise<{
+        thumbnailEncrypted: Uint8Array<ArrayBuffer>;
         thumbnailKey: string;
         thumbnailIv: string;
         thumbnailSize: number;

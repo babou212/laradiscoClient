@@ -14,7 +14,7 @@ import { normalizeMessage } from '@/api/normalizers';
 import { sendMessage as apiSendMessage, editMessage as apiEditMessage, deleteMessage as apiDeleteMessage } from '@/api/messages';
 import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
 import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
-import { presignChannelAttachment, presignDmAttachment, confirmAttachment } from '@/api/attachments';
+import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
@@ -23,7 +23,6 @@ import { useE2eeStore } from '@/stores/e2ee';
 import { useThreadStore } from '@/stores/thread';
 import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData } from '@/types/chat';
 import { extractMentionMetadata } from '@/utils/mentions';
-import { uploadWithProgress } from '@/utils/uploadWithProgress';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
@@ -199,84 +198,36 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const isImage = staged.file.type.startsWith('image/');
             const isVideo = staged.file.type.startsWith('video/');
 
-            const presignResponse = props.isDm
-                ? await presignDmAttachment(props.channel.id, {
-                      file_size: staged.file.size,
-                      has_thumbnail: isImage || isVideo,
-                  })
-                : await presignChannelAttachment(props.channel.id, {
-                      file_size: staged.file.size,
-                      has_thumbnail: isImage || isVideo,
-                  });
-
-            const { attachment_id, upload_url, upload_headers, thumbnail_upload_url, thumbnail_upload_headers } =
-                presignResponse;
-
-            {
-                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                if (idx !== -1) uploadingFiles.value[idx].progress = 5;
-            }
-
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
                 if (idx !== -1) {
                     uploadingFiles.value[idx].status = 'encrypting';
-                    uploadingFiles.value[idx].progress = 15;
+                    uploadingFiles.value[idx].progress = 10;
                 }
             }
-            const fileBuffer = await staged.file.arrayBuffer();
-            const fileDataBase64 = btoa(
-                new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''),
-            );
-            const encrypted = await window.api.attachments.encrypt(fileDataBase64);
+            const fileData = new Uint8Array(await staged.file.arrayBuffer());
+            const encrypted = await window.api.attachments.encrypt(fileData);
 
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
                 if (idx !== -1) {
-                    uploadingFiles.value[idx].status = 'uploading';
-                    uploadingFiles.value[idx].progress = 30;
+                    uploadingFiles.value[idx].progress = 20;
                 }
             }
-            const binaryData = Uint8Array.from(atob(encrypted.encrypted), (c) => c.charCodeAt(0));
-            const uploadResponse = await uploadWithProgress(
-                upload_url,
-                binaryData,
-                {
-                    'Content-Type': 'application/octet-stream',
-                    ...(upload_headers ?? {}),
-                },
-                (progress) => {
-                    const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                    if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.6);
-                },
-            );
 
-            if (!uploadResponse.ok) {
-                throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
-            }
+            const fileBlob = new Blob([encrypted.encrypted], { type: 'application/octet-stream' });
 
+            let thumbnailBlob: Blob | null = null;
             let thumbnailMeta: Partial<EncryptedAttachmentMeta> = {};
-            if (isImage && thumbnail_upload_url) {
+
+            if (isImage) {
                 const thumbResult = await window.api.attachments.generateThumbnail({
-                    fileDataBase64,
+                    fileData,
                     mimeType: staged.file.type,
                 });
 
                 if (thumbResult) {
-                    const thumbBinary = Uint8Array.from(atob(thumbResult.thumbnailEncrypted), (c) => c.charCodeAt(0));
-                    const thumbResponse = await fetch(thumbnail_upload_url, {
-                        method: 'PUT',
-                        body: thumbBinary,
-                        headers: {
-                            'Content-Type': 'application/octet-stream',
-                            ...(thumbnail_upload_headers ?? {}),
-                        },
-                    });
-
-                    if (!thumbResponse.ok) {
-                        throw new Error(`Thumbnail upload failed with status ${thumbResponse.status}`);
-                    }
-
+                    thumbnailBlob = new Blob([thumbResult.thumbnailEncrypted], { type: 'application/octet-stream' });
                     thumbnailMeta = {
                         thumbnail_key: thumbResult.thumbnailKey,
                         thumbnail_iv: thumbResult.thumbnailIv,
@@ -286,30 +237,18 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
                 }
             }
 
-            if (isVideo && thumbnail_upload_url) {
+            if (isVideo) {
                 try {
                     const videoThumb = await window.api.attachments.generateVideoThumbnail({
-                        fileDataBase64,
+                        fileData,
                         mimeType: staged.file.type,
                     });
                     if (!videoThumb) throw new Error('ffmpeg returned no thumbnail');
                     const thumbBase64 = videoThumb.dataUrl.split(',')[1];
-                    const thumbEncrypted = await window.api.attachments.encrypt(thumbBase64);
+                    const thumbBytes = Uint8Array.from(atob(thumbBase64), (c) => c.charCodeAt(0));
+                    const thumbEncrypted = await window.api.attachments.encrypt(thumbBytes);
 
-                    const thumbBinary = Uint8Array.from(atob(thumbEncrypted.encrypted), (c) => c.charCodeAt(0));
-                    const thumbResponse = await fetch(thumbnail_upload_url, {
-                        method: 'PUT',
-                        body: thumbBinary,
-                        headers: {
-                            'Content-Type': 'application/octet-stream',
-                            ...(thumbnail_upload_headers ?? {}),
-                        },
-                    });
-
-                    if (!thumbResponse.ok) {
-                        throw new Error(`Video thumbnail upload failed with status ${thumbResponse.status}`);
-                    }
-
+                    thumbnailBlob = new Blob([thumbEncrypted.encrypted], { type: 'application/octet-stream' });
                     thumbnailMeta = {
                         thumbnail_key: thumbEncrypted.key,
                         thumbnail_iv: thumbEncrypted.iv,
@@ -324,15 +263,33 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
                 if (idx !== -1) {
-                    uploadingFiles.value[idx].status = 'finishing';
-                    uploadingFiles.value[idx].progress = 95;
+                    uploadingFiles.value[idx].status = 'uploading';
+                    uploadingFiles.value[idx].progress = 30;
                 }
             }
-            await confirmAttachment(attachment_id);
 
-            attachmentIds.push(attachment_id);
+            const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
+            const uploadResponse = await uploadFn(
+                props.channel.id,
+                fileBlob,
+                thumbnailBlob,
+                (progress) => {
+                    const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                    if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.65);
+                },
+            );
+
+            {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) {
+                    uploadingFiles.value[idx].status = 'finishing';
+                    uploadingFiles.value[idx].progress = 98;
+                }
+            }
+
+            attachmentIds.push(uploadResponse.attachment_id);
             attachmentMetas.push({
-                id: attachment_id,
+                id: uploadResponse.attachment_id,
                 key: encrypted.key,
                 iv: encrypted.iv,
                 file_name: staged.file.name,

@@ -1,11 +1,9 @@
 import api from './client';
 
-export interface PresignResponse {
+export interface UploadResponse {
     attachment_id: string;
-    upload_url: string;
-    upload_headers?: Record<string, string>;
-    thumbnail_upload_url?: string;
-    thumbnail_upload_headers?: Record<string, string>;
+    encrypted_size: number;
+    thumbnail_size?: number | null;
 }
 
 export interface DownloadUrlResponse {
@@ -20,22 +18,50 @@ export async function getAttachmentDownloadUrl(
     return r.data?.data ?? r.data;
 }
 
-export async function presignChannelAttachment(
+export async function uploadChannelAttachment(
     channelId: string | number,
-    data: { file_size: number; has_thumbnail: boolean },
-): Promise<PresignResponse> {
-    const r = await api.post(`/channels/${channelId}/attachments/presign`, data);
+    file: Blob,
+    thumbnail?: Blob | null,
+    onProgress?: (progress: number) => void,
+): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (thumbnail) {
+        formData.append('thumbnail', thumbnail);
+    }
+
+    const r = await api.post(`/channels/${channelId}/attachments/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300_000,
+        onUploadProgress: (e) => {
+            if (onProgress && e.total) {
+                onProgress(Math.round((e.loaded / e.total) * 100));
+            }
+        },
+    });
     return r.data?.data ?? r.data;
 }
 
-export async function presignDmAttachment(
+export async function uploadDmAttachment(
     groupId: string | number,
-    data: { file_size: number; has_thumbnail: boolean },
-): Promise<PresignResponse> {
-    const r = await api.post(`/direct-messages/${groupId}/attachments/presign`, data);
-    return r.data?.data ?? r.data;
-}
+    file: Blob,
+    thumbnail?: Blob | null,
+    onProgress?: (progress: number) => void,
+): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (thumbnail) {
+        formData.append('thumbnail', thumbnail);
+    }
 
-export function confirmAttachment(attachmentId: string): Promise<void> {
-    return api.post(`/attachments/${attachmentId}/confirm`);
+    const r = await api.post(`/direct-messages/${groupId}/attachments/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300_000,
+        onUploadProgress: (e) => {
+            if (onProgress && e.total) {
+                onProgress(Math.round((e.loaded / e.total) * 100));
+            }
+        },
+    });
+    return r.data?.data ?? r.data;
 }

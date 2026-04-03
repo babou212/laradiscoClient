@@ -204,9 +204,9 @@ function addFiles(files: FileList | File[]) {
         } else if (file.type.startsWith('video/')) {
             file.arrayBuffer()
                 .then((buf) => {
-                    const fileDataBase64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ''));
+                    const fileData = new Uint8Array(buf);
                     return window.api.attachments.generateVideoThumbnail({
-                        fileDataBase64,
+                        fileData,
                         mimeType: file.type,
                     });
                 })

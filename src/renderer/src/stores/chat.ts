@@ -100,7 +100,16 @@ export const useChatStore = defineStore('chat', () => {
             if (ch) {
                 currentChannel.value = ch;
                 currentChannelPermissions.value = ch.permissions ?? null;
-                await fetchMessages(id);
+
+                const fetchPerms = !ch.permissions
+                    ? getChannel(id).then((r) => {
+                          const perms = r.data.attributes.channelPermissions ?? null;
+                          ch.permissions = perms ?? undefined;
+                          currentChannelPermissions.value = perms;
+                      }).catch(() => {})
+                    : undefined;
+
+                await Promise.all([fetchMessages(id), fetchPerms]);
                 return;
             }
         }

@@ -1,9 +1,9 @@
 import { ipcRenderer } from 'electron';
 
 export const attachmentsApi = {
-    encrypt: (fileDataBase64: string) =>
-        ipcRenderer.invoke('attachment:encrypt', fileDataBase64) as Promise<{
-            encrypted: string;
+    encrypt: (fileData: Uint8Array) =>
+        ipcRenderer.invoke('attachment:encrypt', fileData) as Promise<{
+            encrypted: Uint8Array<ArrayBuffer>;
             key: string;
             iv: string;
             size: number;
@@ -22,17 +22,16 @@ export const attachmentsApi = {
 
     cleanupVideo: (attachmentId: string) => ipcRenderer.invoke('video:cleanup', attachmentId) as Promise<void>,
 
-    generateVideoThumbnail: (params: { fileDataBase64: string; mimeType: string }) =>
+    generateVideoThumbnail: (params: { fileData: Uint8Array; mimeType: string }) =>
         ipcRenderer.invoke('video:generateThumbnail', params) as Promise<{
             dataUrl: string;
             width: number;
             height: number;
         } | null>,
 
-    generateThumbnail: (params: { fileDataBase64: string; mimeType: string }) =>
+    generateThumbnail: (params: { fileData: Uint8Array; mimeType: string }) =>
         ipcRenderer.invoke('attachment:generateThumbnail', params) as Promise<{
-            thumbnailBase64: string;
-            thumbnailEncrypted: string;
+            thumbnailEncrypted: Uint8Array<ArrayBuffer>;
             thumbnailKey: string;
             thumbnailIv: string;
             thumbnailSize: number;
