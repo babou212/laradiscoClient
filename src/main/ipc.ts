@@ -30,10 +30,7 @@ import {
     setActiveServer,
     setSetting,
     storeDecryptedMessage,
-<<<<<<< Updated upstream
     storeDecryptedMessageIfAbsent,
-=======
->>>>>>> Stashed changes
     getDecryptedMessages,
     indexMessageForSearch,
     removeMessageFromSearchIndex,
@@ -396,7 +393,6 @@ export function registerIpcHandlers(): void {
         },
     );
 
-<<<<<<< Updated upstream
     ipcMain.handle(
         'messages:storeDecryptedIfAbsent',
         async (_event, serverId: number, messageId: number, plaintext: string) => {
@@ -404,8 +400,6 @@ export function registerIpcHandlers(): void {
         },
     );
 
-=======
->>>>>>> Stashed changes
     ipcMain.handle('messages:getDecryptedBatch', async (_event, serverId: number, messageIds: number[]) => {
         const map = getDecryptedMessages(serverId, messageIds);
         return Object.fromEntries(map);

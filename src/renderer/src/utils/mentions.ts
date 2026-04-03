@@ -16,7 +16,7 @@ export function extractMentionMetadata(content: string): {
         if (name === 'everyone' || name === 'here') continue;
         const member = presenceStore.allMembers.find((m) => m.username?.toLowerCase() === name.toLowerCase());
         if (member) {
-            userIds.push(member.id);
+            userIds.push(Number(member.id));
         }
     }
 

@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { createDmGroup, findDmGroup, getDmMessages } from '@/api/direct-messages';
+import { createDmGroup, findDmGroup, getDmGroups, getDmMessages } from '@/api/direct-messages';
 import { normalizeMessages } from '@/api/normalizers';
 import { useE2EE } from '@/composables/useE2EE';
 import type { AvatarUrls, MessageData } from '@/types/chat';
@@ -107,7 +107,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
 
         const e2ee = useE2EE();
 
-        // Always try cache first to avoid consuming MLS ratchet keys
         const temp: MessageData[] = [
             {
                 id: lm.id,
@@ -141,6 +140,63 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
                 .filter((g) => g.last_message && !g.last_message.decrypted_content)
                 .map((g) => decryptLastMessage(g)),
         );
+    }
+
+    async function fetchDmGroups(): Promise<void> {
+        isLoadingGroups.value = true;
+        try {
+            const response = await getDmGroups();
+            const included = response.included ?? [];
+            dmGroups.value = response.data.map((resource) => {
+                const attrs = resource.attributes;
+                const participantRels = resource.relationships?.participants?.data;
+                const otherUser = attrs.other_user;
+
+                const lastMsgRel = (resource.relationships as Record<string, { data?: { id: string; type: string } | null }>)?.lastMessage?.data;
+                let lastMessage: DmGroup['last_message'] = null;
+                if (lastMsgRel) {
+                    const msgInc = included.find((inc) => inc.type === lastMsgRel.type && inc.id === lastMsgRel.id);
+                    if (msgInc) {
+                        const msgAttrs = msgInc.attributes as Record<string, unknown>;
+                        const userRel = (msgInc.relationships as Record<string, { data?: { id: string } | null }>)?.user?.data;
+                        lastMessage = {
+                            id: msgInc.id,
+                            content: (msgAttrs.content as string) ?? '',
+                            created_at: (msgAttrs.created_at as string) ?? '',
+                            user_id: userRel?.id ?? '',
+                            sender_device_id: msgAttrs.sender_device_id as string | undefined,
+                        };
+                    }
+                }
+
+                return {
+                    id: resource.id,
+                    name: otherUser?.username ?? 'Unknown',
+                    other_user: otherUser ?? null,
+                    last_message: lastMessage,
+                    last_message_at: lastMessage?.created_at ?? null,
+                };
+            });
+        } catch (error) {
+            console.error('Failed to fetch DM groups:', error);
+        } finally {
+            isLoadingGroups.value = false;
+        }
+    }
+
+    async function selectDmGroup(groupId: number | string): Promise<void> {
+        const id = String(groupId);
+        const group = dmGroups.value.find((g) => g.id === id);
+        if (group) {
+            currentDmGroup.value = {
+                id: group.id,
+                name: group.name,
+                other_user: group.other_user ?? undefined,
+            };
+        } else {
+            currentDmGroup.value = { id, name: 'Direct Message' };
+        }
+        await fetchMessages(id);
     }
 
     async function fetchMessages(groupId: string): Promise<void> {
@@ -187,7 +243,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
             if ('data' in created && 'dm_group_id' in created.data) {
                 return String((created.data as { dm_group_id: number }).dm_group_id);
             }
-            return created.data.id;
+            return (created as { data: { id: string } }).data.id;
         } catch (error) {
             console.error('Failed to create DM group:', error);
             return null;
@@ -225,6 +281,8 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         addMessage,
         updateMessage,
         removeMessage,
+        fetchDmGroups,
+        selectDmGroup,
         fetchMessages,
         loadOlderMessages,
         startOrGetDm,

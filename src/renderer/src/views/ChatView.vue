@@ -32,7 +32,7 @@ onMounted(async () => {
     await chatStore.fetchCategories();
     await presenceStore.fetchMembers();
 
-    const channelId = Number(route.params.channelId);
+    const channelId = route.params.channelId as string;
     if (channelId) {
         await chatStore.selectChannel(channelId);
     }
@@ -41,14 +41,14 @@ onMounted(async () => {
 watch(
     () => route.params.channelId,
     async (newId) => {
-        const id = Number(newId);
+        const id = newId as string;
         if (id) {
             await chatStore.selectChannel(id);
         }
     },
 );
 
-const handleSelectChannel = (channelId: number) => {
+const handleSelectChannel = (channelId: string) => {
     router.push({ name: 'chat', params: { channelId } });
 };
 

@@ -60,11 +60,7 @@ const canReply = computed(() => props.canSendMessages !== false);
 const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
 const isDecrypting = computed(() => {
-<<<<<<< Updated upstream
     return !props.message.decrypt_error && props.message.decrypted_content === undefined;
-=======
-    return !props.message.decrypt_error && !props.message.decrypted_content;
->>>>>>> Stashed changes
 });
 
 const displayContent = computed(() => {

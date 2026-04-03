@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useE2EE } from '@/composables/useE2EE';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
+import { getApiErrorMessage } from '@/api/errors';
 
 export interface E2eeDevice {
     id: number;
@@ -152,8 +153,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             deviceId.value = result.deviceId;
             isReady.value = true;
             return true;
-        } catch (err: any) {
-            error.value = err.response?.data?.message ?? err.message ?? 'Setup failed';
+        } catch (err: unknown) {
+            error.value = getApiErrorMessage(err);
             return false;
         } finally {
             isSettingUp.value = false;
@@ -188,8 +189,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             }
 
             return true;
-        } catch (err: any) {
-            error.value = err.response?.data?.message ?? err.message ?? 'Device setup failed';
+        } catch (err: unknown) {
+            error.value = getApiErrorMessage(err);
             return false;
         } finally {
             isSettingUp.value = false;
@@ -209,11 +210,12 @@ export const useE2eeStore = defineStore('e2ee', () => {
             }
             backupLocked.value = false;
             return true;
-        } catch (err: any) {
-            if (err.response?.status === 423 || err.message?.includes('locked')) {
+        } catch (err: unknown) {
+            const axiosErr = err as { response?: { status?: number }; message?: string };
+            if (axiosErr.response?.status === 423 || axiosErr.message?.includes('locked')) {
                 backupLocked.value = true;
             }
-            error.value = err.message ?? 'Restore failed';
+            error.value = err instanceof Error ? err.message : 'Restore failed';
             return false;
         }
     }
@@ -228,8 +230,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             }
             error.value = result.error ?? 'Unlock failed';
             return false;
-        } catch (err: any) {
-            error.value = err.message ?? 'Unlock failed';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'Unlock failed';
             return false;
         }
     }
@@ -240,8 +242,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             await e2ee.backupKeys(pin);
             hasBackup.value = true;
             return true;
-        } catch (err: any) {
-            error.value = err.message ?? 'Backup failed';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'Backup failed';
             return false;
         }
     }
@@ -258,7 +260,7 @@ export const useE2eeStore = defineStore('e2ee', () => {
     async function loadDevices(): Promise<void> {
         try {
             const result = await e2ee.fetchDevices();
-            devices.value = result.map((d: any) => ({
+            devices.value = result.map((d) => ({
                 ...d,
                 is_current: d.device_id === deviceId.value,
             }));
@@ -273,8 +275,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             await e2ee.revokeDevice(targetDeviceId);
             await loadDevices();
             return true;
-        } catch (err: any) {
-            error.value = err.message ?? 'Failed to revoke device';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'Failed to revoke device';
             return false;
         }
     }
@@ -285,8 +287,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             await e2ee.renameDevice(targetDeviceId, name);
             await loadDevices();
             return true;
-        } catch (err: any) {
-            error.value = err.message ?? 'Failed to rename device';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'Failed to rename device';
             return false;
         }
     }
@@ -329,8 +331,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
             await e2ee.deleteBackup();
             hasBackup.value = false;
             return true;
-        } catch (err: any) {
-            error.value = err.message ?? 'Failed to delete backup';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'Failed to delete backup';
             return false;
         }
     }
@@ -354,8 +356,8 @@ export const useE2eeStore = defineStore('e2ee', () => {
                 return false;
             }
             return true;
-        } catch (err: any) {
-            error.value = err.message ?? 'PIN change failed';
+        } catch (err: unknown) {
+            error.value = err instanceof Error ? err.message : 'PIN change failed';
             return false;
         }
     }

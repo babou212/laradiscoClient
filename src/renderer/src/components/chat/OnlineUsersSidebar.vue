@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
-import type { UserStatusType } from '@/types';
+import type { OnlineUser, UserStatusType } from '@/types';
 import UserProfilePanel from './UserProfilePanel.vue';
 
 const presenceStore = usePresenceStore();
@@ -16,7 +16,7 @@ const avatarStore = useAvatarStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
 
-const selectedUser = shallowRef<any>(null);
+const selectedUser = shallowRef<OnlineUser | null>(null);
 const showUserProfile = shallowRef(false);
 
 const currentUserId = computed(() => authStore.user?.id);
@@ -54,7 +54,7 @@ const getStatusColor = (status?: UserStatusType) => {
     }
 };
 
-const openUserProfile = (user: any) => {
+const openUserProfile = (user: OnlineUser) => {
     selectedUser.value = user;
     showUserProfile.value = true;
 };
@@ -80,7 +80,7 @@ const statusSections = computed(() => {
     const sections: Array<{
         key: string;
         label: string;
-        users: any[];
+        users: OnlineUser[];
         opacity?: string;
     }> = [];
 

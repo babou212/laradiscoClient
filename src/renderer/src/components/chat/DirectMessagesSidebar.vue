@@ -10,14 +10,14 @@ import { usePresenceStore } from '@/stores/presence';
 
 type Props = {
     dmGroups: DmGroup[];
-    selectedDmGroupId?: number | null;
+    selectedDmGroupId?: string | null;
 };
 
 defineProps<Props>();
 const emit = defineEmits<{
-    selectDm: [dmGroupId: number];
+    selectDm: [dmGroupId: string];
     switchToChannels: [];
-    startDm: [userId: number];
+    startDm: [userId: string];
 }>();
 
 const presenceStore = usePresenceStore();
@@ -27,7 +27,7 @@ const showNewDmSearch = shallowRef(false);
 const searchQuery = shallowRef('');
 const searchResults = shallowRef<
     Array<{
-        id: number;
+        id: string;
         username: string;
         display_name: string;
         avatar_urls: { thumb: string; small: string; medium: string } | null;
@@ -47,7 +47,7 @@ watchDebounced(
         try {
             const response = await getMembers({ 'filter[search]': q });
             searchResults.value = response.data.map((u) => ({
-                id: Number(u.id),
+                id: u.id,
                 username: u.attributes.username,
                 display_name: u.attributes.display_name ?? u.attributes.username,
                 avatar_urls: u.attributes.avatar_urls ?? null,
@@ -61,7 +61,7 @@ watchDebounced(
     { debounce: 300 },
 );
 
-const getStatusColor = (userId: number): string => {
+const getStatusColor = (userId: string): string => {
     const userStatus = presenceStore.getUserStatus(userId);
     const status = userStatus?.status || 'offline';
     switch (status) {
@@ -99,7 +99,7 @@ const truncateMessage = (content: string, maxLength: number = 40) => {
     return content.substring(0, maxLength) + '...';
 };
 
-const selectSearchUser = (userId: number) => {
+const selectSearchUser = (userId: string) => {
     emit('startDm', userId);
     showNewDmSearch.value = false;
     searchQuery.value = '';

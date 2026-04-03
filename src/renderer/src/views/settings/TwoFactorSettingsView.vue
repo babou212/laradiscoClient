@@ -105,8 +105,9 @@ async function confirmTwoFactor() {
         showVerificationStep.value = false;
         code.value = '';
         clearTwoFactorAuthData();
-    } catch (err: any) {
-        codeError.value = err.response?.data?.error ?? 'Invalid code';
+    } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        codeError.value = axiosErr.response?.data?.error ?? 'Invalid code';
         code.value = '';
     } finally {
         processing.value = false;

@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron';
+import type { MlsKeyBackup } from '../types/mls';
 
 export const mlsApi = {
     isSetup: (serverId: number, userId?: number) =>
@@ -31,12 +32,12 @@ export const mlsApi = {
         ipcRenderer.invoke('mls:generateKeyPackages', serverId, count),
     getGroupInfo: (params: { serverId: number; groupId: string }) => ipcRenderer.invoke('mls:getGroupInfo', params),
     backupKeys: (serverId: number, pin: string) => ipcRenderer.invoke('mls:backupKeys', serverId, pin),
-    restoreKeys: (serverId: number, backup: unknown, pin: string, userId?: number) =>
+    restoreKeys: (serverId: number, backup: MlsKeyBackup, pin: string, userId?: number) =>
         ipcRenderer.invoke('mls:restoreKeys', serverId, backup, pin, userId),
     autoUpdateBackup: (serverId: number) => ipcRenderer.invoke('mls:autoUpdateBackup', serverId),
     hasBackupKey: (serverId: number) => ipcRenderer.invoke('mls:hasBackupKey', serverId) as Promise<boolean>,
     clearBackupKey: (serverId?: number) => ipcRenderer.invoke('mls:clearBackupKey', serverId),
-    changePIN: (serverId: number, backup: unknown, oldPin: string, newPin: string) =>
+    changePIN: (serverId: number, backup: MlsKeyBackup, oldPin: string, newPin: string) =>
         ipcRenderer.invoke('mls:changePIN', serverId, backup, oldPin, newPin),
     setE2eeDeviceKeys: (
         serverId: number,

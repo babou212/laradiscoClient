@@ -1,3 +1,12 @@
+export interface TenorGif {
+    id: string;
+    media_formats: {
+        tinygif?: { url: string };
+        gif?: { url: string };
+    };
+    content_description: string;
+}
+
 export interface Category {
     id: string;
     name: string;

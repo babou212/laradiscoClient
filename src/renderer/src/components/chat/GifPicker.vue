@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core';
 import { Search, X, Loader2 } from 'lucide-vue-next';
 import { nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
+import type { TenorGif } from '@/types/chat';
 
 const emit = defineEmits<{
     select: [gifUrl: string];
@@ -9,7 +10,7 @@ const emit = defineEmits<{
 
 const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
 const searchQuery = shallowRef('');
-const gifs = shallowRef<any[]>([]);
+const gifs = shallowRef<TenorGif[]>([]);
 const loading = shallowRef(false);
 const loadingMore = shallowRef(false);
 const selectedCategory = shallowRef<string>('trending');
@@ -107,7 +108,7 @@ const selectCategory = (categoryId: string) => {
     }
 };
 
-const selectGif = (gif: any) => {
+const selectGif = (gif: TenorGif) => {
     const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
     if (gifUrl) {
         emit('select', gifUrl);

@@ -206,7 +206,7 @@ router.beforeEach(async (to) => {
             return { name: 'login' };
         }
         if (authStore.user) {
-            connectRealtime(authStore.user.id);
+            connectRealtime(Number(authStore.user.id));
 
             const e2eeStore = useE2eeStore();
             if (!e2eeStore.isReady && !e2eeStore.isSettingUp) {

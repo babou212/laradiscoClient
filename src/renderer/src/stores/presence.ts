@@ -5,7 +5,7 @@ import { useUserNamesStore } from './userNames';
 import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import { getMembers } from '@/api/members';
 import { getEcho } from '@/lib/echo';
-import type { OnlineUser, UserStatusType } from '@/types';
+import type { OnlineUser, PresenceUpdate, UserStatusType } from '@/types';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const SYNC_INTERVAL_MS = 120_000;
@@ -13,7 +13,7 @@ const SYNC_INTERVAL_MS = 120_000;
 export const usePresenceStore = defineStore('presence', () => {
     const onlineUsers = ref<OnlineUser[]>([]);
     const serverMembers = ref<OnlineUser[]>([]);
-    let channel: ReturnType<typeof getEcho>['private'] extends (ch: string) => infer R ? R : unknown = null as any;
+    let channel: ReturnType<ReturnType<typeof getEcho>['private']> | null = null;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let syncTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -86,7 +86,7 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
-    const applyPresenceUpdate = (data: any) => {
+    const applyPresenceUpdate = (data: PresenceUpdate) => {
         const userId = String(data.user_id);
         const idx = onlineUsers.value.findIndex((u) => u.id === userId);
 
@@ -116,8 +116,8 @@ export const usePresenceStore = defineStore('presence', () => {
 
         try {
             const echo = getEcho();
-            channel = echo.private('presence') as any;
-            (channel as any).listen('.user.presence.updated', applyPresenceUpdate);
+            channel = echo.private('presence');
+            channel.listen('.user.presence.updated', applyPresenceUpdate);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);
         }
@@ -144,7 +144,7 @@ export const usePresenceStore = defineStore('presence', () => {
             } catch (error) {
                 console.error(error);
             }
-            channel = null as any;
+            channel = null;
         }
         if (heartbeatTimer) {
             clearInterval(heartbeatTimer);

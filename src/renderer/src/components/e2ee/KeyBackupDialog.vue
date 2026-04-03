@@ -52,8 +52,8 @@ async function handleCreate() {
         } else {
             error.value = e2eeStore.error ?? 'Backup failed';
         }
-    } catch (err: any) {
-        error.value = err.message ?? 'Backup failed';
+    } catch (err: unknown) {
+        error.value = err instanceof Error ? err.message : 'Backup failed';
     } finally {
         processing.value = false;
     }
@@ -72,8 +72,8 @@ async function handleRestore() {
         } else {
             error.value = e2eeStore.error ?? 'Incorrect PIN';
         }
-    } catch (err: any) {
-        error.value = err.message ?? 'Restore failed';
+    } catch (err: unknown) {
+        error.value = err instanceof Error ? err.message : 'Restore failed';
     } finally {
         processing.value = false;
     }

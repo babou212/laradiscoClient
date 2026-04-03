@@ -1,5 +1,11 @@
 import api from './client';
 
+export interface Argon2Params {
+    memory: number;
+    iterations: number;
+    parallelism: number;
+}
+
 export function registerIdentity(identityKey: string): Promise<void> {
     return api.post('/e2ee/identity/register', { identity_key: identityKey });
 }
@@ -150,14 +156,14 @@ export async function getUserGroups(): Promise<string[]> {
 
 export async function backupExists(): Promise<boolean> {
     const r = await api.get('/e2ee/keys/backup/exists');
-    return r.data?.exists ?? false;
+    return r.data?.data?.exists ?? r.data?.exists ?? false;
 }
 
 interface BackupPayload {
     encrypted_bundle: string;
     salt: string;
     nonce: string;
-    argon2_params: unknown;
+    argon2_params: Argon2Params;
 }
 
 export function createBackup(payload: BackupPayload): Promise<void> {
@@ -172,10 +178,10 @@ export async function getBackup(): Promise<{
     encrypted_bundle: string;
     salt: string;
     nonce: string;
-    argon2_params: unknown;
+    argon2_params: Argon2Params;
 } | null> {
     const r = await api.get('/e2ee/keys/backup');
-    return r.data ?? null;
+    return r.data?.data ?? r.data ?? null;
 }
 
 export function confirmBackup(): Promise<void> {
@@ -190,9 +196,9 @@ export function deleteBackup(): Promise<void> {
     return api.delete('/e2ee/keys/backup');
 }
 
-export async function fetchDevices(): Promise<Array<{ device_id: string; device_name: string }>> {
+export async function fetchDevices(): Promise<Array<{ id: number; device_id: string; device_name: string; created_at: string; last_active_at: string | null }>> {
     const r = await api.get('/e2ee/devices');
-    return r.data ?? [];
+    return r.data?.data ?? r.data ?? [];
 }
 
 export function revokeDevice(deviceId: string): Promise<void> {

@@ -98,7 +98,7 @@ const joinThread = (threadId: number | string) => {
             }
 
             if (e2eeStore.isReady) {
-                await e2ee.decryptMessageQueued(data.message, props.channelId, undefined);
+                await e2ee.decryptMessageQueued(data.message, Number(props.channelId), undefined);
             }
 
             threadStore.addThreadMessage(data.message);
@@ -314,7 +314,13 @@ const sendReply = async (content: string) => {
         // Best-effort
     }
 
-    const extra: Record<string, any> = {};
+    const extra: {
+        sender_device_id?: string;
+        mention_user_ids?: number[];
+        mention_everyone?: boolean;
+        mention_here?: boolean;
+        history_ciphertext?: string;
+    } = {};
 
     if (historyCiphertext) {
         extra.history_ciphertext = historyCiphertext;
@@ -338,7 +344,7 @@ const sendReply = async (content: string) => {
         reply_to_id: null,
         user: {
             id: currentUser.value!.id,
-            username: (currentUser.value as any)?.username ?? currentUser.value!.name,
+            username: currentUser.value?.username ?? currentUser.value!.name,
             avatar_urls: null,
         },
         reactions: [],
@@ -356,7 +362,7 @@ const sendReply = async (content: string) => {
         e2ee.cacheDecryptedContent(Number(reply.id), content, {
             conversationType: 'channel',
             conversationId: Number(props.channelId),
-            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+            userName: currentUser.value?.username ?? currentUser.value!.name,
         }).catch(() => {});
         const idx = threadStore.threadMessages.findIndex((m) => m.id === optimistic.id);
         if (idx !== -1) threadStore.threadMessages.splice(idx, 1, reply);
@@ -381,9 +387,13 @@ const saveEdit = async (message: MessageData) => {
     try {
         if (!e2eeStore.isReady) return;
 
-        const extra: Record<string, any> = {};
+        const extra: {
+            sender_device_id?: string;
+            history_ciphertext?: string;
+        } = {};
         const contentToSend = await e2ee.encryptForChannel(Number(props.channelId), editContent.value);
-        extra.sender_device_id = await e2ee.getDeviceId();
+        const senderDeviceId = await e2ee.getDeviceId();
+        if (senderDeviceId) extra.sender_device_id = senderDeviceId;
         try {
             extra.history_ciphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, editContent.value);
         } catch {
@@ -395,7 +405,7 @@ const saveEdit = async (message: MessageData) => {
         e2ee.cacheDecryptedContent(Number(message.id), editContent.value, {
             conversationType: 'channel',
             conversationId: Number(props.channelId),
-            userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
+            userName: currentUser.value?.username ?? currentUser.value!.name,
         }).catch(() => {});
         threadStore.updateThreadMessage(message.id, {
             decrypted_content: editContent.value,

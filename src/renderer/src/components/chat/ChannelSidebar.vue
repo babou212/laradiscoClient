@@ -11,12 +11,13 @@ import { usePresenceStore } from '@/stores/presence';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { UserStatusType } from '@/types';
 import type { Category, Channel } from '@/types/chat';
+import type { DmGroup } from '@/stores/directMessages';
 import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
 
 type Props = {
     categories: Category[];
-    directMessages: any[];
+    directMessages: DmGroup[];
     selectedChannelId?: string;
     serverName?: string;
 };
@@ -38,7 +39,7 @@ const userNamesStore = useUserNamesStore();
 
 const user = computed(() => authStore.user);
 
-const collapsedCategories = ref<Set<number>>(new Set());
+const collapsedCategories = ref<Set<string>>(new Set());
 const showUserPopup = shallowRef(false);
 const currentStatus = shallowRef<UserStatusType>('online');
 const currentCustomStatus = shallowRef<string | null>(null);
@@ -62,7 +63,7 @@ watch(
     { deep: true },
 );
 
-const toggleCategory = (categoryId: number) => {
+const toggleCategory = (categoryId: string) => {
     if (collapsedCategories.value.has(categoryId)) {
         collapsedCategories.value.delete(categoryId);
     } else {

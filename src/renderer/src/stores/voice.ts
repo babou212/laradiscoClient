@@ -408,12 +408,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 await leaveChannel();
             }
 
-<<<<<<< Updated upstream
             const { token, url, e2ee_key } = await joinVoiceChannel(channelId);
-=======
-            const { data } = await api.post(`/channels/${channelId}/voice/join`);
-            const { token, url, e2ee_key } = data;
->>>>>>> Stashed changes
 
             const keyProvider = new ExternalE2EEKeyProvider();
 

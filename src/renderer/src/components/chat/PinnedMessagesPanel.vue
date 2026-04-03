@@ -18,7 +18,7 @@ defineProps<Props>();
 
 const emit = defineEmits<{
     close: [];
-    unpin: [messageId: number];
+    unpin: [messageId: string];
 }>();
 
 const panelRef = useTemplateRef<HTMLElement>('panelRef');

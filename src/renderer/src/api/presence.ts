@@ -1,3 +1,4 @@
+import type { OnlineUser } from '@/types';
 import api from './client';
 
 export function updatePresence(data: {
@@ -7,7 +8,7 @@ export function updatePresence(data: {
     return api.patch('/presence', data);
 }
 
-export async function getPresence(): Promise<{ data: any[] }> {
+export async function getPresence(): Promise<{ data: OnlineUser[] }> {
     const r = await api.get('/presence');
     return r.data;
 }

@@ -1,8 +1,9 @@
 export type User = {
     id: string;
     name: string;
+    username: string;
     email: string;
-    avatar_urls?: { thumb: string; small: string; medium: string } | null;
+    avatar_urls?: { thumb: string; small: string; medium: string; original: string } | null;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

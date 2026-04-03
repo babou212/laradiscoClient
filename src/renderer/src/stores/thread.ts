@@ -159,7 +159,7 @@ export const useThreadStore = defineStore('thread', () => {
                 if (!msg.reactions) msg.reactions = [];
                 if (responseData.meta.added) {
                     msg.reactions.push({
-                        id: String((responseData.data as any)?.id ?? 0),
+                        id: String((responseData.data as { id?: number })?.id ?? 0),
                         message_id: String(messageId),
                         user_id: String(currentUserId),
                         emoji,

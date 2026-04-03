@@ -15,7 +15,7 @@ export const attachmentsApi = {
     decryptBuffer: (params: { encryptedBase64: string; key: string; iv: string }) =>
         ipcRenderer.invoke('attachment:decryptBuffer', params) as Promise<string>,
 
-    downloadBuffer: (url: string) => ipcRenderer.invoke('attachment:downloadBuffer', url) as Promise<Buffer>,
+    downloadBuffer: (url: string) => ipcRenderer.invoke('attachment:downloadBuffer', url) as Promise<ArrayBuffer>,
 
     prepareVideo: (params: { attachmentId: string; downloadUrl: string; key: string; iv: string; mimeType: string }) =>
         ipcRenderer.invoke('video:prepare', params) as Promise<string>,

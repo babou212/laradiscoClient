@@ -32,3 +32,12 @@ export interface OnlineUser {
     custom_status: string | null;
     status?: UserStatusType;
 }
+
+export interface PresenceUpdate {
+    user_id: string | number;
+    username: string;
+    display_name?: string;
+    avatar_urls: AvatarUrls | null;
+    status: UserStatusType;
+    custom_status: string | null;
+}

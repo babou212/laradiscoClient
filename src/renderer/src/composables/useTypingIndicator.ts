@@ -26,7 +26,7 @@ export function useTypingIndicator(
     }
 
     function handleTypingEvent(data: { user_id: number; username: string; is_typing: boolean }) {
-        if (data.user_id === currentUserId.value) return;
+        if (Number(data.user_id) === Number(currentUserId.value)) return;
 
         if (data.is_typing) {
             const existing = typingUsers.get(data.user_id);
