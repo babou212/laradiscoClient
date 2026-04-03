@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Download, File, Image, X } from 'lucide-vue-next';
+import { Download, File, Image, Loader2, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect } from 'vue';
+import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { decryptAttachment } from '@/lib/decrypt-attachment';
+import type { EncryptedAttachmentMeta } from '@/types/chat';
 import AudioPlayer from './AudioPlayer.vue';
 import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
-import api from '@/lib/api';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
 
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
@@ -55,8 +55,7 @@ async function loadThumbnail() {
     thumbnailLoading.value = true;
 
     try {
-        const response = await api.get(`/attachments/${props.attachment.id}/download`);
-        const { thumbnail_url } = response.data;
+        const { thumbnail_url } = await getAttachmentDownloadUrl(props.attachment.id);
         if (!thumbnail_url) return;
 
         const encryptedBuffer = await window.api.attachments.downloadBuffer(thumbnail_url);
@@ -76,8 +75,7 @@ async function loadThumbnail() {
 }
 
 async function decryptFullImage(): Promise<string> {
-    const response = await api.get(`/attachments/${props.attachment.id}/download`);
-    const { download_url } = response.data;
+    const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
 
     const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
 
@@ -166,7 +164,7 @@ watch(
                     @error="onThumbnailError"
                 />
                 <div v-else class="flex h-40 w-60 items-center justify-center">
-                    <div class="bg-accent h-6 w-6 animate-pulse rounded" />
+                    <Loader2 :size="24" class="text-muted-foreground animate-spin" />
                 </div>
             </div>
             <div class="text-muted-foreground flex items-center gap-1 px-2 py-1 text-[10px]">
@@ -207,7 +205,7 @@ watch(
                             class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
                         />
                         <div v-else class="flex h-40 w-60 items-center justify-center rounded-lg bg-black/40">
-                            <div class="bg-accent h-8 w-8 animate-pulse rounded" />
+                            <Loader2 :size="32" class="animate-spin text-white" />
                         </div>
 
                         <div class="absolute -top-3 -right-3 flex gap-1">

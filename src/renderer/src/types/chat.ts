@@ -1,12 +1,12 @@
 export interface Category {
-    id: number;
+    id: string;
     name: string;
     position: number;
     channels: Channel[];
 }
 
 export interface Channel {
-    id: number;
+    id: string;
     name: string;
     topic: string | null;
     type: string;
@@ -54,25 +54,25 @@ export interface AvatarUrls {
 }
 
 export interface MessageUser {
-    id: number;
+    id: string;
     username: string;
     avatar_urls: AvatarUrls | null;
 }
 
 export interface MessageReaction {
-    id: number;
-    message_id: number;
-    user_id: number;
+    id: string;
+    message_id: string;
+    user_id: string;
     emoji: string;
 }
 
 export interface ThreadPreview {
-    id: number;
+    id: string;
     message_count: number;
     last_message_at: string;
     is_following?: boolean;
     last_reply?: {
-        id: number;
+        id: string;
         content: string;
         user: MessageUser;
         created_at: string;
@@ -83,16 +83,16 @@ export interface ThreadPreview {
 }
 
 export interface MessageData {
-    id: number;
+    id: string;
     content: string;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
-    reply_to_id: number | null;
-    thread_id?: number | null;
+    reply_to_id: string | null;
+    thread_id?: string | null;
     thread?: ThreadPreview | null;
     reply_to?: {
-        id: number;
+        id: string;
         content: string;
         user: MessageUser;
         decrypted_content?: string;
@@ -122,9 +122,9 @@ export interface MessagesResponse {
 }
 
 export interface DirectMessageThread {
-    id: number;
+    id: string;
     other_user: {
-        id: number;
+        id: string;
         username: string;
         avatar_urls: AvatarUrls | null;
     };
@@ -135,14 +135,14 @@ export interface DirectMessageThread {
 }
 
 export interface Mention {
-    id: number;
+    id: string;
     username: string;
     display_name: string;
     avatar_urls: AvatarUrls | null;
 }
 
 export interface VoiceChannelParticipant {
-    id: number;
+    id: string;
     username: string;
     display_name: string;
     avatar_urls: AvatarUrls | null;

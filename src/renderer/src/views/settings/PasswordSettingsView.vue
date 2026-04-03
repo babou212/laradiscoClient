@@ -6,20 +6,25 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/api';
+import { useMutation } from '@pinia/colada';
+import { updatePassword } from '@/api/settings';
+import { extractValidationErrors } from '@/api/errors';
 
 const currentPassword = ref('');
 const password = ref('');
 const passwordConfirmation = ref('');
 const errors = ref<Record<string, string>>({});
-const processing = ref(false);
 const recentlySuccessful = ref(false);
 
-async function updatePassword() {
-    processing.value = true;
+const { mutateAsync: doUpdatePassword, isLoading: processing } = useMutation({
+    mutation: (data: { current_password: string; password: string; password_confirmation: string }) =>
+        updatePassword(data),
+});
+
+async function handleUpdatePassword() {
     errors.value = {};
     try {
-        await api.put('/settings/password', {
+        await doUpdatePassword({
             current_password: currentPassword.value,
             password: password.value,
             password_confirmation: passwordConfirmation.value,
@@ -29,17 +34,10 @@ async function updatePassword() {
         passwordConfirmation.value = '';
         recentlySuccessful.value = true;
         setTimeout(() => (recentlySuccessful.value = false), 3000);
-    } catch (err: any) {
-        if (err.response?.status === 422) {
-            const validationErrors = err.response.data.errors ?? {};
-            for (const [key, val] of Object.entries(validationErrors)) {
-                errors.value[key] = Array.isArray(val) ? val[0] : String(val);
-            }
-        }
+    } catch (err: unknown) {
+        errors.value = extractValidationErrors(err);
         password.value = '';
         passwordConfirmation.value = '';
-    } finally {
-        processing.value = false;
     }
 }
 </script>
@@ -55,7 +53,7 @@ async function updatePassword() {
             </div>
 
             <div class="p-6">
-                <form @submit.prevent="updatePassword" class="space-y-5">
+                <form @submit.prevent="handleUpdatePassword" class="space-y-5">
                     <div class="grid gap-2">
                         <Label for="current_password">Current password</Label>
                         <Input

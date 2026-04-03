@@ -1,7 +1,8 @@
 import { ref, shallowRef } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import { useE2EE } from '@/composables/useE2EE';
-import api from '@/lib/api';
+import { normalizeMessages } from '@/api/normalizers';
+import { getChannelPins, getDmPins, pinChannelMessage, pinDmMessage, unpinChannelMessage, unpinDmMessage } from '@/api/pins';
 import { useE2eeStore } from '@/stores/e2ee';
 import type { MessageData } from '@/types/chat';
 
@@ -21,11 +22,11 @@ export function usePinnedMessages(
         if (!channelId.value) return;
         isLoadingPinned.value = true;
         try {
-            const endpoint = isDm.value
-                ? `/direct-messages/${channelId.value}/pins`
-                : `/channels/${channelId.value}/pins`;
-            const response = await api.get(endpoint);
-            pinnedMessages.value = response.data ?? [];
+            const id = String(channelId.value);
+            const response = isDm.value
+                ? await getDmPins(id)
+                : await getChannelPins(id);
+            pinnedMessages.value = normalizeMessages(response.data, response.included);
         } catch (error) {
             console.error('Failed to fetch pinned messages:', error);
         } finally {
@@ -51,19 +52,24 @@ export function usePinnedMessages(
 
     async function togglePin(message: MessageData): Promise<void> {
         if (!channelId.value) return;
-        const endpoint = isDm.value
-            ? `/direct-messages/${channelId.value}/messages/${message.id}/pin`
-            : `/channels/${channelId.value}/messages/${message.id}/pin`;
 
         try {
             if (message.is_pinned) {
-                await api.delete(endpoint);
+                if (isDm.value) {
+                    await unpinDmMessage(channelId.value, message.id);
+                } else {
+                    await unpinChannelMessage(channelId.value, message.id);
+                }
                 message.is_pinned = false;
                 message.pinned_at = null;
                 const idx = pinnedMessages.value.findIndex((m) => m.id === message.id);
                 if (idx !== -1) pinnedMessages.value.splice(idx, 1);
             } else {
-                await api.post(endpoint);
+                if (isDm.value) {
+                    await pinDmMessage(String(channelId.value), String(message.id));
+                } else {
+                    await pinChannelMessage(String(channelId.value), String(message.id));
+                }
                 message.is_pinned = true;
                 message.pinned_at = new Date().toISOString();
                 if (showPinnedMessages.value) {
@@ -75,17 +81,18 @@ export function usePinnedMessages(
         }
     }
 
-    async function unpinFromPanel(messageId: number): Promise<void> {
+    async function unpinFromPanel(messageId: string | number): Promise<void> {
         if (!channelId.value) return;
-        const endpoint = isDm.value
-            ? `/direct-messages/${channelId.value}/messages/${messageId}/pin`
-            : `/channels/${channelId.value}/messages/${messageId}/pin`;
 
         try {
-            await api.delete(endpoint);
-            const idx = pinnedMessages.value.findIndex((m) => m.id === messageId);
+            if (isDm.value) {
+                await unpinDmMessage(channelId.value, messageId);
+            } else {
+                await unpinChannelMessage(channelId.value, messageId);
+            }
+            const idx = pinnedMessages.value.findIndex((m) => m.id === String(messageId));
             if (idx !== -1) pinnedMessages.value.splice(idx, 1);
-            const msg = activeMessages.value.find((m) => m.id === messageId);
+            const msg = activeMessages.value.find((m) => m.id === String(messageId));
             if (msg) {
                 msg.is_pinned = false;
                 msg.pinned_at = null;

@@ -21,8 +21,7 @@
         "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
         "typecheck:renderer": "vue-tsc --noEmit -p tsconfig.renderer.json",
         "typecheck": "npm run typecheck:node && npm run typecheck:renderer",
-        "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*",
-        "postinstall": "node scripts/install-ffmpeg.mjs"
+        "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*"
     },
     "devDependencies": {
         "@electron-forge/cli": "^7.11.1",
@@ -35,6 +34,7 @@
         "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
         "@electron-toolkit/tsconfig": "^1.0.1",
         "@eslint/js": "^9.19.0",
+        "@pinia/colada-devtools": "^0.4.5",
         "@reforged/maker-appimage": "^5.2.0",
         "@tailwindcss/vite": "^4.1.11",
         "@types/better-sqlite3": "^7.6.13",
@@ -63,6 +63,7 @@
         "@electron-toolkit/utils": "^4.0.0",
         "@noble/curves": "^2.0.1",
         "@noble/hashes": "^2.0.1",
+        "@pinia/colada": "^1.1.0",
         "@primeuix/themes": "^2.0.3",
         "@tanstack/vue-virtual": "^3.13.23",
         "@vueuse/core": "^12.8.2",

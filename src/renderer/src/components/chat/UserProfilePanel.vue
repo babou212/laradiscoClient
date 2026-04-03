@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { MessageSquare } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
-import api from '@/lib/api';
+import { computed, shallowRef, watch } from 'vue';
+import { getUserProfile } from '@/api/users';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { OnlineUser } from '@/types/user';
+import type { UserResource } from '@/api/types';
+
+interface IncludedRole {
+    id: string;
+    type: string;
+    attributes: {
+        name: string;
+        color: string;
+    };
+}
 
 type Props = {
     user: OnlineUser | null;
@@ -15,14 +25,15 @@ type Props = {
 const props = defineProps<Props>();
 const emit = defineEmits<{
     close: [];
-    sendMessage: [userId: number];
+    sendMessage: [userId: string];
 }>();
 
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
 
-const fullUser = ref<any>(null);
-const loading = ref(false);
+const fullUser = shallowRef<UserResource | null>(null);
+const includedRoles = shallowRef<IncludedRole[]>([]);
+const loading = shallowRef(false);
 
 watch(
     () => props.show,
@@ -30,19 +41,25 @@ watch(
         if (show && props.user) {
             loading.value = true;
             fullUser.value = null;
+            includedRoles.value = [];
             try {
-                const response = await api.get(`/users/${props.user.id}`);
+                const response = await getUserProfile(String(props.user.id));
                 fullUser.value = response.data;
+                includedRoles.value = (response.included ?? []).filter(
+                    (r) => r.type === 'roles',
+                ) as IncludedRole[];
             } catch (error) {
                 if (import.meta.env.DEV) {
                     console.error('Failed to fetch user data:', error);
                 }
                 fullUser.value = null;
+                includedRoles.value = [];
             } finally {
                 loading.value = false;
             }
         } else {
             fullUser.value = null;
+            includedRoles.value = [];
             loading.value = false;
         }
     },
@@ -76,8 +93,8 @@ const displayName = computed(() => {
 });
 
 const memberSince = computed(() => {
-    if (!fullUser.value?.created_at) return 'Unknown';
-    const date = new Date(fullUser.value.created_at);
+    if (!fullUser.value?.attributes?.created_at) return 'Unknown';
+    const date = new Date(fullUser.value.attributes.created_at);
     if (isNaN(date.getTime())) return 'Unknown';
     return date.toLocaleDateString('en-US', {
         month: 'short',
@@ -171,7 +188,7 @@ const handleClose = () => {
                     </p>
                 </div>
 
-                <div v-if="loading || fullUser?.roles?.length" class="bg-background/50 rounded-lg p-3">
+                <div v-if="loading || includedRoles.length" class="bg-background/50 rounded-lg p-3">
                     <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Roles</h3>
                     <div v-if="loading" class="mt-2 flex flex-wrap gap-1.5">
                         <span class="bg-muted h-6 w-16 animate-pulse rounded-full"></span>
@@ -179,12 +196,12 @@ const handleClose = () => {
                     </div>
                     <div v-else class="mt-2 flex flex-wrap gap-1.5">
                         <span
-                            v-for="role in fullUser.roles"
+                            v-for="role in includedRoles"
                             :key="role.id"
                             class="border-border bg-background text-popover-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
                         >
-                            <span class="size-2.5 rounded-full" :style="{ backgroundColor: role.color }"></span>
-                            {{ role.name }}
+                            <span class="size-2.5 rounded-full" :style="{ backgroundColor: role.attributes.color }"></span>
+                            {{ role.attributes.name }}
                         </span>
                     </div>
                 </div>

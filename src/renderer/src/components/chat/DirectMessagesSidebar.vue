@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core';
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { shallowRef, watch } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import api from '@/lib/api';
+import { getMembers } from '@/api/members';
 import { useAvatarStore } from '@/stores/avatar';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
@@ -22,9 +23,9 @@ const emit = defineEmits<{
 const presenceStore = usePresenceStore();
 const avatarStore = useAvatarStore();
 
-const showNewDmSearch = ref(false);
-const searchQuery = ref('');
-const searchResults = ref<
+const showNewDmSearch = shallowRef(false);
+const searchQuery = shallowRef('');
+const searchResults = shallowRef<
     Array<{
         id: number;
         username: string;
@@ -32,7 +33,33 @@ const searchResults = ref<
         avatar_urls: { thumb: string; small: string; medium: string } | null;
     }>
 >([]);
-const isSearching = ref(false);
+const isSearching = shallowRef(false);
+
+watch(searchQuery, (q) => {
+    if (!q.trim()) searchResults.value = [];
+});
+
+watchDebounced(
+    searchQuery,
+    async (q) => {
+        if (!q.trim()) return;
+        isSearching.value = true;
+        try {
+            const response = await getMembers({ 'filter[search]': q });
+            searchResults.value = response.data.map((u) => ({
+                id: Number(u.id),
+                username: u.attributes.username,
+                display_name: u.attributes.display_name ?? u.attributes.username,
+                avatar_urls: u.attributes.avatar_urls ?? null,
+            }));
+        } catch {
+            searchResults.value = [];
+        } finally {
+            isSearching.value = false;
+        }
+    },
+    { debounce: 300 },
+);
 
 const getStatusColor = (userId: number): string => {
     const userStatus = presenceStore.getUserStatus(userId);
@@ -72,30 +99,6 @@ const truncateMessage = (content: string, maxLength: number = 40) => {
     return content.substring(0, maxLength) + '...';
 };
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
-
-const handleSearch = (query: string) => {
-    searchQuery.value = query;
-    if (searchDebounce) clearTimeout(searchDebounce);
-
-    if (!query.trim()) {
-        searchResults.value = [];
-        return;
-    }
-
-    searchDebounce = setTimeout(async () => {
-        isSearching.value = true;
-        try {
-            const response = await api.get('/members', { params: { search: query } });
-            searchResults.value = response.data?.members ?? response.data ?? [];
-        } catch {
-            searchResults.value = [];
-        } finally {
-            isSearching.value = false;
-        }
-    }, 300);
-};
-
 const selectSearchUser = (userId: number) => {
     emit('startDm', userId);
     showNewDmSearch.value = false;
@@ -131,11 +134,10 @@ const toggleNewDmSearch = () => {
             <div class="relative">
                 <Search :size="14" class="text-sidebar-foreground/50 absolute top-1/2 left-2.5 -translate-y-1/2" />
                 <input
+                    v-model="searchQuery"
                     type="text"
                     class="bg-sidebar-accent/50 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:bg-sidebar-accent w-full rounded py-1.5 pr-2 pl-8 text-sm focus:outline-none"
                     placeholder="Find or start a conversation"
-                    :value="searchQuery"
-                    @input="handleSearch(($event.target as HTMLInputElement).value)"
                 />
             </div>
             <div v-if="searchResults.length > 0" class="mt-1 max-h-48 overflow-y-auto">

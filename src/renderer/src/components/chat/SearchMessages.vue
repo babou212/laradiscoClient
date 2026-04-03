@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced, useEventListener } from '@vueuse/core';
 import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
-import { shallowRef, computed, watch, onMounted } from 'vue';
+import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 
 type Props = {
@@ -21,7 +21,7 @@ const { isSearching, searchResults, searchError, hasMore, searchInConversation, 
     useEncryptedSearch();
 
 const searchQuery = shallowRef('');
-const searchInput = shallowRef<HTMLInputElement | null>(null);
+const searchInput = useTemplateRef<HTMLInputElement>('searchInput');
 
 watch(searchQuery, (query) => {
     if (!query.trim()) clearSearch();

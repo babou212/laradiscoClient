@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core';
 import { Pin, PinOff, X } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onMounted, useTemplateRef } from 'vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
@@ -20,20 +21,16 @@ const emit = defineEmits<{
     unpin: [messageId: number];
 }>();
 
-const panelRef = ref<HTMLElement | null>(null);
+const panelRef = useTemplateRef<HTMLElement>('panelRef');
 
-const onClickOutside = (event: MouseEvent) => {
+let ready = false;
+onMounted(() => requestAnimationFrame(() => { ready = true; }));
+
+useEventListener(document, 'pointerdown', (event: PointerEvent) => {
+    if (!ready) return;
     if (panelRef.value && !panelRef.value.contains(event.target as Node)) {
         emit('close');
     }
-};
-
-onMounted(() => {
-    setTimeout(() => document.addEventListener('pointerdown', onClickOutside), 0);
-});
-
-onBeforeUnmount(() => {
-    document.removeEventListener('pointerdown', onClickOutside);
 });
 
 const displayContent = (message: MessageData): string => {

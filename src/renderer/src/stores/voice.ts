@@ -15,7 +15,7 @@ import {
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useAvatarStore } from './avatar';
-import api from '@/lib/api';
+import { getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
@@ -170,16 +170,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function fetchVoiceParticipants(): Promise<void> {
         try {
-            const response = await api.get('/voice/participants');
-            const data: Record<
-                string,
-                Array<{
-                    id: number;
-                    username: string;
-                    display_name: string;
-                    avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
-                }>
-            > = response.data ?? {};
+            const data = await getVoiceParticipants();
 
             for (const [channelIdStr, participants] of Object.entries(data)) {
                 const channelId = Number(channelIdStr);
@@ -195,20 +186,21 @@ export const useVoiceStore = defineStore('voice', () => {
                 channelParticipantsMap.value.set(channelId, mapped);
 
                 const avatarStore = useAvatarStore();
-                avatarStore.hydrateFromUsers(participants.map((p) => ({ id: p.id, avatar_urls: p.avatar_urls })));
+                avatarStore.hydrateFromUsers(participants.map((p) => ({ id: String(p.id), avatar_urls: p.avatar_urls })));
             }
         } catch (error) {
             console.error('Failed to fetch voice participants:', error);
         }
     }
 
-    let subscribedChannelIds: number[] = [];
+    let subscribedChannelIds: (string | number)[] = [];
 
-    function subscribeToVoiceChannels(voiceChannelIds: number[]): void {
+    function subscribeToVoiceChannels(voiceChannelIds: (string | number)[]): void {
         unsubscribeFromVoiceChannels();
         const echo = getEcho();
 
-        for (const channelId of voiceChannelIds) {
+        for (const chId of voiceChannelIds) {
+            const channelId = Number(chId);
             echo.private(`voice.channel.${channelId}`)
                 .listen(
                     '.voice.joined',
@@ -272,9 +264,9 @@ export const useVoiceStore = defineStore('voice', () => {
         const numericId = Number(identity);
         if (!isNaN(numericId)) {
             const avatarStore = useAvatarStore();
-            const cached = avatarStore.getAvatarUrl(numericId, 'thumb');
+            const cached = avatarStore.getAvatarUrl(String(numericId), 'thumb');
             if (cached) {
-                const full = avatarStore.cache.get(numericId);
+                const full = avatarStore.cache.get(String(numericId));
                 if (full) return full;
             }
         }
@@ -416,8 +408,12 @@ export const useVoiceStore = defineStore('voice', () => {
                 await leaveChannel();
             }
 
+<<<<<<< Updated upstream
+            const { token, url, e2ee_key } = await joinVoiceChannel(channelId);
+=======
             const { data } = await api.post(`/channels/${channelId}/voice/join`);
             const { token, url, e2ee_key } = data;
+>>>>>>> Stashed changes
 
             const keyProvider = new ExternalE2EEKeyProvider();
 
@@ -620,7 +616,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         if (oldRoom) {
             if (currentChannel.value) {
-                api.delete(`/channels/${currentChannel.value.id}/voice/membership`).catch(() => {});
+                leaveVoiceMembership(currentChannel.value.id).catch(() => {});
             }
             oldRoom.disconnect();
         }

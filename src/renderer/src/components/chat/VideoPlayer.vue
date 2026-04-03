@@ -2,7 +2,7 @@
 import { Download, Film, Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue';
 import { Slider } from '@/components/ui/slider';
-import api from '@/lib/api';
+import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -74,8 +74,7 @@ function formatFileSize(bytes: number): string {
 }
 
 async function decryptVideo(): Promise<string> {
-    const response = await api.get(`/attachments/${props.attachment.id}/download`);
-    const { download_url } = response.data;
+    const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
 
     return window.api.attachments.prepareVideo({
         attachmentId: props.attachment.id,
@@ -98,8 +97,7 @@ async function loadThumbnail() {
     thumbnailLoading.value = true;
 
     try {
-        const response = await api.get(`/attachments/${props.attachment.id}/download`);
-        const { thumbnail_url } = response.data;
+        const { thumbnail_url } = await getAttachmentDownloadUrl(props.attachment.id);
         if (!thumbnail_url) return;
 
         const encryptedBuffer = await window.api.attachments.downloadBuffer(thumbnail_url);

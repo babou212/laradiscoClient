@@ -26,7 +26,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import api from '@/lib/api';
+import { getAuditLog } from '@/api/e2ee';
 import { useAuthStore } from '@/stores/auth';
 import { useE2eeStore, type E2eeDevice } from '@/stores/e2ee';
 
@@ -61,8 +61,7 @@ async function loadAuditLog() {
     if (!userId) return;
     auditLogLoading.value = true;
     try {
-        const response = await api.get(`/e2ee/audit-log/${userId}`);
-        auditLog.value = response.data?.data ?? response.data ?? [];
+        auditLog.value = (await getAuditLog(userId)) as AuditEntry[];
     } catch {
         auditLog.value = [];
     } finally {

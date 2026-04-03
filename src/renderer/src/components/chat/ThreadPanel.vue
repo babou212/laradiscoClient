@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import TypingIndicator from './TypingIndicator.vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, shallowRef, useTemplateRef, watch } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
-import api from '@/lib/api';
+import { coerceBroadcastMessage } from '@/api/normalizers';
+import { toggleThreadReaction, followThread as apiFollowThread, unfollowThread as apiUnfollowThread } from '@/api/threads';
+import { sendThreadTyping } from '@/api/typing';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -17,9 +16,12 @@ import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import TypingIndicator from './TypingIndicator.vue';
 
 interface Props {
-    channelId: number;
+    channelId: string;
     channelPermissions?: ChannelPermissions;
 }
 
@@ -34,13 +36,13 @@ const threadStore = useThreadStore();
 const e2ee = useE2EE();
 
 const currentUser = computed(() => authStore.user);
-const messagesContainer = ref<HTMLElement>();
-const editingMessageId = ref<number | null>(null);
-const editContent = ref('');
-const emojiPickerMessageId = ref<number | null>(null);
-const sendError = ref<string | null>(null);
-const userIsNearBottom = ref(true);
-const isLoadingMore = ref(false);
+const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
+const editingMessageId = shallowRef<string | null>(null);
+const editContent = shallowRef('');
+const emojiPickerMessageId = shallowRef<string | null>(null);
+const sendError = shallowRef<string | null>(null);
+const userIsNearBottom = shallowRef(true);
+const isLoadingMore = shallowRef(false);
 const typingUsers = reactive(new Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>());
 let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -74,12 +76,12 @@ function extractMentionMetadata(content: string): {
         const name = match[1];
         if (name === 'everyone' || name === 'here') continue;
         const member = presenceStore.allMembers.find((m) => m.username?.toLowerCase() === name.toLowerCase());
-        if (member) userIds.push(member.id);
+        if (member) userIds.push(Number(member.id));
     }
     return { userIds: [...new Set(userIds)], mentionEveryone, mentionHere };
 }
 
-const joinThread = (threadId: number) => {
+const joinThread = (threadId: number | string) => {
     leaveThread();
     const echo = getEcho();
     if (!echo) return;
@@ -88,6 +90,7 @@ const joinThread = (threadId: number) => {
 
     echo.join(currentThreadListener)
         .listen('ThreadMessageSent', async (data: { message: MessageData }) => {
+            coerceBroadcastMessage(data.message);
             if (data.message.user.id === currentUser.value?.id) {
                 const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
                 const msgDeviceId = data.message.sender_device_id ?? '';
@@ -102,6 +105,7 @@ const joinThread = (threadId: number) => {
             scrollToBottom();
         })
         .listen('ThreadMessageEdited', async (data: { message: MessageData }) => {
+            coerceBroadcastMessage(data.message);
             const update: Partial<MessageData> = {
                 content: data.message.content,
                 is_edited: true,
@@ -126,9 +130,9 @@ const joinThread = (threadId: number) => {
                     try {
                         const plaintext = await e2ee.decrypt(
                             data.message.content,
-                            props.channelId,
+                            Number(props.channelId),
                             undefined,
-                            data.message.id,
+                            Number(data.message.id),
                         );
                         update.decrypted_content = plaintext.text;
                         update.decrypted_attachments = plaintext.attachments;
@@ -141,11 +145,11 @@ const joinThread = (threadId: number) => {
 
             threadStore.updateThreadMessage(data.message.id, update);
         })
-        .listen('ThreadMessageDeleted', (data: { message_id: number }) => {
-            threadStore.removeThreadMessage(data.message_id);
+        .listen('ThreadMessageDeleted', (data: { message_id: number | string }) => {
+            threadStore.removeThreadMessage(String(data.message_id));
         })
         .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
-            if (data.user_id === currentUser.value?.id) return;
+            if (String(data.user_id) === currentUser.value?.id) return;
 
             if (data.is_typing) {
                 const existing = typingUsers.get(data.user_id);
@@ -166,6 +170,9 @@ const joinThread = (threadId: number) => {
             }
         })
         .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
+            data.reaction.id = String(data.reaction.id);
+            data.reaction.message_id = String(data.reaction.message_id);
+            data.reaction.user_id = String(data.reaction.user_id);
             const msg = threadStore.threadMessages.find((m) => m.id === data.reaction.message_id);
             if (msg) {
                 if (!msg.reactions) msg.reactions = [];
@@ -198,7 +205,7 @@ const emitTyping = () => {
     if (!thread) return;
     if (typingDebounceTimer) return;
 
-    api.post(`/channels/${props.channelId}/threads/${thread.id}/typing`).catch(() => {});
+    sendThreadTyping(props.channelId, thread.id).catch(() => {});
 
     typingDebounceTimer = setTimeout(() => {
         typingDebounceTimer = null;
@@ -231,7 +238,7 @@ const handleScroll = async () => {
         await threadStore.loadOlderMessages(props.channelId);
 
         if (e2eeStore.isReady) {
-            await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
+            await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
         }
 
         await nextTick();
@@ -259,7 +266,7 @@ watch(
     async (loading, wasLoading) => {
         if (wasLoading && !loading) {
             if (e2eeStore.isReady) {
-                await e2ee.decryptMessages(threadStore.threadMessages, props.channelId, undefined);
+                await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
             }
             scrollToBottom(true);
         }
@@ -294,7 +301,7 @@ const sendReply = async (content: string) => {
     }
 
     try {
-        messageContent = await e2ee.encryptForChannel(props.channelId, content);
+        messageContent = await e2ee.encryptForChannel(Number(props.channelId), content);
     } catch {
         sendError.value = 'Failed to encrypt message.';
         return;
@@ -323,7 +330,7 @@ const sendReply = async (content: string) => {
     }
 
     const optimistic: MessageData = {
-        id: Date.now(),
+        id: String(Date.now()),
         content,
         is_edited: false,
         edited_at: null,
@@ -346,9 +353,9 @@ const sendReply = async (content: string) => {
 
     if (reply) {
         reply.decrypted_content = content;
-        e2ee.cacheDecryptedContent(reply.id, content, {
+        e2ee.cacheDecryptedContent(Number(reply.id), content, {
             conversationType: 'channel',
-            conversationId: props.channelId,
+            conversationId: Number(props.channelId),
             userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
         }).catch(() => {});
         const idx = threadStore.threadMessages.findIndex((m) => m.id === optimistic.id);
@@ -375,7 +382,7 @@ const saveEdit = async (message: MessageData) => {
         if (!e2eeStore.isReady) return;
 
         const extra: Record<string, any> = {};
-        const contentToSend = await e2ee.encryptForChannel(props.channelId, editContent.value);
+        const contentToSend = await e2ee.encryptForChannel(Number(props.channelId), editContent.value);
         extra.sender_device_id = await e2ee.getDeviceId();
         try {
             extra.history_ciphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, editContent.value);
@@ -385,9 +392,9 @@ const saveEdit = async (message: MessageData) => {
 
         await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, contentToSend, extra);
 
-        e2ee.cacheDecryptedContent(message.id, editContent.value, {
+        e2ee.cacheDecryptedContent(Number(message.id), editContent.value, {
             conversationType: 'channel',
-            conversationId: props.channelId,
+            conversationId: Number(props.channelId),
             userName: (currentUser.value as any)?.username ?? currentUser.value!.name,
         }).catch(() => {});
         threadStore.updateThreadMessage(message.id, {
@@ -402,7 +409,7 @@ const saveEdit = async (message: MessageData) => {
 const deleteMessage = async (message: MessageData) => {
     if (!threadStore.activeThread) return;
     await threadStore.deleteMessage(props.channelId, threadStore.activeThread.id, message.id);
-    e2ee.removeFromSearchIndex(message.id).catch(() => {});
+    e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
 };
 
 const toggleReaction = async (message: MessageData, emoji: string) => {

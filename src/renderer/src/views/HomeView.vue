@@ -45,7 +45,7 @@ onUnmounted(() => {
     voiceStore.unsubscribeFromVoiceChannels();
 });
 
-const handleSelectChannel = async (channelId: number) => {
+const handleSelectChannel = async (channelId: string) => {
     await chatStore.selectChannel(channelId);
 };
 

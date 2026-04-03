@@ -3,9 +3,9 @@ import { reactive } from 'vue';
 import { useAuthStore } from './auth';
 
 export const useUserNamesStore = defineStore('userNames', () => {
-    const cache = reactive(new Map<number, string>());
+    const cache = reactive(new Map<string, string>());
 
-    function getDisplayName(userId: number, fallback?: string): string {
+    function getDisplayName(userId: string, fallback?: string): string {
         return cache.get(userId) ?? fallback ?? 'Unknown User';
     }
 
@@ -16,12 +16,12 @@ export const useUserNamesStore = defineStore('userNames', () => {
         return getDisplayName(userId, authStore.user?.name);
     }
 
-    function setDisplayName(userId: number, displayName: string): void {
+    function setDisplayName(userId: string, displayName: string): void {
         cache.set(userId, displayName);
     }
 
     function hydrateFromUsers(
-        users: Array<{ id: number; display_name?: string; name?: string; username?: string }>,
+        users: Array<{ id: string; display_name?: string; name?: string; username?: string }>,
     ): void {
         for (const user of users) {
             const name = user.display_name || user.name || user.username;

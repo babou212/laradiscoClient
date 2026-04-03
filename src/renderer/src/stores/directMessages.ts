@@ -1,23 +1,32 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useAvatarStore } from './avatar';
+import { createDmGroup, findDmGroup, getDmMessages } from '@/api/direct-messages';
+import { normalizeMessages } from '@/api/normalizers';
 import { useE2EE } from '@/composables/useE2EE';
-import api from '@/lib/api';
 import type { AvatarUrls, MessageData } from '@/types/chat';
 
+function extractCursor(url: string | null | undefined): string | null {
+    if (!url) return null;
+    try {
+        return new URL(url).searchParams.get('cursor');
+    } catch {
+        return url;
+    }
+}
+
 export interface DmGroup {
-    id: number;
+    id: string;
     name: string;
     other_user: {
-        id: number;
+        id: string;
         username: string;
         avatar_urls: AvatarUrls | null;
     } | null;
     last_message: {
-        id: number;
+        id: string;
         content: string;
         created_at: string;
-        user_id: number;
+        user_id: string;
         sender_device_id?: string;
         decrypted_content?: string;
         decrypt_error?: boolean;
@@ -26,10 +35,10 @@ export interface DmGroup {
 }
 
 export interface CurrentDmGroup {
-    id: number;
+    id: string;
     name: string;
     other_user?: {
-        id: number;
+        id: string;
         username: string;
         avatar_urls: AvatarUrls | null;
     };
@@ -46,76 +55,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     const isLoadingMore = ref(false);
 
     const selectedDmGroupId = computed(() => currentDmGroup.value?.id ?? null);
-
-    async function fetchDmGroups(): Promise<void> {
-        isLoadingGroups.value = true;
-        try {
-            const response = await api.get('/direct-messages');
-            dmGroups.value = response.data ?? [];
-
-            const avatarStore = useAvatarStore();
-            const users = dmGroups.value
-                .filter((dm) => dm.other_user)
-                .map((dm) => ({ id: dm.other_user!.id, avatar_urls: dm.other_user!.avatar_urls }));
-            avatarStore.hydrateFromUsers(users);
-        } catch (error) {
-            console.error('Failed to fetch DM groups:', error);
-        } finally {
-            isLoadingGroups.value = false;
-        }
-    }
-
-    async function selectDmGroup(groupId: number): Promise<void> {
-        isLoadingMessages.value = true;
-        try {
-            const response = await api.get(`/direct-messages/${groupId}`);
-            currentDmGroup.value = response.data.dm_group ?? null;
-
-            if (response.data.messages) {
-                messages.value = response.data.messages ?? [];
-                nextCursor.value = response.data.pagination?.next_cursor ?? null;
-                prevCursor.value = response.data.pagination?.prev_cursor ?? null;
-            }
-        } catch (error) {
-            console.error('Failed to fetch DM group:', error);
-        } finally {
-            isLoadingMessages.value = false;
-        }
-    }
-
-    async function loadOlderMessages(): Promise<void> {
-        if (!prevCursor.value || !currentDmGroup.value || isLoadingMore.value) return;
-
-        isLoadingMore.value = true;
-        try {
-            const response = await api.get(`/direct-messages/${currentDmGroup.value.id}`, {
-                params: { cursor: prevCursor.value },
-            });
-
-            if (response.data.messages) {
-                messages.value = [...(response.data.messages ?? []), ...messages.value];
-                prevCursor.value = response.data.pagination?.prev_cursor ?? null;
-            }
-        } catch (error) {
-            console.error('Failed to load older messages:', error);
-        } finally {
-            isLoadingMore.value = false;
-        }
-    }
-
-    async function startOrGetDm(userId: number): Promise<number | null> {
-        try {
-            const response = await api.post('/direct-messages', { user_id: userId });
-            const groupId = response.data.dm_group_id;
-
-            await fetchDmGroups();
-
-            return groupId;
-        } catch (error) {
-            console.error('Failed to start DM:', error);
-            return null;
-        }
-    }
 
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
@@ -141,8 +80,8 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    function updateMessage(messageOrId: MessageData | number, partial?: Partial<MessageData>): void {
-        if (typeof messageOrId === 'number') {
+    function updateMessage(messageOrId: MessageData | string, partial?: Partial<MessageData>): void {
+        if (typeof messageOrId === 'string') {
             const idx = messages.value.findIndex((m) => m.id === messageOrId);
             if (idx !== -1 && partial) {
                 Object.assign(messages.value[idx], partial);
@@ -157,7 +96,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
-    function removeMessage(messageId: number): void {
+    function removeMessage(messageId: string): void {
         const idx = messages.value.findIndex((m) => m.id === messageId);
         if (idx !== -1) messages.value.splice(idx, 1);
     }
@@ -168,6 +107,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
 
         const e2ee = useE2EE();
 
+        // Always try cache first to avoid consuming MLS ratchet keys
         const temp: MessageData[] = [
             {
                 id: lm.id,
@@ -188,7 +128,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
 
         try {
-            const plaintext = await e2ee.decrypt(lm.content, undefined, group.id, lm.id);
+            const plaintext = await e2ee.decrypt(lm.content, undefined, Number(group.id), Number(lm.id));
             lm.decrypted_content = plaintext.text;
         } catch {
             lm.decrypt_error = true;
@@ -201,6 +141,57 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
                 .filter((g) => g.last_message && !g.last_message.decrypted_content)
                 .map((g) => decryptLastMessage(g)),
         );
+    }
+
+    async function fetchMessages(groupId: string): Promise<void> {
+        isLoadingMessages.value = true;
+        messages.value = [];
+        nextCursor.value = null;
+        prevCursor.value = null;
+        try {
+            const response = await getDmMessages(groupId);
+            messages.value = normalizeMessages(response.data, response.included);
+            prevCursor.value = extractCursor(response.links?.prev);
+            nextCursor.value = extractCursor(response.links?.next);
+        } catch (error) {
+            console.error('Failed to fetch DM messages:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
+    async function loadOlderMessages(): Promise<void> {
+        if (!currentDmGroup.value || !prevCursor.value || isLoadingMore.value) return;
+        isLoadingMore.value = true;
+        try {
+            const response = await getDmMessages(currentDmGroup.value.id, { cursor: prevCursor.value });
+            const older = normalizeMessages(response.data, response.included);
+            messages.value = [...older, ...messages.value];
+            prevCursor.value = extractCursor(response.links?.prev);
+        } catch (error) {
+            console.error('Failed to load older DM messages:', error);
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
+    async function startOrGetDm(userId: string): Promise<string | null> {
+        try {
+            const found = await findDmGroup(userId);
+            return String(found.data.dm_group_id);
+        } catch {
+            // Group doesn't exist yet, create one
+        }
+        try {
+            const created = await createDmGroup(userId);
+            if ('data' in created && 'dm_group_id' in created.data) {
+                return String((created.data as { dm_group_id: number }).dm_group_id);
+            }
+            return created.data.id;
+        } catch (error) {
+            console.error('Failed to create DM group:', error);
+            return null;
+        }
     }
 
     function clearCurrentDm(): void {
@@ -231,13 +222,12 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMessages,
         isLoadingMore,
         selectedDmGroupId,
-        fetchDmGroups,
-        selectDmGroup,
-        loadOlderMessages,
-        startOrGetDm,
         addMessage,
         updateMessage,
         removeMessage,
+        fetchMessages,
+        loadOlderMessages,
+        startOrGetDm,
         clearCurrentDm,
         decryptLastMessages,
         $reset,

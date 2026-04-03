@@ -1,7 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
-import api from '@/lib/api';
-import type { MessageData, MessagesResponse, ThreadPreview } from '@/types/chat';
+import { normalizeMessage, normalizeMessages } from '@/api/normalizers';
+import { getThreadMessages, createThreadReply, editThreadMessage, deleteThreadMessage, toggleThreadReaction, followThread as apiFollowThread, unfollowThread as apiUnfollowThread } from '@/api/threads';
+import type { MessageData, ThreadPreview } from '@/types/chat';
 
 export const useThreadStore = defineStore('thread', () => {
     const activeThread = ref<ThreadPreview | null>(null);
@@ -13,7 +14,7 @@ export const useThreadStore = defineStore('thread', () => {
     const nextCursor = ref<string | null>(null);
     const prevCursor = ref<string | null>(null);
 
-    async function openThread(channelId: number, message: MessageData): Promise<void> {
+    async function openThread(channelId: string | number, message: MessageData): Promise<void> {
         parentMessage.value = message;
         threadMessages.value = [];
         activeThread.value = message.thread ?? null;
@@ -21,11 +22,10 @@ export const useThreadStore = defineStore('thread', () => {
         if (message.thread) {
             isLoadingMessages.value = true;
             try {
-                const response = await api.get(`/channels/${channelId}/threads/${message.thread.id}/messages`);
-                const data = response.data as MessagesResponse;
-                threadMessages.value = data.data ?? [];
-                nextCursor.value = data.next_cursor ?? null;
-                prevCursor.value = data.prev_cursor ?? null;
+                const response = await getThreadMessages(String(channelId), String(message.thread.id));
+                threadMessages.value = normalizeMessages(response.data, response.included);
+                nextCursor.value = response.links?.next ?? null;
+                prevCursor.value = response.links?.prev ?? null;
             } catch (error) {
                 console.error('Failed to fetch thread messages:', error);
             } finally {
@@ -42,17 +42,17 @@ export const useThreadStore = defineStore('thread', () => {
         prevCursor.value = null;
     }
 
-    async function loadOlderMessages(channelId: number): Promise<void> {
+    async function loadOlderMessages(channelId: string | number): Promise<void> {
         if (!activeThread.value || !prevCursor.value || isLoadingMore.value) return;
 
         isLoadingMore.value = true;
         try {
-            const response = await api.get(`/channels/${channelId}/threads/${activeThread.value.id}/messages`, {
-                params: { cursor: prevCursor.value },
+            const response = await getThreadMessages(String(channelId), String(activeThread.value.id), {
+                cursor: prevCursor.value,
             });
-            const data = response.data as MessagesResponse;
-            threadMessages.value = [...(data.data ?? []), ...threadMessages.value];
-            prevCursor.value = data.prev_cursor ?? null;
+            const older = normalizeMessages(response.data, response.included);
+            threadMessages.value = [...older, ...threadMessages.value];
+            prevCursor.value = response.links?.prev ?? null;
         } catch (error) {
             console.error('Failed to load older thread messages:', error);
         } finally {
@@ -61,8 +61,8 @@ export const useThreadStore = defineStore('thread', () => {
     }
 
     async function sendReply(
-        channelId: number,
-        messageId: number,
+        channelId: string | number,
+        messageId: string | number,
         messageBytes: string,
         extra?: {
             sender_device_id?: string;
@@ -73,11 +73,12 @@ export const useThreadStore = defineStore('thread', () => {
         },
     ): Promise<MessageData | null> {
         try {
-            const response = await api.post(`/channels/${channelId}/messages/${messageId}/thread`, {
+            const response = await createThreadReply(String(channelId), String(messageId), {
                 message_bytes: messageBytes,
+                sender_device_id: extra?.sender_device_id ?? '',
                 ...extra,
             });
-            const reply = response.data as MessageData;
+            const reply = normalizeMessage(response.data, response.included);
 
             if (!activeThread.value && reply.thread_id) {
                 activeThread.value = {
@@ -103,9 +104,9 @@ export const useThreadStore = defineStore('thread', () => {
     }
 
     async function editMessage(
-        channelId: number,
-        threadId: number,
-        messageId: number,
+        channelId: string | number,
+        threadId: string | number,
+        messageId: string | number,
         messageBytes: string,
         extra?: {
             sender_device_id?: string;
@@ -113,11 +114,12 @@ export const useThreadStore = defineStore('thread', () => {
         },
     ): Promise<void> {
         try {
-            await api.put(`/channels/${channelId}/threads/${threadId}/messages/${messageId}`, {
+            await editThreadMessage(String(channelId), String(threadId), String(messageId), {
                 message_bytes: messageBytes,
+                sender_device_id: extra?.sender_device_id ?? '',
                 ...extra,
             });
-            const msg = threadMessages.value.find((m) => m.id === messageId);
+            const msg = threadMessages.value.find((m) => m.id === String(messageId));
             if (msg) {
                 msg.is_edited = true;
                 msg.edited_at = new Date().toISOString();
@@ -127,10 +129,10 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    async function deleteMessage(channelId: number, threadId: number, messageId: number): Promise<void> {
+    async function deleteMessage(channelId: string | number, threadId: string | number, messageId: string | number): Promise<void> {
         try {
-            await api.delete(`/channels/${channelId}/threads/${threadId}/messages/${messageId}`);
-            const idx = threadMessages.value.findIndex((m) => m.id === messageId);
+            await deleteThreadMessage(String(channelId), String(threadId), String(messageId));
+            const idx = threadMessages.value.findIndex((m) => m.id === String(messageId));
             if (idx !== -1) threadMessages.value.splice(idx, 1);
         } catch (error) {
             console.error('Failed to delete thread message:', error);
@@ -138,29 +140,32 @@ export const useThreadStore = defineStore('thread', () => {
     }
 
     async function toggleReaction(
-        channelId: number,
-        threadId: number,
-        messageId: number,
+        channelId: string | number,
+        threadId: string | number,
+        messageId: string | number,
         emoji: string,
-        currentUserId: number,
+        currentUserId: string | number,
     ): Promise<void> {
         try {
-            const response = await api.post(
-                `/channels/${channelId}/threads/${threadId}/messages/${messageId}/reactions`,
+            const r = await toggleThreadReaction(
+                String(channelId),
+                String(threadId),
+                String(messageId),
                 { emoji },
             );
-            const msg = threadMessages.value.find((m) => m.id === messageId);
-            if (msg && response.data) {
+            const responseData = r as { data?: unknown; meta?: { added: boolean } };
+            const msg = threadMessages.value.find((m) => m.id === String(messageId));
+            if (msg && responseData.meta) {
                 if (!msg.reactions) msg.reactions = [];
-                if ((response.data as any).added) {
+                if (responseData.meta.added) {
                     msg.reactions.push({
-                        id: (response.data as any).reaction?.id ?? 0,
-                        message_id: messageId,
-                        user_id: currentUserId,
+                        id: String((responseData.data as any)?.id ?? 0),
+                        message_id: String(messageId),
+                        user_id: String(currentUserId),
                         emoji,
                     });
                 } else {
-                    const idx = msg.reactions.findIndex((r) => r.user_id === currentUserId && r.emoji === emoji);
+                    const idx = msg.reactions.findIndex((r) => r.user_id === String(currentUserId) && r.emoji === emoji);
                     if (idx !== -1) msg.reactions.splice(idx, 1);
                 }
             }
@@ -169,9 +174,9 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    async function followThread(channelId: number, threadId: number): Promise<void> {
+    async function followThread(channelId: string | number, threadId: string | number): Promise<void> {
         try {
-            await api.post(`/channels/${channelId}/threads/${threadId}/follow`);
+            await apiFollowThread(String(channelId), String(threadId));
             if (activeThread.value) {
                 activeThread.value.is_following = true;
             }
@@ -180,9 +185,9 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    async function unfollowThread(channelId: number, threadId: number): Promise<void> {
+    async function unfollowThread(channelId: string | number, threadId: string | number): Promise<void> {
         try {
-            await api.delete(`/channels/${channelId}/threads/${threadId}/follow`);
+            await apiUnfollowThread(String(channelId), String(threadId));
             if (activeThread.value) {
                 activeThread.value.is_following = false;
             }
@@ -198,15 +203,17 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    function updateThreadMessage(messageId: number, partial: Partial<MessageData>): void {
-        const idx = threadMessages.value.findIndex((m) => m.id === messageId);
+    function updateThreadMessage(messageId: string | number, partial: Partial<MessageData>): void {
+        const id = String(messageId);
+        const idx = threadMessages.value.findIndex((m) => m.id === id);
         if (idx !== -1) {
             Object.assign(threadMessages.value[idx], partial);
         }
     }
 
-    function removeThreadMessage(messageId: number): void {
-        const idx = threadMessages.value.findIndex((m) => m.id === messageId);
+    function removeThreadMessage(messageId: string | number): void {
+        const id = String(messageId);
+        const idx = threadMessages.value.findIndex((m) => m.id === id);
         if (idx !== -1) threadMessages.value.splice(idx, 1);
     }
 

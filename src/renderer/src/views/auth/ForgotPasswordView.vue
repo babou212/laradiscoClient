@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import api from '@/lib/api';
+import { forgotPassword, resetPassword } from '@/api/auth';
 import { useServerStore } from '@/stores/server';
 
 const emailSchema = z.object({
@@ -84,7 +84,7 @@ async function handleSendCode(): Promise<void> {
     isSubmitting.value = true;
 
     try {
-        await api.post('/auth/forgot-password', { email: result.data.email });
+        await forgotPassword(result.data.email);
         step.value = 'code';
     } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 422) {
@@ -120,7 +120,7 @@ async function handleReset(): Promise<void> {
     isSubmitting.value = true;
 
     try {
-        await api.post('/auth/reset-password', {
+        await resetPassword({
             email: email.value.trim(),
             code: result.data.code,
             password: result.data.password,

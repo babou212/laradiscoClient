@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import VoiceChannelItem from './VoiceChannelItem.vue';
-import VoiceControlPanel from './VoiceControlPanel.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
-import api from '@/lib/api';
+import { updatePresence } from '@/api/presence';
 import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { usePresenceStore } from '@/stores/presence';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { UserStatusType } from '@/types';
 import type { Category, Channel } from '@/types/chat';
+import VoiceChannelItem from './VoiceChannelItem.vue';
+import VoiceControlPanel from './VoiceControlPanel.vue';
 
 type Props = {
     categories: Category[];
     directMessages: any[];
-    selectedChannelId?: number;
+    selectedChannelId?: string;
     serverName?: string;
 };
 
@@ -26,7 +26,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-    selectChannel: [channelId: number];
+    selectChannel: [channelId: string];
     switchToDms: [];
 }>();
 
@@ -39,9 +39,9 @@ const userNamesStore = useUserNamesStore();
 const user = computed(() => authStore.user);
 
 const collapsedCategories = ref<Set<number>>(new Set());
-const showUserPopup = ref(false);
-const currentStatus = ref<UserStatusType>('online');
-const currentCustomStatus = ref<string | null>(null);
+const showUserPopup = shallowRef(false);
+const currentStatus = shallowRef<UserStatusType>('online');
+const currentCustomStatus = shallowRef<string | null>(null);
 
 const getTextChannels = (channels: Channel[]) => {
     return channels.filter((c) => c.type !== 'voice');
@@ -70,7 +70,7 @@ const toggleCategory = (categoryId: number) => {
     }
 };
 
-const selectChannel = (channelId: number) => {
+const selectChannel = (channelId: string) => {
     emit('selectChannel', channelId);
 };
 
@@ -84,7 +84,7 @@ const setStatus = async (status: UserStatusType) => {
     }
 
     try {
-        await api.patch('/presence', {
+        await updatePresence({
             status: status,
             custom_status: currentCustomStatus.value,
         });

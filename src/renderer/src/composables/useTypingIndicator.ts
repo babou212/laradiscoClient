@@ -1,11 +1,11 @@
 import { onUnmounted, reactive } from 'vue';
 import type { Ref } from 'vue';
-import api from '@/lib/api';
+import { sendChannelTyping, sendDmTyping } from '@/api/typing';
 
 export function useTypingIndicator(
-    channelId: Ref<number | undefined>,
+    channelId: Ref<string | number | undefined>,
     isDm: Ref<boolean>,
-    currentUserId: Ref<number | undefined>,
+    currentUserId: Ref<string | number | undefined>,
 ) {
     const typingUsers = reactive(new Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>());
     let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -46,11 +46,11 @@ export function useTypingIndicator(
         if (!channelId.value) return;
         if (typingDebounceTimer) return;
 
-        const endpoint = isDm.value
-            ? `/direct-messages/${channelId.value}/typing`
-            : `/channels/${channelId.value}/typing`;
+        const typingFn = isDm.value
+            ? () => sendDmTyping(channelId.value!)
+            : () => sendChannelTyping(channelId.value!);
 
-        api.post(endpoint).catch(() => {});
+        typingFn().catch(() => {});
 
         typingDebounceTimer = setTimeout(() => {
             typingDebounceTimer = null;

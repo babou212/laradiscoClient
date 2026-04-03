@@ -1,5 +1,6 @@
 import { computed, onUnmounted, watch } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
+import { coerceBroadcastMessage } from '@/api/normalizers';
 import { useE2EE } from '@/composables/useE2EE';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -8,13 +9,13 @@ import { useThreadStore } from '@/stores/thread';
 import type { AvatarUrls, MessageData, MessageReaction, ThreadPreview } from '@/types/chat';
 
 interface ChannelRealtimeOptions {
-    channelId: Ref<number | undefined>;
+    channelId: Ref<string | undefined>;
     isDm: Ref<boolean>;
     messages: ComputedRef<MessageData[]>;
     isLoadingMessages: ComputedRef<boolean>;
     addMessage: (msg: MessageData) => void;
-    updateMessage: (id: number, partial: Partial<MessageData>) => void;
-    removeMessage: (id: number) => void;
+    updateMessage: (id: string, partial: Partial<MessageData>) => void;
+    removeMessage: (id: string) => void;
     scrollToBottom: (force?: boolean) => void;
     resetToBottom: () => void;
     handleTypingEvent: (data: { user_id: number; username: string; is_typing: boolean }) => void;
@@ -75,7 +76,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
         clearAll();
     }
 
-    function joinChannel(cId: number, dm: boolean = false) {
+    function joinChannel(cId: string, dm: boolean = false) {
         leaveChannel();
         const echo = getEcho();
         if (!echo) return;
@@ -84,7 +85,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
             const groupId = dm ? `dm:${cId}` : `channel:${cId}`;
             const type = dm ? 'dm' : 'channel';
             groupReadyPromise = e2ee
-                .ensureGroupReady(groupId, cId, type)
+                .ensureGroupReady(groupId, Number(cId), type)
                 .then(() => {})
                 .catch(() => {});
         } else {
@@ -95,8 +96,9 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
 
         echo.join(currentChannelListener)
             .listen('MessageSent', async (data: { message: MessageData }) => {
+                coerceBroadcastMessage(data.message);
                 const senderId = data.message.user.id;
-                clearTypingUser(senderId);
+                clearTypingUser(Number(senderId));
 
                 if (senderId === currentUser.value?.id) {
                     let msgSenderDeviceId = data.message.sender_device_id ?? '';
@@ -116,8 +118,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
 
                     if (e2eeStore.isReady) {
                         try {
-                            const chId = isDm.value ? undefined : channelId.value;
-                            const dmId = isDm.value ? channelId.value : undefined;
+                            const chId = isDm.value ? undefined : Number(channelId.value);
+                            const dmId = isDm.value ? Number(channelId.value) : undefined;
                             await e2ee.decryptMessageQueued(data.message, chId, dmId);
                         } catch {
                             if (!data.message.decrypted_content) {
@@ -134,8 +136,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 }
 
                 if (e2eeStore.isReady) {
-                    const chId = isDm.value ? undefined : channelId.value;
-                    const dmId = isDm.value ? channelId.value : undefined;
+                    const chId = isDm.value ? undefined : Number(channelId.value);
+                    const dmId = isDm.value ? Number(channelId.value) : undefined;
                     await e2ee.decryptMessageQueued(data.message, chId, dmId);
                 }
 
@@ -143,6 +145,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 scrollToBottom();
             })
             .listen('MessageEdited', async (data: { message: MessageData }) => {
+                coerceBroadcastMessage(data.message);
                 const update: Partial<MessageData> = {
                     content: data.message.content,
                     is_edited: true,
@@ -165,13 +168,13 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                         }
                     } else {
                         try {
-                            const chId = isDm.value ? undefined : channelId.value;
-                            const dmId = isDm.value ? channelId.value : undefined;
+                            const chId = isDm.value ? undefined : Number(channelId.value);
+                            const dmId = isDm.value ? Number(channelId.value) : undefined;
                             const plaintext = await e2ee.decrypt(
                                 data.message.content,
                                 chId,
                                 dmId,
-                                data.message.id,
+                                Number(data.message.id),
                                 data.message.user?.username,
                             );
                             update.decrypted_content = plaintext.text;
@@ -185,11 +188,15 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
 
                 updateMessage(data.message.id, update);
             })
-            .listen('MessageDeleted', (data: { message_id: number }) => {
-                removeMessage(data.message_id);
-                e2ee.removeFromSearchIndex(data.message_id).catch(() => {});
+            .listen('MessageDeleted', (data: { message_id: number | string }) => {
+                const msgId = String(data.message_id);
+                removeMessage(msgId);
+                e2ee.removeFromSearchIndex(Number(data.message_id)).catch(() => {}); 
             })
             .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
+                data.reaction.id = String(data.reaction.id);
+                data.reaction.message_id = String(data.reaction.message_id);
+                data.reaction.user_id = String(data.reaction.user_id);
                 const msg = messages.value.find((m) => m.id === data.reaction.message_id);
                 if (msg) {
                     if (!msg.reactions) msg.reactions = [];
@@ -210,8 +217,9 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     }
                 }
             })
-            .listen('MessagePinned', (data: { message_id: number; pinned_by?: { id: number; username: string } }) => {
-                const msg = messages.value.find((m) => m.id === data.message_id);
+            .listen('MessagePinned', (data: { message_id: number | string; pinned_by?: { id: number | string; username: string } }) => {
+                const pinnedMsgId = String(data.message_id);
+                const msg = messages.value.find((m) => m.id === pinnedMsgId);
                 if (msg) {
                     msg.is_pinned = true;
                     msg.pinned_at = new Date().toISOString();
@@ -220,13 +228,14 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     fetchAndDecryptPinned().catch(() => {});
                 }
             })
-            .listen('MessageUnpinned', (data: { message_id: number }) => {
-                const msg = messages.value.find((m) => m.id === data.message_id);
+            .listen('MessageUnpinned', (data: { message_id: number | string }) => {
+                const unpinnedMsgId = String(data.message_id);
+                const msg = messages.value.find((m) => m.id === unpinnedMsgId);
                 if (msg) {
                     msg.is_pinned = false;
                     msg.pinned_at = null;
                 }
-                const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === data.message_id);
+                const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === unpinnedMsgId);
                 if (pinnedIdx !== -1) pinnedMessages.value.splice(pinnedIdx, 1);
             })
             .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
@@ -238,8 +247,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     if (e2eeStore.isReady) {
                         try {
                             await e2ee.handleMlsMessage(data.group_id, data);
-                            const chId = isDm.value ? undefined : channelId.value;
-                            const dmId = isDm.value ? channelId.value : undefined;
+                            const chId = isDm.value ? undefined : Number(channelId.value);
+                            const dmId = isDm.value ? Number(channelId.value) : undefined;
                             await e2ee.retryPendingDecryptions(messages.value, chId, dmId);
                         } catch (error) {
                             console.error(error);
@@ -250,26 +259,34 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
             .listen(
                 'ThreadUpdated',
                 (data: {
-                    message_id: number;
-                    thread: { id: number; message_count: number; last_message_at: string };
+                    message_id: number | string;
+                    thread: { id: number | string; message_count: number; last_message_at: string };
                     last_reply?: {
-                        id: number;
+                        id: number | string;
                         content: string;
-                        user: { id: number; username: string; avatar_urls: AvatarUrls | null };
+                        user: { id: number | string; username: string; avatar_urls: AvatarUrls | null };
                         created_at: string;
                         sender_device_id?: string;
                     };
                 }) => {
-                    const msg = messages.value.find((m) => m.id === data.message_id);
+                    const threadMsgId = String(data.message_id);
+                    const msg = messages.value.find((m) => m.id === threadMsgId);
                     if (msg) {
                         const threadPreview: ThreadPreview = {
-                            id: data.thread.id,
+                            id: String(data.thread.id),
                             message_count: data.thread.message_count,
                             last_message_at: data.thread.last_message_at,
                             is_following: msg.thread?.is_following,
                         };
                         if (data.last_reply) {
-                            threadPreview.last_reply = data.last_reply;
+                            threadPreview.last_reply = {
+                                ...data.last_reply,
+                                id: String(data.last_reply.id),
+                                user: {
+                                    ...data.last_reply.user,
+                                    id: String(data.last_reply.user.id),
+                                },
+                            };
                         }
                         msg.thread = threadPreview;
                     }
@@ -317,8 +334,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                         await e2ee.lookupDecryptedCache(messages.value);
                     }
 
-                    const chId = isDm.value ? undefined : channelId.value;
-                    const dmId = isDm.value ? channelId.value : undefined;
+                    const chId = isDm.value ? undefined : Number(channelId.value);
+                    const dmId = isDm.value ? Number(channelId.value) : undefined;
                     await e2ee.decryptMessages(messages.value, chId, dmId);
 
                     clearPendingDecryptRetry();
@@ -333,8 +350,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                             return;
                         }
                         if (channelId.value) {
-                            const chId = isDm.value ? undefined : channelId.value;
-                            const dmId = isDm.value ? channelId.value : undefined;
+                            const chId = isDm.value ? undefined : Number(channelId.value);
+                            const dmId = isDm.value ? Number(channelId.value) : undefined;
                             await e2ee.retryPendingDecryptions(messages.value, chId, dmId);
                         }
                     }, 15_000);

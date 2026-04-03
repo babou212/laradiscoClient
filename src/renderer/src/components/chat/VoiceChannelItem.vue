@@ -7,7 +7,7 @@ import { useVoiceStore, type VoiceParticipant } from '@/stores/voice';
 
 type Props = {
     channel: {
-        id: number;
+        id: string;
         name: string;
         topic: string | null;
         type: string;
@@ -20,14 +20,14 @@ const voiceStore = useVoiceStore();
 const userNamesStore = useUserNamesStore();
 
 const isCurrentChannel = computed(() => {
-    return voiceStore.currentChannel?.id === props.channel.id;
+    return voiceStore.currentChannel?.id === Number(props.channel.id);
 });
 
 const channelParticipants = computed<VoiceParticipant[]>(() => {
     if (isCurrentChannel.value) {
         return voiceStore.currentParticipants;
     }
-    return voiceStore.getChannelParticipants(props.channel.id);
+    return voiceStore.getChannelParticipants(Number(props.channel.id));
 });
 
 const buttonClasses = computed(() =>
@@ -38,7 +38,7 @@ const buttonClasses = computed(() =>
 
 const handleClick = () => {
     if (isCurrentChannel.value) return;
-    voiceStore.joinChannel(props.channel.id, props.channel.name);
+    voiceStore.joinChannel(Number(props.channel.id), props.channel.name);
 };
 
 const handleScreenShareClick = (participant: VoiceParticipant) => {
@@ -81,7 +81,7 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                     >
                         {{
                             userNamesStore
-                                .getDisplayName(Number(participant.id), participant.displayName)?.[0]
+                                .getDisplayName(String(participant.id), participant.displayName)?.[0]
                                 ?.toUpperCase() || 'U'
                         }}
                     </AvatarFallback>
@@ -92,7 +92,7 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                 >
                     {{
                         userNamesStore.getDisplayName(
-                            Number(participant.id),
+                            String(participant.id),
                             participant.displayName || participant.username,
                         )
                     }}

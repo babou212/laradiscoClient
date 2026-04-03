@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronRight } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
-import UserProfilePanel from './UserProfilePanel.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import type { UserStatusType } from '@/types';
+import UserProfilePanel from './UserProfilePanel.vue';
 
 const presenceStore = usePresenceStore();
 const authStore = useAuthStore();
@@ -16,8 +16,8 @@ const avatarStore = useAvatarStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
 
-const selectedUser = ref<any>(null);
-const showUserProfile = ref(false);
+const selectedUser = shallowRef<any>(null);
+const showUserProfile = shallowRef(false);
 
 const currentUserId = computed(() => authStore.user?.id);
 
@@ -64,7 +64,7 @@ const closeUserProfile = () => {
     selectedUser.value = null;
 };
 
-const startDm = async (userId: number) => {
+const startDm = async (userId: string) => {
     closeUserProfile();
     try {
         const groupId = await dmStore.startOrGetDm(userId);

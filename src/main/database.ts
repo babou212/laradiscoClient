@@ -200,6 +200,7 @@ export function storeDecryptedMessage(serverId: number, messageId: number, plain
     ).run(serverId, messageId, encrypted);
 }
 
+<<<<<<< Updated upstream
 export function storeDecryptedMessageIfAbsent(serverId: number, messageId: number, plaintext: string): void {
     const encrypted = encryptString(plaintext);
     db.prepare('INSERT OR IGNORE INTO decrypted_messages (server_id, message_id, plaintext) VALUES (?, ?, ?)').run(
@@ -209,6 +210,8 @@ export function storeDecryptedMessageIfAbsent(serverId: number, messageId: numbe
     );
 }
 
+=======
+>>>>>>> Stashed changes
 export function getDecryptedMessage(serverId: number, messageId: number): string | null {
     const row = db
         .prepare('SELECT plaintext FROM decrypted_messages WHERE server_id = ? AND message_id = ?')
@@ -249,6 +252,7 @@ export interface SearchIndexParams {
 
 export function indexMessageForSearch(params: SearchIndexParams): void {
     const { serverId, messageId, conversationType, conversationId, userName, plaintext } = params;
+<<<<<<< Updated upstream
 
     const effectiveUserName =
         userName ||
@@ -259,6 +263,8 @@ export function indexMessageForSearch(params: SearchIndexParams): void {
         )?.user_name ||
         '';
 
+=======
+>>>>>>> Stashed changes
     db.prepare(`DELETE FROM message_search WHERE server_id = ? AND message_id = ?`).run(
         String(serverId),
         String(messageId),
@@ -266,7 +272,11 @@ export function indexMessageForSearch(params: SearchIndexParams): void {
     db.prepare(
         `INSERT INTO message_search (content, server_id, message_id, conversation_type, conversation_id, user_name)
          VALUES (?, ?, ?, ?, ?, ?)`,
+<<<<<<< Updated upstream
     ).run(plaintext, String(serverId), String(messageId), conversationType, String(conversationId), effectiveUserName);
+=======
+    ).run(plaintext, String(serverId), String(messageId), conversationType, String(conversationId), userName);
+>>>>>>> Stashed changes
 }
 
 export function removeMessageFromSearchIndex(serverId: number, messageId: number): void {
@@ -331,10 +341,18 @@ function buildFtsQuery(raw: string): string {
     const cleaned = raw.replace(/[^\p{L}\p{N}\s*"]/gu, '').trim();
     if (!cleaned) return '';
 
+<<<<<<< Updated upstream
+=======
+    // If user already uses FTS5 syntax (quotes, *), pass through
+>>>>>>> Stashed changes
     if (cleaned.includes('"') || cleaned.includes('*')) {
         return cleaned;
     }
 
+<<<<<<< Updated upstream
+=======
+    // Auto-add prefix matching for each term
+>>>>>>> Stashed changes
     const terms = cleaned.split(/\s+/).filter((t) => t.length >= 1);
     if (terms.length === 0) return '';
     return terms.map((t) => `"${t}"*`).join(' ');

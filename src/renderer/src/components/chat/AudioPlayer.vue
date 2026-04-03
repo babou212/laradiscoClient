@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Howl } from 'howler';
 import { Download, Loader2, Music, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, shallowRef } from 'vue';
 import { Slider } from '@/components/ui/slider';
-import api from '@/lib/api';
+import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -11,16 +11,16 @@ const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
 }>();
 
-const howl = ref<Howl | null>(null);
-const blobUrl = ref<string | null>(null);
-const isPlaying = ref(false);
-const isLoading = ref(false);
-const loadError = ref(false);
-const duration = ref(0);
-const currentTime = ref(0);
-const volume = ref(0.8);
-const isMuted = ref(false);
-const isSeeking = ref(false);
+const howl = shallowRef<Howl | null>(null);
+const blobUrl = shallowRef<string | null>(null);
+const isPlaying = shallowRef(false);
+const isLoading = shallowRef(false);
+const loadError = shallowRef(false);
+const duration = shallowRef(0);
+const currentTime = shallowRef(0);
+const volume = shallowRef(0.8);
+const isMuted = shallowRef(false);
+const isSeeking = shallowRef(false);
 
 let animationFrameId: number | null = null;
 
@@ -81,8 +81,7 @@ function stopTimeTracking() {
 }
 
 async function decryptAudio(): Promise<string> {
-    const response = await api.get(`/attachments/${props.attachment.id}/download`);
-    const { download_url } = response.data;
+    const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
 
     const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
 

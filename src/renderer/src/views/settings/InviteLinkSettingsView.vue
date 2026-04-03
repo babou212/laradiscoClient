@@ -1,46 +1,71 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import api from '@/lib/api';
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
+import { createInviteLink, deleteInviteLink } from '@/api/settings';
+import { findIncluded } from '@/api/types';
+import type { UserResource } from '@/api/types';
+import { inviteLinksQuery } from '@/queries/settings/invite-links';
+import { SETTINGS_KEYS } from '@/queries/keys';
 
 type InviteLink = {
-    id: number;
+    id: string;
     token: string;
-    expires_at: string;
+    expires_at: string | null;
     used_at: string | null;
-    creator: { id: number; name: string; username: string } | null;
-    used_by_user: { id: number; name: string; username: string } | null;
+    creator: { id: string; name: string; username: string } | null;
+    used_by_user: { id: string; name: string; username: string } | null;
     created_at: string;
 };
 
-const inviteLinks = ref<InviteLink[]>([]);
-const isLoading = ref(true);
+const queryCache = useQueryCache();
+const { data: rawData, isLoading } = useQuery(inviteLinksQuery);
+
+const inviteLinks = computed<InviteLink[]>(() => {
+    if (!rawData.value?.data) return [];
+    return rawData.value.data.map((res) => {
+        const creatorRel = res.relationships?.creator?.data;
+        const usedByRel = res.relationships?.usedByUser?.data;
+        const creator = creatorRel && !Array.isArray(creatorRel)
+            ? findIncluded<UserResource>(rawData.value!.included, 'users', creatorRel.id)
+            : undefined;
+        const usedBy = usedByRel && !Array.isArray(usedByRel)
+            ? findIncluded<UserResource>(rawData.value!.included, 'users', usedByRel.id)
+            : undefined;
+        return {
+            id: res.id,
+            token: res.attributes.token,
+            expires_at: res.attributes.expires_at,
+            used_at: res.attributes.used_at,
+            creator: creator
+                ? { id: creator.id, name: creator.attributes.name ?? '', username: creator.attributes.username }
+                : null,
+            used_by_user: usedBy
+                ? { id: usedBy.id, name: usedBy.attributes.name ?? '', username: usedBy.attributes.username }
+                : null,
+            created_at: res.attributes.created_at,
+        };
+    });
+});
 
 const { copy, copied, text: copiedText } = useClipboard();
 
-onMounted(async () => {
-    await loadLinks();
+const { mutateAsync: doGenerateLink } = useMutation({
+    mutation: () => createInviteLink(),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.inviteLinks() }),
 });
 
-async function loadLinks() {
-    isLoading.value = true;
-    try {
-        const response = await api.get('/settings/invite-links');
-        inviteLinks.value = response.data?.invite_links ?? response.data ?? [];
-    } catch {
-        // handle
-    } finally {
-        isLoading.value = false;
-    }
-}
+const { mutateAsync: doDeleteLink } = useMutation({
+    mutation: (id: string) => deleteInviteLink(id),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.inviteLinks() }),
+});
 
 async function generateLink() {
     try {
-        const response = await api.post('/settings/invite-links');
-        inviteLinks.value.unshift(response.data);
+        await doGenerateLink();
     } catch {
         // handle
     }
@@ -48,8 +73,7 @@ async function generateLink() {
 
 async function deleteLink(inviteLink: InviteLink) {
     try {
-        await api.delete(`/settings/invite-links/${inviteLink.id}`);
-        inviteLinks.value = inviteLinks.value.filter((l) => l.id !== inviteLink.id);
+        await doDeleteLink(inviteLink.id);
     } catch {
         // handle
     }
@@ -69,7 +93,7 @@ function isExpired(expiresAt: string): boolean {
 
 function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
     if (link.used_at) return 'used';
-    if (isExpired(link.expires_at)) return 'expired';
+    if (link.expires_at && isExpired(link.expires_at)) return 'expired';
     return 'active';
 }
 </script>
@@ -124,7 +148,7 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                             <div class="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                                 <span>Created {{ formatDate(link.created_at) }}</span>
                                 <span>&middot;</span>
-                                <span>Expires {{ formatDate(link.expires_at) }}</span>
+                                <span>Expires {{ link.expires_at ? formatDate(link.expires_at) : 'Never' }}</span>
                                 <template v-if="link.used_by_user">
                                     <span>&middot;</span>
                                     <span

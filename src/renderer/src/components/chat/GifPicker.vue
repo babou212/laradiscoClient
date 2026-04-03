@@ -1,26 +1,32 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core';
 import { Search, X, Loader2 } from 'lucide-vue-next';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
 
-interface Emits {
-    (e: 'select', gifUrl: string): void;
-}
-
-const emit = defineEmits<Emits>();
+const emit = defineEmits<{
+    select: [gifUrl: string];
+}>();
 
 const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
-const searchQuery = ref('');
-const gifs = ref<any[]>([]);
-const loading = ref(false);
-const loadingMore = ref(false);
-const selectedCategory = ref<string>('trending');
-const nextCursor = ref<string>('');
-const searchInputRef = ref<HTMLInputElement>();
+const searchQuery = shallowRef('');
+const gifs = shallowRef<any[]>([]);
+const loading = shallowRef(false);
+const loadingMore = shallowRef(false);
+const selectedCategory = shallowRef<string>('trending');
+const nextCursor = shallowRef<string>('');
+const searchInputRef = useTemplateRef<HTMLInputElement>('searchInputRef');
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+watchDebounced(
+    searchQuery,
+    (val) => {
+        if (!val.trim()) return;
+        selectedCategory.value = '';
+        fetchGifs(val.trim());
+    },
+    { debounce: 350 },
+);
 
 const categories = [
-    { id: 'trending', label: 'Trending' },
     { id: 'excited', label: 'Excited' },
     { id: 'happy', label: 'Happy' },
     { id: 'sad', label: 'Sad' },
@@ -91,20 +97,9 @@ const clearSearch = () => {
     searchInputRef.value?.focus();
 };
 
-watch(searchQuery, (val) => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    if (!val.trim()) return;
-
-    debounceTimer = setTimeout(() => {
-        selectedCategory.value = '';
-        fetchGifs(val.trim());
-    }, 350);
-});
-
 const selectCategory = (categoryId: string) => {
     selectedCategory.value = categoryId;
     searchQuery.value = '';
-    if (debounceTimer) clearTimeout(debounceTimer);
     if (categoryId === 'trending') {
         fetchGifs();
     } else {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import api from '@/lib/api';
+import { useEventListener } from '@vueuse/core';
+import { computed, onUnmounted, shallowRef, watch } from 'vue';
+import { searchMentions } from '@/api/members';
 
 export interface MentionUser {
     id: number;
@@ -15,17 +16,15 @@ interface Props {
     visible: boolean;
 }
 
-interface Emits {
-    (e: 'select', value: string): void;
-    (e: 'close'): void;
-}
-
 const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const emit = defineEmits<{
+    select: [value: string];
+    close: [];
+}>();
 
-const users = ref<MentionUser[]>([]);
-const loading = ref(false);
-const selectedIndex = ref(0);
+const users = shallowRef<MentionUser[]>([]);
+const loading = shallowRef(false);
+const selectedIndex = shallowRef(0);
 
 const specialMentions = computed(() => {
     const items: Array<{ label: string; value: string; description: string }> = [];
@@ -82,11 +81,14 @@ const searchUsers = async (query: string) => {
     abortController = new AbortController();
 
     try {
-        const response = await api.get('/mentions/search', {
-            params: { q: query },
-            signal: abortController.signal,
-        });
-        users.value = response.data.users ?? [];
+        const response = await searchMentions(query, abortController.signal);
+        users.value = response.data.map((u) => ({
+            id: Number(u.id),
+            username: u.attributes.username,
+            name: u.attributes.name ?? u.attributes.username,
+            nickname: u.attributes.nickname ?? null,
+            avatar_urls: u.attributes.avatar_urls ?? null,
+        }));
     } catch (err: unknown) {
         if (err instanceof Error && err.name !== 'AbortError') {
             console.error('Mention search failed:', err);
@@ -137,12 +139,9 @@ const handleKeydown = (e: KeyboardEvent) => {
     }
 };
 
-onMounted(() => {
-    document.addEventListener('keydown', handleKeydown, true);
-});
+useEventListener(document, 'keydown', handleKeydown, { capture: true });
 
 onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeydown, true);
     if (abortController) {
         abortController.abort();
     }

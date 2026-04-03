@@ -13,7 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
-import api from '@/lib/api';
+import {
+    getTwoFactorStatus,
+    enableTwoFactor as apiEnableTwoFactor,
+    disableTwoFactor as apiDisableTwoFactor,
+    confirmTwoFactor as apiConfirmTwoFactor,
+    regenerateRecoveryCodes as apiRegenerateRecoveryCodes,
+} from '@/api/two-factor';
 
 const { theme } = useAppearance();
 const {
@@ -50,8 +56,8 @@ const isRecoveryCodesVisible = ref(false);
 
 onMounted(async () => {
     try {
-        const response = await api.get('/settings/two-factor');
-        twoFactorEnabled.value = response.data.twoFactorEnabled;
+        const status = await getTwoFactorStatus();
+        twoFactorEnabled.value = status.twoFactorEnabled;
     } catch {
         // handle
     } finally {
@@ -66,7 +72,7 @@ onUnmounted(() => {
 async function enableTwoFactor() {
     processing.value = true;
     try {
-        await api.post('/settings/two-factor/enable');
+        await apiEnableTwoFactor();
         await fetchSetupData();
         showSetupModal.value = true;
     } catch {
@@ -79,7 +85,7 @@ async function enableTwoFactor() {
 async function disableTwoFactor() {
     processing.value = true;
     try {
-        await api.delete('/settings/two-factor/disable');
+        await apiDisableTwoFactor();
         twoFactorEnabled.value = false;
         clearTwoFactorAuthData();
     } catch {
@@ -93,7 +99,7 @@ async function confirmTwoFactor() {
     processing.value = true;
     codeError.value = '';
     try {
-        await api.post('/settings/two-factor/confirm', { code: code.value });
+        await apiConfirmTwoFactor(code.value);
         twoFactorEnabled.value = true;
         showSetupModal.value = false;
         showVerificationStep.value = false;
@@ -127,8 +133,7 @@ async function toggleRecoveryCodes() {
 async function regenerateRecoveryCodes() {
     processing.value = true;
     try {
-        const response = await api.post('/settings/two-factor/recovery-codes');
-        recoveryCodesList.value = response.data.recovery_codes ?? response.data ?? [];
+        recoveryCodesList.value = await apiRegenerateRecoveryCodes();
     } catch {
         // handle
     } finally {

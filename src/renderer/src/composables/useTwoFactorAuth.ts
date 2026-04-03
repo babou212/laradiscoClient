@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
-import api from '@/lib/api';
+import { getTwoFactorQrCode, getTwoFactorSecretKey, getTwoFactorRecoveryCodes } from '@/api/two-factor';
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: Ref<string | null>;
@@ -27,8 +27,8 @@ const hasSetupData = computed<boolean>(() => qrCodeSvg.value !== null && manualS
 export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
     const fetchQrCode = async (): Promise<void> => {
         try {
-            const response = await api.get('/settings/two-factor/qr-code');
-            qrCodeSvg.value = response.data.svg;
+            const data = await getTwoFactorQrCode();
+            qrCodeSvg.value = data.svg;
         } catch {
             errors.value.push('Failed to fetch QR code');
             qrCodeSvg.value = null;
@@ -37,8 +37,8 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
 
     const fetchSetupKey = async (): Promise<void> => {
         try {
-            const response = await api.get('/settings/two-factor/secret-key');
-            manualSetupKey.value = response.data.secretKey;
+            const data = await getTwoFactorSecretKey();
+            manualSetupKey.value = data.secretKey;
         } catch {
             errors.value.push('Failed to fetch a setup key');
             manualSetupKey.value = null;
@@ -64,8 +64,7 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
     const fetchRecoveryCodes = async (): Promise<void> => {
         try {
             clearErrors();
-            const response = await api.get('/settings/two-factor/recovery-codes');
-            recoveryCodesList.value = response.data.recovery_codes ?? response.data ?? [];
+            recoveryCodesList.value = await getTwoFactorRecoveryCodes();
         } catch {
             errors.value.push('Failed to fetch recovery codes');
             recoveryCodesList.value = [];

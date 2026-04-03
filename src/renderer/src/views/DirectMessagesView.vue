@@ -62,7 +62,7 @@ const handleSwitchToChannels = () => {
     router.push({ name: 'home' });
 };
 
-const handleStartDm = async (userId: number) => {
+const handleStartDm = async (userId: string) => {
     const groupId = await dmStore.startOrGetDm(userId);
     if (groupId) {
         router.push({ name: 'direct-messages', params: { threadId: groupId } });

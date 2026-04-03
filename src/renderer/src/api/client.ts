@@ -20,8 +20,8 @@ function buildBaseUrl(host: string): string {
 
 const api = axios.create({
     headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
+        Accept: 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
     },
     timeout: 15_000,
 });
@@ -47,13 +47,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 api.interceptors.response.use(
-    (response) => {
-        const body = response.data;
-        if (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body) {
-            response.data = body.data;
-        }
-        return response;
-    },
+    (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
             const authStore = useAuthStore();

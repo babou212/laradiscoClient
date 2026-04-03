@@ -1,4 +1,33 @@
-import api from '@/lib/api';
+import {
+    registerIdentity,
+    getIdentity,
+    resetIdentity,
+    registerDevice,
+    uploadKeyPackages,
+    getGroupStatus,
+    getWelcomeMessages,
+    claimGroup,
+    submitJoinRequest,
+    fulfillJoinRequest,
+    getMemberBundles,
+    getKeyPackages,
+    postGroupMessage,
+    sendWelcome,
+    getGroupMessages,
+    getGroupHistory,
+    getUserGroups,
+    backupExists as apiBackupExists,
+    createBackup,
+    updateBackup,
+    getBackup,
+    confirmBackup,
+    unlockBackup as apiUnlockBackup,
+    deleteBackup as apiDeleteBackup,
+    fetchDevices as apiFetchDevices,
+    revokeDevice as apiRevokeDevice,
+    renameDevice as apiRenameDevice,
+    getKeyPackageCount,
+} from '@/api/e2ee';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
@@ -73,7 +102,7 @@ export function useE2EE() {
 
     function getUserId(): number | undefined {
         const authStore = useAuthStore();
-        return authStore.user?.id;
+        return authStore.user?.id as unknown as number | undefined;
     }
 
     function groupIdFor(channelId?: number, dmGroupId?: number): string {
@@ -108,39 +137,27 @@ export function useE2EE() {
         const result = await window.api.mls.setup(serverId, deviceName, userId);
 
         try {
-            await api.post('/e2ee/identity/register', {
-                identity_key: result.identityKey,
-            });
+            await registerIdentity(result.identityKey);
         } catch (err: any) {
             if (err.response?.status === 409) {
                 try {
-                    const existing = await api.get(`/e2ee/identity/${userId}`);
-                    if (existing.data?.identity_key !== result.identityKey) {
-                        await api.delete('/e2ee/identity/reset');
-                        await api.post('/e2ee/identity/register', {
-                            identity_key: result.identityKey,
-                        });
+                    const existing = await getIdentity(userId);
+                    if (existing?.identity_key !== result.identityKey) {
+                        await resetIdentity();
+                        await registerIdentity(result.identityKey);
                     }
                 } catch {
-                    await api.delete('/e2ee/identity/reset');
-                    await api.post('/e2ee/identity/register', {
-                        identity_key: result.identityKey,
-                    });
+                    await resetIdentity();
+                    await registerIdentity(result.identityKey);
                 }
             } else {
                 throw err;
             }
         }
 
-        await api.post('/e2ee/devices/register', {
-            device_id: result.deviceId,
-            device_name: result.deviceName,
-        });
+        await registerDevice(result.deviceId, result.deviceName);
 
-        await api.post('/e2ee/mls/key-packages', {
-            device_id: result.deviceId,
-            key_packages: result.keyPackages,
-        });
+        await uploadKeyPackages(result.deviceId, result.keyPackages);
 
         return result;
     }
@@ -151,8 +168,8 @@ export function useE2EE() {
         const result = await window.api.mls.setupDevice(serverId, deviceName, userId);
 
         try {
-            const identityResponse = await api.get(`/e2ee/identity/${userId}`);
-            const serverIdentityKey = identityResponse.data?.identity_key;
+            const identityData = await getIdentity(userId);
+            const serverIdentityKey = identityData?.identity_key;
             if (serverIdentityKey && serverIdentityKey !== result.identityKey) {
                 throw new Error('Local identity key does not match server. Please re-setup E2EE.');
             }
@@ -163,15 +180,9 @@ export function useE2EE() {
             if (err.message?.includes('does not match')) throw err;
         }
 
-        await api.post('/e2ee/devices/register', {
-            device_id: result.deviceId,
-            device_name: result.deviceName,
-        });
+        await registerDevice(result.deviceId, result.deviceName);
 
-        await api.post('/e2ee/mls/key-packages', {
-            device_id: result.deviceId,
-            key_packages: result.keyPackages,
-        });
+        await uploadKeyPackages(result.deviceId, result.keyPackages);
 
         return result;
     }
@@ -234,8 +245,12 @@ export function useE2EE() {
         let isOwnGroup = false;
 
         try {
+<<<<<<< Updated upstream
+            const status = await getGroupStatus(groupId);
+=======
             const statusResponse = await api.get(`/e2ee/mls/groups/${encodedGroupId}/status`);
             const status = statusResponse.data;
+>>>>>>> Stashed changes
             groupExists = status?.exists === true;
             isOwnGroup = status?.is_own_group === true;
 
@@ -258,13 +273,19 @@ export function useE2EE() {
         await window.api.mls.createGroup({ serverId, groupId });
 
         try {
+<<<<<<< Updated upstream
+            await claimGroup(groupId, ourDeviceId);
+=======
             await api.post(`/e2ee/mls/groups/${encodedGroupId}/claim`, {
                 device_id: ourDeviceId,
             });
+>>>>>>> Stashed changes
         } catch (claimErr: any) {
             if (claimErr.response?.status === 409) {
                 await window.api.mls.deleteGroup({ serverId, groupId });
                 groupReadyCache.delete(groupId);
+<<<<<<< Updated upstream
+=======
 
                 if (claimErr.response?.data?.has_welcome) {
                     const welcome = await _fetchWelcomeForGroup(groupId);
@@ -418,13 +439,151 @@ export function useE2EE() {
             type === 'dm'
                 ? `/e2ee/dm-groups/${targetId}/members/bundles`
                 : `/e2ee/channels/${targetId}/members/bundles`;
+>>>>>>> Stashed changes
 
-        const membersResponse = await api.get(membersEndpoint);
-        const members: Array<{
-            user_id: number;
-            devices: Array<{ device_id: string }>;
-        }> = membersResponse.data ?? [];
+                if (claimErr.response?.data?.has_welcome) {
+                    const welcome = await _fetchWelcomeForGroup(groupId);
+                    if (welcome) {
+                        await _joinAndCatchUp(serverId, groupId, welcome.welcome_bytes, welcome.ratchet_tree_bytes);
+                        return;
+                    }
+                }
 
+<<<<<<< Updated upstream
+                await _requestJoinAndWait(serverId, groupId, encodedGroupId, ourDeviceId);
+                return;
+            }
+            await window.api.mls.deleteGroup({ serverId, groupId });
+            throw claimErr;
+        }
+
+        await _addGroupMembers(serverId, groupId, encodedGroupId, targetId, type, ourDeviceId);
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+    }
+
+    const pendingWelcomesCache = new Map<
+        string,
+        { group_id: string; welcome_bytes: string; ratchet_tree_bytes: string }
+    >();
+    let _welcomeFetchChain: Promise<void> = Promise.resolve();
+
+    async function _fetchWelcomeForGroup(
+        groupId: string,
+    ): Promise<{ group_id: string; welcome_bytes: string; ratchet_tree_bytes: string } | undefined> {
+        return new Promise<{ group_id: string; welcome_bytes: string; ratchet_tree_bytes: string } | undefined>(
+            (resolve) => {
+                _welcomeFetchChain = _welcomeFetchChain.then(async () => {
+                    const cached = pendingWelcomesCache.get(groupId);
+                    if (cached) {
+                        pendingWelcomesCache.delete(groupId);
+                        resolve(cached);
+                        return;
+                    }
+
+                    try {
+                        const welcomes = await getWelcomeMessages();
+                        for (const w of welcomes) {
+                            pendingWelcomesCache.set(w.group_id, w);
+                        }
+                    } catch (error) {
+                        console.error('[E2EE] Failed to fetch welcome messages:', error);
+                    }
+
+                    const result = pendingWelcomesCache.get(groupId);
+                    if (result) {
+                        pendingWelcomesCache.delete(groupId);
+                    }
+                    resolve(result);
+                });
+            },
+        );
+    }
+
+    async function _joinAndCatchUp(
+        serverId: number,
+        groupId: string,
+        welcomeBytes: string,
+        ratchetTreeBytes: string,
+    ): Promise<void> {
+        await window.api.mls.joinGroup({ serverId, welcomeBytes, ratchetTreeBytes });
+
+        const groupInfo = await window.api.mls.getGroupInfo({ serverId, groupId });
+        if (groupInfo) {
+            await catchUpGroup(groupId, groupInfo.epoch);
+        }
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+        decryptGroupHistory(groupId).catch((err) => {
+            console.error(`[E2EE] History sync failed for ${groupId}:`, err);
+        });
+    }
+
+    async function _requestJoinAndWait(
+        serverId: number,
+        groupId: string,
+        encodedGroupId: string,
+        ourDeviceId: string | null,
+    ): Promise<void> {
+        try {
+            await submitJoinRequest(groupId, ourDeviceId);
+        } catch (joinReqErr) {
+            console.warn('[E2EE] Failed to submit join request:', joinReqErr);
+        }
+
+        const maxAttempts = 10;
+        const baseDelay = 2000;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, baseDelay * Math.min(attempt + 1, 5)));
+
+            const existingGroup = await window.api.mls.getGroupInfo({ serverId, groupId });
+            if (existingGroup) {
+                groupReadyCache.set(groupId, Date.now());
+                return;
+            }
+
+            const welcome = await _fetchWelcomeForGroup(groupId);
+            if (welcome) {
+                await _joinAndCatchUp(serverId, groupId, welcome.welcome_bytes, welcome.ratchet_tree_bytes);
+                return;
+            }
+        }
+
+        console.warn('[E2EE] No welcome after join-request polling, force-reclaiming group:', groupId);
+        await window.api.mls.createGroup({ serverId, groupId });
+        try {
+            await claimGroup(groupId, ourDeviceId, true);
+        } catch (reclaimErr: any) {
+            await window.api.mls.deleteGroup({ serverId, groupId });
+            if (reclaimErr.response?.status === 409) {
+                console.warn('[E2EE] Force-reclaim blocked by grace period. Will retry on next access:', groupId);
+                return;
+            }
+            throw reclaimErr;
+        }
+
+        const type = groupId.startsWith('dm:') ? 'dm' : 'channel';
+        const targetId = Number(groupId.split(':')[1]);
+        await _addGroupMembers(serverId, groupId, encodedGroupId, targetId, type, ourDeviceId);
+
+        groupReadyCache.set(groupId, Date.now());
+        scheduleAutoBackup();
+    }
+
+    async function _addGroupMembers(
+        serverId: number,
+        groupId: string,
+        encodedGroupId: string,
+        targetId: number,
+        type: 'channel' | 'dm',
+        ourDeviceId: string | null,
+    ): Promise<void> {
+        const members = await getMemberBundles(targetId, type);
+
+=======
+>>>>>>> Stashed changes
         const failedMembers: Array<{ userId: number; deviceId: string; error: string }> = [];
 
         for (const member of members) {
@@ -432,10 +591,7 @@ export function useE2EE() {
                 if (device.device_id === ourDeviceId) continue;
 
                 try {
-                    const kpResponse = await api.get(`/e2ee/mls/key-packages/${member.user_id}`, {
-                        params: { device_id: device.device_id },
-                    });
-                    const packages = kpResponse.data ?? [];
+                    const packages = await getKeyPackages(member.user_id, device.device_id);
                     const keyPackage = packages.find((p: any) => p.device_id === device.device_id) ?? packages[0];
                     if (!keyPackage?.key_package_bytes) {
                         console.warn(
@@ -456,7 +612,7 @@ export function useE2EE() {
                     });
 
                     try {
-                        await api.post(`/e2ee/mls/groups/${encodedGroupId}/messages`, {
+                        await postGroupMessage(groupId, {
                             device_id: ourDeviceId,
                             message_type: 'commit',
                             message_bytes: result.commit,
@@ -499,11 +655,18 @@ export function useE2EE() {
     async function catchUpGroup(groupId: string, currentEpoch: number): Promise<boolean> {
         const serverId = getServerId();
         try {
+<<<<<<< Updated upstream
+            const messages = await getGroupMessages(groupId, {
+                since_epoch: Math.max(0, currentEpoch - 1),
+                message_type: 'commit',
+            });
+=======
             const response = await api.get(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/messages`, {
-                params: { since_epoch: Math.max(0, currentEpoch - 1), message_type: 'commit' },
+                params: { since_epoch: currentEpoch - 1, message_type: 'commit' },
             });
             const messages: Array<{ message_bytes: string; sender_device_id: string; epoch: number }> =
                 response.data ?? [];
+>>>>>>> Stashed changes
 
             messages.sort((a, b) => a.epoch - b.epoch);
 
@@ -587,6 +750,7 @@ export function useE2EE() {
         return result.message_bytes;
     }
 
+<<<<<<< Updated upstream
     async function encryptHistory(
         groupId: string,
         plaintext: string,
@@ -595,15 +759,26 @@ export function useE2EE() {
         const serverId = getServerId();
         const envelope = buildEnvelope(plaintext, attachments);
         return window.api.mls.encryptHistory({ serverId, groupId, plaintext: envelope });
+=======
+    async function encryptHistory(groupId: string, plaintext: string): Promise<string> {
+        const serverId = getServerId();
+        return window.api.mls.encryptHistory({ serverId, groupId, plaintext });
+>>>>>>> Stashed changes
     }
 
     async function decrypt(
         encryptedContent: string,
         channelId?: number,
         dmGroupId?: number,
-        messageId?: number,
+<<<<<<< Updated upstream
+        messageId?: string | number,
         userName?: string,
     ): Promise<DecryptedPayload> {
+=======
+        messageId?: number,
+        userName?: string,
+    ): Promise<string> {
+>>>>>>> Stashed changes
         if (!encryptedContent) {
             throw new Error('No encrypted content to decrypt');
         }
@@ -620,28 +795,69 @@ export function useE2EE() {
             throw new Error('Decryption returned no payload');
         }
 
+<<<<<<< Updated upstream
         const payload = parsePayload(result.payload);
 
         if (messageId != null) {
+            const numericId = Number(messageId);
             window.api.messages
-                .storeDecrypted(serverId, messageId, serializeForCache(payload.text, payload.attachments))
+                .storeDecrypted(serverId, numericId, serializeForCache(payload.text, payload.attachments))
                 .catch(() => {});
+=======
+        if (messageId != null) {
+            window.api.messages.storeDecrypted(serverId, messageId, result.payload).catch(() => {});
+>>>>>>> Stashed changes
             const conversationId = dmGroupId ?? channelId;
             if (conversationId != null) {
                 window.api.messages
                     .indexForSearch({
                         serverId,
-                        messageId,
+<<<<<<< Updated upstream
+                        messageId: numericId,
                         conversationType: dmGroupId != null ? 'dm' : 'channel',
                         conversationId,
                         userName: userName ?? '',
                         plaintext: payload.text,
+=======
+                        messageId,
+                        conversationType: dmGroupId != null ? 'dm' : 'channel',
+                        conversationId,
+                        userName: userName ?? '',
+                        plaintext: result.payload,
+>>>>>>> Stashed changes
                     })
                     .catch(() => {});
             }
         }
 
+<<<<<<< Updated upstream
         return payload;
+    }
+
+    async function lookupDecryptedCache(messages: MessageData[]): Promise<void> {
+        const serverId = getServerId();
+        const needLookup = messages.filter((m) => m.decrypted_content === undefined && !m.decrypt_error);
+        if (needLookup.length === 0) return;
+
+        const ids = needLookup.map((m) => Number(m.id));
+        try {
+            const cached = await window.api.messages.getDecryptedBatch(serverId, ids);
+
+            for (const m of needLookup) {
+                const pt = cached[Number(m.id)];
+                if (pt != null) {
+                    const payload = deserializeFromCache(pt);
+                    m.decrypted_content = payload.text;
+                    m.decrypted_attachments = payload.attachments;
+                    m.decrypt_error = false;
+                }
+            }
+        } catch (err) {
+            console.error('[E2EE] lookupDecryptedCache FAILED:', err);
+        }
+=======
+        return result.payload;
+>>>>>>> Stashed changes
     }
 
     async function lookupDecryptedCache(messages: MessageData[]): Promise<void> {
@@ -652,13 +868,12 @@ export function useE2EE() {
         const ids = needLookup.map((m) => m.id);
         try {
             const cached = await window.api.messages.getDecryptedBatch(serverId, ids);
+            const foundCount = Object.keys(cached).length;
 
             for (const m of needLookup) {
                 const pt = cached[m.id];
                 if (pt != null) {
-                    const payload = deserializeFromCache(pt);
-                    m.decrypted_content = payload.text;
-                    m.decrypted_attachments = payload.attachments;
+                    m.decrypted_content = pt;
                     m.decrypt_error = false;
                 }
             }
@@ -680,11 +895,17 @@ export function useE2EE() {
             const ourDeviceId = await getDeviceId();
             if (ourDeviceId && message.sender_device_id === ourDeviceId) {
                 const serverId = getServerId();
-                const cached = await window.api.messages.getDecryptedBatch(serverId, [message.id]);
-                if (cached[message.id] != null) {
-                    const payload = deserializeFromCache(cached[message.id]);
+<<<<<<< Updated upstream
+                const cached = await window.api.messages.getDecryptedBatch(serverId, [Number(message.id)]);
+                if (cached[Number(message.id)] != null) {
+                    const payload = deserializeFromCache(cached[Number(message.id)]);
                     message.decrypted_content = payload.text;
                     message.decrypted_attachments = payload.attachments;
+=======
+                const cached = await window.api.messages.getDecryptedBatch(serverId, [message.id]);
+                if (cached[message.id] != null) {
+                    message.decrypted_content = cached[message.id];
+>>>>>>> Stashed changes
                     message.decrypt_error = false;
                 } else {
                     message.decrypt_error = true;
@@ -697,6 +918,7 @@ export function useE2EE() {
         message.decrypt_attempts = (message.decrypt_attempts ?? 0) + 1;
 
         try {
+<<<<<<< Updated upstream
             const payload = await decrypt(message.content, channelId, dmGroupId, message.id, message.user?.username);
             message.decrypted_content = payload.text;
             message.decrypted_attachments = payload.attachments;
@@ -713,6 +935,14 @@ export function useE2EE() {
                 'error=',
                 errMsg,
             );
+=======
+            const plaintext = await decrypt(message.content, channelId, dmGroupId, message.id, message.user?.username);
+            message.decrypted_content = plaintext;
+            message.decrypt_error = false;
+        } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            console.warn('[E2EE] decryptMessage failed for msg', message.id, 'channelId=', channelId, 'dmGroupId=', dmGroupId, 'error=', errMsg);
+>>>>>>> Stashed changes
 
             if (errMsg.includes('Cannot decrypt own messages')) {
                 message.decrypt_error = true;
@@ -723,8 +953,12 @@ export function useE2EE() {
             if (isForwardSecrecy) {
                 const cached = await _lookupSingleDecryptedCache(message.id);
                 if (cached != null) {
+<<<<<<< Updated upstream
                     message.decrypted_content = cached.text;
                     message.decrypted_attachments = cached.attachments;
+=======
+                    message.decrypted_content = cached;
+>>>>>>> Stashed changes
                     message.decrypt_error = false;
                 } else {
                     console.warn('[E2EE] Forward secrecy — key consumed and no cache for message:', message.id);
@@ -763,8 +997,12 @@ export function useE2EE() {
                                     console.error('[E2EE] Rejoin after divergence failed:', rejoinErr);
                                     const cached = await _lookupSingleDecryptedCache(message.id);
                                     if (cached != null) {
+<<<<<<< Updated upstream
                                         message.decrypted_content = cached.text;
                                         message.decrypted_attachments = cached.attachments;
+=======
+                                        message.decrypted_content = cached;
+>>>>>>> Stashed changes
                                         message.decrypt_error = false;
                                     }
                                     return;
@@ -773,16 +1011,25 @@ export function useE2EE() {
                         }
                     }
 
+<<<<<<< Updated upstream
                     const retryPayload = await decrypt(message.content, channelId, dmGroupId, message.id);
                     message.decrypted_content = retryPayload.text;
                     message.decrypted_attachments = retryPayload.attachments;
+=======
+                    const plaintext = await decrypt(message.content, channelId, dmGroupId, message.id);
+                    message.decrypted_content = plaintext;
+>>>>>>> Stashed changes
                     message.decrypt_error = false;
                     return;
                 } catch {
                     const cached = await _lookupSingleDecryptedCache(message.id);
                     if (cached != null) {
+<<<<<<< Updated upstream
                         message.decrypted_content = cached.text;
                         message.decrypted_attachments = cached.attachments;
+=======
+                        message.decrypted_content = cached;
+>>>>>>> Stashed changes
                         message.decrypt_error = false;
                         return;
                     }
@@ -792,8 +1039,12 @@ export function useE2EE() {
             if (message.decrypt_attempts >= MAX_DECRYPT_ATTEMPTS) {
                 const cached = await _lookupSingleDecryptedCache(message.id);
                 if (cached != null) {
+<<<<<<< Updated upstream
                     message.decrypted_content = cached.text;
                     message.decrypted_attachments = cached.attachments;
+=======
+                    message.decrypted_content = cached;
+>>>>>>> Stashed changes
                     message.decrypt_error = false;
                 } else {
                     message.decrypted_content = undefined;
@@ -815,12 +1066,21 @@ export function useE2EE() {
         }
     }
 
-    async function _lookupSingleDecryptedCache(messageId: number): Promise<DecryptedPayload | null> {
+<<<<<<< Updated upstream
+    async function _lookupSingleDecryptedCache(messageId: string | number): Promise<DecryptedPayload | null> {
+        try {
+            const serverId = getServerId();
+            const numId = Number(messageId);
+            const cached = await window.api.messages.getDecryptedBatch(serverId, [numId]);
+            if (cached[numId] == null) return null;
+            return deserializeFromCache(cached[numId]);
+=======
+    async function _lookupSingleDecryptedCache(messageId: number): Promise<string | null> {
         try {
             const serverId = getServerId();
             const cached = await window.api.messages.getDecryptedBatch(serverId, [messageId]);
-            if (cached[messageId] == null) return null;
-            return deserializeFromCache(cached[messageId]);
+            return cached[messageId] ?? null;
+>>>>>>> Stashed changes
         } catch {
             return null;
         }
@@ -832,13 +1092,22 @@ export function useE2EE() {
         dmGroupId?: number,
     ): Promise<void> {
         try {
+<<<<<<< Updated upstream
             const payload = await decrypt(reply.content, channelId, dmGroupId, reply.id);
             reply.decrypted_content = payload.text;
+=======
+            const plaintext = await decrypt(reply.content, channelId, dmGroupId, reply.id);
+            reply.decrypted_content = plaintext;
+>>>>>>> Stashed changes
             reply.decrypt_error = false;
         } catch {
             const cached = await _lookupSingleDecryptedCache(reply.id);
             if (cached != null) {
+<<<<<<< Updated upstream
                 reply.decrypted_content = cached.text;
+=======
+                reply.decrypted_content = cached;
+>>>>>>> Stashed changes
                 reply.decrypt_error = false;
             } else {
                 reply.decrypt_error = true;
@@ -852,13 +1121,22 @@ export function useE2EE() {
         dmGroupId?: number,
     ): Promise<void> {
         try {
+<<<<<<< Updated upstream
             const payload = await decrypt(reply.content, channelId, dmGroupId, reply.id);
             reply.decrypted_content = payload.text;
+=======
+            const plaintext = await decrypt(reply.content, channelId, dmGroupId, reply.id);
+            reply.decrypted_content = plaintext;
+>>>>>>> Stashed changes
             reply.decrypt_error = false;
         } catch {
             const cached = await _lookupSingleDecryptedCache(reply.id);
             if (cached != null) {
+<<<<<<< Updated upstream
                 reply.decrypted_content = cached.text;
+=======
+                reply.decrypted_content = cached;
+>>>>>>> Stashed changes
                 reply.decrypt_error = false;
             } else {
                 reply.decrypt_error = true;
@@ -948,12 +1226,20 @@ export function useE2EE() {
                     let storeMessages: MessageData[] = [];
                     if (channelId != null) {
                         const chatStore = useChatStore();
+<<<<<<< Updated upstream
+                        if (Number(chatStore.currentChannel?.id) === channelId) {
+=======
                         if (chatStore.currentChannel?.id === channelId) {
+>>>>>>> Stashed changes
                             storeMessages = chatStore.messages;
                         }
                     } else if (dmGroupId != null) {
                         const dmStore = useDirectMessagesStore();
+<<<<<<< Updated upstream
+                        if (Number(dmStore.currentDmGroup?.id) === dmGroupId) {
+=======
                         if (dmStore.currentDmGroup?.id === dmGroupId) {
+>>>>>>> Stashed changes
                             storeMessages = dmStore.messages;
                         }
                     }
@@ -971,12 +1257,7 @@ export function useE2EE() {
     async function handleWelcome(): Promise<void> {
         const serverId = getServerId();
         try {
-            const response = await api.get('/e2ee/mls/welcome');
-            const welcomes: Array<{
-                group_id: string;
-                welcome_bytes: string;
-                ratchet_tree_bytes: string;
-            }> = response.data ?? [];
+            const welcomes = await getWelcomeMessages();
 
             for (const w of welcomes) {
                 try {
@@ -1006,20 +1287,30 @@ export function useE2EE() {
             const params: Record<string, string | number> = { limit: 200 };
             if (beforeId) params.before_id = beforeId;
 
+<<<<<<< Updated upstream
+            const messages = await getGroupHistory(groupId, params);
+=======
             const response = await api.get(`/e2ee/mls/groups/${encodedGroupId}/history`, { params });
             const messages: Array<{ id: number; history_ciphertext: string }> = response.data ?? [];
+>>>>>>> Stashed changes
 
             if (messages.length === 0) break;
 
             const batch = messages.map((m) => ({ id: m.id, ciphertext: m.history_ciphertext }));
             const results = await window.api.mls.decryptHistoryBatch({ serverId, groupId, messages: batch });
 
+<<<<<<< Updated upstream
             for (const [idStr, rawPayload] of Object.entries(results)) {
                 const messageId = Number(idStr);
                 const payload = parsePayload(rawPayload);
                 window.api.messages
                     .storeDecryptedIfAbsent(serverId, messageId, serializeForCache(payload.text, payload.attachments))
                     .catch(() => {});
+=======
+            for (const [idStr, plaintext] of Object.entries(results)) {
+                const messageId = Number(idStr);
+                window.api.messages.storeDecrypted(serverId, messageId, plaintext).catch(() => {});
+>>>>>>> Stashed changes
                 window.api.messages
                     .indexForSearch({
                         serverId,
@@ -1027,7 +1318,11 @@ export function useE2EE() {
                         conversationType,
                         conversationId,
                         userName: '',
+<<<<<<< Updated upstream
                         plaintext: payload.text,
+=======
+                        plaintext,
+>>>>>>> Stashed changes
                     })
                     .catch(() => {});
                 decrypted++;
@@ -1048,8 +1343,12 @@ export function useE2EE() {
 
         let groupIds: string[];
         try {
+<<<<<<< Updated upstream
+            groupIds = await getUserGroups();
+=======
             const response = await api.get('/e2ee/mls/user-groups');
             groupIds = response.data ?? [];
+>>>>>>> Stashed changes
         } catch (error) {
             console.error('[E2EE] Failed to fetch user groups for enrollment:', error);
             return;
@@ -1060,10 +1359,14 @@ export function useE2EE() {
 
         let keyPackage: { device_id: string; key_package_bytes: string; key_package_hash: string } | undefined;
         try {
+<<<<<<< Updated upstream
+            const packages = await getKeyPackages(userId, newDeviceId);
+=======
             const kpResponse = await api.get(`/e2ee/mls/key-packages/${userId}`, {
                 params: { device_id: newDeviceId },
             });
             const packages = kpResponse.data ?? [];
+>>>>>>> Stashed changes
             keyPackage = packages.find((p: any) => p.device_id === newDeviceId) ?? packages[0];
         } catch (error) {
             console.error('[E2EE] Failed to fetch key package for new device:', error);
@@ -1087,10 +1390,14 @@ export function useE2EE() {
                 await enqueueGroupOp(channelId, dmGroupId, async () => {
                     let kp = keyPackage!;
                     if (enrolledCount > 0) {
+<<<<<<< Updated upstream
+                        const packages = await getKeyPackages(userId, newDeviceId);
+=======
                         const kpResponse = await api.get(`/e2ee/mls/key-packages/${userId}`, {
                             params: { device_id: newDeviceId },
                         });
                         const packages = kpResponse.data ?? [];
+>>>>>>> Stashed changes
                         kp = packages.find((p: any) => p.device_id === newDeviceId) ?? packages[0];
                         if (!kp?.key_package_bytes) {
                             console.warn('[E2EE] No more key packages for new device, stopping enrollment');
@@ -1106,7 +1413,11 @@ export function useE2EE() {
                     });
 
                     try {
+<<<<<<< Updated upstream
+                        await postGroupMessage(groupId, {
+=======
                         await api.post(`/e2ee/mls/groups/${encodedGroupId}/messages`, {
+>>>>>>> Stashed changes
                             device_id: ourDeviceId,
                             message_type: 'commit',
                             message_bytes: result.commit,
@@ -1115,7 +1426,11 @@ export function useE2EE() {
 
                         const mergeResult = await window.api.mls.mergeCommit({ serverId, groupId });
 
+<<<<<<< Updated upstream
+                        await sendWelcome(groupId, {
+=======
                         await api.post(`/e2ee/mls/groups/${encodedGroupId}/welcome`, {
+>>>>>>> Stashed changes
                             recipient_user_id: userId,
                             recipient_device_id: newDeviceId,
                             welcome_bytes: result.welcome,
@@ -1176,18 +1491,26 @@ export function useE2EE() {
             );
             if (alreadyMember) {
                 console.debug(`[E2EE] Requester ${requesterIdentity} already in group ${groupId}, skipping add`);
+<<<<<<< Updated upstream
+                fulfillJoinRequest(groupId, requesterDeviceId).catch(() => {});
+=======
                 api.post(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/join-request/fulfill`, {
                     device_id: requesterDeviceId,
                 }).catch(() => {});
+>>>>>>> Stashed changes
                 return;
             }
 
             let keyPackage: { device_id: string; key_package_bytes: string } | undefined;
             try {
+<<<<<<< Updated upstream
+                const packages = await getKeyPackages(requesterUserId, requesterDeviceId);
+=======
                 const kpResponse = await api.get(`/e2ee/mls/key-packages/${requesterUserId}`, {
                     params: { device_id: requesterDeviceId },
                 });
                 const packages = kpResponse.data ?? [];
+>>>>>>> Stashed changes
                 keyPackage = packages.find((p: any) => p.device_id === requesterDeviceId) ?? packages[0];
             } catch (error) {
                 console.error('[E2EE] Failed to fetch key package for join requester:', error);
@@ -1208,7 +1531,11 @@ export function useE2EE() {
             });
 
             try {
+<<<<<<< Updated upstream
+                await postGroupMessage(groupId, {
+=======
                 await api.post(`/e2ee/mls/groups/${encodedGroupId}/messages`, {
+>>>>>>> Stashed changes
                     device_id: ourDeviceId,
                     message_type: 'commit',
                     message_bytes: result.commit,
@@ -1217,16 +1544,24 @@ export function useE2EE() {
 
                 const mergeResult = await window.api.mls.mergeCommit({ serverId, groupId });
 
+<<<<<<< Updated upstream
+                await sendWelcome(groupId, {
+=======
                 await api.post(`/e2ee/mls/groups/${encodedGroupId}/welcome`, {
+>>>>>>> Stashed changes
                     recipient_user_id: requesterUserId,
                     recipient_device_id: requesterDeviceId,
                     welcome_bytes: result.welcome,
                     ratchet_tree_bytes: mergeResult.ratchetTree,
                 });
 
+<<<<<<< Updated upstream
+                fulfillJoinRequest(groupId, requesterDeviceId).catch(() => {});
+=======
                 api.post(`/e2ee/mls/groups/${encodedGroupId}/join-request/fulfill`, {
                     device_id: requesterDeviceId,
                 }).catch(() => {});
+>>>>>>> Stashed changes
 
                 console.log(`[E2EE] Fulfilled join request for ${requesterUserId}/${requesterDeviceId} in ${groupId}`);
                 scheduleAutoBackup();
@@ -1238,8 +1573,7 @@ export function useE2EE() {
     }
 
     async function backupExists(): Promise<boolean> {
-        const response = await api.get('/e2ee/keys/backup/exists');
-        return response.data?.exists ?? false;
+        return apiBackupExists();
     }
 
     async function backupKeys(pin: string) {
@@ -1254,10 +1588,10 @@ export function useE2EE() {
         };
 
         try {
-            await api.post('/e2ee/keys/backup', payload);
+            await createBackup(payload);
         } catch (err: any) {
             if (err.response?.status === 409) {
-                await api.put('/e2ee/keys/backup', payload);
+                await updateBackup(payload);
             } else {
                 throw err;
             }
@@ -1269,9 +1603,15 @@ export function useE2EE() {
     async function restoreKeys(pin: string): Promise<{ success: boolean; error?: string }> {
         const serverId = getServerId();
 
+<<<<<<< Updated upstream
+        let data;
+        try {
+            data = await getBackup();
+=======
         let response;
         try {
             response = await api.get('/e2ee/keys/backup');
+>>>>>>> Stashed changes
         } catch (err: any) {
             if (err.response?.status === 423) {
                 const lockData = err.response.data;
@@ -1283,8 +1623,11 @@ export function useE2EE() {
             }
             throw err;
         }
+<<<<<<< Updated upstream
+=======
 
         const data = response.data;
+>>>>>>> Stashed changes
 
         if (!data) {
             return { success: false, error: 'No backup found' };
@@ -1296,7 +1639,7 @@ export function useE2EE() {
                 encryptedBundle: data.encrypted_bundle,
                 salt: data.salt,
                 nonce: data.nonce,
-                argon2Params: data.argon2_params,
+                argon2Params: data.argon2_params as any,
             },
             pin,
             getUserId(),
@@ -1304,7 +1647,11 @@ export function useE2EE() {
 
         if (result.success) {
             try {
+<<<<<<< Updated upstream
+                await confirmBackup();
+=======
                 await api.post('/e2ee/keys/backup/confirm');
+>>>>>>> Stashed changes
             } catch {
                 // Non-fatal — counter reset is best-effort
             }
@@ -1315,7 +1662,11 @@ export function useE2EE() {
 
     async function unlockBackup(twoFactorCode: string): Promise<{ success: boolean; error?: string }> {
         try {
+<<<<<<< Updated upstream
+            await apiUnlockBackup(twoFactorCode);
+=======
             await api.post('/e2ee/keys/backup/unlock', { two_factor_code: twoFactorCode });
+>>>>>>> Stashed changes
             return { success: true };
         } catch (err: any) {
             return {
@@ -1326,12 +1677,11 @@ export function useE2EE() {
     }
 
     async function deleteBackup() {
-        await api.delete('/e2ee/keys/backup');
+        await apiDeleteBackup();
     }
 
     async function fetchDevices() {
-        const response = await api.get('/e2ee/devices');
-        return response.data ?? [];
+        return apiFetchDevices();
     }
 
     async function ensureDeviceRegistered(): Promise<void> {
@@ -1345,7 +1695,11 @@ export function useE2EE() {
         const userId = getUserId();
         if (userId) {
             try {
+<<<<<<< Updated upstream
+                await getIdentity(userId);
+=======
                 await api.get(`/e2ee/identity/${userId}`);
+>>>>>>> Stashed changes
             } catch (err: any) {
                 if (err.response?.status === 404) {
                     await wipe();
@@ -1355,10 +1709,7 @@ export function useE2EE() {
         }
 
         try {
-            await api.post('/e2ee/devices/register', {
-                device_id: deviceId,
-                device_name: 'Re-registered device',
-            });
+            await registerDevice(deviceId, 'Re-registered device');
         } catch (err: any) {
             if (err.response?.status === 409) {
                 return;
@@ -1368,11 +1719,11 @@ export function useE2EE() {
     }
 
     async function revokeDevice(deviceId: string) {
-        await api.delete(`/e2ee/devices/${deviceId}`);
+        await apiRevokeDevice(deviceId);
     }
 
     async function renameDevice(deviceId: string, name: string) {
-        await api.put(`/e2ee/devices/${deviceId}/name`, { device_name: name });
+        await apiRenameDevice(deviceId, name);
     }
 
     async function checkAndReplenishKeyPackages(threshold = 25, replenishCount = 75) {
@@ -1382,8 +1733,7 @@ export function useE2EE() {
 
         let count: number;
         try {
-            const response = await api.get('/e2ee/mls/key-packages/count');
-            count = response.data?.count ?? 0;
+            count = await getKeyPackageCount();
         } catch (err: any) {
             if (err.response?.status === 404) {
                 return { replenished: false, currentCount: 0 };
@@ -1393,10 +1743,7 @@ export function useE2EE() {
 
         if (count < threshold) {
             const keyPackages = await window.api.mls.generateKeyPackages(serverId, replenishCount);
-            await api.post('/e2ee/mls/key-packages', {
-                device_id: deviceId,
-                key_packages: keyPackages,
-            });
+            await uploadKeyPackages(deviceId, keyPackages);
             return { replenished: true, newCount: count + replenishCount };
         }
 
@@ -1431,10 +1778,10 @@ export function useE2EE() {
         };
 
         try {
-            await api.put('/e2ee/keys/backup', payload);
+            await updateBackup(payload);
         } catch (err: any) {
             if (err.response?.status === 404) {
-                await api.post('/e2ee/keys/backup', payload);
+                await createBackup(payload);
             } else {
                 throw err;
             }
@@ -1451,17 +1798,26 @@ export function useE2EE() {
     async function changePIN(oldPin: string, newPin: string): Promise<{ success: boolean; error?: string }> {
         const serverId = getServerId();
 
+<<<<<<< Updated upstream
+        let data;
+        try {
+            data = await getBackup();
+=======
         let response;
         try {
             response = await api.get('/e2ee/keys/backup');
+>>>>>>> Stashed changes
         } catch (err: any) {
             if (err.response?.status === 423) {
                 return { success: false, error: 'Backup is locked. Unlock via 2FA first.' };
             }
             return { success: false, error: 'Failed to fetch backup' };
         }
+<<<<<<< Updated upstream
+=======
 
         const data = response.data;
+>>>>>>> Stashed changes
         if (!data) {
             return { success: false, error: 'No backup found to change PIN for' };
         }
@@ -1473,7 +1829,11 @@ export function useE2EE() {
                 encryptedBundle: data.encrypted_bundle,
                 salt: data.salt,
                 nonce: data.nonce,
+<<<<<<< Updated upstream
+                argon2Params: data.argon2_params as any,
+=======
                 argon2Params: data.argon2_params,
+>>>>>>> Stashed changes
             },
             oldPin,
             newPin,
@@ -1492,13 +1852,21 @@ export function useE2EE() {
         };
 
         try {
+<<<<<<< Updated upstream
+            await updateBackup(payload);
+=======
             await api.put('/e2ee/keys/backup', payload);
+>>>>>>> Stashed changes
         } catch {
             return { success: false, error: 'Failed to upload re-encrypted backup' };
         }
 
         try {
+<<<<<<< Updated upstream
+            await confirmBackup();
+=======
             await api.post('/e2ee/keys/backup/confirm');
+>>>>>>> Stashed changes
         } catch {
             // Non-fatal
         }
@@ -1510,10 +1878,16 @@ export function useE2EE() {
         messageId: number,
         plaintext: string,
         metadata?: { conversationType: 'channel' | 'dm'; conversationId: number; userName: string },
+<<<<<<< Updated upstream
         attachments?: EncryptedAttachmentMeta[],
     ): Promise<void> {
         const serverId = getServerId();
         await window.api.messages.storeDecrypted(serverId, messageId, serializeForCache(plaintext, attachments));
+=======
+    ): Promise<void> {
+        const serverId = getServerId();
+        await window.api.messages.storeDecrypted(serverId, messageId, plaintext);
+>>>>>>> Stashed changes
         if (metadata) {
             window.api.messages
                 .indexForSearch({

@@ -1,11 +1,7 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
-import SearchMessages from './SearchMessages.vue';
-import TypingIndicator from './TypingIndicator.vue';
+import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
@@ -14,7 +10,11 @@ import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useScrollManager } from '@/composables/useScrollManager';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
-import api from '@/lib/api';
+import { normalizeMessage } from '@/api/normalizers';
+import { sendMessage as apiSendMessage, editMessage as apiEditMessage, deleteMessage as apiDeleteMessage } from '@/api/messages';
+import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
+import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
+import { presignChannelAttachment, presignDmAttachment, confirmAttachment } from '@/api/attachments';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
@@ -24,6 +24,11 @@ import { useThreadStore } from '@/stores/thread';
 import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData } from '@/types/chat';
 import { extractMentionMetadata } from '@/utils/mentions';
 import { uploadWithProgress } from '@/utils/uploadWithProgress';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
+import SearchMessages from './SearchMessages.vue';
+import TypingIndicator from './TypingIndicator.vue';
 
 type ChannelData = {
     id: number;
@@ -59,15 +64,16 @@ const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
 
 const channelId = computed(() => props.channel?.id);
+const channelIdStr = computed(() => props.channel?.id != null ? String(props.channel.id) : undefined);
 const isDmRef = computed(() => props.isDm);
 
 const { isRateLimited, sendError, startRateLimitCooldown } = useRateLimit();
 
 const showSearch = shallowRef(false);
 const uploadingFiles = ref<UploadingFile[]>([]);
-const editingMessageId = shallowRef<number | null>(null);
+const editingMessageId = shallowRef<string | null>(null);
 const editContent = shallowRef('');
-const emojiPickerMessageId = shallowRef<number | null>(null);
+const emojiPickerMessageId = shallowRef<string | null>(null);
 const replyingToMessage = shallowRef<MessageData | null>(null);
 
 const activeStore = useActiveStore(isDmRef);
@@ -95,8 +101,8 @@ const {
             await e2ee.decryptGroupHistory(groupId);
             await e2ee.lookupDecryptedCache(activeMessages.value);
         }
-        const chId = isDmRef.value ? undefined : channelId.value;
-        const dmId = isDmRef.value ? channelId.value : undefined;
+        const chId = isDmRef.value ? undefined : Number(channelId.value);
+        const dmId = isDmRef.value ? Number(channelId.value) : undefined;
         await e2ee.decryptMessages(activeMessages.value, chId, dmId);
     }
 });
@@ -119,7 +125,7 @@ const {
 } = usePinnedMessages(channelId, isDmRef, activeMessages);
 
 useChannelRealtime({
-    channelId,
+    channelId: channelIdStr,
     isDm: isDmRef,
     messages: activeMessages,
     isLoadingMessages: activeStore.isLoadingMessages,
@@ -147,20 +153,432 @@ const handleClickOutside = (e: MouseEvent) => {
     }
 };
 
-watch(activeStore.isLoadingMessages, (loading) => {
-    if (loading) isVisible.value = false;
+const checkIfNearBottom = () => {
+    if (!messagesContainer.value) return true;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
+    return scrollHeight - scrollTop - clientHeight < 150;
+};
+
+let scrollRetryTimer: ReturnType<typeof setInterval> | null = null;
+
+const cancelScrollRetry = () => {
+    if (scrollRetryTimer !== null) {
+        clearInterval(scrollRetryTimer);
+        scrollRetryTimer = null;
+    }
+};
+
+const scrollToBottom = (force = false) => {
+    cancelScrollRetry();
+
+    const doScroll = () => {
+        if (!messagesContainer.value) return;
+        if (!force && !userIsNearBottom.value) return;
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    };
+
+    nextTick(() => {
+        doScroll();
+    });
+
+    if (force) {
+        let elapsed = 0;
+        scrollRetryTimer = setInterval(() => {
+            elapsed += 50;
+            doScroll();
+            if (elapsed >= 500) {
+                cancelScrollRetry();
+            }
+        }, 50);
+    }
+};
+
+let currentChannelListener: string | null = null;
+
+let groupReadyPromise: Promise<void> | null = null;
+
+let pendingDecryptRetryTimer: ReturnType<typeof setInterval> | null = null;
+
+const clearPendingDecryptRetry = () => {
+    if (pendingDecryptRetryTimer !== null) {
+        clearInterval(pendingDecryptRetryTimer);
+        pendingDecryptRetryTimer = null;
+    }
+};
+
+const joinChannel = (channelId: number, isDm: boolean = false) => {
+    leaveChannel();
+    const echo = getEcho();
+    if (!echo) return;
+
+    if (e2eeStore.isReady) {
+        const groupId = isDm ? `dm:${channelId}` : `channel:${channelId}`;
+        const type = isDm ? 'dm' : 'channel';
+        groupReadyPromise = e2ee
+            .ensureGroupReady(groupId, channelId, type)
+            .then(() => {})
+            .catch(() => {});
+    } else {
+        groupReadyPromise = null;
+    }
+
+    currentChannelListener = isDm ? `direct-message.${channelId}` : `channel.${channelId}`;
+
+    echo.join(currentChannelListener)
+        .listen('MessageSent', async (data: { message: MessageData }) => {
+            const senderId = data.message.user.id;
+            const existingTyping = typingUsers.get(senderId);
+            if (existingTyping) {
+                clearTimeout(existingTyping.timeout);
+                typingUsers.delete(senderId);
+            }
+
+            if (senderId === currentUser.value?.id) {
+                let msgSenderDeviceId = data.message.sender_device_id ?? '';
+                if (!msgSenderDeviceId) {
+                    try {
+                        const parsed = JSON.parse(data.message.content);
+                        msgSenderDeviceId = parsed.sender_device_id ?? '';
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+                const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
+
+                if (!msgSenderDeviceId || !ourDeviceId || msgSenderDeviceId === ourDeviceId) {
+                    return;
+                }
+
+                if (e2eeStore.isReady) {
+                    try {
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        await e2ee.decryptMessageQueued(data.message, chId, dmId);
+                    } catch {
+                        if (!data.message.decrypted_content) {
+                            data.message.decrypted_content = '[Message sent from another device]';
+                        }
+                    }
+                } else {
+                    data.message.decrypted_content = '[Message sent from another device]';
+                }
+
+                activeAddMessage(data.message);
+                scrollToBottom();
+                return;
+            }
+
+            if (e2eeStore.isReady) {
+                const chId = props.isDm ? undefined : props.channel?.id;
+                const dmId = props.isDm ? props.channel?.id : undefined;
+                await e2ee.decryptMessageQueued(data.message, chId, dmId);
+            }
+
+            activeAddMessage(data.message);
+            scrollToBottom();
+        })
+        .listen('MessageEdited', async (data: { message: MessageData }) => {
+            const update: Partial<MessageData> = {
+                content: data.message.content,
+                is_edited: true,
+                edited_at: data.message.edited_at,
+            };
+
+            if (e2eeStore.isReady) {
+                const ourDeviceId = await e2ee.getDeviceId();
+                if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
+                    const temp: MessageData[] = [
+                        { ...data.message, decrypted_content: undefined, decrypt_error: false },
+                    ];
+                    await e2ee.lookupDecryptedCache(temp);
+                    if (temp[0].decrypted_content) {
+                        update.decrypted_content = temp[0].decrypted_content;
+                        update.decrypt_error = false;
+                    } else {
+                        update.decrypt_error = true;
+                    }
+                } else {
+                    try {
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        const plaintext = await e2ee.decrypt(
+                            data.message.content,
+                            chId,
+                            dmId,
+                            data.message.id,
+                            data.message.user?.username,
+                        );
+                        update.decrypted_content = plaintext;
+                        update.decrypt_error = false;
+                    } catch {
+                        update.decrypt_error = true;
+                    }
+                }
+            }
+
+            activeUpdateMessage(data.message.id, update);
+        })
+        .listen('MessageDeleted', (data: { message_id: number }) => {
+            activeRemoveMessage(data.message_id);
+            e2ee.removeFromSearchIndex(data.message_id).catch(() => {});
+        })
+        .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.reaction.message_id);
+            if (msg) {
+                if (!msg.reactions) msg.reactions = [];
+                if (data.added) {
+                    const exists = msg.reactions.some(
+                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
+                    );
+                    if (!exists) {
+                        msg.reactions.push(data.reaction);
+                    }
+                } else {
+                    const idx = msg.reactions.findIndex(
+                        (r) => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji,
+                    );
+                    if (idx !== -1) {
+                        msg.reactions.splice(idx, 1);
+                    }
+                }
+            }
+        })
+        .listen('MessagePinned', (data: { message_id: number; pinned_by?: { id: number; username: string } }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.message_id);
+            if (msg) {
+                msg.is_pinned = true;
+                msg.pinned_at = new Date().toISOString();
+            }
+            if (showPinnedMessages.value) {
+                fetchPinnedMessages().then(async () => {
+                    if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
+                    }
+                });
+            }
+        })
+        .listen('MessageUnpinned', (data: { message_id: number }) => {
+            const msg = activeMessages.value.find((m) => m.id === data.message_id);
+            if (msg) {
+                msg.is_pinned = false;
+                msg.pinned_at = null;
+            }
+            const pinnedIdx = pinnedMessages.value.findIndex((m) => m.id === data.message_id);
+            if (pinnedIdx !== -1) pinnedMessages.value.splice(pinnedIdx, 1);
+        })
+        .listen('UserTyping', (data: { user_id: number; username: string; is_typing: boolean }) => {
+            if (data.user_id === currentUser.value?.id) return;
+
+            if (data.is_typing) {
+                const existing = typingUsers.get(data.user_id);
+                if (existing) clearTimeout(existing.timeout);
+
+                const timeout = setTimeout(() => {
+                    typingUsers.delete(data.user_id);
+                }, 3000);
+
+                typingUsers.set(data.user_id, {
+                    username: data.username,
+                    timeout,
+                });
+            } else {
+                const existing = typingUsers.get(data.user_id);
+                if (existing) clearTimeout(existing.timeout);
+                typingUsers.delete(data.user_id);
+            }
+        })
+        .listen(
+            'MlsMessageReceived',
+            async (data: { group_id: string; message_type: string; epoch: number; sender_device_id: string }) => {
+                if (e2eeStore.isReady) {
+                    try {
+                        await e2ee.handleMlsMessage(data.group_id, data);
+                        const chId = props.isDm ? undefined : props.channel?.id;
+                        const dmId = props.isDm ? props.channel?.id : undefined;
+                        await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            },
+        )
+        .listen(
+            'ThreadUpdated',
+            (data: {
+                message_id: number;
+                thread: { id: number; message_count: number; last_message_at: string };
+                last_reply?: {
+                    id: number;
+                    content: string;
+                    user: { id: number; username: string; avatar_path: string | null };
+                    created_at: string;
+                    sender_device_id?: string;
+                };
+            }) => {
+                const msg = activeMessages.value.find((m) => m.id === data.message_id);
+                if (msg) {
+                    const threadPreview: ThreadPreview = {
+                        id: data.thread.id,
+                        message_count: data.thread.message_count,
+                        last_message_at: data.thread.last_message_at,
+                        is_following: msg.thread?.is_following,
+                    };
+                    if (data.last_reply) {
+                        threadPreview.last_reply = data.last_reply;
+                    }
+                    msg.thread = threadPreview;
+                }
+            },
+        );
+};
+
+const leaveChannel = () => {
+    clearPendingDecryptRetry();
+    groupReadyPromise = null;
+    if (currentChannelListener) {
+        const echo = getEcho();
+        if (echo) {
+            echo.leave(currentChannelListener);
+        }
+        currentChannelListener = null;
+    }
+    typingUsers.clear();
+};
+
+watch(
+    () => props.channel?.id,
+    (newId, oldId) => {
+        if (newId) {
+            joinChannel(newId, props.isDm);
+            userIsNearBottom.value = true;
+            showPinnedMessages.value = false;
+            pinnedMessages.value = [];
+            threadStore.closeThread();
+
+            if (oldId !== undefined) {
+                scrollToBottom(true);
+            }
+        }
+    },
+    { immediate: true },
+);
+
+watch(isStoreLoadingMessages, async (loading, wasLoading) => {
+    if (wasLoading && !loading) {
+        if (e2eeStore.isReady && props.channel?.id) {
+            await e2ee.lookupDecryptedCache(activeMessages.value);
+
+            const hasUnresolved = activeMessages.value.some(
+                (m) => m.decrypted_content === undefined && !m.decrypt_error,
+            );
+
+            if (hasUnresolved) {
+                if (groupReadyPromise) {
+                    await groupReadyPromise;
+                    groupReadyPromise = null;
+                }
+
+                const stillUnresolved = activeMessages.value.some(
+                    (m) => m.decrypted_content === undefined && !m.decrypt_error,
+                );
+                if (stillUnresolved) {
+                    const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+                    await e2ee.decryptGroupHistory(groupId);
+                    await e2ee.lookupDecryptedCache(activeMessages.value);
+                }
+
+                const channelIdForDecrypt = props.isDm ? undefined : props.channel.id;
+                const dmGroupIdForDecrypt = props.isDm ? props.channel.id : undefined;
+                await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+
+                clearPendingDecryptRetry();
+                {
+                    let retryCount = 0;
+                    pendingDecryptRetryTimer = setInterval(async () => {
+                        retryCount++;
+                        const hasPending = activeMessages.value.some(
+                            (m) => m.decrypted_content === undefined && !m.decrypt_error,
+                        );
+                        if (!hasPending || retryCount > 3) {
+                            clearPendingDecryptRetry();
+                            return;
+                        }
+                        if (props.channel?.id) {
+                            const chId = props.isDm ? undefined : props.channel.id;
+                            const dmId = props.isDm ? props.channel.id : undefined;
+                            await e2ee.retryPendingDecryptions(activeMessages.value, chId, dmId);
+                        }
+                    }, 15_000);
+                }
+            }
+        }
+        userIsNearBottom.value = true;
+        scrollToBottom(true);
+    }
 });
 
+useEventListener(document, 'click', handleClickOutside);
+
 onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
     scrollToBottom(true);
 });
 
 onUnmounted(() => {
+    leaveChannel();
+    cancelScrollRetry();
+    clearPendingDecryptRetry();
+    if (rateLimitTimer) clearInterval(rateLimitTimer);
     document.removeEventListener('click', handleClickOutside);
 });
 
-const sendMessage = async (content: string, files: StagedFile[] = []) => {
+let loadCooldown = false;
+const handleScroll = async () => {
+    if (!messagesContainer.value) return;
+
+    userIsNearBottom.value = checkIfNearBottom();
+
+    if (isLoadingMore.value || loadCooldown) return;
+
+    if (messagesContainer.value.scrollTop < 100) {
+        isLoadingMore.value = true;
+        const prevHeight = messagesContainer.value.scrollHeight;
+        const prevScrollTop = messagesContainer.value.scrollTop;
+        await activeLoadOlderMessages();
+
+        if (e2eeStore.isReady) {
+            await e2ee.lookupDecryptedCache(activeMessages.value);
+
+            const hasUnresolved = activeMessages.value.some(
+                (m) => m.decrypted_content === undefined && !m.decrypt_error,
+            );
+            if (hasUnresolved && props.channel?.id) {
+                const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
+                await e2ee.decryptGroupHistory(groupId);
+                await e2ee.lookupDecryptedCache(activeMessages.value);
+            }
+
+            const channelIdForDecrypt = props.isDm ? undefined : props.channel?.id;
+            const dmGroupIdForDecrypt = props.isDm ? props.channel?.id : undefined;
+            await e2ee.decryptMessages(activeMessages.value, channelIdForDecrypt, dmGroupIdForDecrypt);
+        }
+
+        await nextTick();
+        if (messagesContainer.value) {
+            const newHeight = messagesContainer.value.scrollHeight;
+            messagesContainer.value.scrollTop = newHeight - prevHeight + prevScrollTop;
+        }
+        isLoadingMore.value = false;
+
+        loadCooldown = true;
+        setTimeout(() => {
+            loadCooldown = false;
+        }, 500);
+    }
+};
+
+const sendMessage = async (content: string) => {
     if (!props.channel?.id) return;
 
     if (isRateLimited.value) {
@@ -170,6 +588,8 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     sendError.value = null;
 
     const mentionMeta = extractMentionMetadata(content);
+
+    let messageContent = content;
 
     if (!e2eeStore.isReady) {
         sendError.value = 'Encryption is not set up. Please complete E2EE setup before sending messages.';
@@ -197,17 +617,18 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const isImage = staged.file.type.startsWith('image/');
             const isVideo = staged.file.type.startsWith('video/');
 
-            const presignEndpoint = props.isDm
-                ? `/direct-messages/${props.channel.id}/attachments/presign`
-                : `/channels/${props.channel.id}/attachments/presign`;
-
-            const presignResponse = await api.post(presignEndpoint, {
-                file_size: staged.file.size,
-                has_thumbnail: isImage || isVideo,
-            });
+            const presignResponse = props.isDm
+                ? await presignDmAttachment(props.channel.id, {
+                      file_size: staged.file.size,
+                      has_thumbnail: isImage || isVideo,
+                  })
+                : await presignChannelAttachment(props.channel.id, {
+                      file_size: staged.file.size,
+                      has_thumbnail: isImage || isVideo,
+                  });
 
             const { attachment_id, upload_url, upload_headers, thumbnail_upload_url, thumbnail_upload_headers } =
-                presignResponse.data;
+                presignResponse;
 
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
@@ -325,7 +746,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
                     uploadingFiles.value[idx].progress = 95;
                 }
             }
-            await api.post(`/attachments/${attachment_id}/confirm`);
+            await confirmAttachment(attachment_id);
 
             attachmentIds.push(attachment_id);
             attachmentMetas.push({
@@ -416,15 +837,11 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     }
 
     if (replyingToMessage.value) {
-        data.reply_to_id = replyingToMessage.value.id;
+        data.reply_to_id = Number(replyingToMessage.value.id);
     }
 
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages`
-        : `/channels/${props.channel.id}/messages`;
-
     const optimisticMessage: MessageData = {
-        id: Date.now(),
+        id: String(Date.now()),
         content,
         is_edited: false,
         edited_at: null,
@@ -447,14 +864,26 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     replyingToMessage.value = null;
 
     try {
-        const response = await api.post(endpoint, data);
+        const response = props.isDm
+            ? await sendDmMessage(String(props.channel.id), {
+                  message_bytes: data.message_bytes,
+                  sender_device_id: data.sender_device_id ?? '',
+                  reply_to_id: data.reply_to_id != null ? String(data.reply_to_id) : undefined,
+                  attachment_ids: data.attachment_ids,
+              })
+            : await apiSendMessage(String(props.channel.id), {
+                  message_bytes: data.message_bytes,
+                  sender_device_id: data.sender_device_id ?? '',
+                  reply_to_id: data.reply_to_id != null ? String(data.reply_to_id) : undefined,
+                  attachment_ids: data.attachment_ids,
+              });
 
         if (response.data) {
-            const serverMsg = response.data as MessageData;
+            const serverMsg = normalizeMessage(response.data, response.included);
             serverMsg.decrypted_content = content;
             serverMsg.decrypted_attachments = attachmentMetas.length > 0 ? attachmentMetas : undefined;
             e2ee.cacheDecryptedContent(
-                serverMsg.id,
+                Number(serverMsg.id),
                 content,
                 {
                     conversationType: props.isDm ? 'dm' : 'channel',
@@ -502,10 +931,6 @@ const cancelEdit = () => {
 const saveEdit = async (message: MessageData) => {
     if (!editContent.value.trim() || !props.channel?.id) return;
 
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages/${message.id}`
-        : `/channels/${props.channel.id}/messages/${message.id}`;
-
     try {
         let contentToSend = editContent.value;
         if (!e2eeStore.isReady) return;
@@ -536,18 +961,23 @@ const saveEdit = async (message: MessageData) => {
             // Best-effort
         }
 
-        await api.put(endpoint, {
+        const editData = {
             message_bytes: contentToSend,
-            sender_device_id: await e2ee.getDeviceId(),
+            sender_device_id: await e2ee.getDeviceId() ?? '',
             ...(historyCiphertext && { history_ciphertext: historyCiphertext }),
-        });
+        };
+        if (props.isDm) {
+            await editDmMessage(String(props.channel.id), String(message.id), editData);
+        } else {
+            await apiEditMessage(String(props.channel.id), String(message.id), editData);
+        }
         activeStore.updateMessage(message.id, {
             is_edited: true,
             edited_at: new Date().toISOString(),
             decrypted_content: editContent.value,
         });
         e2ee.cacheDecryptedContent(
-            message.id,
+            Number(message.id),
             editContent.value,
             {
                 conversationType: props.isDm ? 'dm' : 'channel',
@@ -565,14 +995,14 @@ const saveEdit = async (message: MessageData) => {
 const deleteMessage = async (message: MessageData) => {
     if (!props.channel?.id) return;
 
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages/${message.id}`
-        : `/channels/${props.channel.id}/messages/${message.id}`;
-
     try {
-        await api.delete(endpoint);
+        if (props.isDm) {
+            await deleteDmMessage(String(props.channel.id), String(message.id));
+        } else {
+            await apiDeleteMessage(String(props.channel.id), String(message.id));
+        }
         activeStore.removeMessage(message.id);
-        e2ee.removeFromSearchIndex(message.id).catch(() => {});
+        e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
     } catch (error) {
         console.error('Failed to delete message:', error);
     }
@@ -582,18 +1012,15 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
     if (!props.channel?.id) return;
     emojiPickerMessageId.value = null;
 
-    const endpoint = props.isDm
-        ? `/direct-messages/${props.channel.id}/messages/${message.id}/reactions`
-        : `/channels/${props.channel.id}/messages/${message.id}/reactions`;
-
     try {
-        const response = await api.post(endpoint, { emoji });
-        const data = response.data as { added: boolean };
+        const response = props.isDm
+            ? await toggleDmReaction(String(props.channel.id), String(message.id), { emoji })
+            : await toggleChannelReaction(String(props.channel.id), String(message.id), { emoji });
 
         if (!message.reactions) message.reactions = [];
-        if (data.added) {
+        if (response.meta.added) {
             message.reactions.push({
-                id: 0,
+                id: String(0),
                 message_id: message.id,
                 user_id: currentUser.value!.id,
                 emoji,

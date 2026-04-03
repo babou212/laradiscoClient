@@ -30,7 +30,10 @@ import {
     setActiveServer,
     setSetting,
     storeDecryptedMessage,
+<<<<<<< Updated upstream
     storeDecryptedMessageIfAbsent,
+=======
+>>>>>>> Stashed changes
     getDecryptedMessages,
     indexMessageForSearch,
     removeMessageFromSearchIndex,
@@ -38,6 +41,33 @@ import {
     clearSearchIndex,
 } from './database';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
+
+interface AuthUser {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+    avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
+    permissions?: Record<string, boolean>;
+}
+
+/**
+ * Extract an AuthUser from a JSON:API user resource object.
+ *
+ * Expects the shape: { data: { id, type, attributes: { ... } } }
+ */
+function parseUserResource(resource: Record<string, unknown>): AuthUser {
+    const data = resource.data as { id: string; attributes: Record<string, unknown> };
+    const attrs = data.attributes;
+    return {
+        id: data.id,
+        name: attrs.name as string,
+        username: attrs.username as string,
+        email: attrs.email as string,
+        avatar_urls: (attrs.avatar_urls as AuthUser['avatar_urls']) ?? null,
+        permissions: attrs.permissions as Record<string, boolean> | undefined,
+    };
+}
 
 function buildBaseUrl(host: string): string {
     if (host.startsWith('http://') || host.startsWith('https://')) {
@@ -141,16 +171,18 @@ export function registerIpcHandlers(): void {
                 };
             }
 
+            const user = parseUserResource(data.user);
+
             saveAuthSession(
                 serverId,
-                data.user.id,
-                data.user.name,
-                data.user.email,
-                data.user.avatar_urls?.thumb ?? null,
+                Number(user.id),
+                user.name,
+                user.email,
+                user.avatar_urls?.thumb ?? null,
                 data.token,
             );
 
-            return { success: true, user: data.user, token: data.token };
+            return { success: true, user, token: data.token };
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Login failed';
             return { success: false, error: message };
@@ -196,17 +228,18 @@ export function registerIpcHandlers(): void {
                 }
 
                 const data = body.data;
+                const user = parseUserResource(data.user);
 
                 saveAuthSession(
                     serverId,
-                    data.user.id,
-                    data.user.name,
-                    data.user.email,
-                    data.user.avatar_urls?.thumb ?? null,
+                    Number(user.id),
+                    user.name,
+                    user.email,
+                    user.avatar_urls?.thumb ?? null,
                     data.token,
                 );
 
-                return { success: true, user: data.user, token: data.token };
+                return { success: true, user, token: data.token };
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : 'Verification failed';
                 return { success: false, error: message };
@@ -283,17 +316,18 @@ export function registerIpcHandlers(): void {
                 }
 
                 const data = body.data;
+                const user = parseUserResource(data.user);
 
                 saveAuthSession(
                     serverId,
-                    data.user.id,
-                    data.user.name,
-                    data.user.email,
-                    data.user.avatar_urls?.thumb ?? null,
+                    Number(user.id),
+                    user.name,
+                    user.email,
+                    user.avatar_urls?.thumb ?? null,
                     data.token,
                 );
 
-                return { success: true, user: data.user, token: data.token };
+                return { success: true, user, token: data.token };
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : 'Registration failed';
                 return { success: false, error: message };
@@ -339,7 +373,8 @@ export function registerIpcHandlers(): void {
             }
 
             const body = await response.json();
-            return { valid: true, user: body.data ?? body };
+            const user = parseUserResource(body);
+            return { valid: true, user };
         } catch {
             return { valid: false };
         }
@@ -361,6 +396,7 @@ export function registerIpcHandlers(): void {
         },
     );
 
+<<<<<<< Updated upstream
     ipcMain.handle(
         'messages:storeDecryptedIfAbsent',
         async (_event, serverId: number, messageId: number, plaintext: string) => {
@@ -368,6 +404,8 @@ export function registerIpcHandlers(): void {
         },
     );
 
+=======
+>>>>>>> Stashed changes
     ipcMain.handle('messages:getDecryptedBatch', async (_event, serverId: number, messageIds: number[]) => {
         const map = getDecryptedMessages(serverId, messageIds);
         return Object.fromEntries(map);

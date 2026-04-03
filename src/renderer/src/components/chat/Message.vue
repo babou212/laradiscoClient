@@ -2,11 +2,6 @@
 import { useClipboard, useEventListener } from '@vueuse/core';
 import { Pin } from 'lucide-vue-next';
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
-import FileAttachment from './FileAttachment.vue';
-import MessageActions from './MessageActions.vue';
-import MessageReplyPreview from './MessageReplyPreview.vue';
-import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
-import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +11,11 @@ import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { MessageData } from '@/types/chat';
+import FileAttachment from './FileAttachment.vue';
+import MessageActions from './MessageActions.vue';
+import MessageReplyPreview from './MessageReplyPreview.vue';
+import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
+import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 
 interface Props {
     message: MessageData;
@@ -60,7 +60,11 @@ const canReply = computed(() => props.canSendMessages !== false);
 const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
 const isDecrypting = computed(() => {
+<<<<<<< Updated upstream
     return !props.message.decrypt_error && props.message.decrypted_content === undefined;
+=======
+    return !props.message.decrypt_error && !props.message.decrypted_content;
+>>>>>>> Stashed changes
 });
 
 const displayContent = computed(() => {
@@ -205,7 +209,7 @@ const renderedContentWithoutYoutube = computed(() => {
 
 <template>
     <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
-        <Avatar class="size-10 shrink-0">
+        <Avatar v-if="message.user" class="size-10 shrink-0">
             <AvatarImage
                 v-if="avatarStore.getAvatarUrl(message.user.id, 'small')"
                 :src="avatarStore.getAvatarUrl(message.user.id, 'small')!"
@@ -219,7 +223,7 @@ const renderedContentWithoutYoutube = computed(() => {
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span class="text-sm font-semibold">
-                    {{ userNamesStore.getDisplayName(message.user.id, message.user.username) }}
+                    {{ message.user ? userNamesStore.getDisplayName(message.user.id, message.user.username) : 'Unknown' }}
                 </span>
                 <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}

@@ -1,9 +1,7 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core';
 import { CodeXml, CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import EmojiPicker from './EmojiPicker.vue';
-import GifPicker from './GifPicker.vue';
-import MentionDropdown from './MentionDropdown.vue';
+import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
 import {
     FileAddSchema,
     GifUrlSchema,
@@ -14,6 +12,9 @@ import {
 } from '@/lib/message-schemas';
 import type { StagedFile, UploadingFile } from '@/lib/message-schemas';
 import type { MessageData } from '@/types/chat';
+import EmojiPicker from './EmojiPicker.vue';
+import GifPicker from './GifPicker.vue';
+import MentionDropdown from './MentionDropdown.vue';
 
 export type { StagedFile, UploadingFile };
 
@@ -26,26 +27,24 @@ interface Props {
     uploadingFiles?: UploadingFile[];
 }
 
-interface Emits {
-    (e: 'send', content: string, files: StagedFile[]): void;
-    (e: 'typing'): void;
-    (e: 'cancelReply'): void;
-}
+const emit = defineEmits<{
+    send: [content: string, files: StagedFile[]];
+    typing: [];
+    cancelReply: [];
+}>();
 
-const emit = defineEmits<Emits>();
-
-const messageInput = ref('');
-const showEmojiPicker = ref(false);
-const showGifPicker = ref(false);
-const showMentionDropdown = ref(false);
-const mentionQuery = ref('');
-const mentionStartIndex = ref(-1);
-const textareaRef = ref<HTMLTextAreaElement>();
-const emojiPickerRef = ref<HTMLElement>();
-const gifPickerRef = ref<HTMLElement>();
-const fileInputRef = ref<HTMLInputElement>();
+const messageInput = shallowRef('');
+const showEmojiPicker = shallowRef(false);
+const showGifPicker = shallowRef(false);
+const showMentionDropdown = shallowRef(false);
+const mentionQuery = shallowRef('');
+const mentionStartIndex = shallowRef(-1);
+const textareaRef = useTemplateRef<HTMLTextAreaElement>('textareaRef');
+const emojiPickerRef = useTemplateRef<HTMLElement>('emojiPickerRef');
+const gifPickerRef = useTemplateRef<HTMLElement>('gifPickerRef');
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const stagedFiles = ref<StagedFile[]>([]);
-const fileSizeError = ref<string | null>(null);
+const fileSizeError = shallowRef<string | null>(null);
 let fileSizeErrorTimer: ReturnType<typeof setTimeout> | undefined;
 
 const props = defineProps<Props>();
@@ -282,13 +281,7 @@ const handleClickOutside = (e: MouseEvent) => {
     }
 };
 
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-});
+useEventListener(document, 'click', handleClickOutside);
 </script>
 
 <template>

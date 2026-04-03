@@ -3,14 +3,14 @@ import type { AvatarUrls } from './chat';
 export type UserStatusType = 'online' | 'idle' | 'dnd' | 'offline';
 
 export interface UserRole {
-    id: number;
+    id: string;
     name: string;
     color: string;
     position: number;
 }
 
 export interface UserProfile {
-    id: number;
+    id: string;
     username: string;
     email: string;
     email_verified_at: string | null;
@@ -25,7 +25,7 @@ export interface UserProfile {
 }
 
 export interface OnlineUser {
-    id: number;
+    id: string;
     username: string;
     display_name: string;
     avatar_urls: AvatarUrls | null;

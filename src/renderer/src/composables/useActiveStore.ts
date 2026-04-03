@@ -22,7 +22,7 @@ export function useActiveStore(isDm: Ref<boolean>) {
         }
     }
 
-    function updateMessage(id: number, partial: Partial<MessageData>): void {
+    function updateMessage(id: string, partial: Partial<MessageData>): void {
         if (isDm.value) {
             dmStore.updateMessage(id, partial);
         } else {
@@ -30,7 +30,7 @@ export function useActiveStore(isDm: Ref<boolean>) {
         }
     }
 
-    function removeMessage(id: number): void {
+    function removeMessage(id: string): void {
         if (isDm.value) {
             dmStore.removeMessage(id);
         } else {

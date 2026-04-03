@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Download, FileText, Loader2, X } from 'lucide-vue-next';
 import { onBeforeUnmount, shallowRef, watchEffect } from 'vue';
-import api from '@/lib/api';
+import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -30,8 +30,7 @@ onBeforeUnmount(() => {
 });
 
 async function decryptPdf(): Promise<string> {
-    const response = await api.get(`/attachments/${props.attachment.id}/download`);
-    const { download_url } = response.data;
+    const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
     const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
     const decryptedBuffer = await decryptAttachment(encryptedBuffer, props.attachment.key, props.attachment.iv);
     const blob = new Blob([decryptedBuffer], { type: 'application/pdf' });

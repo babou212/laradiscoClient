@@ -1,22 +1,32 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useAvatarStore } from './avatar';
-import api from '@/lib/api';
-import type { Category, Channel, ChannelPermissions, MessageData, MessagesResponse } from '@/types/chat';
+import { getCategories } from '@/api/categories';
+import { getChannel } from '@/api/channels';
+import { getMessages } from '@/api/messages';
+import { normalizeMessages } from '@/api/normalizers';
+import type { ChannelAttributes } from '@/api/types';
+import type { Category, Channel, ChannelPermissions, MessageData } from '@/types/chat';
+
+function extractCursor(url: string | null | undefined): string | null {
+    if (!url) return null;
+    try {
+        return new URL(url).searchParams.get('cursor');
+    } catch {
+        return url;
+    }
+}
 
 export const useChatStore = defineStore('chat', () => {
-    const categories = ref<Category[]>([]);
     const currentChannel = ref<Channel | null>(null);
     const currentChannelPermissions = ref<ChannelPermissions | null>(null);
     const messages = ref<MessageData[]>([]);
     const nextCursor = ref<string | null>(null);
     const prevCursor = ref<string | null>(null);
-    const isLoadingChannels = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
-    const pinnedMessages = ref<MessageData[]>([]);
-    const isLoadingPinned = ref(false);
     const serverName = ref<string>('Laradisco');
+    const categories = ref<Category[]>([]);
 
     const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
 
@@ -66,9 +76,6 @@ export const useChatStore = defineStore('chat', () => {
                 messages.value = msgData.data ?? [];
                 nextCursor.value = msgData.next_cursor ?? null;
                 prevCursor.value = msgData.prev_cursor ?? null;
-
-                const avatarStore = useAvatarStore();
-                avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
             }
         } finally {
             isLoadingMessages.value = false;
@@ -223,8 +230,8 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    function updateMessage(messageOrId: MessageData | number, partial?: Partial<MessageData>): void {
-        if (typeof messageOrId === 'number') {
+    function updateMessage(messageOrId: MessageData | string, partial?: Partial<MessageData>): void {
+        if (typeof messageOrId === 'string') {
             const idx = messages.value.findIndex((m) => m.id === messageOrId);
             if (idx !== -1 && partial) {
                 Object.assign(messages.value[idx], partial);
@@ -239,56 +246,137 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
-    function removeMessage(messageId: number): void {
+    function removeMessage(messageId: string): void {
         const idx = messages.value.findIndex((m) => m.id === messageId);
         if (idx !== -1) messages.value.splice(idx, 1);
     }
 
+    async function fetchCategories(): Promise<void> {
+        const response = await getCategories({ include: 'channels' });
+        const included = response.included ?? [];
+
+        categories.value = response.data.map((cat) => {
+            const channelRels = cat.relationships?.channels?.data;
+            const channelIds = Array.isArray(channelRels)
+                ? channelRels.map((r) => r.id)
+                : [];
+
+            const channels: Channel[] = channelIds
+                .map((id) => included.find((inc) => inc.type === 'channels' && inc.id === id))
+                .filter((inc): inc is typeof inc & { attributes: ChannelAttributes } => inc?.type === 'channels')
+                .map((inc) => ({
+                    id: inc.id,
+                    name: inc.attributes.name,
+                    topic: inc.attributes.topic ?? null,
+                    type: inc.attributes.channel_type,
+                    is_private: inc.attributes.is_private,
+                    permissions: inc.attributes.channelPermissions,
+                }));
+
+            return {
+                id: cat.id,
+                name: cat.attributes.name,
+                position: cat.attributes.position,
+                channels,
+            };
+        });
+    }
+
+    async function selectChannel(channelId: number | string): Promise<void> {
+        const id = String(channelId);
+
+        // Try to find in already-loaded categories
+        for (const cat of categories.value) {
+            const ch = cat.channels.find((c) => c.id === id);
+            if (ch) {
+                currentChannel.value = ch;
+                currentChannelPermissions.value = ch.permissions ?? null;
+                await fetchMessages(id);
+                return;
+            }
+        }
+
+        // Fallback: fetch from API
+        const response = await getChannel(id);
+        const attrs = response.data.attributes;
+        currentChannel.value = {
+            id: response.data.id,
+            name: attrs.name,
+            topic: attrs.topic ?? null,
+            type: attrs.channel_type,
+            is_private: attrs.is_private,
+            permissions: attrs.channelPermissions,
+        };
+        currentChannelPermissions.value = attrs.channelPermissions ?? null;
+        await fetchMessages(id);
+    }
+
+    async function fetchMessages(channelId: string): Promise<void> {
+        isLoadingMessages.value = true;
+        messages.value = [];
+        nextCursor.value = null;
+        prevCursor.value = null;
+        try {
+            const response = await getMessages(channelId);
+            messages.value = normalizeMessages(response.data, response.included);
+            prevCursor.value = extractCursor(response.links?.prev);
+            nextCursor.value = extractCursor(response.links?.next);
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
+    async function loadOlderMessages(): Promise<void> {
+        if (!currentChannel.value || !prevCursor.value || isLoadingMore.value) return;
+        isLoadingMore.value = true;
+        try {
+            const response = await getMessages(currentChannel.value.id, { cursor: prevCursor.value });
+            const older = normalizeMessages(response.data, response.included);
+            messages.value = [...older, ...messages.value];
+            prevCursor.value = extractCursor(response.links?.prev);
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(older.map((m) => m.user));
+        } catch (error) {
+            console.error('Failed to load older messages:', error);
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
     function $reset(): void {
-        categories.value = [];
         currentChannel.value = null;
         currentChannelPermissions.value = null;
         messages.value = [];
         nextCursor.value = null;
         prevCursor.value = null;
-        isLoadingChannels.value = false;
         isLoadingMessages.value = false;
         isLoadingMore.value = false;
-        pinnedMessages.value = [];
-        isLoadingPinned.value = false;
         serverName.value = 'Laradisco';
+        categories.value = [];
     }
 
     return {
-        categories,
         currentChannel,
         currentChannelPermissions,
         messages,
         nextCursor,
         prevCursor,
-        isLoadingChannels,
         isLoadingMessages,
         isLoadingMore,
-        pinnedMessages,
-        isLoadingPinned,
         serverName,
+        categories,
         selectedChannelId,
-        fetchCategories,
-        fetchChannel,
-        fetchMessages,
-        selectChannel,
-        loadOlderMessages,
-        sendMessage,
-        editMessage,
-        deleteMessage,
-        toggleReaction,
-        emitTyping,
-        fetchPinnedMessages,
-        pinMessage,
-        unpinMessage,
         addMessage,
         updateMessage,
         removeMessage,
+        fetchCategories,
+        selectChannel,
+        fetchMessages,
+        loadOlderMessages,
         $reset,
     };
 });
