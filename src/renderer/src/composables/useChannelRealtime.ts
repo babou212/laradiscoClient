@@ -191,7 +191,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
             .listen('MessageDeleted', (data: { message_id: number | string }) => {
                 const msgId = String(data.message_id);
                 removeMessage(msgId);
-                e2ee.removeFromSearchIndex(Number(data.message_id)).catch(() => {}); 
+                e2ee.removeFromSearchIndex(Number(data.message_id)).catch(() => {});
             })
             .listen('ReactionToggled', (data: { reaction: MessageReaction; added: boolean }) => {
                 data.reaction.id = String(data.reaction.id);
@@ -217,17 +217,20 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     }
                 }
             })
-            .listen('MessagePinned', (data: { message_id: number | string; pinned_by?: { id: number | string; username: string } }) => {
-                const pinnedMsgId = String(data.message_id);
-                const msg = messages.value.find((m) => m.id === pinnedMsgId);
-                if (msg) {
-                    msg.is_pinned = true;
-                    msg.pinned_at = new Date().toISOString();
-                }
-                if (showPinnedMessages.value) {
-                    fetchAndDecryptPinned().catch(() => {});
-                }
-            })
+            .listen(
+                'MessagePinned',
+                (data: { message_id: number | string; pinned_by?: { id: number | string; username: string } }) => {
+                    const pinnedMsgId = String(data.message_id);
+                    const msg = messages.value.find((m) => m.id === pinnedMsgId);
+                    if (msg) {
+                        msg.is_pinned = true;
+                        msg.pinned_at = new Date().toISOString();
+                    }
+                    if (showPinnedMessages.value) {
+                        fetchAndDecryptPinned().catch(() => {});
+                    }
+                },
+            )
             .listen('MessageUnpinned', (data: { message_id: number | string }) => {
                 const unpinnedMsgId = String(data.message_id);
                 const msg = messages.value.find((m) => m.id === unpinnedMsgId);

@@ -5,6 +5,13 @@ import { useClipboard } from '@vueuse/core';
 import DOMPurify from 'dompurify';
 import { Check, Copy, Eye, EyeOff, LockKeyhole, RefreshCw, ShieldBan, ShieldCheck } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import {
+    getTwoFactorStatus,
+    enableTwoFactor as apiEnableTwoFactor,
+    disableTwoFactor as apiDisableTwoFactor,
+    confirmTwoFactor as apiConfirmTwoFactor,
+    regenerateRecoveryCodes as apiRegenerateRecoveryCodes,
+} from '@/api/two-factor';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,13 +20,6 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
-import {
-    getTwoFactorStatus,
-    enableTwoFactor as apiEnableTwoFactor,
-    disableTwoFactor as apiDisableTwoFactor,
-    confirmTwoFactor as apiConfirmTwoFactor,
-    regenerateRecoveryCodes as apiRegenerateRecoveryCodes,
-} from '@/api/two-factor';
 
 const { theme } = useAppearance();
 const {

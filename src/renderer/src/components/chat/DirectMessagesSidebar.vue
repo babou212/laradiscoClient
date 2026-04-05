@@ -2,8 +2,8 @@
 import { watchDebounced } from '@vueuse/core';
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
 import { shallowRef, watch } from 'vue';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getMembers } from '@/api/members';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAvatarStore } from '@/stores/avatar';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';

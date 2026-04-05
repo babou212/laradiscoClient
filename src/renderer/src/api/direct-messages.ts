@@ -32,14 +32,13 @@ export async function getDmGroups(params?: {
     sort?: string;
     include?: string;
 }): Promise<JsonApiCollectionResponse<DirectMessageGroupResource>> {
-    const r = await api
-        .get('/direct-messages', {
-            params: {
-                sort: '-last_message_at',
-                include: 'participants,lastMessage,lastMessage.user',
-                ...params,
-            },
-        });
+    const r = await api.get('/direct-messages', {
+        params: {
+            sort: '-last_message_at',
+            include: 'participants,lastMessage,lastMessage.user',
+            ...params,
+        },
+    });
     return r.data;
 }
 
@@ -48,20 +47,16 @@ export async function getDmMessages(
     params?: { sort?: string; include?: string; cursor?: string },
 ): Promise<
     JsonApiCollectionResponse<DirectMessageResource> & {
-        meta?: { dm_group?: JsonApiResponse<DirectMessageGroupResource> } & Record<
-            string,
-            unknown
-        >;
+        meta?: { dm_group?: JsonApiResponse<DirectMessageGroupResource> } & Record<string, unknown>;
     }
 > {
-    const r = await api
-        .get(`/direct-messages/${groupId}`, {
-            params: {
-                sort: 'created_at',
-                include: 'user,reactions,replyTo,replyTo.user,encryptedAttachments',
-                ...params,
-            },
-        });
+    const r = await api.get(`/direct-messages/${groupId}`, {
+        params: {
+            sort: 'created_at',
+            include: 'user,reactions,replyTo,replyTo.user,encryptedAttachments',
+            ...params,
+        },
+    });
     return r.data;
 }
 
@@ -78,8 +73,7 @@ export async function editDmMessage(
     messageId: string,
     data: EditDmMessageData,
 ): Promise<JsonApiResponse<DirectMessageResource>> {
-    const r = await api
-        .put(`/direct-messages/${groupId}/messages/${messageId}`, data);
+    const r = await api.put(`/direct-messages/${groupId}/messages/${messageId}`, data);
     return r.data;
 }
 
@@ -87,11 +81,8 @@ export function deleteDmMessage(groupId: string, messageId: string): Promise<voi
     return api.delete(`/direct-messages/${groupId}/messages/${messageId}`);
 }
 
-export async function findDmGroup(
-    userId: string,
-): Promise<{ data: { dm_group_id: number } }> {
-    const r = await api
-        .get('/direct-messages/find', { params: { user_id: userId } });
+export async function findDmGroup(userId: string): Promise<{ data: { dm_group_id: number } }> {
+    const r = await api.get('/direct-messages/find', { params: { user_id: userId } });
     return r.data;
 }
 

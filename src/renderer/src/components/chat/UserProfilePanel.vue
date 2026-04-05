@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { MessageSquare } from 'lucide-vue-next';
 import { computed, shallowRef, watch } from 'vue';
+import type { UserResource } from '@/api/types';
 import { getUserProfile } from '@/api/users';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { OnlineUser } from '@/types/user';
-import type { UserResource } from '@/api/types';
 
 interface IncludedRole {
     id: string;
@@ -45,9 +45,7 @@ watch(
             try {
                 const response = await getUserProfile(String(props.user.id));
                 fullUser.value = response.data;
-                includedRoles.value = (response.included ?? []).filter(
-                    (r) => r.type === 'roles',
-                ) as IncludedRole[];
+                includedRoles.value = (response.included ?? []).filter((r) => r.type === 'roles') as IncludedRole[];
             } catch (error) {
                 if (import.meta.env.DEV) {
                     console.error('Failed to fetch user data:', error);
@@ -200,7 +198,10 @@ const handleClose = () => {
                             :key="role.id"
                             class="border-border bg-background text-popover-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
                         >
-                            <span class="size-2.5 rounded-full" :style="{ backgroundColor: role.attributes.color }"></span>
+                            <span
+                                class="size-2.5 rounded-full"
+                                :style="{ backgroundColor: role.attributes.color }"
+                            ></span>
                             {{ role.attributes.name }}
                         </span>
                     </div>

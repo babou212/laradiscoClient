@@ -1,14 +1,14 @@
 <!-- PasswordSettingsView - Password change settings -->
 
 <script setup lang="ts">
+import { useMutation } from '@pinia/colada';
 import { ref } from 'vue';
+import { extractValidationErrors } from '@/api/errors';
+import { updatePassword } from '@/api/settings';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useMutation } from '@pinia/colada';
-import { updatePassword } from '@/api/settings';
-import { extractValidationErrors } from '@/api/errors';
 
 const currentPassword = ref('');
 const password = ref('');

@@ -1,8 +1,13 @@
 <!-- MemberSettingsView - Server member management -->
 
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Search, Shield, UsersRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { getApiErrorMessage } from '@/api/errors';
+import { updateMemberRole, removeMemberRole } from '@/api/settings';
+import { findIncluded, relationshipIds } from '@/api/types';
+import type { RoleResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,13 +19,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
-import { updateMemberRole, removeMemberRole } from '@/api/settings';
-import { getApiErrorMessage } from '@/api/errors';
-import { findIncluded, relationshipIds } from '@/api/types';
-import type { RoleResource } from '@/api/types';
-import { settingsMembersQuery } from '@/queries/settings/members';
 import { SETTINGS_KEYS } from '@/queries/keys';
+import { settingsMembersQuery } from '@/queries/settings/members';
 
 type Role = {
     id: string;
@@ -107,14 +107,12 @@ const removingRole = ref<MemberRole | null>(null);
 const roleError = ref('');
 
 const { mutateAsync: doAssignRole, isLoading: processing } = useMutation({
-    mutation: (params: { memberId: string; roleId: string }) =>
-        updateMemberRole(params.memberId, params.roleId),
+    mutation: (params: { memberId: string; roleId: string }) => updateMemberRole(params.memberId, params.roleId),
     onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() }),
 });
 
 const { mutateAsync: doRemoveRole } = useMutation({
-    mutation: (params: { memberId: string; roleId: string }) =>
-        removeMemberRole(params.memberId, params.roleId),
+    mutation: (params: { memberId: string; roleId: string }) => removeMemberRole(params.memberId, params.roleId),
     onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() }),
 });
 

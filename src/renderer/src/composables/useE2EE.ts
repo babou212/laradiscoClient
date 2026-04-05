@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
     registerIdentity,
     getIdentity,
@@ -28,7 +29,6 @@ import {
     renameDevice as apiRenameDevice,
     getKeyPackageCount,
 } from '@/api/e2ee';
-import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
@@ -978,7 +978,6 @@ export function useE2EE() {
 
     async function decryptGroupHistory(groupId: string): Promise<number> {
         const serverId = getServerId();
-        const encodedGroupId = encodeURIComponent(groupId);
         const conversationType: 'channel' | 'dm' = groupId.startsWith('dm:') ? 'dm' : 'channel';
         const conversationId = Number(groupId.split(':')[1]);
         let decrypted = 0;
@@ -1072,7 +1071,6 @@ export function useE2EE() {
                         }
                     }
 
-                    const encodedGroupId = encodeURIComponent(groupId);
                     const result = await window.api.mls.addMember({
                         serverId,
                         groupId,
@@ -1167,8 +1165,6 @@ export function useE2EE() {
                 console.warn(`[E2EE] No key package for join requester ${requesterUserId}/${requesterDeviceId}`);
                 return;
             }
-
-            const encodedGroupId = encodeURIComponent(groupId);
 
             const result = await window.api.mls.addMember({
                 serverId,
@@ -1284,7 +1280,9 @@ export function useE2EE() {
         } catch (err: unknown) {
             return {
                 success: false,
-                error: axios.isAxiosError(err) ? err.response?.data?.message ?? 'Failed to unlock backup' : 'Failed to unlock backup',
+                error: axios.isAxiosError(err)
+                    ? (err.response?.data?.message ?? 'Failed to unlock backup')
+                    : 'Failed to unlock backup',
             };
         }
     }

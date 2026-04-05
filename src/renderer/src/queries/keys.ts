@@ -7,26 +7,21 @@ export const CATEGORY_KEYS = {
 export const CHANNEL_KEYS = {
     root: ['channels'] as const,
     byId: (id: string) => [...CHANNEL_KEYS.root, id] as const,
-    messages: (channelId: string) =>
-        [...CHANNEL_KEYS.root, channelId, 'messages'] as const,
-    pins: (channelId: string) =>
-        [...CHANNEL_KEYS.root, channelId, 'pins'] as const,
+    messages: (channelId: string) => [...CHANNEL_KEYS.root, channelId, 'messages'] as const,
+    pins: (channelId: string) => [...CHANNEL_KEYS.root, channelId, 'pins'] as const,
 };
 
 export const MESSAGE_KEYS = {
     root: ['messages'] as const,
-    byChannel: (channelId: string) =>
-        [...MESSAGE_KEYS.root, 'channel', channelId] as const,
+    byChannel: (channelId: string) => [...MESSAGE_KEYS.root, 'channel', channelId] as const,
 };
 
 export const DM_KEYS = {
     root: ['direct-messages'] as const,
     groups: () => [...DM_KEYS.root, 'groups'] as const,
     byGroup: (id: string) => [...DM_KEYS.root, 'group', id] as const,
-    messages: (groupId: string) =>
-        [...DM_KEYS.root, 'group', groupId, 'messages'] as const,
-    pins: (groupId: string) =>
-        [...DM_KEYS.root, 'group', groupId, 'pins'] as const,
+    messages: (groupId: string) => [...DM_KEYS.root, 'group', groupId, 'messages'] as const,
+    pins: (groupId: string) => [...DM_KEYS.root, 'group', groupId, 'pins'] as const,
 };
 
 export const MEMBER_KEYS = {
@@ -47,10 +42,8 @@ export const NOTIFICATION_KEYS = {
 
 export const THREAD_KEYS = {
     root: ['threads'] as const,
-    byId: (channelId: string, threadId: string) =>
-        [...THREAD_KEYS.root, channelId, threadId] as const,
-    messages: (channelId: string, threadId: string) =>
-        [...THREAD_KEYS.root, channelId, threadId, 'messages'] as const,
+    byId: (channelId: string, threadId: string) => [...THREAD_KEYS.root, channelId, threadId] as const,
+    messages: (channelId: string, threadId: string) => [...THREAD_KEYS.root, channelId, threadId, 'messages'] as const,
 };
 
 export const USER_KEYS = {

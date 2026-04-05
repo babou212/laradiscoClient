@@ -8,9 +8,6 @@ export function sendDmTyping(groupId: string | number): Promise<void> {
     return api.post(`/direct-messages/${groupId}/typing`);
 }
 
-export function sendThreadTyping(
-    channelId: string | number,
-    threadId: string | number,
-): Promise<void> {
+export function sendThreadTyping(channelId: string | number, threadId: string | number): Promise<void> {
     return api.post(`/channels/${channelId}/threads/${threadId}/typing`);
 }

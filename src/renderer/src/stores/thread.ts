@@ -1,7 +1,15 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
 import { normalizeMessage, normalizeMessages } from '@/api/normalizers';
-import { getThreadMessages, createThreadReply, editThreadMessage, deleteThreadMessage, toggleThreadReaction, followThread as apiFollowThread, unfollowThread as apiUnfollowThread } from '@/api/threads';
+import {
+    getThreadMessages,
+    createThreadReply,
+    editThreadMessage,
+    deleteThreadMessage,
+    toggleThreadReaction,
+    followThread as apiFollowThread,
+    unfollowThread as apiUnfollowThread,
+} from '@/api/threads';
 import type { MessageData, ThreadPreview } from '@/types/chat';
 
 export const useThreadStore = defineStore('thread', () => {
@@ -129,7 +137,11 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    async function deleteMessage(channelId: string | number, threadId: string | number, messageId: string | number): Promise<void> {
+    async function deleteMessage(
+        channelId: string | number,
+        threadId: string | number,
+        messageId: string | number,
+    ): Promise<void> {
         try {
             await deleteThreadMessage(String(channelId), String(threadId), String(messageId));
             const idx = threadMessages.value.findIndex((m) => m.id === String(messageId));
@@ -147,12 +159,7 @@ export const useThreadStore = defineStore('thread', () => {
         currentUserId: string | number,
     ): Promise<void> {
         try {
-            const r = await toggleThreadReaction(
-                String(channelId),
-                String(threadId),
-                String(messageId),
-                { emoji },
-            );
+            const r = await toggleThreadReaction(String(channelId), String(threadId), String(messageId), { emoji });
             const responseData = r as { data?: unknown; meta?: { added: boolean } };
             const msg = threadMessages.value.find((m) => m.id === String(messageId));
             if (msg && responseData.meta) {
@@ -165,7 +172,9 @@ export const useThreadStore = defineStore('thread', () => {
                         emoji,
                     });
                 } else {
-                    const idx = msg.reactions.findIndex((r) => r.user_id === String(currentUserId) && r.emoji === emoji);
+                    const idx = msg.reactions.findIndex(
+                        (r) => r.user_id === String(currentUserId) && r.emoji === emoji,
+                    );
                     if (idx !== -1) msg.reactions.splice(idx, 1);
                 }
             }

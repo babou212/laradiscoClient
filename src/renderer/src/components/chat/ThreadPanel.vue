@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, reactive, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, shallowRef, useTemplateRef, watch } from 'vue';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import TypingIndicator from './TypingIndicator.vue';
+import { coerceBroadcastMessage } from '@/api/normalizers';
+import { sendThreadTyping } from '@/api/typing';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
-import { coerceBroadcastMessage } from '@/api/normalizers';
-import { toggleThreadReaction, followThread as apiFollowThread, unfollowThread as apiUnfollowThread } from '@/api/threads';
-import { sendThreadTyping } from '@/api/typing';
+import { useScrollManager } from '@/composables/useScrollManager';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -16,9 +19,6 @@ import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import TypingIndicator from './TypingIndicator.vue';
 
 interface Props {
     channelId: string;
@@ -41,8 +41,6 @@ const editingMessageId = shallowRef<string | null>(null);
 const editContent = shallowRef('');
 const emojiPickerMessageId = shallowRef<string | null>(null);
 const sendError = shallowRef<string | null>(null);
-const userIsNearBottom = shallowRef(true);
-const isLoadingMore = shallowRef(false);
 const typingUsers = reactive(new Map<number, { username: string; timeout: ReturnType<typeof setTimeout> }>());
 let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -200,6 +198,21 @@ const leaveThread = () => {
     typingUsers.clear();
 };
 
+const threadMessages = computed(() => threadStore.threadMessages);
+const canLoadMore = computed(() => threadStore.prevCursor != null);
+
+const { isLoadingMore, scrollToBottom, handleScroll } = useScrollManager(
+    messagesContainer,
+    threadMessages,
+    canLoadMore,
+    async () => {
+        await threadStore.loadOlderMessages(props.channelId);
+        if (e2eeStore.isReady) {
+            await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
+        }
+    },
+);
+
 const emitTyping = () => {
     const thread = threadStore.activeThread;
     if (!thread) return;
@@ -210,44 +223,6 @@ const emitTyping = () => {
     typingDebounceTimer = setTimeout(() => {
         typingDebounceTimer = null;
     }, 2000);
-};
-
-const scrollToBottom = (force = false) => {
-    nextTick(() => {
-        if (!messagesContainer.value) return;
-        if (!force && !userIsNearBottom.value) return;
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-    });
-};
-
-const checkIfNearBottom = () => {
-    if (!messagesContainer.value) return true;
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
-    return scrollHeight - scrollTop - clientHeight < 150;
-};
-
-const handleScroll = async () => {
-    if (!messagesContainer.value) return;
-    userIsNearBottom.value = checkIfNearBottom();
-
-    if (isLoadingMore.value) return;
-    if (messagesContainer.value.scrollTop < 100 && threadStore.prevCursor) {
-        isLoadingMore.value = true;
-        const prevHeight = messagesContainer.value.scrollHeight;
-        const prevScrollTop = messagesContainer.value.scrollTop;
-        await threadStore.loadOlderMessages(props.channelId);
-
-        if (e2eeStore.isReady) {
-            await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
-        }
-
-        await nextTick();
-        if (messagesContainer.value) {
-            const newHeight = messagesContainer.value.scrollHeight;
-            messagesContainer.value.scrollTop = newHeight - prevHeight + prevScrollTop;
-        }
-        isLoadingMore.value = false;
-    }
 };
 
 watch(

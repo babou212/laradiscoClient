@@ -2,8 +2,8 @@
 import { Howl } from 'howler';
 import { Download, Loader2, Music, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef } from 'vue';
-import { Slider } from '@/components/ui/slider';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { Slider } from '@/components/ui/slider';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 

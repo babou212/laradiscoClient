@@ -2,8 +2,8 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useAvatarStore } from './avatar';
 import { useUserNamesStore } from './userNames';
-import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import { getMembers } from '@/api/members';
+import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import { getEcho } from '@/lib/echo';
 import type { OnlineUser, PresenceUpdate, UserStatusType } from '@/types';
 

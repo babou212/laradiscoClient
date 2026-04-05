@@ -66,9 +66,7 @@ export const useChatStore = defineStore('chat', () => {
 
         categories.value = response.data.map((cat) => {
             const channelRels = cat.relationships?.channels?.data;
-            const channelIds = Array.isArray(channelRels)
-                ? channelRels.map((r) => r.id)
-                : [];
+            const channelIds = Array.isArray(channelRels) ? channelRels.map((r) => r.id) : [];
 
             const channels: Channel[] = channelIds
                 .map((id) => included.find((inc) => inc.type === 'channels' && inc.id === id))
@@ -94,6 +92,8 @@ export const useChatStore = defineStore('chat', () => {
     async function selectChannel(channelId: number | string): Promise<void> {
         const id = String(channelId);
 
+        if (currentChannel.value?.id === id) return;
+
         // Try to find in already-loaded categories
         for (const cat of categories.value) {
             const ch = cat.channels.find((c) => c.id === id);
@@ -102,11 +102,13 @@ export const useChatStore = defineStore('chat', () => {
                 currentChannelPermissions.value = ch.permissions ?? null;
 
                 const fetchPerms = !ch.permissions
-                    ? getChannel(id).then((r) => {
-                          const perms = r.data.attributes.channelPermissions ?? null;
-                          ch.permissions = perms ?? undefined;
-                          currentChannelPermissions.value = perms;
-                      }).catch(() => {})
+                    ? getChannel(id)
+                          .then((r) => {
+                              const perms = r.data.attributes.channelPermissions ?? null;
+                              ch.permissions = perms ?? undefined;
+                              currentChannelPermissions.value = perms;
+                          })
+                          .catch(() => {})
                     : undefined;
 
                 await Promise.all([fetchMessages(id), fetchPerms]);

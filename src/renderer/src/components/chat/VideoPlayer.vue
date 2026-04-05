@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Download, Film, Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue';
-import { Slider } from '@/components/ui/slider';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { Slider } from '@/components/ui/slider';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 

@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { useClipboard } from '@vueuse/core';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { createInviteLink, deleteInviteLink } from '@/api/settings';
 import { findIncluded } from '@/api/types';
 import type { UserResource } from '@/api/types';
-import { inviteLinksQuery } from '@/queries/settings/invite-links';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { SETTINGS_KEYS } from '@/queries/keys';
+import { inviteLinksQuery } from '@/queries/settings/invite-links';
 
 type InviteLink = {
     id: string;
@@ -29,12 +29,14 @@ const inviteLinks = computed<InviteLink[]>(() => {
     return rawData.value.data.map((res) => {
         const creatorRel = res.relationships?.creator?.data;
         const usedByRel = res.relationships?.usedByUser?.data;
-        const creator = creatorRel && !Array.isArray(creatorRel)
-            ? findIncluded<UserResource>(rawData.value!.included, 'users', creatorRel.id)
-            : undefined;
-        const usedBy = usedByRel && !Array.isArray(usedByRel)
-            ? findIncluded<UserResource>(rawData.value!.included, 'users', usedByRel.id)
-            : undefined;
+        const creator =
+            creatorRel && !Array.isArray(creatorRel)
+                ? findIncluded<UserResource>(rawData.value!.included, 'users', creatorRel.id)
+                : undefined;
+        const usedBy =
+            usedByRel && !Array.isArray(usedByRel)
+                ? findIncluded<UserResource>(rawData.value!.included, 'users', usedByRel.id)
+                : undefined;
         return {
             id: res.id,
             token: res.attributes.token,

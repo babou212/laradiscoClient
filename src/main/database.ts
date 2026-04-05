@@ -336,11 +336,9 @@ function buildFtsQuery(raw: string): string {
     const cleaned = raw.replace(/[^\p{L}\p{N}\s*"]/gu, '').trim();
     if (!cleaned) return '';
 
-
     if (cleaned.includes('"') || cleaned.includes('*')) {
         return cleaned;
     }
-
 
     const terms = cleaned.split(/\s+/).filter((t) => t.length >= 1);
     if (terms.length === 0) return '';

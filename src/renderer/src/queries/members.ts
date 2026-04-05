@@ -1,6 +1,6 @@
 import { defineQueryOptions } from '@pinia/colada';
-import { getMembers, searchMentions } from '@/api/members';
 import { MEMBER_KEYS, MENTION_KEYS } from './keys';
+import { getMembers, searchMentions } from '@/api/members';
 
 export const membersQuery = defineQueryOptions({
     key: MEMBER_KEYS.list(),

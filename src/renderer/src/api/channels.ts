@@ -24,15 +24,11 @@ export async function createChannel(
     categoryId: string,
     data: CreateChannelData,
 ): Promise<JsonApiResponse<ChannelResource>> {
-    const r = await api
-        .post(`/settings/categories/${categoryId}/channels`, data);
+    const r = await api.post(`/settings/categories/${categoryId}/channels`, data);
     return r.data;
 }
 
-export async function updateChannel(
-    id: string,
-    data: UpdateChannelData,
-): Promise<JsonApiResponse<ChannelResource>> {
+export async function updateChannel(id: string, data: UpdateChannelData): Promise<JsonApiResponse<ChannelResource>> {
     const r = await api.put(`/settings/channels/${id}`, data);
     return r.data;
 }

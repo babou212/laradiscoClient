@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Download, File, Image, Loader2, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect } from 'vue';
-import { getAttachmentDownloadUrl } from '@/api/attachments';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
 import AudioPlayer from './AudioPlayer.vue';
 import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
+import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { decryptAttachment } from '@/lib/decrypt-attachment';
+import type { EncryptedAttachmentMeta } from '@/types/chat';
 
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
@@ -150,20 +150,26 @@ watch(
             class="bg-muted group cursor-pointer overflow-hidden rounded-lg"
             @click="openLightbox"
         >
-            <div class="relative">
+            <div
+                class="relative"
+                :style="
+                    attachment.thumbnail_width && attachment.thumbnail_height
+                        ? {
+                              aspectRatio: `${attachment.thumbnail_width}/${attachment.thumbnail_height}`,
+                              maxHeight: '15rem',
+                              maxWidth: `calc(15rem * ${attachment.thumbnail_width} / ${attachment.thumbnail_height})`,
+                          }
+                        : { aspectRatio: '16/9', maxHeight: '15rem', maxWidth: 'calc(15rem * 16 / 9)' }
+                "
+            >
                 <img
                     v-if="thumbnailUrl"
                     :src="thumbnailUrl"
                     :alt="attachment.file_name"
-                    class="max-h-60 w-auto rounded-lg"
-                    :style="
-                        attachment.thumbnail_width && attachment.thumbnail_height
-                            ? { aspectRatio: `${attachment.thumbnail_width}/${attachment.thumbnail_height}` }
-                            : {}
-                    "
+                    class="h-full w-full rounded-lg object-cover"
                     @error="onThumbnailError"
                 />
-                <div v-else class="flex h-40 w-60 items-center justify-center">
+                <div v-else class="flex h-full w-full items-center justify-center">
                     <Loader2 :size="24" class="text-muted-foreground animate-spin" />
                 </div>
             </div>

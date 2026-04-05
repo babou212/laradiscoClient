@@ -14,6 +14,7 @@ import {
 } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { getAuditLog } from '@/api/e2ee';
 import KeyBackupDialog from '@/components/e2ee/KeyBackupDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { getAuditLog } from '@/api/e2ee';
 import { useAuthStore } from '@/stores/auth';
 import { useE2eeStore, type E2eeDevice } from '@/stores/e2ee';
 

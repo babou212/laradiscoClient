@@ -2,7 +2,7 @@ import api from './client';
 
 export async function getTwoFactorStatus(): Promise<{ twoFactorEnabled: boolean }> {
     const r = await api.get('/settings/two-factor');
-    return r.data;
+    return r.data.data;
 }
 
 export function enableTwoFactor(): Promise<void> {
@@ -19,20 +19,20 @@ export function confirmTwoFactor(code: string): Promise<void> {
 
 export async function regenerateRecoveryCodes(): Promise<string[]> {
     const r = await api.post('/settings/two-factor/recovery-codes');
-    return r.data.recovery_codes ?? r.data ?? [];
+    return r.data.data.recovery_codes ?? [];
 }
 
 export async function getTwoFactorQrCode(): Promise<{ svg: string }> {
     const r = await api.get('/settings/two-factor/qr-code');
-    return r.data;
+    return r.data.data;
 }
 
 export async function getTwoFactorSecretKey(): Promise<{ secretKey: string }> {
     const r = await api.get('/settings/two-factor/secret-key');
-    return r.data;
+    return r.data.data;
 }
 
 export async function getTwoFactorRecoveryCodes(): Promise<string[]> {
     const r = await api.get('/settings/two-factor/recovery-codes');
-    return r.data.recovery_codes ?? r.data ?? [];
+    return r.data.data.recovery_codes ?? [];
 }

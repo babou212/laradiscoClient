@@ -1,8 +1,11 @@
 <!-- RoleSettingsView - Server role management -->
 
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Pencil, Plus, Shield, Trash2, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { extractValidationErrors, getApiErrorMessage } from '@/api/errors';
+import { createRole, updateRole, deleteRole } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,11 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
-import { createRole, updateRole, deleteRole } from '@/api/settings';
-import { extractValidationErrors, getApiErrorMessage } from '@/api/errors';
-import { rolesQuery } from '@/queries/settings/roles';
 import { SETTINGS_KEYS } from '@/queries/keys';
+import { rolesQuery } from '@/queries/settings/roles';
 
 type Permission = { value: string; label: string };
 type Role = {
@@ -227,7 +227,7 @@ async function confirmDelete() {
         await doDelete(deletingRole.value.id);
         showDeleteDialog.value = false;
         deletingRole.value = null;
-    } catch (err: unknown) {
+    } catch {
         showDeleteDialog.value = false;
     }
 }

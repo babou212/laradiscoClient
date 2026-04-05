@@ -84,10 +84,7 @@ const handleSwitchToDms = () => {
             </div>
         </div>
 
-        <div
-            v-if="threadStore.parentMessage && chatStore.currentChannel"
-            class="w-[480px] shrink-0"
-        >
+        <div v-if="threadStore.parentMessage && chatStore.currentChannel" class="w-[480px] shrink-0">
             <ThreadPanel
                 :channel-id="chatStore.currentChannel.id"
                 :channel-permissions="chatStore.currentChannelPermissions ?? undefined"

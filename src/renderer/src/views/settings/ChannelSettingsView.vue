@@ -1,6 +1,21 @@
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { ChevronDown, ChevronRight, Folder, Hash, Lock, Pencil, Plus, Shield, Trash2, Volume2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import { extractValidationErrors } from '@/api/errors';
+import {
+    createSettingsChannel,
+    updateSettingsChannel,
+    deleteSettingsChannel,
+    createSettingsCategory,
+    updateSettingsCategory,
+    deleteSettingsCategory,
+    getChannelOverrides,
+    createChannelOverride,
+    deleteChannelOverride,
+} from '@/api/settings';
+import { findIncluded, relationshipIds } from '@/api/types';
+import type { ChannelResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,23 +30,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
-import {
-    createSettingsChannel,
-    updateSettingsChannel,
-    deleteSettingsChannel,
-    createSettingsCategory,
-    updateSettingsCategory,
-    deleteSettingsCategory,
-    getChannelOverrides,
-    createChannelOverride,
-    deleteChannelOverride,
-} from '@/api/settings';
-import { extractValidationErrors } from '@/api/errors';
-import { findIncluded, relationshipIds } from '@/api/types';
-import type { ChannelResource } from '@/api/types';
-import { settingsChannelsQuery } from '@/queries/settings/channels';
 import { SETTINGS_KEYS } from '@/queries/keys';
+import { settingsChannelsQuery } from '@/queries/settings/channels';
 
 type Permission = { value: string; label: string };
 type Role = { id: string; name: string; color: string };
@@ -201,11 +201,15 @@ function toggleCategory(id: string) {
 }
 
 // Expand all categories when data loads
-watch(categories, (cats) => {
-    if (cats.length > 0) {
-        expandedCategories.value = new Set(cats.map((c) => c.id));
-    }
-}, { immediate: true });
+watch(
+    categories,
+    (cats) => {
+        if (cats.length > 0) {
+            expandedCategories.value = new Set(cats.map((c) => c.id));
+        }
+    },
+    { immediate: true },
+);
 
 const { mutateAsync: doCreateChannel } = useMutation({
     mutation: (data: typeof channelForm.value) =>
@@ -241,8 +245,7 @@ const { mutateAsync: doCreateCategory } = useMutation({
 });
 
 const { mutateAsync: doEditCategory } = useMutation({
-    mutation: (params: { id: string; data: { name: string } }) =>
-        updateSettingsCategory(params.id, params.data),
+    mutation: (params: { id: string; data: { name: string } }) => updateSettingsCategory(params.id, params.data),
     onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
 });
 

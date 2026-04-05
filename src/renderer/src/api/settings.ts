@@ -14,10 +14,7 @@ export async function getProfile(): Promise<JsonApiResponse<UserResource>> {
     return r.data;
 }
 
-export async function updateProfile(data: {
-    name?: string;
-    email?: string;
-}): Promise<JsonApiResponse<UserResource>> {
+export async function updateProfile(data: { name?: string; email?: string }): Promise<JsonApiResponse<UserResource>> {
     const r = await api.patch('/settings/profile', data);
     return r.data;
 }
@@ -32,11 +29,10 @@ export function updatePassword(data: {
 
 export async function uploadAvatar(blob: Blob): Promise<JsonApiResponse<UserResource>> {
     const formData = new FormData();
-    formData.append('avatar', blob);
-    const r = await api
-        .post('/settings/profile/avatar', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+    formData.append('avatar', blob, 'avatar.png');
+    const r = await api.post('/settings/profile/avatar', formData, {
+        headers: { 'Content-Type': undefined },
+    });
     return r.data;
 }
 
@@ -49,10 +45,9 @@ export async function getInviteLinks(params?: {
     include?: string;
     cursor?: string;
 }): Promise<JsonApiCollectionResponse<InviteLinkResource>> {
-    const r = await api
-        .get('/settings/invite-links', {
-            params: { sort: '-created_at', include: 'creator,usedByUser', ...params },
-        });
+    const r = await api.get('/settings/invite-links', {
+        params: { sort: '-created_at', include: 'creator,usedByUser', ...params },
+    });
     return r.data;
 }
 
@@ -65,15 +60,12 @@ export function deleteInviteLink(id: string): Promise<void> {
     return api.delete(`/settings/invite-links/${id}`);
 }
 
-export async function getRoles(params?: {
-    sort?: string;
-}): Promise<
+export async function getRoles(params?: { sort?: string }): Promise<
     JsonApiCollectionResponse<RoleResource> & {
         meta?: { permissions?: string[] } & Record<string, unknown>;
     }
 > {
-    const r = await api
-        .get('/settings/roles', { params: { sort: '-position', ...params } });
+    const r = await api.get('/settings/roles', { params: { sort: '-position', ...params } });
     return r.data;
 }
 
@@ -105,10 +97,9 @@ export async function getSettingsMembers(params?: {
         meta?: { roles?: unknown[] } & Record<string, unknown>;
     }
 > {
-    const r = await api
-        .get('/settings/members', {
-            params: { sort: 'username', include: 'roles', ...params },
-        });
+    const r = await api.get('/settings/members', {
+        params: { sort: 'username', include: 'roles', ...params },
+    });
     return r.data;
 }
 
@@ -124,19 +115,15 @@ export function deleteAccount(password: string): Promise<void> {
     return api.delete('/settings/profile', { data: { password } });
 }
 
-export async function getSettingsChannels(params?: {
-    sort?: string;
-    include?: string;
-}): Promise<
+export async function getSettingsChannels(params?: { sort?: string; include?: string }): Promise<
     JsonApiCollectionResponse<CategoryResource> & {
         meta?: { roles?: unknown[]; permissions?: string[] } & Record<string, unknown>;
         included?: (ChannelResource | unknown)[];
     }
 > {
-    const r = await api
-        .get('/settings/channels', {
-            params: { sort: 'position', include: 'channels', ...params },
-        });
+    const r = await api.get('/settings/channels', {
+        params: { sort: 'position', include: 'channels', ...params },
+    });
     return r.data;
 }
 

@@ -24,7 +24,11 @@ const emit = defineEmits<{
 const panelRef = useTemplateRef<HTMLElement>('panelRef');
 
 let ready = false;
-onMounted(() => requestAnimationFrame(() => { ready = true; }));
+onMounted(() =>
+    requestAnimationFrame(() => {
+        ready = true;
+    }),
+);
 
 useEventListener(document, 'pointerdown', (event: PointerEvent) => {
     if (!ready) return;

@@ -65,7 +65,6 @@
         "@noble/hashes": "^2.0.1",
         "@pinia/colada": "^1.1.0",
         "@primeuix/themes": "^2.0.3",
-        "@tanstack/vue-virtual": "^3.13.23",
         "@vueuse/core": "^12.8.2",
         "axios": "^1.13.5",
         "better-sqlite3": "^12.6.2",

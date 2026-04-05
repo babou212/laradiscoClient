@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef } from 'vue';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
+import SearchMessages from './SearchMessages.vue';
+import TypingIndicator from './TypingIndicator.vue';
+import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
+import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
+import {
+    sendMessage as apiSendMessage,
+    editMessage as apiEditMessage,
+    deleteMessage as apiDeleteMessage,
+} from '@/api/messages';
+import { normalizeMessage } from '@/api/normalizers';
+import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
@@ -10,11 +24,6 @@ import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useScrollManager } from '@/composables/useScrollManager';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
-import { normalizeMessage } from '@/api/normalizers';
-import { sendMessage as apiSendMessage, editMessage as apiEditMessage, deleteMessage as apiDeleteMessage } from '@/api/messages';
-import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
-import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
-import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
@@ -23,11 +32,6 @@ import { useE2eeStore } from '@/stores/e2ee';
 import { useThreadStore } from '@/stores/thread';
 import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData } from '@/types/chat';
 import { extractMentionMetadata } from '@/utils/mentions';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
-import SearchMessages from './SearchMessages.vue';
-import TypingIndicator from './TypingIndicator.vue';
 
 type ChannelData = {
     id: string;
@@ -63,8 +67,8 @@ const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
 
 const channelId = computed(() => props.channel?.id);
-const channelIdNum = computed(() => props.channel?.id != null ? Number(props.channel.id) : undefined);
-const channelIdStr = computed(() => props.channel?.id != null ? String(props.channel.id) : undefined);
+const channelIdNum = computed(() => (props.channel?.id != null ? Number(props.channel.id) : undefined));
+const channelIdStr = computed(() => (props.channel?.id != null ? String(props.channel.id) : undefined));
 const isDmRef = computed(() => props.isDm);
 
 const { isRateLimited, sendError, startRateLimitCooldown } = useRateLimit();
@@ -80,32 +84,29 @@ const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
 
 const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
-const virtualItemEls = shallowRef<Element[]>([]);
 
-const {
-    rowVirtualizer,
-    virtualItems,
-    totalSize,
-    isLoadingMore,
-    isVisible,
-    scrollToBottom,
-    resetToBottom,
-    handleScroll,
-} = useScrollManager(messagesContainer, activeMessages, virtualItemEls, async () => {
-    await activeStore.loadOlderMessages();
-    if (e2eeStore.isReady) {
-        await e2ee.lookupDecryptedCache(activeMessages.value);
-        const hasUnresolved = activeMessages.value.some((m) => m.decrypted_content === undefined && !m.decrypt_error);
-        if (hasUnresolved && channelId.value) {
-            const groupId = isDmRef.value ? `dm:${channelId.value}` : `channel:${channelId.value}`;
-            await e2ee.decryptGroupHistory(groupId);
+const { isLoadingMore, isVisible, scrollToBottom, resetToBottom, handleScroll } = useScrollManager(
+    messagesContainer,
+    activeMessages,
+    activeStore.canLoadMore,
+    async () => {
+        await activeStore.loadOlderMessages();
+        if (e2eeStore.isReady) {
             await e2ee.lookupDecryptedCache(activeMessages.value);
+            const hasUnresolved = activeMessages.value.some(
+                (m) => m.decrypted_content === undefined && !m.decrypt_error,
+            );
+            if (hasUnresolved && channelId.value) {
+                const groupId = isDmRef.value ? `dm:${channelId.value}` : `channel:${channelId.value}`;
+                await e2ee.decryptGroupHistory(groupId);
+                await e2ee.lookupDecryptedCache(activeMessages.value);
+            }
+            const chId = isDmRef.value ? undefined : Number(channelId.value);
+            const dmId = isDmRef.value ? Number(channelId.value) : undefined;
+            await e2ee.decryptMessages(activeMessages.value, chId, dmId);
         }
-        const chId = isDmRef.value ? undefined : Number(channelId.value);
-        const dmId = isDmRef.value ? Number(channelId.value) : undefined;
-        await e2ee.decryptMessages(activeMessages.value, chId, dmId);
-    }
-});
+    },
+);
 
 const typingIndicator = useTypingIndicator(
     channelId,
@@ -269,15 +270,10 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             }
 
             const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
-            const uploadResponse = await uploadFn(
-                props.channel.id,
-                fileBlob,
-                thumbnailBlob,
-                (progress) => {
-                    const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                    if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.65);
-                },
-            );
+            const uploadResponse = await uploadFn(props.channel.id, fileBlob, thumbnailBlob, (progress) => {
+                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.65);
+            });
 
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
@@ -501,7 +497,7 @@ const saveEdit = async (message: MessageData) => {
 
         const editData = {
             message_bytes: contentToSend,
-            sender_device_id: await e2ee.getDeviceId() ?? '',
+            sender_device_id: (await e2ee.getDeviceId()) ?? '',
             ...(historyCiphertext && { history_ciphertext: historyCiphertext }),
         };
         if (props.isDm) {
@@ -651,54 +647,32 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     </div>
                 </div>
 
-                <div v-else :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
-                    <div
-                        :style="{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
-                        }"
-                    >
-                        <div
-                            v-for="vRow in virtualItems"
-                            :key="vRow.index"
-                            :data-index="vRow.index"
-                            :ref="
-                                (el) => {
-                                    if (el) rowVirtualizer.measureElement(el as Element);
-                                }
-                            "
-                        >
-                            <Message
-                                :message="activeMessages[vRow.index]"
-                                :is-editing="editingMessageId === activeMessages[vRow.index].id"
-                                :edit-content="editContent"
-                                :show-emoji-picker="emojiPickerMessageId === activeMessages[vRow.index].id"
-                                :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                                :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
-                                :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                                :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                                :show-thread-button="!isDm"
-                                @start-edit="startEdit(activeMessages[vRow.index])"
-                                @cancel-edit="cancelEdit"
-                                @save-edit="saveEdit(activeMessages[vRow.index])"
-                                @delete="deleteMessage(activeMessages[vRow.index])"
-                                @reply="startReply(activeMessages[vRow.index])"
-                                @open-thread="openThread(activeMessages[vRow.index])"
-                                @toggle-pin="togglePin(activeMessages[vRow.index])"
-                                @toggle-reaction="(emoji) => toggleReaction(activeMessages[vRow.index], emoji)"
-                                @toggle-emoji-picker="
-                                    emojiPickerMessageId =
-                                        emojiPickerMessageId === activeMessages[vRow.index].id
-                                            ? null
-                                            : activeMessages[vRow.index].id
-                                "
-                                @update-edit-content="editContent = $event"
-                            />
-                        </div>
-                    </div>
+                <div v-else>
+                    <Message
+                        v-for="message in activeMessages"
+                        :key="message.id"
+                        :message="message"
+                        :is-editing="editingMessageId === message.id"
+                        :edit-content="editContent"
+                        :show-emoji-picker="emojiPickerMessageId === message.id"
+                        :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                        :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
+                        :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                        :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                        :show-thread-button="!isDm"
+                        @start-edit="startEdit(message)"
+                        @cancel-edit="cancelEdit"
+                        @save-edit="saveEdit(message)"
+                        @delete="deleteMessage(message)"
+                        @reply="startReply(message)"
+                        @open-thread="openThread(message)"
+                        @toggle-pin="togglePin(message)"
+                        @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
+                        @toggle-emoji-picker="
+                            emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
+                        "
+                        @update-edit-content="editContent = $event"
+                    />
                 </div>
             </div>
 

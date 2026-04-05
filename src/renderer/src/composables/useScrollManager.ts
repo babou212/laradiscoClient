@@ -1,77 +1,43 @@
-import { elementScroll, useVirtualizer, type VirtualizerOptions } from '@tanstack/vue-virtual';
-import { computed, nextTick, onMounted, shallowRef, watch } from 'vue';
-import type { Ref, ShallowRef } from 'vue';
+import { useInfiniteScroll } from '@vueuse/core';
+import { nextTick, shallowRef } from 'vue';
+import type { Ref } from 'vue';
 import type { MessageData } from '@/types/chat';
 
 export function useScrollManager(
     containerRef: Ref<HTMLElement | null | undefined>,
     messages: Ref<MessageData[]>,
-    virtualItemEls: ShallowRef<Element[]>,
+    canLoadMore: Ref<boolean>,
     onLoadOlder: () => Promise<void>,
 ) {
     const isLoadingMore = shallowRef(false);
     const isVisible = shallowRef(true);
     const userIsNearBottom = shallowRef(true);
     let revealTimer: ReturnType<typeof setTimeout> | null = null;
-    let loadCooldown = false;
-    const scrollingRef = shallowRef<number>();
+    let revealGeneration = 0;
 
-    const easeInOutQuint = (t: number) => (t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t);
+    useInfiniteScroll(
+        containerRef,
+        async () => {
+            if (isLoadingMore.value) return;
+            isLoadingMore.value = true;
+            const el = containerRef.value;
+            const prevScrollHeight = el?.scrollHeight ?? 0;
+            const prevScrollTop = el?.scrollTop ?? 0;
 
-    const scrollToFn: VirtualizerOptions<HTMLElement, Element>['scrollToFn'] = (offset, canSmooth, instance) => {
-        if (!canSmooth) {
-            elementScroll(offset, canSmooth, instance);
-            return;
-        }
-        const duration = 300;
-        const start = containerRef.value?.scrollTop ?? 0;
-        const startTime = (scrollingRef.value = Date.now());
+            await onLoadOlder();
 
-        const run = () => {
-            if (scrollingRef.value !== startTime) return;
-            const now = Date.now();
-            const elapsed = now - startTime;
-            const progress = easeInOutQuint(Math.min(elapsed / duration, 1));
-            const interpolated = start + (offset - start) * progress;
-            elementScroll(interpolated, canSmooth, instance);
-            if (elapsed < duration) {
-                requestAnimationFrame(run);
+            await nextTick();
+            if (el) {
+                const newScrollHeight = el.scrollHeight;
+                el.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
             }
-        };
-
-        requestAnimationFrame(run);
-    };
-
-    const virtualizerOptions = computed(() => ({
-        count: messages.value.length,
-        getScrollElement: () => containerRef.value ?? null,
-        estimateSize: () => 80,
-        overscan: 15,
-        scrollToFn,
-    }));
-
-    const rowVirtualizer = useVirtualizer(virtualizerOptions);
-    const virtualItems = computed(() => rowVirtualizer.value.getVirtualItems());
-    const totalSize = computed(() => rowVirtualizer.value.getTotalSize());
-
-    function measureAll() {
-        rowVirtualizer.value.measureElement(null);
-        virtualItemEls.value.forEach((el) => {
-            if (el) rowVirtualizer.value.measureElement(el);
-        });
-    }
-
-    onMounted(measureAll);
-
-    watch(
-        totalSize,
-        () => {
-            if (!isVisible.value && containerRef.value) {
-                containerRef.value.scrollTop = containerRef.value.scrollHeight;
-                scheduleReveal();
-            }
+            isLoadingMore.value = false;
         },
-        { flush: 'post' },
+        {
+            direction: 'top',
+            distance: 100,
+            canLoadMore: () => canLoadMore.value,
+        },
     );
 
     function checkIfNearBottom(): boolean {
@@ -82,40 +48,34 @@ export function useScrollManager(
 
     function scheduleReveal() {
         if (revealTimer !== null) clearTimeout(revealTimer);
+        const gen = ++revealGeneration;
         revealTimer = setTimeout(() => {
             revealTimer = null;
-            if (containerRef.value) {
-                containerRef.value.scrollTop = containerRef.value.scrollHeight;
-            }
-            isVisible.value = true;
-        }, 50);
+            if (gen !== revealGeneration) return;
+            requestAnimationFrame(() => {
+                if (gen !== revealGeneration) return;
+                if (containerRef.value) {
+                    containerRef.value.scrollTop = containerRef.value.scrollHeight;
+                }
+                isVisible.value = true;
+            });
+        }, 150);
     }
 
     function scrollToBottom(force = false) {
         if (!isVisible.value && !force) return;
-
-        const lastIndex = messages.value.length - 1;
-        if (lastIndex < 0) return;
+        if (messages.value.length === 0) return;
         if (!force && !userIsNearBottom.value) return;
 
-        scrollingRef.value = -1;
-
-        if (force) {
-            if (containerRef.value) {
-                containerRef.value.scrollTop = containerRef.value.scrollHeight;
-            }
-        } else {
-            nextTick(() => {
-                if (!containerRef.value) return;
-                rowVirtualizer.value.scrollToIndex(lastIndex, { align: 'end' });
-            });
-        }
+        nextTick(() => {
+            if (!containerRef.value) return;
+            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+        });
     }
 
     function resetToBottom() {
         isVisible.value = false;
         userIsNearBottom.value = true;
-        scrollingRef.value = -1;
 
         if (revealTimer !== null) {
             clearTimeout(revealTimer);
@@ -130,39 +90,12 @@ export function useScrollManager(
         });
     }
 
-    const handleScroll = async () => {
+    const handleScroll = () => {
         if (!containerRef.value) return;
-
-        scrollingRef.value = -1;
         userIsNearBottom.value = checkIfNearBottom();
-
-        if (isLoadingMore.value || loadCooldown) return;
-
-        if (containerRef.value.scrollTop < 100) {
-            isLoadingMore.value = true;
-            const prevScrollHeight = containerRef.value.scrollHeight;
-            const prevScrollTop = containerRef.value.scrollTop;
-
-            await onLoadOlder();
-
-            await nextTick();
-            if (containerRef.value) {
-                const newScrollHeight = containerRef.value.scrollHeight;
-                containerRef.value.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
-            }
-            isLoadingMore.value = false;
-
-            loadCooldown = true;
-            setTimeout(() => {
-                loadCooldown = false;
-            }, 500);
-        }
     };
 
     return {
-        rowVirtualizer,
-        virtualItems,
-        totalSize,
         isLoadingMore,
         isVisible,
         scrollToBottom,

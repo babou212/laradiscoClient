@@ -191,11 +191,7 @@ export type CategoryResource = JsonApiResource<
 
 export type ChannelResource = JsonApiResource<'channels', ChannelAttributes>;
 
-export type UserResource = JsonApiResource<
-    'users',
-    UserAttributes,
-    { roles?: JsonApiRelationship<'roles'> }
->;
+export type UserResource = JsonApiResource<'users', UserAttributes, { roles?: JsonApiRelationship<'roles'> }>;
 
 export type MessageResource = JsonApiResource<
     'messages',
@@ -250,10 +246,7 @@ export type InviteLinkResource = JsonApiResource<
     }
 >;
 
-export type EncryptedAttachmentResource = JsonApiResource<
-    'encrypted-attachments',
-    EncryptedAttachmentAttributes
->;
+export type EncryptedAttachmentResource = JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes>;
 
 /** Find included resources by type and id(s) from a JSON:API response */
 export function findIncluded<R = JsonApiResource>(

@@ -1,8 +1,15 @@
 import { ref, shallowRef } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
-import { useE2EE } from '@/composables/useE2EE';
 import { normalizeMessages } from '@/api/normalizers';
-import { getChannelPins, getDmPins, pinChannelMessage, pinDmMessage, unpinChannelMessage, unpinDmMessage } from '@/api/pins';
+import {
+    getChannelPins,
+    getDmPins,
+    pinChannelMessage,
+    pinDmMessage,
+    unpinChannelMessage,
+    unpinDmMessage,
+} from '@/api/pins';
+import { useE2EE } from '@/composables/useE2EE';
 import { useE2eeStore } from '@/stores/e2ee';
 import type { MessageData } from '@/types/chat';
 
@@ -23,9 +30,7 @@ export function usePinnedMessages(
         isLoadingPinned.value = true;
         try {
             const id = String(channelId.value);
-            const response = isDm.value
-                ? await getDmPins(id)
-                : await getChannelPins(id);
+            const response = isDm.value ? await getDmPins(id) : await getChannelPins(id);
             pinnedMessages.value = normalizeMessages(response.data, response.included);
         } catch (error) {
             console.error('Failed to fetch pinned messages:', error);

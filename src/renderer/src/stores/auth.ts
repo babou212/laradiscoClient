@@ -81,12 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
         loginError.value = null;
 
         try {
-            const result = await window.api.auth.login(
-                server.host,
-                server.id,
-                email,
-                password,
-            );
+            const result = await window.api.auth.login(server.host, server.id, email, password);
 
             if (result.twoFactor && result.challengeToken) {
                 challengeToken.value = result.challengeToken;

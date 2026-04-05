@@ -1,6 +1,6 @@
 import { defineQueryOptions } from '@pinia/colada';
-import { getCategories } from '@/api/categories';
 import { CATEGORY_KEYS } from './keys';
+import { getCategories } from '@/api/categories';
 
 export const categoriesQuery = defineQueryOptions({
     key: CATEGORY_KEYS.list(),

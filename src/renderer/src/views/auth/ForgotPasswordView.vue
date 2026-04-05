@@ -12,11 +12,11 @@ import {
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { z } from 'zod';
+import { forgotPassword, resetPassword } from '@/api/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import { forgotPassword, resetPassword } from '@/api/auth';
 import { useServerStore } from '@/stores/server';
 
 const emailSchema = z.object({

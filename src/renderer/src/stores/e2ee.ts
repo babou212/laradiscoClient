@@ -1,9 +1,9 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { getApiErrorMessage } from '@/api/errors';
 import { useE2EE } from '@/composables/useE2EE';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
-import { getApiErrorMessage } from '@/api/errors';
 
 export interface E2eeDevice {
     id: number;

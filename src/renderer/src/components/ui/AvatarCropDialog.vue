@@ -3,7 +3,14 @@ import { ref, watch } from 'vue';
 import { CircleStencil, Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 const props = defineProps<{
     open: boolean;
@@ -110,6 +117,7 @@ async function save() {
         <DialogContent class="max-w-lg overflow-hidden">
             <DialogHeader>
                 <DialogTitle>Update avatar</DialogTitle>
+                <DialogDescription class="sr-only">Crop and upload a new profile picture</DialogDescription>
             </DialogHeader>
 
             <input

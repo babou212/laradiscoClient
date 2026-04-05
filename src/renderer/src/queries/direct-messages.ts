@@ -1,6 +1,6 @@
 import { defineQueryOptions } from '@pinia/colada';
-import { getDmGroups, getDmMessages } from '@/api/direct-messages';
 import { DM_KEYS } from './keys';
+import { getDmGroups, getDmMessages } from '@/api/direct-messages';
 
 export const dmGroupsQuery = defineQueryOptions({
     key: DM_KEYS.groups(),

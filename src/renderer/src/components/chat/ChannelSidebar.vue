@@ -2,18 +2,18 @@
 import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import VoiceChannelItem from './VoiceChannelItem.vue';
+import VoiceControlPanel from './VoiceControlPanel.vue';
+import { updatePresence } from '@/api/presence';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
-import { updatePresence } from '@/api/presence';
 import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
+import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { UserStatusType } from '@/types';
 import type { Category, Channel } from '@/types/chat';
-import type { DmGroup } from '@/stores/directMessages';
-import VoiceChannelItem from './VoiceChannelItem.vue';
-import VoiceControlPanel from './VoiceControlPanel.vue';
 
 type Props = {
     categories: Category[];

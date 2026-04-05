@@ -2,6 +2,9 @@
 import { useEventListener } from '@vueuse/core';
 import { CodeXml, CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
 import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
+import EmojiPicker from './EmojiPicker.vue';
+import GifPicker from './GifPicker.vue';
+import MentionDropdown from './MentionDropdown.vue';
 import {
     FileAddSchema,
     GifUrlSchema,
@@ -12,9 +15,6 @@ import {
 } from '@/lib/message-schemas';
 import type { StagedFile, UploadingFile } from '@/lib/message-schemas';
 import type { MessageData } from '@/types/chat';
-import EmojiPicker from './EmojiPicker.vue';
-import GifPicker from './GifPicker.vue';
-import MentionDropdown from './MentionDropdown.vue';
 
 export type { StagedFile, UploadingFile };
 

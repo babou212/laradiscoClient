@@ -15,9 +15,7 @@ export async function getVoiceParticipants(): Promise<
     return r.data?.data ?? {};
 }
 
-export async function joinVoiceChannel(
-    channelId: number,
-): Promise<{ token: string; url: string; e2ee_key: string }> {
+export async function joinVoiceChannel(channelId: number): Promise<{ token: string; url: string; e2ee_key: string }> {
     const r = await api.post(`/channels/${channelId}/voice/join`);
     return r.data?.data ?? r.data;
 }

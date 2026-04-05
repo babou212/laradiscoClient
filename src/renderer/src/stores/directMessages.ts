@@ -149,16 +149,19 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
             const included = response.included ?? [];
             dmGroups.value = response.data.map((resource) => {
                 const attrs = resource.attributes;
-                const participantRels = resource.relationships?.participants?.data;
+
                 const otherUser = attrs.other_user;
 
-                const lastMsgRel = (resource.relationships as Record<string, { data?: { id: string; type: string } | null }>)?.lastMessage?.data;
+                const lastMsgRel = (
+                    resource.relationships as Record<string, { data?: { id: string; type: string } | null }>
+                )?.lastMessage?.data;
                 let lastMessage: DmGroup['last_message'] = null;
                 if (lastMsgRel) {
                     const msgInc = included.find((inc) => inc.type === lastMsgRel.type && inc.id === lastMsgRel.id);
                     if (msgInc) {
                         const msgAttrs = msgInc.attributes as Record<string, unknown>;
-                        const userRel = (msgInc.relationships as Record<string, { data?: { id: string } | null }>)?.user?.data;
+                        const userRel = (msgInc.relationships as Record<string, { data?: { id: string } | null }>)?.user
+                            ?.data;
                         lastMessage = {
                             id: msgInc.id,
                             content: (msgAttrs.content as string) ?? '',

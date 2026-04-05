@@ -11,9 +11,7 @@ export interface DownloadUrlResponse {
     thumbnail_url?: string;
 }
 
-export async function getAttachmentDownloadUrl(
-    attachmentId: string,
-): Promise<DownloadUrlResponse> {
+export async function getAttachmentDownloadUrl(attachmentId: string): Promise<DownloadUrlResponse> {
     const r = await api.get(`/attachments/${attachmentId}/download`);
     return r.data?.data ?? r.data;
 }

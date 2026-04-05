@@ -46,9 +46,7 @@ export function useTypingIndicator(
         if (!channelId.value) return;
         if (typingDebounceTimer) return;
 
-        const typingFn = isDm.value
-            ? () => sendDmTyping(channelId.value!)
-            : () => sendChannelTyping(channelId.value!);
+        const typingFn = isDm.value ? () => sendDmTyping(channelId.value!) : () => sendChannelTyping(channelId.value!);
 
         typingFn().catch(() => {});
 

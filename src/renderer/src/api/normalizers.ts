@@ -10,17 +10,9 @@ import type {
     UserAttributes,
 } from './types';
 import { findIncluded, relationshipId, relationshipIds } from './types';
-import type {
-    MessageData,
-    MessageReaction,
-    MessageUser,
-    ServerAttachment,
-    ThreadPreview,
-} from '@/types/chat';
+import type { MessageData, MessageReaction, MessageUser, ServerAttachment, ThreadPreview } from '@/types/chat';
 
-function normalizeUser(
-    resource: JsonApiResource<'users', UserAttributes> | undefined,
-): MessageUser {
+function normalizeUser(resource: JsonApiResource<'users', UserAttributes> | undefined): MessageUser {
     if (!resource) {
         return { id: '', username: 'Unknown', avatar_urls: null };
     }
@@ -110,9 +102,7 @@ export function normalizeMessage(
     // Reactions
     const reactionIds = relationshipIds(rels.reactions);
     const reactions: MessageReaction[] = reactionIds
-        .map((rid) =>
-            findIncluded<JsonApiResource<'reactions', ReactionAttributes>>(included, 'reactions', rid),
-        )
+        .map((rid) => findIncluded<JsonApiResource<'reactions', ReactionAttributes>>(included, 'reactions', rid))
         .filter((r): r is JsonApiResource<'reactions', ReactionAttributes> => !!r)
         .map((r) => normalizeReaction(r, resource.id));
 
@@ -121,9 +111,7 @@ export function normalizeMessage(
     let replyTo: MessageData['reply_to'] = null;
     if (replyToId) {
         const replyType = resource.type === 'direct-messages' ? 'direct-messages' : 'messages';
-        const replyRes = findIncluded<MessageResource | DirectMessageResource>(
-            included, replyType, replyToId,
-        );
+        const replyRes = findIncluded<MessageResource | DirectMessageResource>(included, replyType, replyToId);
         if (replyRes) {
             const replyUserId = relationshipId(replyRes.relationships?.user);
             const replyUserRes = replyUserId
@@ -142,9 +130,7 @@ export function normalizeMessage(
     if ('threadStarted' in rels) {
         const threadId = relationshipId(rels.threadStarted);
         if (threadId) {
-            const threadRes = findIncluded<JsonApiResource<'threads', ThreadAttributes>>(
-                included, 'threads', threadId,
-            );
+            const threadRes = findIncluded<JsonApiResource<'threads', ThreadAttributes>>(included, 'threads', threadId);
             thread = normalizeThreadPreview(threadRes, included);
         }
     }
@@ -154,12 +140,12 @@ export function normalizeMessage(
     const encrypted_attachments: ServerAttachment[] = attachmentIds
         .map((aid) =>
             findIncluded<JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes>>(
-                included, 'encrypted-attachments', aid,
+                included,
+                'encrypted-attachments',
+                aid,
             ),
         )
-        .filter(
-            (a): a is JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes> => !!a,
-        )
+        .filter((a): a is JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes> => !!a)
         .map(normalizeAttachment);
 
     return {

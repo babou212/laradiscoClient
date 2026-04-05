@@ -186,7 +186,9 @@ export const useVoiceStore = defineStore('voice', () => {
                 channelParticipantsMap.value.set(channelId, mapped);
 
                 const avatarStore = useAvatarStore();
-                avatarStore.hydrateFromUsers(participants.map((p) => ({ id: String(p.id), avatar_urls: p.avatar_urls })));
+                avatarStore.hydrateFromUsers(
+                    participants.map((p) => ({ id: String(p.id), avatar_urls: p.avatar_urls })),
+                );
             }
         } catch (error) {
             console.error('Failed to fetch voice participants:', error);

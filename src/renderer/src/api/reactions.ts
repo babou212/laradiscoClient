@@ -1,5 +1,5 @@
 import api from './client';
-import type { JsonApiResponse, ReactionResource } from './types';
+import type { ReactionResource } from './types';
 
 export interface ToggleReactionData {
     emoji: string;
@@ -15,8 +15,7 @@ export async function toggleChannelReaction(
     messageId: string,
     data: ToggleReactionData,
 ): Promise<ToggleReactionResponse> {
-    const r = await api
-        .post(`/channels/${channelId}/messages/${messageId}/reactions`, data);
+    const r = await api.post(`/channels/${channelId}/messages/${messageId}/reactions`, data);
     return r.data;
 }
 
@@ -25,7 +24,6 @@ export async function toggleDmReaction(
     messageId: string,
     data: ToggleReactionData,
 ): Promise<ToggleReactionResponse> {
-    const r = await api
-        .post(`/direct-messages/${groupId}/messages/${messageId}/reactions`, data);
+    const r = await api.post(`/direct-messages/${groupId}/messages/${messageId}/reactions`, data);
     return r.data;
 }

@@ -1,10 +1,7 @@
-import type { OnlineUser } from '@/types';
 import api from './client';
+import type { OnlineUser } from '@/types';
 
-export function updatePresence(data: {
-    status: string;
-    custom_status?: string | null;
-}): Promise<void> {
+export function updatePresence(data: { status: string; custom_status?: string | null }): Promise<void> {
     return api.patch('/presence', data);
 }
 

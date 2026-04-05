@@ -1,8 +1,16 @@
 <!-- ProfileSettingsView - User profile settings -->
 
 <script setup lang="ts">
+import { useMutation } from '@pinia/colada';
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { extractValidationErrors } from '@/api/errors';
+import {
+    updateProfile,
+    uploadAvatar,
+    deleteAvatar as deleteAvatarApi,
+    deleteAccount as deleteAccountApi,
+} from '@/api/settings';
 import InputError from '@/components/InputError.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarCropDialog from '@/components/ui/AvatarCropDialog.vue';
@@ -19,9 +27,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useMutation } from '@pinia/colada';
-import { updateProfile, uploadAvatar, deleteAvatar as deleteAvatarApi, deleteAccount as deleteAccountApi } from '@/api/settings';
-import { extractValidationErrors } from '@/api/errors';
 import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
@@ -59,7 +64,7 @@ function userInitials(): string {
         .toUpperCase();
 }
 
-const { mutateAsync: doUploadAvatar, isLoading: avatarUploading } = useMutation({
+const { mutateAsync: doUploadAvatar } = useMutation({
     mutation: (blob: Blob) => uploadAvatar(blob),
 });
 
@@ -112,10 +117,7 @@ async function handleUpdateProfile() {
                 name: attrs.name ?? authStore.user!.name,
                 email: attrs.email ?? authStore.user!.email,
             };
-            userNamesStore.setDisplayName(
-                authStore.user!.id,
-                authStore.user!.name || authStore.user!.username,
-            );
+            userNamesStore.setDisplayName(authStore.user!.id, authStore.user!.name || authStore.user!.username);
         }
         recentlySuccessful.value = true;
         setTimeout(() => (recentlySuccessful.value = false), 3000);
@@ -262,7 +264,7 @@ async function handleDeleteAccount() {
                         <Button variant="destructive" class="w-full sm:w-auto"> Delete account </Button>
                     </DialogTrigger>
                     <DialogContent>
-                            <form @submit.prevent="handleDeleteAccount" class="space-y-6">
+                        <form @submit.prevent="handleDeleteAccount" class="space-y-6">
                             <DialogHeader class="space-y-3">
                                 <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
                                 <DialogDescription>

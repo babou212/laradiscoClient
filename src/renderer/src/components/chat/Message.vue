@@ -2,6 +2,11 @@
 import { useClipboard, useEventListener } from '@vueuse/core';
 import { Pin } from 'lucide-vue-next';
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
+import FileAttachment from './FileAttachment.vue';
+import MessageActions from './MessageActions.vue';
+import MessageReplyPreview from './MessageReplyPreview.vue';
+import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
+import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,11 +16,6 @@ import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { MessageData } from '@/types/chat';
-import FileAttachment from './FileAttachment.vue';
-import MessageActions from './MessageActions.vue';
-import MessageReplyPreview from './MessageReplyPreview.vue';
-import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
-import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 
 interface Props {
     message: MessageData;
@@ -219,7 +219,9 @@ const renderedContentWithoutYoutube = computed(() => {
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span class="text-sm font-semibold">
-                    {{ message.user ? userNamesStore.getDisplayName(message.user.id, message.user.username) : 'Unknown' }}
+                    {{
+                        message.user ? userNamesStore.getDisplayName(message.user.id, message.user.username) : 'Unknown'
+                    }}
                 </span>
                 <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}
@@ -264,7 +266,7 @@ const renderedContentWithoutYoutube = computed(() => {
                     <Skeleton class="h-4 w-3/4" />
                     <Skeleton class="h-4 w-1/2" />
                 </div>
-                <div v-else-if="isGifUrl" class="w-fit overflow-hidden rounded-lg">
+                <div v-else-if="isGifUrl" class="w-fit overflow-hidden rounded-lg" style="min-height: 80px">
                     <img :src="displayContent" alt="GIF" class="h-auto max-w-sm" loading="lazy" />
                 </div>
 

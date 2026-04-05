@@ -38,9 +38,13 @@ export function useActiveStore(isDm: Ref<boolean>) {
         }
     }
 
+    const canLoadMore = computed<boolean>(() =>
+        isDm.value ? dmStore.prevCursor != null : chatStore.prevCursor != null,
+    );
+
     async function loadOlderMessages(): Promise<void> {
         return isDm.value ? dmStore.loadOlderMessages() : chatStore.loadOlderMessages();
     }
 
-    return { messages, isLoadingMessages, addMessage, updateMessage, removeMessage, loadOlderMessages };
+    return { messages, isLoadingMessages, canLoadMore, addMessage, updateMessage, removeMessage, loadOlderMessages };
 }

@@ -47,37 +47,25 @@ export async function getWelcomeMessages(): Promise<
     return r.data?.data ?? [];
 }
 
-export async function getAuditLog(
-    userId: string | number,
-): Promise<unknown[]> {
+export async function getAuditLog(userId: string | number): Promise<unknown[]> {
     const r = await api.get(`/e2ee/audit-log/${userId}`);
     return r.data?.data ?? r.data ?? [];
 }
 
-export function claimGroup(
-    groupId: string,
-    deviceId: string | null,
-    force?: boolean,
-): Promise<void> {
+export function claimGroup(groupId: string, deviceId: string | null, force?: boolean): Promise<void> {
     return api.post(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/claim`, {
         device_id: deviceId,
         ...(force ? { force: true } : {}),
     });
 }
 
-export function submitJoinRequest(
-    groupId: string,
-    deviceId: string | null,
-): Promise<void> {
+export function submitJoinRequest(groupId: string, deviceId: string | null): Promise<void> {
     return api.post(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/join-request`, {
         device_id: deviceId,
     });
 }
 
-export function fulfillJoinRequest(
-    groupId: string,
-    deviceId: string,
-): Promise<void> {
+export function fulfillJoinRequest(groupId: string, deviceId: string): Promise<void> {
     return api.post(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/join-request/fulfill`, {
         device_id: deviceId,
     });
@@ -88,9 +76,7 @@ export async function getMemberBundles(
     type: 'channel' | 'dm',
 ): Promise<Array<{ user_id: number; devices: Array<{ device_id: string }> }>> {
     const endpoint =
-        type === 'dm'
-            ? `/e2ee/dm-groups/${targetId}/members/bundles`
-            : `/e2ee/channels/${targetId}/members/bundles`;
+        type === 'dm' ? `/e2ee/dm-groups/${targetId}/members/bundles` : `/e2ee/channels/${targetId}/members/bundles`;
     const r = await api.get(endpoint);
     return r.data?.data ?? [];
 }
@@ -196,7 +182,9 @@ export function deleteBackup(): Promise<void> {
     return api.delete('/e2ee/keys/backup');
 }
 
-export async function fetchDevices(): Promise<Array<{ id: number; device_id: string; device_name: string; created_at: string; last_active_at: string | null }>> {
+export async function fetchDevices(): Promise<
+    Array<{ id: number; device_id: string; device_name: string; created_at: string; last_active_at: string | null }>
+> {
     const r = await api.get('/e2ee/devices');
     return r.data?.data ?? r.data ?? [];
 }
