@@ -15,7 +15,6 @@ import {
     postGroupMessage,
     sendWelcome,
     getGroupMessages,
-    getGroupHistory,
     getUserGroups,
     backupExists as apiBackupExists,
     createBackup,
@@ -228,9 +227,6 @@ export function useE2EE() {
                 groupReadyCache.delete(groupId);
             } else {
                 groupReadyCache.set(groupId, Date.now());
-                decryptGroupHistory(groupId).catch((err) => {
-                    console.error(`[E2EE] History sync failed for ${groupId}:`, err);
-                });
                 return;
             }
         }
@@ -350,9 +346,6 @@ export function useE2EE() {
 
         groupReadyCache.set(groupId, Date.now());
         scheduleAutoBackup();
-        decryptGroupHistory(groupId).catch((err) => {
-            console.error(`[E2EE] History sync failed for ${groupId}:`, err);
-        });
     }
 
     async function _requestJoinAndWait(
@@ -570,16 +563,6 @@ export function useE2EE() {
             result = await window.api.mls.encrypt({ serverId, groupId, plaintext: envelope });
         });
         return result.message_bytes;
-    }
-
-    async function encryptHistory(
-        groupId: string,
-        plaintext: string,
-        attachments?: EncryptedAttachmentMeta[],
-    ): Promise<string> {
-        const serverId = getServerId();
-        const envelope = buildEnvelope(plaintext, attachments);
-        return window.api.mls.encryptHistory({ serverId, groupId, plaintext: envelope });
     }
 
     async function decrypt(
@@ -974,51 +957,6 @@ export function useE2EE() {
         } catch (error) {
             console.error('Failed to fetch welcome messages:', error);
         }
-    }
-
-    async function decryptGroupHistory(groupId: string): Promise<number> {
-        const serverId = getServerId();
-        const conversationType: 'channel' | 'dm' = groupId.startsWith('dm:') ? 'dm' : 'channel';
-        const conversationId = Number(groupId.split(':')[1]);
-        let decrypted = 0;
-        let beforeId: number | undefined;
-
-        while (true) {
-            const params: Record<string, string | number> = { limit: 200 };
-            if (beforeId) params.before_id = beforeId;
-
-            const messages = await getGroupHistory(groupId, params);
-
-            if (messages.length === 0) break;
-
-            const batch = messages.map((m) => ({ id: m.id, ciphertext: m.history_ciphertext }));
-            const results = await window.api.mls.decryptHistoryBatch({ serverId, groupId, messages: batch });
-
-            for (const [idStr, rawPayload] of Object.entries(results)) {
-                const messageId = Number(idStr);
-                const payload = parsePayload(rawPayload);
-                window.api.messages
-                    .storeDecryptedIfAbsent(serverId, messageId, serializeForCache(payload.text, payload.attachments))
-                    .catch(() => {});
-                window.api.messages
-                    .indexForSearch({
-                        serverId,
-                        messageId,
-                        conversationType,
-                        conversationId,
-                        userName: '',
-                        plaintext: payload.text,
-                    })
-                    .catch(() => {});
-                decrypted++;
-            }
-
-            beforeId = messages[messages.length - 1].id;
-
-            if (messages.length < 200) break;
-        }
-
-        return decrypted;
     }
 
     async function enrollNewDevice(newDeviceId: string): Promise<void> {
@@ -1490,7 +1428,6 @@ export function useE2EE() {
         setupDevice,
         encryptForChannel,
         encryptForDM,
-        encryptHistory,
         decrypt,
         decryptMessage,
         decryptMessageQueued,
@@ -1501,7 +1438,6 @@ export function useE2EE() {
         handleWelcome,
         handleJoinRequest,
         enrollNewDevice,
-        decryptGroupHistory,
         backupExists,
         backupKeys,
         restoreKeys,

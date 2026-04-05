@@ -59,13 +59,4 @@ export const mlsApi = {
     wipe: (serverId: number) => ipcRenderer.invoke('mls:wipe', serverId),
     wipeForUserMismatch: (serverId: number, userId: number) =>
         ipcRenderer.invoke('mls:wipeForUserMismatch', serverId, userId) as Promise<boolean>,
-    encryptHistory: (params: { serverId: number; groupId: string; plaintext: string }) =>
-        ipcRenderer.invoke('mls:encryptHistory', params) as Promise<string>,
-    decryptHistory: (params: { serverId: number; groupId: string; ciphertext: string }) =>
-        ipcRenderer.invoke('mls:decryptHistory', params) as Promise<string>,
-    decryptHistoryBatch: (params: {
-        serverId: number;
-        groupId: string;
-        messages: Array<{ id: number; ciphertext: string }>;
-    }) => ipcRenderer.invoke('mls:decryptHistoryBatch', params) as Promise<Record<number, string>>,
 };

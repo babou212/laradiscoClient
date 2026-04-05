@@ -77,7 +77,6 @@ export const useThreadStore = defineStore('thread', () => {
             mention_user_ids?: number[];
             mention_everyone?: boolean;
             mention_here?: boolean;
-            history_ciphertext?: string;
         },
     ): Promise<MessageData | null> {
         try {
@@ -118,7 +117,6 @@ export const useThreadStore = defineStore('thread', () => {
         messageBytes: string,
         extra?: {
             sender_device_id?: string;
-            history_ciphertext?: string;
         },
     ): Promise<void> {
         try {

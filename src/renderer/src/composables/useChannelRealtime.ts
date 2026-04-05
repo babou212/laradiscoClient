@@ -340,8 +340,6 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                         (m) => m.decrypted_content === undefined && !m.decrypt_error,
                     );
                     if (stillUnresolved) {
-                        const groupId = isDm.value ? `dm:${channelId.value}` : `channel:${channelId.value}`;
-                        await e2ee.decryptGroupHistory(groupId);
                         await e2ee.lookupDecryptedCache(messages.value);
                     }
 

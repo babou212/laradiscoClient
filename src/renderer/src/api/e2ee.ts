@@ -125,16 +125,6 @@ export async function getGroupMessages(
     return r.data?.data ?? [];
 }
 
-export async function getGroupHistory(
-    groupId: string,
-    params: Record<string, string | number>,
-): Promise<Array<{ id: number; history_ciphertext: string }>> {
-    const r = await api.get(`/e2ee/mls/groups/${encodeURIComponent(groupId)}/history`, {
-        params,
-    });
-    return r.data?.data ?? [];
-}
-
 export async function getUserGroups(): Promise<string[]> {
     const r = await api.get('/e2ee/mls/user-groups');
     return r.data?.data ?? [];

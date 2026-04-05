@@ -151,8 +151,6 @@ const { isLoadingMore, isVisible, scrollToBottom, resetToBottom, handleScroll } 
                 (m) => m.decrypted_content === undefined && !m.decrypt_error,
             );
             if (hasUnresolved && channelId.value) {
-                const groupId = isDmRef.value ? `dm:${channelId.value}` : `channel:${channelId.value}`;
-                await e2ee.decryptGroupHistory(groupId);
                 await e2ee.lookupDecryptedCache(activeMessages.value);
             }
             const chId = isDmRef.value ? undefined : Number(channelId.value);
@@ -378,14 +376,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         return;
     }
 
-    let historyCiphertext: string | undefined;
-    try {
-        const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-        historyCiphertext = await e2ee.encryptHistory(groupId, content, envelopeMetas);
-    } catch {
-        // History encryption is best-effort; don't block the message
-    }
-
     const data: {
         message_bytes: string;
         reply_to_id?: number;
@@ -393,7 +383,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         mention_user_ids?: number[];
         mention_everyone?: boolean;
         mention_here?: boolean;
-        history_ciphertext?: string;
         epoch?: number;
         attachment_ids?: string[];
     } = {
@@ -407,10 +396,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     {
         const senderDeviceId = await e2ee.getDeviceId();
         if (senderDeviceId) data.sender_device_id = senderDeviceId;
-    }
-
-    if (historyCiphertext) {
-        data.history_ciphertext = historyCiphertext;
     }
 
     {
@@ -541,18 +526,9 @@ const saveEdit = async (message: MessageData) => {
             return;
         }
 
-        let historyCiphertext: string | undefined;
-        try {
-            const groupId = props.isDm ? `dm:${props.channel.id}` : `channel:${props.channel.id}`;
-            historyCiphertext = await e2ee.encryptHistory(groupId, editContent.value, message.decrypted_attachments);
-        } catch {
-            // Best-effort
-        }
-
         const editData = {
             message_bytes: contentToSend,
             sender_device_id: (await e2ee.getDeviceId()) ?? '',
-            ...(historyCiphertext && { history_ciphertext: historyCiphertext }),
         };
         if (props.isDm) {
             await editDmMessage(String(props.channel.id), String(message.id), editData);

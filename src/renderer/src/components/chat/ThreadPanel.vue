@@ -291,24 +291,12 @@ const sendReply = async (content: string) => {
         return;
     }
 
-    let historyCiphertext: string | undefined;
-    try {
-        historyCiphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, content);
-    } catch {
-        // Best-effort
-    }
-
     const extra: {
         sender_device_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
         mention_here?: boolean;
-        history_ciphertext?: string;
     } = {};
-
-    if (historyCiphertext) {
-        extra.history_ciphertext = historyCiphertext;
-    }
 
     {
         const senderDeviceId = await e2ee.getDeviceId();
@@ -373,16 +361,10 @@ const saveEdit = async (message: MessageData) => {
 
         const extra: {
             sender_device_id?: string;
-            history_ciphertext?: string;
         } = {};
         const contentToSend = await e2ee.encryptForChannel(Number(props.channelId), editContent.value);
         const senderDeviceId = await e2ee.getDeviceId();
         if (senderDeviceId) extra.sender_device_id = senderDeviceId;
-        try {
-            extra.history_ciphertext = await e2ee.encryptHistory(`channel:${props.channelId}`, editContent.value);
-        } catch {
-            // Best-effort
-        }
 
         await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, contentToSend, extra);
 

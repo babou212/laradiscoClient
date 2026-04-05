@@ -125,11 +125,4 @@ export interface MlsApi {
     setLastBackupTimestamp: (serverId: number, timestamp: number) => Promise<{ success: boolean }>;
     wipe: (serverId: number) => Promise<{ success: boolean }>;
     wipeForUserMismatch: (serverId: number, userId: number) => Promise<boolean>;
-    encryptHistory: (params: { serverId: number; groupId: string; plaintext: string }) => Promise<string>;
-    decryptHistory: (params: { serverId: number; groupId: string; ciphertext: string }) => Promise<string>;
-    decryptHistoryBatch: (params: {
-        serverId: number;
-        groupId: string;
-        messages: Array<{ id: number; ciphertext: string }>;
-    }) => Promise<Record<number, string>>;
 }
