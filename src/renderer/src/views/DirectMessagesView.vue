@@ -36,7 +36,7 @@ onMounted(async () => {
     dmStore.decryptLastMessages();
     await presenceStore.fetchMembers();
 
-    const threadId = Number(route.params.threadId);
+    const threadId = route.params.threadId as string;
     if (threadId) {
         await dmStore.selectDmGroup(threadId);
     }
@@ -45,7 +45,7 @@ onMounted(async () => {
 watch(
     () => route.params.threadId,
     async (newId) => {
-        const id = Number(newId);
+        const id = newId as string;
         if (id) {
             await dmStore.selectDmGroup(id);
         } else {
@@ -54,7 +54,7 @@ watch(
     },
 );
 
-const handleSelectDm = (dmGroupId: number) => {
+const handleSelectDm = (dmGroupId: string) => {
     router.push({ name: 'direct-messages', params: { threadId: dmGroupId } });
 };
 
@@ -62,7 +62,7 @@ const handleSwitchToChannels = () => {
     router.push({ name: 'home' });
 };
 
-const handleStartDm = async (userId: number) => {
+const handleStartDm = async (userId: string) => {
     const groupId = await dmStore.startOrGetDm(userId);
     if (groupId) {
         router.push({ name: 'direct-messages', params: { threadId: groupId } });

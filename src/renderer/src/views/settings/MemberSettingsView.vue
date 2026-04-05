@@ -1,8 +1,13 @@
 <!-- MemberSettingsView - Server member management -->
 
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Search, Shield, UsersRound, X } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { getApiErrorMessage } from '@/api/errors';
+import { updateMemberRole, removeMemberRole } from '@/api/settings';
+import { findIncluded, relationshipIds } from '@/api/types';
+import type { RoleResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,10 +19,11 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import api from '@/lib/api';
+import { SETTINGS_KEYS } from '@/queries/keys';
+import { settingsMembersQuery } from '@/queries/settings/members';
 
 type Role = {
-    id: number;
+    id: string;
     name: string;
     color: string;
     position: number;
@@ -25,34 +31,63 @@ type Role = {
 };
 
 type MemberRole = {
-    id: number;
+    id: string;
     name: string;
     color: string;
     position: number;
 };
 
 type Member = {
-    id: number;
+    id: string;
     name: string;
     username: string;
     email: string;
-    avatar_path: string | null;
+    avatar_urls: { thumb: string; small: string; medium: string } | null;
     display_name: string;
     roles: MemberRole[];
 };
 
-const members = ref<Member[]>([]);
-const allRoles = ref<Role[]>([]);
-const isLoading = ref(true);
+const queryCache = useQueryCache();
+const { data: rawData, isLoading, error: queryError } = useQuery(settingsMembersQuery);
 const searchQuery = ref('');
-const apiError = ref('');
 
-const showRoleDialog = ref(false);
-const showRemoveRoleDialog = ref(false);
-const selectedMember = ref<Member | null>(null);
-const removingRole = ref<MemberRole | null>(null);
-const processing = ref(false);
-const roleError = ref('');
+const apiError = computed(() => {
+    if (queryError.value) return getApiErrorMessage(queryError.value);
+    return '';
+});
+
+const allRoles = computed<Role[]>(() => {
+    const metaRoles = rawData.value?.meta?.roles;
+    if (Array.isArray(metaRoles)) {
+        return metaRoles as Role[];
+    }
+    return [];
+});
+
+const members = computed<Member[]>(() => {
+    if (!rawData.value?.data) return [];
+    return rawData.value.data.map((res) => {
+        const roleIds = relationshipIds(res.relationships?.roles);
+        const roles: MemberRole[] = roleIds
+            .map((rid) => findIncluded<RoleResource>(rawData.value!.included, 'roles', rid))
+            .filter(Boolean)
+            .map((r) => ({
+                id: r!.id,
+                name: r!.attributes.name,
+                color: r!.attributes.color,
+                position: r!.attributes.position,
+            }));
+        return {
+            id: res.id,
+            name: res.attributes.name ?? '',
+            username: res.attributes.username,
+            email: res.attributes.email ?? '',
+            avatar_urls: res.attributes.avatar_urls ?? null,
+            display_name: res.attributes.display_name ?? res.attributes.name ?? res.attributes.username,
+            roles,
+        };
+    });
+});
 
 const filteredMembers = computed(() => {
     if (!searchQuery.value) return members.value;
@@ -65,33 +100,21 @@ const filteredMembers = computed(() => {
     );
 });
 
-function getApiErrorMessage(err: any): string {
-    if (err.response?.status === 403) {
-        return err.response.data?.message ?? 'You do not have permission to manage members.';
-    }
-    if (err.response?.data?.message) {
-        return err.response.data.message;
-    }
-    return 'An unexpected error occurred. Please try again.';
-}
+const showRoleDialog = ref(false);
+const showRemoveRoleDialog = ref(false);
+const selectedMember = ref<Member | null>(null);
+const removingRole = ref<MemberRole | null>(null);
+const roleError = ref('');
 
-onMounted(async () => {
-    await loadMembers();
+const { mutateAsync: doAssignRole, isLoading: processing } = useMutation({
+    mutation: (params: { memberId: string; roleId: string }) => updateMemberRole(params.memberId, params.roleId),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() }),
 });
 
-async function loadMembers() {
-    isLoading.value = true;
-    apiError.value = '';
-    try {
-        const response = await api.get('/settings/members');
-        members.value = response.data.members;
-        allRoles.value = response.data.roles;
-    } catch (err: any) {
-        apiError.value = getApiErrorMessage(err);
-    } finally {
-        isLoading.value = false;
-    }
-}
+const { mutateAsync: doRemoveRole } = useMutation({
+    mutation: (params: { memberId: string; roleId: string }) => removeMemberRole(params.memberId, params.roleId),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() }),
+});
 
 function openAssignRoleDialog(member: Member) {
     selectedMember.value = member;
@@ -106,36 +129,28 @@ function openRemoveRoleDialog(member: Member, role: MemberRole) {
     showRemoveRoleDialog.value = true;
 }
 
-async function doAssignRole(roleId: number) {
+async function doAssignRoleAction(roleId: string) {
     if (!selectedMember.value) return;
-    processing.value = true;
     roleError.value = '';
     try {
-        await api.post(`/settings/members/${selectedMember.value.id}/roles`, { role_id: roleId });
+        await doAssignRole({ memberId: selectedMember.value.id, roleId });
         showRoleDialog.value = false;
         selectedMember.value = null;
-        await loadMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
         roleError.value = getApiErrorMessage(err);
-    } finally {
-        processing.value = false;
     }
 }
 
 async function confirmRemoveRole() {
     if (!selectedMember.value || !removingRole.value) return;
-    processing.value = true;
     roleError.value = '';
     try {
-        await api.delete(`/settings/members/${selectedMember.value.id}/roles/${removingRole.value.id}`);
+        await doRemoveRole({ memberId: selectedMember.value.id, roleId: removingRole.value.id });
         showRemoveRoleDialog.value = false;
         selectedMember.value = null;
         removingRole.value = null;
-        await loadMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
         roleError.value = getApiErrorMessage(err);
-    } finally {
-        processing.value = false;
     }
 }
 
@@ -163,7 +178,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </div>
 
             <div class="p-6">
-                <!-- Error banner -->
                 <div
                     v-if="apiError"
                     class="border-destructive/50 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm"
@@ -243,7 +257,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </div>
         </div>
 
-        <!-- Assign Role Dialog -->
         <Dialog v-model:open="showRoleDialog">
             <DialogContent class="sm:max-w-sm">
                 <DialogHeader>
@@ -254,7 +267,6 @@ function isDefaultRole(role: MemberRole): boolean {
                     </DialogDescription>
                 </DialogHeader>
 
-                <!-- Error in dialog -->
                 <div
                     v-if="roleError"
                     class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
@@ -274,7 +286,7 @@ function isDefaultRole(role: MemberRole): boolean {
                         :key="role.id"
                         variant="outline"
                         class="w-full justify-start gap-3"
-                        @click="doAssignRole(role.id)"
+                        @click="doAssignRoleAction(role.id)"
                         :disabled="processing"
                     >
                         <div class="h-3 w-3 rounded-full" :style="{ backgroundColor: role.color }" />
@@ -284,7 +296,6 @@ function isDefaultRole(role: MemberRole): boolean {
             </DialogContent>
         </Dialog>
 
-        <!-- Remove Role Dialog -->
         <Dialog v-model:open="showRemoveRoleDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -296,7 +307,6 @@ function isDefaultRole(role: MemberRole): boolean {
                     </DialogDescription>
                 </DialogHeader>
 
-                <!-- Error in dialog -->
                 <div
                     v-if="roleError"
                     class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"

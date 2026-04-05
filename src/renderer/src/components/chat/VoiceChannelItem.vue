@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Volume2, Monitor } from 'lucide-vue-next';
+import { Volume2, Monitor, MicOff } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 import { useVoiceStore, type VoiceParticipant } from '@/stores/voice';
 
 type Props = {
     channel: {
-        id: number;
+        id: string;
         name: string;
         topic: string | null;
         type: string;
@@ -15,21 +17,32 @@ type Props = {
 const props = defineProps<Props>();
 
 const voiceStore = useVoiceStore();
+const userNamesStore = useUserNamesStore();
 
 const isCurrentChannel = computed(() => {
-    return voiceStore.currentChannel?.id === props.channel.id;
+    return voiceStore.currentChannel?.id === Number(props.channel.id);
 });
 
 const channelParticipants = computed<VoiceParticipant[]>(() => {
     if (isCurrentChannel.value) {
         return voiceStore.currentParticipants;
     }
-    return voiceStore.getChannelParticipants(props.channel.id);
+    return voiceStore.getChannelParticipants(Number(props.channel.id));
 });
+
+const buttonClasses = computed(() =>
+    isCurrentChannel.value
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+        : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
+);
 
 const handleClick = () => {
     if (isCurrentChannel.value) return;
-    voiceStore.joinChannel(props.channel.id, props.channel.name);
+    voiceStore.joinChannel(Number(props.channel.id), props.channel.name);
+};
+
+const handleScreenShareClick = (participant: VoiceParticipant) => {
+    voiceStore.activeScreenShareView = String(participant.id);
 };
 </script>
 
@@ -38,11 +51,7 @@ const handleClick = () => {
         <button
             type="button"
             class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
-            :class="
-                isCurrentChannel
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-            "
+            :class="buttonClasses"
             @click="handleClick"
         >
             <Volume2 :size="16" class="shrink-0" />
@@ -55,47 +64,47 @@ const handleClick = () => {
                 :key="participant.id"
                 class="flex items-center gap-2 rounded px-2 py-1"
             >
-                <div
-                    class="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200"
-                    :class="
-                        participant.isSpeaking
-                            ? 'bg-green-600 text-white ring-2 ring-green-500'
-                            : 'bg-primary text-primary-foreground'
-                    "
+                <Avatar
+                    class="size-6 shrink-0 transition-all duration-200"
+                    :class="participant.isSpeaking ? 'ring-2 ring-green-500' : ''"
                 >
-                    {{ participant.displayName?.[0]?.toUpperCase() || 'U' }}
-                </div>
+                    <AvatarImage
+                        v-if="participant.avatarUrls?.thumb"
+                        :src="participant.avatarUrls.thumb"
+                        :alt="participant.displayName"
+                    />
+                    <AvatarFallback
+                        class="text-xs font-semibold"
+                        :class="
+                            participant.isSpeaking ? 'bg-green-600 text-white' : 'bg-primary text-primary-foreground'
+                        "
+                    >
+                        {{
+                            userNamesStore
+                                .getDisplayName(String(participant.id), participant.displayName)?.[0]
+                                ?.toUpperCase() || 'U'
+                        }}
+                    </AvatarFallback>
+                </Avatar>
                 <span
                     class="text-sidebar-foreground/70 truncate text-xs"
                     :class="{ 'text-sidebar-foreground': participant.isSpeaking }"
                 >
-                    {{ participant.displayName || participant.username }}
+                    {{
+                        userNamesStore.getDisplayName(
+                            String(participant.id),
+                            participant.displayName || participant.username,
+                        )
+                    }}
                 </span>
                 <div class="ml-auto flex shrink-0 items-center gap-1">
                     <Monitor
                         v-if="participant.isScreenSharing"
                         :size="12"
                         class="cursor-pointer text-green-400 hover:text-green-300"
-                        @click.stop="voiceStore.activeScreenShareView = String(participant.id)"
+                        @click.stop="handleScreenShareClick(participant)"
                     />
-                    <span v-if="participant.isMuted">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="size-3 text-red-400"
-                        >
-                            <line x1="1" y1="1" x2="23" y2="23" />
-                            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-                            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .7-.1 1.37-.29 2" />
-                            <line x1="12" y1="19" x2="12" y2="23" />
-                            <line x1="8" y1="23" x2="16" y2="23" />
-                        </svg>
-                    </span>
+                    <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
                 </div>
             </div>
         </div>

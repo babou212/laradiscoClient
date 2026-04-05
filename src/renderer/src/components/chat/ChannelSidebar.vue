@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
+import { updatePresence } from '@/api/presence';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
-import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
+import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { UserStatusType } from '@/types';
 import type { Category, Channel } from '@/types/chat';
 
 type Props = {
     categories: Category[];
-    directMessages: any[];
-    selectedChannelId?: number;
+    directMessages: DmGroup[];
+    selectedChannelId?: string;
     serverName?: string;
 };
 
@@ -23,20 +27,22 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-    selectChannel: [channelId: number];
+    selectChannel: [channelId: string];
     switchToDms: [];
 }>();
 
 const router = useRouter();
 const authStore = useAuthStore();
+const avatarStore = useAvatarStore();
 const presenceStore = usePresenceStore();
+const userNamesStore = useUserNamesStore();
 
 const user = computed(() => authStore.user);
 
-const collapsedCategories = ref<Set<number>>(new Set());
-const showUserPopup = ref(false);
-const currentStatus = ref<UserStatusType>('online');
-const currentCustomStatus = ref<string | null>(null);
+const collapsedCategories = ref<Set<string>>(new Set());
+const showUserPopup = shallowRef(false);
+const currentStatus = shallowRef<UserStatusType>('online');
+const currentCustomStatus = shallowRef<string | null>(null);
 
 const getTextChannels = (channels: Channel[]) => {
     return channels.filter((c) => c.type !== 'voice');
@@ -57,7 +63,7 @@ watch(
     { deep: true },
 );
 
-const toggleCategory = (categoryId: number) => {
+const toggleCategory = (categoryId: string) => {
     if (collapsedCategories.value.has(categoryId)) {
         collapsedCategories.value.delete(categoryId);
     } else {
@@ -65,7 +71,7 @@ const toggleCategory = (categoryId: number) => {
     }
 };
 
-const selectChannel = (channelId: number) => {
+const selectChannel = (channelId: string) => {
     emit('selectChannel', channelId);
 };
 
@@ -79,7 +85,7 @@ const setStatus = async (status: UserStatusType) => {
     }
 
     try {
-        await api.patch('/presence', {
+        await updatePresence({
             status: status,
             custom_status: currentCustomStatus.value,
         });
@@ -221,14 +227,19 @@ const statusOptions = [
                 class="border-sidebar-border bg-sidebar-accent hover:bg-sidebar-accent/80 flex w-full items-center gap-3 rounded-full border px-3 py-2 shadow-lg transition-colors"
                 @click="showUserPopup = !showUserPopup"
             >
-                <div
-                    class="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                >
-                    {{ user?.name?.[0]?.toUpperCase() || 'U' }}
-                </div>
+                <Avatar class="size-8 shrink-0">
+                    <AvatarImage
+                        v-if="user && avatarStore.getAvatarUrl(user.id, 'thumb')"
+                        :src="avatarStore.getAvatarUrl(user!.id, 'thumb')!"
+                        :alt="user?.name"
+                    />
+                    <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
+                        {{ user ? userNamesStore.getDisplayName(user.id, user.name)?.[0]?.toUpperCase() : 'U' }}
+                    </AvatarFallback>
+                </Avatar>
                 <div class="min-w-0 flex-1 text-left">
                     <div class="text-sidebar-foreground truncate text-sm font-medium">
-                        {{ user?.username || user?.name }}
+                        {{ user ? userNamesStore.getDisplayName(user.id, user.username || user.name) : '' }}
                     </div>
                     <div class="text-sidebar-foreground/60 truncate text-xs">
                         {{ currentCustomStatus || currentStatus }}

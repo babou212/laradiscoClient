@@ -5,7 +5,6 @@ import ChannelSidebar from '@/components/chat/ChannelSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import OnlineUsersSidebar from '@/components/chat/OnlineUsersSidebar.vue';
 import ThreadPanel from '@/components/chat/ThreadPanel.vue';
-import ResizeHandle from '@/components/ui/ResizeHandle.vue';
 import { useChatStore } from '@/stores/chat';
 import { useThreadStore } from '@/stores/thread';
 import { useVoiceStore } from '@/stores/voice';
@@ -19,14 +18,6 @@ const usersCollapsed = ref(false);
 
 const toggleUsersCollapsed = () => {
     usersCollapsed.value = !usersCollapsed.value;
-};
-
-const THREAD_MAX = 600;
-const THREAD_DEFAULT = 384;
-const threadWidth = ref(THREAD_DEFAULT);
-
-const onThreadResize = (delta: number) => {
-    threadWidth.value = Math.min(THREAD_MAX, Math.max(THREAD_DEFAULT, threadWidth.value + delta));
 };
 
 onMounted(async () => {
@@ -54,7 +45,7 @@ onUnmounted(() => {
     voiceStore.unsubscribeFromVoiceChannels();
 });
 
-const handleSelectChannel = async (channelId: number) => {
+const handleSelectChannel = async (channelId: string) => {
     await chatStore.selectChannel(channelId);
 };
 
@@ -93,17 +84,7 @@ const handleSwitchToDms = () => {
             </div>
         </div>
 
-        <ResizeHandle
-            v-if="threadStore.parentMessage && chatStore.currentChannel"
-            direction="left"
-            @resize="onThreadResize"
-        />
-
-        <div
-            v-if="threadStore.parentMessage && chatStore.currentChannel"
-            class="shrink-0"
-            :style="{ width: threadWidth + 'px' }"
-        >
+        <div v-if="threadStore.parentMessage && chatStore.currentChannel" class="w-[480px] shrink-0">
             <ThreadPanel
                 :channel-id="chatStore.currentChannel.id"
                 :channel-permissions="chatStore.currentChannelPermissions ?? undefined"

@@ -2,12 +2,20 @@
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
+
+const loginSchema = z.object({
+    email: z.string().min(1, 'Email is required').email('Please enter a valid email address.'),
+    password: z.string().min(1, 'Password is required'),
+});
+
+type FieldErrors = Partial<Record<keyof z.infer<typeof loginSchema>, string>>;
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -16,6 +24,7 @@ const serverStore = useServerStore();
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
+const fieldErrors = ref<FieldErrors>({});
 
 const serverName = computed(() => serverStore.activeServer?.name ?? 'Server');
 const serverHost = computed(() => serverStore.activeServer?.host ?? '');
@@ -29,13 +38,22 @@ onMounted(() => {
 });
 
 async function handleLogin(): Promise<void> {
-    if (!canSubmit.value) return;
+    fieldErrors.value = {};
 
-    const result = await authStore.login(email.value.trim(), password.value);
+    const result = loginSchema.safeParse({ email: email.value.trim(), password: password.value });
+    if (!result.success) {
+        result.error.issues.forEach((e: z.ZodIssue) => {
+            const field = e.path[0] as keyof FieldErrors;
+            if (!fieldErrors.value[field]) fieldErrors.value[field] = e.message;
+        });
+        return;
+    }
 
-    if (result === 'two-factor') {
+    const loginResult = await authStore.login(result.data.email, result.data.password);
+
+    if (loginResult === 'two-factor') {
         router.push({ name: 'two-factor-challenge' });
-    } else if (result === true) {
+    } else if (loginResult === true) {
         router.push({ name: 'home' });
     }
 }
@@ -59,7 +77,9 @@ function goBack(): void {
                     placeholder="you@example.com"
                     autocomplete="email"
                     :disabled="authStore.isLoggingIn"
+                    :class="{ 'border-destructive': fieldErrors.email }"
                 />
+                <p v-if="fieldErrors.email" class="text-destructive text-xs">{{ fieldErrors.email }}</p>
             </div>
 
             <div class="grid gap-2">
@@ -73,6 +93,7 @@ function goBack(): void {
                         autocomplete="current-password"
                         :disabled="authStore.isLoggingIn"
                         class="pr-10"
+                        :class="{ 'border-destructive': fieldErrors.password }"
                     />
                     <button
                         type="button"
@@ -84,6 +105,7 @@ function goBack(): void {
                         <EyeIcon v-else class="size-4" />
                     </button>
                 </div>
+                <p v-if="fieldErrors.password" class="text-destructive text-xs">{{ fieldErrors.password }}</p>
             </div>
 
             <div

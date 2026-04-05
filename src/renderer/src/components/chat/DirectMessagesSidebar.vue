@@ -1,32 +1,67 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core';
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
-import { ref } from 'vue';
-import api from '@/lib/api';
+import { shallowRef, watch } from 'vue';
+import { getMembers } from '@/api/members';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAvatarStore } from '@/stores/avatar';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 
 type Props = {
     dmGroups: DmGroup[];
-    selectedDmGroupId?: number | null;
+    selectedDmGroupId?: string | null;
 };
 
 defineProps<Props>();
 const emit = defineEmits<{
-    selectDm: [dmGroupId: number];
+    selectDm: [dmGroupId: string];
     switchToChannels: [];
-    startDm: [userId: number];
+    startDm: [userId: string];
 }>();
 
 const presenceStore = usePresenceStore();
+const avatarStore = useAvatarStore();
 
-const showNewDmSearch = ref(false);
-const searchQuery = ref('');
-const searchResults = ref<Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>>(
-    [],
+const showNewDmSearch = shallowRef(false);
+const searchQuery = shallowRef('');
+const searchResults = shallowRef<
+    Array<{
+        id: string;
+        username: string;
+        display_name: string;
+        avatar_urls: { thumb: string; small: string; medium: string } | null;
+    }>
+>([]);
+const isSearching = shallowRef(false);
+
+watch(searchQuery, (q) => {
+    if (!q.trim()) searchResults.value = [];
+});
+
+watchDebounced(
+    searchQuery,
+    async (q) => {
+        if (!q.trim()) return;
+        isSearching.value = true;
+        try {
+            const response = await getMembers({ 'filter[search]': q });
+            searchResults.value = response.data.map((u) => ({
+                id: u.id,
+                username: u.attributes.username,
+                display_name: u.attributes.display_name ?? u.attributes.username,
+                avatar_urls: u.attributes.avatar_urls ?? null,
+            }));
+        } catch {
+            searchResults.value = [];
+        } finally {
+            isSearching.value = false;
+        }
+    },
+    { debounce: 300 },
 );
-const isSearching = ref(false);
 
-const getStatusColor = (userId: number): string => {
+const getStatusColor = (userId: string): string => {
     const userStatus = presenceStore.getUserStatus(userId);
     const status = userStatus?.status || 'offline';
     switch (status) {
@@ -64,31 +99,7 @@ const truncateMessage = (content: string, maxLength: number = 40) => {
     return content.substring(0, maxLength) + '...';
 };
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
-
-const handleSearch = (query: string) => {
-    searchQuery.value = query;
-    if (searchDebounce) clearTimeout(searchDebounce);
-
-    if (!query.trim()) {
-        searchResults.value = [];
-        return;
-    }
-
-    searchDebounce = setTimeout(async () => {
-        isSearching.value = true;
-        try {
-            const response = await api.get('/members', { params: { search: query } });
-            searchResults.value = response.data?.members ?? response.data ?? [];
-        } catch {
-            searchResults.value = [];
-        } finally {
-            isSearching.value = false;
-        }
-    }, 300);
-};
-
-const selectSearchUser = (userId: number) => {
+const selectSearchUser = (userId: string) => {
     emit('startDm', userId);
     showNewDmSearch.value = false;
     searchQuery.value = '';
@@ -123,11 +134,10 @@ const toggleNewDmSearch = () => {
             <div class="relative">
                 <Search :size="14" class="text-sidebar-foreground/50 absolute top-1/2 left-2.5 -translate-y-1/2" />
                 <input
+                    v-model="searchQuery"
                     type="text"
                     class="bg-sidebar-accent/50 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:bg-sidebar-accent w-full rounded py-1.5 pr-2 pl-8 text-sm focus:outline-none"
                     placeholder="Find or start a conversation"
-                    :value="searchQuery"
-                    @input="handleSearch(($event.target as HTMLInputElement).value)"
                 />
             </div>
             <div v-if="searchResults.length > 0" class="mt-1 max-h-48 overflow-y-auto">
@@ -139,11 +149,16 @@ const toggleNewDmSearch = () => {
                     @click="selectSearchUser(user.id)"
                 >
                     <div class="relative">
-                        <div
-                            class="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                        >
-                            {{ user.username?.[0]?.toUpperCase() || '?' }}
-                        </div>
+                        <Avatar class="size-7 shrink-0">
+                            <AvatarImage
+                                v-if="avatarStore.getAvatarUrl(user.id, 'thumb')"
+                                :src="avatarStore.getAvatarUrl(user.id, 'thumb')!"
+                                :alt="user.username"
+                            />
+                            <AvatarFallback class="bg-primary text-primary-foreground text-xs font-semibold">
+                                {{ user.username?.[0]?.toUpperCase() || '?' }}
+                            </AvatarFallback>
+                        </Avatar>
                         <div
                             class="border-sidebar absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2"
                             :class="getStatusColor(user.id)"
@@ -191,11 +206,16 @@ const toggleNewDmSearch = () => {
                     @click="$emit('selectDm', dm.id)"
                 >
                     <div class="relative">
-                        <div
-                            class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                        >
-                            {{ dm.other_user?.username?.[0]?.toUpperCase() || '?' }}
-                        </div>
+                        <Avatar class="size-9 shrink-0">
+                            <AvatarImage
+                                v-if="dm.other_user && avatarStore.getAvatarUrl(dm.other_user.id, 'thumb')"
+                                :src="avatarStore.getAvatarUrl(dm.other_user!.id, 'thumb')!"
+                                :alt="dm.other_user?.username"
+                            />
+                            <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
+                                {{ dm.other_user?.username?.[0]?.toUpperCase() || '?' }}
+                            </AvatarFallback>
+                        </Avatar>
                         <div
                             v-if="dm.other_user"
                             class="border-sidebar absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2"

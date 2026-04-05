@@ -9,6 +9,7 @@ export interface SearchResult {
 
 export interface MessagesApi {
     storeDecrypted: (serverId: number, messageId: number, plaintext: string) => Promise<void>;
+    storeDecryptedIfAbsent: (serverId: number, messageId: number, plaintext: string) => Promise<void>;
     getDecryptedBatch: (serverId: number, messageIds: number[]) => Promise<Record<number, string>>;
     indexForSearch: (params: {
         serverId: number;

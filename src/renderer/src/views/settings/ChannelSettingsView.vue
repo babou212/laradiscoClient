@@ -1,6 +1,21 @@
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { ChevronDown, ChevronRight, Folder, Hash, Lock, Pencil, Plus, Shield, Trash2, Volume2 } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { extractValidationErrors } from '@/api/errors';
+import {
+    createSettingsChannel,
+    updateSettingsChannel,
+    deleteSettingsChannel,
+    createSettingsCategory,
+    updateSettingsCategory,
+    deleteSettingsCategory,
+    getChannelOverrides,
+    createChannelOverride,
+    deleteChannelOverride,
+} from '@/api/settings';
+import { findIncluded, relationshipIds } from '@/api/types';
+import type { ChannelResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,14 +30,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import api from '@/lib/api';
+import { SETTINGS_KEYS } from '@/queries/keys';
+import { settingsChannelsQuery } from '@/queries/settings/channels';
 
 type Permission = { value: string; label: string };
-type Role = { id: number; name: string; color: string };
+type Role = { id: string; name: string; color: string };
 
 type Channel = {
-    id: number;
-    category_id: number | null;
+    id: string;
+    category_id: string | null;
     name: string;
     slug: string;
     topic: string | null;
@@ -33,7 +49,7 @@ type Channel = {
 };
 
 type Category = {
-    id: number;
+    id: string;
     name: string;
     position: number;
     channels: Channel[];
@@ -50,13 +66,50 @@ type ChannelOverride = {
     user?: { id: number; username: string; name: string } | null;
 };
 
-const categories = ref<Category[]>([]);
-const roles = ref<Role[]>([]);
-const allPermissions = ref<Permission[]>([]);
-const isLoading = ref(true);
-const processing = ref(false);
+const queryCache = useQueryCache();
+const { data: rawData, isLoading } = useQuery(settingsChannelsQuery);
 
-const expandedCategories = ref<Set<number>>(new Set());
+const categories = computed<Category[]>(() => {
+    if (!rawData.value?.data) return [];
+    return rawData.value.data.map((catRes) => {
+        const channelIds = relationshipIds(catRes.relationships?.channels);
+        const channels: Channel[] = channelIds
+            .map((cid) => findIncluded<ChannelResource>(rawData.value!.included, 'channels', cid))
+            .filter(Boolean)
+            .map((ch) => ({
+                id: ch!.id,
+                category_id: catRes.id,
+                name: ch!.attributes.name,
+                slug: ch!.attributes.name,
+                topic: ch!.attributes.topic,
+                type: (ch!.attributes.channel_type === 'voice' ? 'voice' : 'text') as 'text' | 'voice',
+                position: ch!.attributes.position ?? 0,
+                is_private: ch!.attributes.is_private ?? false,
+                slowmode_seconds: null,
+            }));
+        return {
+            id: catRes.id,
+            name: catRes.attributes.name,
+            position: catRes.attributes.position,
+            channels,
+        };
+    });
+});
+
+const roles = computed<Role[]>(() => {
+    const metaRoles = rawData.value?.meta?.roles;
+    if (Array.isArray(metaRoles)) return metaRoles as Role[];
+    return [];
+});
+
+const allPermissions = computed<Permission[]>(() => {
+    const metaPerms = rawData.value?.meta?.permissions;
+    if (Array.isArray(metaPerms)) return metaPerms as unknown as Permission[];
+    return [];
+});
+
+const processing = ref(false);
+const expandedCategories = ref<Set<string>>(new Set());
 
 const showCreateChannelDialog = ref(false);
 const showEditChannelDialog = ref(false);
@@ -75,7 +128,7 @@ const channelOverrides = ref<ChannelOverride[]>([]);
 const loadingOverrides = ref(false);
 
 const channelForm = ref({
-    category_id: null as number | null,
+    category_id: null as string | null,
     name: '',
     topic: '',
     type: 'text' as 'text' | 'voice',
@@ -85,7 +138,7 @@ const channelForm = ref({
 });
 
 const editChannelForm = ref({
-    category_id: null as number | null,
+    category_id: null as string | null,
     name: '',
     topic: '',
     type: 'text' as 'text' | 'voice',
@@ -98,7 +151,7 @@ const categoryForm = ref({ name: '' });
 const editCategoryForm = ref({ name: '' });
 
 const overrideForm = ref({
-    role_id: null as number | null,
+    role_id: null as string | null,
     allow: [] as string[],
     deny: [] as string[],
 });
@@ -128,7 +181,7 @@ const channelPermissions = [
 
 const availableOverrideRoles = computed(() => {
     const existingRoleIds = new Set(channelOverrides.value.filter((o) => o.role_id).map((o) => o.role_id));
-    return roles.value.filter((r) => !existingRoleIds.has(r.id));
+    return roles.value.filter((r) => !existingRoleIds.has(Number(r.id)));
 });
 
 function channelIcon(type: string) {
@@ -139,7 +192,7 @@ function getPermissionLabel(value: string): string {
     return allPermissions.value.find((p) => p.value === value)?.label ?? value;
 }
 
-function toggleCategory(id: number) {
+function toggleCategory(id: string) {
     if (expandedCategories.value.has(id)) {
         expandedCategories.value.delete(id);
     } else {
@@ -147,37 +200,61 @@ function toggleCategory(id: number) {
     }
 }
 
-function extractErrors(err: any): Record<string, string> {
-    const result: Record<string, string> = {};
-    if (err.response?.status === 422) {
-        const ve = err.response.data.errors ?? {};
-        for (const [key, val] of Object.entries(ve)) {
-            result[key] = Array.isArray(val) ? (val as string[])[0] : String(val);
+// Expand all categories when data loads
+watch(
+    categories,
+    (cats) => {
+        if (cats.length > 0) {
+            expandedCategories.value = new Set(cats.map((c) => c.id));
         }
-    }
-    return result;
-}
+    },
+    { immediate: true },
+);
 
-onMounted(async () => {
-    await loadChannels();
+const { mutateAsync: doCreateChannel } = useMutation({
+    mutation: (data: typeof channelForm.value) =>
+        createSettingsChannel({
+            name: data.name,
+            category_id: data.category_id ?? '',
+            channel_type: data.type,
+            topic: data.topic || undefined,
+            is_private: data.is_private,
+        }),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
 });
 
-async function loadChannels() {
-    isLoading.value = true;
-    try {
-        const response = await api.get('/settings/channels');
-        categories.value = response.data.categories;
-        roles.value = response.data.roles;
-        allPermissions.value = response.data.permissions;
-        expandedCategories.value = new Set(categories.value.map((c) => c.id));
-    } catch {
-        // handle
-    } finally {
-        isLoading.value = false;
-    }
-}
+const { mutateAsync: doEditChannel } = useMutation({
+    mutation: (params: { id: string; data: typeof editChannelForm.value }) =>
+        updateSettingsChannel(params.id, {
+            name: params.data.name,
+            topic: params.data.topic || undefined,
+            is_private: params.data.is_private,
+            position: params.data.position,
+        }),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
 
-function openCreateChannel(categoryId: number | null = null) {
+const { mutateAsync: doDeleteChannel } = useMutation({
+    mutation: (id: string) => deleteSettingsChannel(id),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+const { mutateAsync: doCreateCategory } = useMutation({
+    mutation: (data: { name: string }) => createSettingsCategory(data),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+const { mutateAsync: doEditCategory } = useMutation({
+    mutation: (params: { id: string; data: { name: string } }) => updateSettingsCategory(params.id, params.data),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+const { mutateAsync: doDeleteCategory } = useMutation({
+    mutation: (id: string) => deleteSettingsCategory(id),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+function openCreateChannel(categoryId: string | null = null) {
     channelForm.value = {
         category_id: categoryId,
         name: '',
@@ -215,11 +292,10 @@ async function submitCreateChannel() {
     processing.value = true;
     channelErrors.value = {};
     try {
-        await api.post('/settings/channels', channelForm.value);
+        await doCreateChannel(channelForm.value);
         showCreateChannelDialog.value = false;
-        await loadChannels();
-    } catch (err: any) {
-        channelErrors.value = extractErrors(err);
+    } catch (err: unknown) {
+        channelErrors.value = extractValidationErrors(err);
     } finally {
         processing.value = false;
     }
@@ -230,12 +306,11 @@ async function submitEditChannel() {
     processing.value = true;
     editChannelErrors.value = {};
     try {
-        await api.put(`/settings/channels/${editingChannel.value.id}`, editChannelForm.value);
+        await doEditChannel({ id: editingChannel.value.id, data: editChannelForm.value });
         showEditChannelDialog.value = false;
         editingChannel.value = null;
-        await loadChannels();
-    } catch (err: any) {
-        editChannelErrors.value = extractErrors(err);
+    } catch (err: unknown) {
+        editChannelErrors.value = extractValidationErrors(err);
     } finally {
         processing.value = false;
     }
@@ -245,10 +320,9 @@ async function confirmDeleteChannel() {
     if (!deletingChannel.value) return;
     processing.value = true;
     try {
-        await api.delete(`/settings/channels/${deletingChannel.value.id}`);
+        await doDeleteChannel(deletingChannel.value.id);
         showDeleteChannelDialog.value = false;
         deletingChannel.value = null;
-        await loadChannels();
     } catch {
         // handle
     } finally {
@@ -278,11 +352,10 @@ async function submitCreateCategory() {
     processing.value = true;
     categoryErrors.value = {};
     try {
-        await api.post('/settings/categories', categoryForm.value);
+        await doCreateCategory(categoryForm.value);
         showCreateCategoryDialog.value = false;
-        await loadChannels();
-    } catch (err: any) {
-        categoryErrors.value = extractErrors(err);
+    } catch (err: unknown) {
+        categoryErrors.value = extractValidationErrors(err);
     } finally {
         processing.value = false;
     }
@@ -293,12 +366,11 @@ async function submitEditCategory() {
     processing.value = true;
     editCategoryErrors.value = {};
     try {
-        await api.put(`/settings/categories/${editingCategory.value.id}`, editCategoryForm.value);
+        await doEditCategory({ id: editingCategory.value.id, data: editCategoryForm.value });
         showEditCategoryDialog.value = false;
         editingCategory.value = null;
-        await loadChannels();
-    } catch (err: any) {
-        editCategoryErrors.value = extractErrors(err);
+    } catch (err: unknown) {
+        editCategoryErrors.value = extractValidationErrors(err);
     } finally {
         processing.value = false;
     }
@@ -308,10 +380,9 @@ async function confirmDeleteCategory() {
     if (!deletingCategory.value) return;
     processing.value = true;
     try {
-        await api.delete(`/settings/categories/${deletingCategory.value.id}`);
+        await doDeleteCategory(deletingCategory.value.id);
         showDeleteCategoryDialog.value = false;
         deletingCategory.value = null;
-        await loadChannels();
     } catch {
         // handle
     } finally {
@@ -326,8 +397,8 @@ async function openOverrides(channel: Channel) {
     overrideForm.value = { role_id: null, allow: [], deny: [] };
 
     try {
-        const response = await api.get(`/settings/channels/${channel.id}/overrides`);
-        channelOverrides.value = response.data;
+        const data = await getChannelOverrides(channel.id);
+        channelOverrides.value = data as ChannelOverride[];
     } catch {
         channelOverrides.value = [];
     } finally {
@@ -339,12 +410,12 @@ async function submitOverride() {
     if (!overridesChannel.value) return;
     processing.value = true;
     try {
-        await api.post(`/settings/channels/${overridesChannel.value.id}/overrides`, overrideForm.value);
+        await createChannelOverride(overridesChannel.value.id, overrideForm.value);
         overrideForm.value = { role_id: null, allow: [], deny: [] };
 
         if (overridesChannel.value) {
-            const response = await api.get(`/settings/channels/${overridesChannel.value.id}/overrides`);
-            channelOverrides.value = response.data;
+            const data = await getChannelOverrides(overridesChannel.value.id);
+            channelOverrides.value = data as ChannelOverride[];
         }
     } catch {
         // handle
@@ -353,15 +424,15 @@ async function submitOverride() {
     }
 }
 
-async function deleteOverride(override: ChannelOverride) {
+async function deleteOverrideAction(override: ChannelOverride) {
     if (!overridesChannel.value) return;
     processing.value = true;
     try {
-        await api.delete(`/settings/channels/${overridesChannel.value.id}/overrides/${override.id}`);
+        await deleteChannelOverride(overridesChannel.value.id, String(override.id));
 
         if (overridesChannel.value) {
-            const response = await api.get(`/settings/channels/${overridesChannel.value.id}/overrides`);
-            channelOverrides.value = response.data;
+            const data = await getChannelOverrides(overridesChannel.value.id);
+            channelOverrides.value = data as ChannelOverride[];
         }
     } catch {
         // handle
@@ -786,7 +857,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                     variant="ghost"
                                     size="icon"
                                     class="text-destructive hover:text-destructive h-7 w-7"
-                                    @click="deleteOverride(override)"
+                                    @click="deleteOverrideAction(override)"
                                 >
                                     <Trash2 class="h-3.5 w-3.5" />
                                 </Button>

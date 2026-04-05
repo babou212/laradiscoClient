@@ -1,6 +1,7 @@
 import { electronAPI } from '@electron-toolkit/preload';
 import { contextBridge } from 'electron';
 
+import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
 import { messagesApi } from './apis/messages';
 import { mlsApi } from './apis/mls';
@@ -23,6 +24,7 @@ const api = {
     updater: updaterApi,
     mls: mlsApi,
     messages: messagesApi,
+    attachments: attachmentsApi,
 };
 
 if (process.contextIsolated) {

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { MessageSquareText } from 'lucide-vue-next';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatMessageDate } from '@/lib/utils';
+import { useAvatarStore } from '@/stores/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { ThreadPreview } from '@/types/chat';
 
 interface Props {
@@ -11,16 +14,35 @@ defineProps<Props>();
 defineEmits<{
     openThread: [];
 }>();
+
+const avatarStore = useAvatarStore();
+const userNamesStore = useUserNamesStore();
 </script>
 
 <template>
     <button
-        class="border-primary/20 bg-primary/5 hover:bg-primary/10 mt-1.5 inline-flex h-9 w-28 items-center gap-2 rounded-lg border px-2.5 text-left transition-colors"
+        class="hover:bg-accent/40 mt-1 flex items-center gap-1.5 rounded py-1 text-left transition-colors"
         @click="$emit('openThread')"
     >
-        <MessageSquareText :size="14" class="text-primary shrink-0" />
-        <span class="text-primary shrink-0 text-xs font-medium whitespace-nowrap">
+        <Avatar v-if="thread.last_reply?.user" class="size-5 shrink-0">
+            <AvatarImage
+                v-if="avatarStore.getAvatarUrl(thread.last_reply.user.id, 'thumb')"
+                :src="avatarStore.getAvatarUrl(thread.last_reply.user.id, 'thumb')!"
+                :alt="thread.last_reply.user.username"
+            />
+            <AvatarFallback class="bg-primary text-primary-foreground text-[10px] font-semibold">
+                {{
+                    userNamesStore
+                        .getDisplayName(thread.last_reply.user.id, thread.last_reply.user.username)[0]
+                        .toUpperCase()
+                }}
+            </AvatarFallback>
+        </Avatar>
+        <span class="text-primary text-xs font-semibold hover:underline">
             {{ thread.message_count }} {{ thread.message_count === 1 ? 'reply' : 'replies' }}
+        </span>
+        <span v-if="thread.last_message_at" class="text-muted-foreground text-xs">
+            Last reply {{ formatMessageDate(thread.last_message_at) }}
         </span>
     </button>
 </template>

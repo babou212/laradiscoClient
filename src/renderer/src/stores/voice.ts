@@ -12,11 +12,13 @@ import {
     VideoPresets,
     createLocalAudioTrack,
 } from 'livekit-client';
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import api from '@/lib/api';
+import { useAvatarStore } from './avatar';
+import { getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
+import type { AvatarUrls } from '@/types/chat';
 
 export interface VoiceParticipant {
     id: string | number;
@@ -25,6 +27,7 @@ export interface VoiceParticipant {
     isSpeaking: boolean;
     isMuted: boolean;
     isScreenSharing: boolean;
+    avatarUrls: AvatarUrls | null;
 }
 
 export interface ScreenShareTrack {
@@ -167,11 +170,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function fetchVoiceParticipants(): Promise<void> {
         try {
-            const response = await api.get('/voice/participants');
-            const data: Record<
-                string,
-                Array<{ id: number; username: string; display_name: string; avatar_path: string | null }>
-            > = response.data ?? {};
+            const data = await getVoiceParticipants();
 
             for (const [channelIdStr, participants] of Object.entries(data)) {
                 const channelId = Number(channelIdStr);
@@ -182,26 +181,38 @@ export const useVoiceStore = defineStore('voice', () => {
                     isSpeaking: false,
                     isMuted: false,
                     isScreenSharing: false,
+                    avatarUrls: p.avatar_urls ?? null,
                 }));
                 channelParticipantsMap.value.set(channelId, mapped);
+
+                const avatarStore = useAvatarStore();
+                avatarStore.hydrateFromUsers(
+                    participants.map((p) => ({ id: String(p.id), avatar_urls: p.avatar_urls })),
+                );
             }
         } catch (error) {
             console.error('Failed to fetch voice participants:', error);
         }
     }
 
-    let subscribedChannelIds: number[] = [];
+    let subscribedChannelIds: (string | number)[] = [];
 
-    function subscribeToVoiceChannels(voiceChannelIds: number[]): void {
+    function subscribeToVoiceChannels(voiceChannelIds: (string | number)[]): void {
         unsubscribeFromVoiceChannels();
         const echo = getEcho();
 
-        for (const channelId of voiceChannelIds) {
+        for (const chId of voiceChannelIds) {
+            const channelId = Number(chId);
             echo.private(`voice.channel.${channelId}`)
                 .listen(
                     '.voice.joined',
                     (data: {
-                        user: { id: number; username: string; display_name: string; avatar_path: string | null };
+                        user: {
+                            id: number;
+                            username: string;
+                            display_name: string;
+                            avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
+                        };
                         channel_id: number;
                     }) => {
                         const participants = channelParticipantsMap.value.get(data.channel_id) ?? [];
@@ -215,6 +226,7 @@ export const useVoiceStore = defineStore('voice', () => {
                                     isSpeaking: false,
                                     isMuted: false,
                                     isScreenSharing: false,
+                                    avatarUrls: data.user.avatar_urls ?? null,
                                 },
                             ]);
                         }
@@ -245,6 +257,24 @@ export const useVoiceStore = defineStore('voice', () => {
         subscribedChannelIds = [];
     }
 
+    function findExistingAvatarUrls(identity: string | number): AvatarUrls | null {
+        if (currentChannel.value) {
+            const existing = channelParticipantsMap.value.get(currentChannel.value.id);
+            const match = existing?.find((p) => String(p.id) === String(identity));
+            if (match?.avatarUrls) return match.avatarUrls;
+        }
+        const numericId = Number(identity);
+        if (!isNaN(numericId)) {
+            const avatarStore = useAvatarStore();
+            const cached = avatarStore.getAvatarUrl(String(numericId), 'thumb');
+            if (cached) {
+                const full = avatarStore.cache.get(String(numericId));
+                if (full) return full;
+            }
+        }
+        return null;
+    }
+
     function participantFromRemote(p: RemoteParticipant): VoiceParticipant {
         return {
             id: p.identity,
@@ -253,6 +283,7 @@ export const useVoiceStore = defineStore('voice', () => {
             isSpeaking: p.isSpeaking,
             isMuted: !p.isMicrophoneEnabled,
             isScreenSharing: p.isScreenShareEnabled,
+            avatarUrls: findExistingAvatarUrls(p.identity),
         };
     }
 
@@ -268,6 +299,7 @@ export const useVoiceStore = defineStore('voice', () => {
             isSpeaking: local.isSpeaking,
             isMuted: isMicMuted.value,
             isScreenSharing: isScreenSharing.value,
+            avatarUrls: findExistingAvatarUrls(local.identity),
         });
 
         room.remoteParticipants.forEach((p) => {
@@ -378,8 +410,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 await leaveChannel();
             }
 
-            const { data } = await api.post(`/channels/${channelId}/voice/join`);
-            const { token, url, e2ee_key } = data;
+            const { token, url, e2ee_key } = await joinVoiceChannel(channelId);
 
             const keyProvider = new ExternalE2EEKeyProvider();
 
@@ -525,9 +556,6 @@ export const useVoiceStore = defineStore('voice', () => {
                     audioTrack: audioTrack ? { mediaStreamTrack: audioTrack } : null,
                 },
             ];
-            if (!activeScreenShareView.value) {
-                activeScreenShareView.value = localIdentity;
-            }
 
             refreshParticipants();
             console.log('[Voice] Screen share started');
@@ -582,7 +610,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         if (oldRoom) {
             if (currentChannel.value) {
-                api.delete(`/channels/${currentChannel.value.id}/voice/membership`).catch(() => {});
+                leaveVoiceMembership(currentChannel.value.id).catch(() => {});
             }
             oldRoom.disconnect();
         }
@@ -755,6 +783,26 @@ export const useVoiceStore = defineStore('voice', () => {
         window.api.ptt.removeAllListeners();
     }
 
+    async function $reset(): Promise<void> {
+        await leaveChannel();
+        cleanupPttListeners();
+        unsubscribeFromVoiceChannels();
+        channelParticipantsMap.value = new Map();
+        pttEnabled.value = false;
+        pttKey.value = null;
+        pttKeycode.value = null;
+        pttModifiers.value = { ctrl: false, shift: false, alt: false, meta: false };
+        pttSoundEnabled.value = true;
+        selectedMicDeviceId.value = 'default';
+        availableMics.value = [];
+        noiseSuppression.value = true;
+        echoCancellation.value = true;
+        autoGainControl.value = true;
+        screenShareQuality.value = 'high';
+        screenShareViewMode.value = 'pip';
+        screenShareAudioMuted.value = true;
+    }
+
     return {
         currentChannel,
         connectionQuality,
@@ -801,5 +849,10 @@ export const useVoiceStore = defineStore('voice', () => {
         startScreenShare,
         stopScreenShare,
         setScreenShareQuality,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useVoiceStore, import.meta.hot));
+}

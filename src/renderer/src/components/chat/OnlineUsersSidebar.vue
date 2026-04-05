@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronRight } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, shallowRef } from 'vue';
 import { useRouter } from 'vue-router';
 import UserProfilePanel from './UserProfilePanel.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
-import type { UserStatusType } from '@/types';
+import type { OnlineUser, UserStatusType } from '@/types';
 
 const presenceStore = usePresenceStore();
 const authStore = useAuthStore();
+const avatarStore = useAvatarStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
 
-const selectedUser = ref<any>(null);
-const showUserProfile = ref(false);
+const selectedUser = shallowRef<OnlineUser | null>(null);
+const showUserProfile = shallowRef(false);
 
 const currentUserId = computed(() => authStore.user?.id);
 
@@ -51,7 +54,7 @@ const getStatusColor = (status?: UserStatusType) => {
     }
 };
 
-const openUserProfile = (user: any) => {
+const openUserProfile = (user: OnlineUser) => {
     selectedUser.value = user;
     showUserProfile.value = true;
 };
@@ -61,7 +64,7 @@ const closeUserProfile = () => {
     selectedUser.value = null;
 };
 
-const startDm = async (userId: number) => {
+const startDm = async (userId: string) => {
     closeUserProfile();
     try {
         const groupId = await dmStore.startOrGetDm(userId);
@@ -77,7 +80,7 @@ const statusSections = computed(() => {
     const sections: Array<{
         key: string;
         label: string;
-        users: any[];
+        users: OnlineUser[];
         opacity?: string;
     }> = [];
 
@@ -138,11 +141,16 @@ const statusSections = computed(() => {
                         @click="openUserProfile(user)"
                     >
                         <div class="relative">
-                            <div
-                                class="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                            >
-                                {{ user.display_name?.[0]?.toUpperCase() || 'U' }}
-                            </div>
+                            <Avatar class="size-8 shrink-0">
+                                <AvatarImage
+                                    v-if="avatarStore.getAvatarUrl(user.id, 'thumb')"
+                                    :src="avatarStore.getAvatarUrl(user.id, 'thumb')!"
+                                    :alt="user.display_name"
+                                />
+                                <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
+                                    {{ user.display_name?.[0]?.toUpperCase() || 'U' }}
+                                </AvatarFallback>
+                            </Avatar>
                             <div
                                 class="border-sidebar absolute right-0 bottom-0 size-2.5 rounded-full border-2"
                                 :class="getStatusColor(user.status)"

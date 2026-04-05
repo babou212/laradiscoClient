@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { updatePresence } from '@/api/presence';
 import { usePresenceStore } from '@/stores/presence';
 import type { UserStatusType } from '@/types';
 
@@ -14,7 +14,7 @@ let started = false;
 const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'] as const;
 
 function setStatus(status: UserStatusType): void {
-    api.patch('/presence', { status }).catch(() => {});
+    updatePresence({ status }).catch(() => {});
 }
 
 function goIdle(): void {

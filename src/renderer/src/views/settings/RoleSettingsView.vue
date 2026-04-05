@@ -1,8 +1,11 @@
 <!-- RoleSettingsView - Server role management -->
 
 <script setup lang="ts">
+import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Pencil, Plus, Shield, Trash2, Users } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { extractValidationErrors, getApiErrorMessage } from '@/api/errors';
+import { createRole, updateRole, deleteRole } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,11 +20,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import api from '@/lib/api';
+import { SETTINGS_KEYS } from '@/queries/keys';
+import { rolesQuery } from '@/queries/settings/roles';
 
 type Permission = { value: string; label: string };
 type Role = {
-    id: number;
+    id: string;
     name: string;
     color: string;
     is_hoisted: boolean;
@@ -32,17 +36,40 @@ type Role = {
     users_count: number;
 };
 
-const roles = ref<Role[]>([]);
-const permissions = ref<Permission[]>([]);
-const isLoading = ref(true);
-const apiError = ref('');
+const queryCache = useQueryCache();
+const { data: rawData, isLoading, error: queryError } = useQuery(rolesQuery);
+
+const apiError = computed(() => {
+    if (queryError.value) return getApiErrorMessage(queryError.value);
+    return '';
+});
+
+const roles = computed<Role[]>(() => {
+    if (!rawData.value?.data) return [];
+    return rawData.value.data.map((res) => ({
+        id: res.id,
+        name: res.attributes.name,
+        color: res.attributes.color,
+        is_hoisted: res.attributes.is_hoisted ?? false,
+        position: res.attributes.position,
+        permissions: res.attributes.permissions ?? [],
+        is_mentionable: res.attributes.is_mentionable ?? true,
+        is_default: res.attributes.is_default ?? false,
+        users_count: res.attributes.users_count ?? 0,
+    }));
+});
+
+const permissions = computed<Permission[]>(() => {
+    const metaPerms = rawData.value?.meta?.permissions;
+    if (Array.isArray(metaPerms)) return metaPerms as unknown as Permission[];
+    return [];
+});
 
 const showCreateDialog = ref(false);
 const showEditDialog = ref(false);
 const showDeleteDialog = ref(false);
 const editingRole = ref<Role | null>(null);
 const deletingRole = ref<Role | null>(null);
-const processing = ref(false);
 
 const createForm = ref({
     name: '',
@@ -106,47 +133,20 @@ function getRolePermissions(role: Role): string[] {
     return role.permissions ?? [];
 }
 
-function extractValidationErrors(err: any): Record<string, string> {
-    const result: Record<string, string> = {};
-    if (err.response?.status === 422) {
-        const ve = err.response.data.errors ?? {};
-        for (const [key, val] of Object.entries(ve)) {
-            result[key] = Array.isArray(val) ? (val as string[])[0] : String(val);
-        }
-    }
-    return result;
-}
-
-function getApiErrorMessage(err: any): string {
-    if (err.response?.status === 403) {
-        return err.response.data?.message ?? 'You do not have permission to manage roles.';
-    }
-    if (err.response?.status === 422) {
-        return ''; // Validation errors are handled per-field
-    }
-    if (err.response?.data?.message) {
-        return err.response.data.message;
-    }
-    return 'An unexpected error occurred. Please try again.';
-}
-
-onMounted(async () => {
-    await loadRoles();
+const { mutateAsync: doCreate, isLoading: processing } = useMutation({
+    mutation: (data: typeof createForm.value) => createRole(data),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.roles() }),
 });
 
-async function loadRoles() {
-    isLoading.value = true;
-    apiError.value = '';
-    try {
-        const response = await api.get('/settings/roles');
-        roles.value = response.data.roles;
-        permissions.value = response.data.permissions;
-    } catch (err: any) {
-        apiError.value = getApiErrorMessage(err);
-    } finally {
-        isLoading.value = false;
-    }
-}
+const { mutateAsync: doUpdate } = useMutation({
+    mutation: (params: { id: string; data: typeof editForm.value }) => updateRole(params.id, params.data),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.roles() }),
+});
+
+const { mutateAsync: doDelete } = useMutation({
+    mutation: (id: string) => deleteRole(id),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.roles() }),
+});
 
 function openCreateDialog() {
     createForm.value = {
@@ -190,59 +190,45 @@ function togglePermission(form: { permissions: string[] }, permission: string) {
 }
 
 async function submitCreate() {
-    processing.value = true;
     createErrors.value = {};
-    apiError.value = '';
     try {
-        await api.post('/settings/roles', createForm.value);
+        await doCreate(createForm.value);
         showCreateDialog.value = false;
-        await loadRoles();
-    } catch (err: any) {
-        if (err.response?.status === 422) {
-            createErrors.value = extractValidationErrors(err);
+    } catch (err: unknown) {
+        const validation = extractValidationErrors(err);
+        if (Object.keys(validation).length > 0) {
+            createErrors.value = validation;
         } else {
             createErrors.value = { _general: getApiErrorMessage(err) };
         }
-    } finally {
-        processing.value = false;
     }
 }
 
 async function submitEdit() {
     if (!editingRole.value) return;
-    processing.value = true;
     editErrors.value = {};
-    apiError.value = '';
     try {
-        await api.put(`/settings/roles/${editingRole.value.id}`, editForm.value);
+        await doUpdate({ id: editingRole.value.id, data: editForm.value });
         showEditDialog.value = false;
         editingRole.value = null;
-        await loadRoles();
-    } catch (err: any) {
-        if (err.response?.status === 422) {
-            editErrors.value = extractValidationErrors(err);
+    } catch (err: unknown) {
+        const validation = extractValidationErrors(err);
+        if (Object.keys(validation).length > 0) {
+            editErrors.value = validation;
         } else {
             editErrors.value = { _general: getApiErrorMessage(err) };
         }
-    } finally {
-        processing.value = false;
     }
 }
 
 async function confirmDelete() {
     if (!deletingRole.value) return;
-    processing.value = true;
-    apiError.value = '';
     try {
-        await api.delete(`/settings/roles/${deletingRole.value.id}`);
+        await doDelete(deletingRole.value.id);
         showDeleteDialog.value = false;
         deletingRole.value = null;
-        await loadRoles();
-    } catch (err: any) {
+    } catch {
         showDeleteDialog.value = false;
-        apiError.value = getApiErrorMessage(err);
-    } finally {
-        processing.value = false;
     }
 }
 </script>

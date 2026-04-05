@@ -1,8 +1,11 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import api from '@/lib/api';
+import { useAvatarStore } from './avatar';
+import { useUserNamesStore } from './userNames';
+import { getMembers } from '@/api/members';
+import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import { getEcho } from '@/lib/echo';
-import type { OnlineUser, UserStatusType } from '@/types';
+import type { OnlineUser, PresenceUpdate, UserStatusType } from '@/types';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const SYNC_INTERVAL_MS = 120_000;
@@ -10,7 +13,7 @@ const SYNC_INTERVAL_MS = 120_000;
 export const usePresenceStore = defineStore('presence', () => {
     const onlineUsers = ref<OnlineUser[]>([]);
     const serverMembers = ref<OnlineUser[]>([]);
-    let channel: ReturnType<typeof getEcho>['private'] extends (ch: string) => infer R ? R : unknown = null as any;
+    let channel: ReturnType<ReturnType<typeof getEcho>['private']> | null = null;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let syncTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -43,8 +46,19 @@ export const usePresenceStore = defineStore('presence', () => {
 
     const fetchMembers = async () => {
         try {
-            const response = await api.get('/members');
-            serverMembers.value = response.data?.members ?? response.data ?? [];
+            const response = await getMembers();
+            const members: OnlineUser[] = response.data.map((r) => ({
+                id: r.id,
+                username: r.attributes.username,
+                display_name: r.attributes.display_name ?? r.attributes.username,
+                avatar_urls: r.attributes.avatar_urls ?? null,
+                custom_status: r.attributes.custom_status ?? null,
+            }));
+            serverMembers.value = members;
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(members);
+            const userNamesStore = useUserNamesStore();
+            userNamesStore.hydrateFromUsers(members);
         } catch (error) {
             console.error(error);
         }
@@ -52,10 +66,11 @@ export const usePresenceStore = defineStore('presence', () => {
 
     const fetchOnlineUsers = async () => {
         try {
-            const response = await api.get('/presence');
-            const users: OnlineUser[] = response.data ?? [];
+            const presenceData = await getPresence();
+            const users: OnlineUser[] = presenceData?.data ?? [];
             onlineUsers.value = users.map((u) => ({
                 ...u,
+                id: String(u.id),
                 status: u.status || 'online',
             }));
         } catch (error) {
@@ -63,16 +78,17 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
-    const sendHeartbeat = async () => {
+    const sendHeartbeatFn = async () => {
         try {
-            await api.post('/presence/heartbeat');
+            await sendHeartbeat();
         } catch (error) {
             console.error(error);
         }
     };
 
-    const applyPresenceUpdate = (data: any) => {
-        const idx = onlineUsers.value.findIndex((u) => u.id === data.user_id);
+    const applyPresenceUpdate = (data: PresenceUpdate) => {
+        const userId = String(data.user_id);
+        const idx = onlineUsers.value.findIndex((u) => u.id === userId);
 
         if (data.status === 'offline') {
             if (idx !== -1) {
@@ -83,10 +99,10 @@ export const usePresenceStore = defineStore('presence', () => {
             onlineUsers.value[idx].custom_status = data.custom_status;
         } else {
             onlineUsers.value.push({
-                id: data.user_id,
+                id: userId,
                 username: data.username,
                 display_name: data.display_name ?? data.username,
-                avatar_path: data.avatar_path ?? null,
+                avatar_urls: data.avatar_urls ?? null,
                 status: data.status,
                 custom_status: data.custom_status,
             });
@@ -100,14 +116,14 @@ export const usePresenceStore = defineStore('presence', () => {
 
         try {
             const echo = getEcho();
-            channel = echo.private('presence') as any;
-            (channel as any).listen('.user.presence.updated', applyPresenceUpdate);
+            channel = echo.private('presence');
+            channel.listen('.user.presence.updated', applyPresenceUpdate);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);
         }
 
         try {
-            await api.patch('/presence', { status: 'online' });
+            await updatePresence({ status: 'online' });
         } catch (error) {
             console.error(error);
         }
@@ -116,7 +132,7 @@ export const usePresenceStore = defineStore('presence', () => {
 
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (syncTimer) clearInterval(syncTimer);
-        heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+        heartbeatTimer = setInterval(sendHeartbeatFn, HEARTBEAT_INTERVAL_MS);
         syncTimer = setInterval(fetchOnlineUsers, SYNC_INTERVAL_MS);
     };
 
@@ -128,7 +144,7 @@ export const usePresenceStore = defineStore('presence', () => {
             } catch (error) {
                 console.error(error);
             }
-            channel = null as any;
+            channel = null;
         }
         if (heartbeatTimer) {
             clearInterval(heartbeatTimer);
@@ -142,23 +158,29 @@ export const usePresenceStore = defineStore('presence', () => {
 
     const goOffline = () => {
         try {
-            api.patch('/presence', { status: 'offline' }).catch(() => {});
+            updatePresence({ status: 'offline' }).catch(() => {});
         } catch (error) {
             console.error(error);
         }
     };
 
-    const getUserStatus = (userId: number): OnlineUser | undefined => {
+    const getUserStatus = (userId: string): OnlineUser | undefined => {
         return allMembers.value.find((u) => u.id === userId);
     };
 
-    const updateUserStatus = (userId: number, status: UserStatusType, customStatus: string | null = null) => {
+    const updateUserStatus = (userId: string, status: UserStatusType, customStatus: string | null = null) => {
         const user = onlineUsers.value.find((u) => u.id === userId);
         if (user) {
             user.status = status;
             user.custom_status = customStatus;
         }
     };
+
+    function $reset(): void {
+        disconnect();
+        onlineUsers.value = [];
+        serverMembers.value = [];
+    }
 
     return {
         onlineUsers,
@@ -171,5 +193,10 @@ export const usePresenceStore = defineStore('presence', () => {
         fetchOnlineUsers,
         getUserStatus,
         updateUserStatus,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(usePresenceStore, import.meta.hot));
+}

@@ -51,8 +51,8 @@ export function useEncryptedSearch() {
             hasMore.value = results.length > pageSize;
             searchResults.value = results.slice(0, pageSize);
             currentOffset.value = pageSize;
-        } catch (err: any) {
-            searchError.value = err?.message || 'Search failed. Please try again.';
+        } catch (err: unknown) {
+            searchError.value = err instanceof Error ? err.message : 'Search failed. Please try again.';
             searchResults.value = [];
         } finally {
             isSearching.value = false;
@@ -77,8 +77,8 @@ export function useEncryptedSearch() {
             hasMore.value = results.length > pageSize;
             searchResults.value = [...searchResults.value, ...results.slice(0, pageSize)];
             currentOffset.value += pageSize;
-        } catch (err: any) {
-            searchError.value = err?.message || 'Failed to load more results.';
+        } catch (err: unknown) {
+            searchError.value = err instanceof Error ? err.message : 'Failed to load more results.';
         } finally {
             isSearching.value = false;
         }

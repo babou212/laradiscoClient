@@ -2,12 +2,36 @@
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, TicketIcon } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
+
+const inviteSchema = z.object({
+    inviteToken: z.string().min(1, 'Invite code is required.'),
+});
+
+const registerSchema = z
+    .object({
+        name: z.string().min(1, 'Display name is required.'),
+        username: z
+            .string()
+            .min(1, 'Username is required.')
+            .regex(/^[a-z0-9_.-]+$/i, 'Username may only contain letters, numbers, underscores, dots, and hyphens.'),
+        email: z.string().min(1, 'Email is required.').email('Please enter a valid email address.'),
+        password: z.string().min(8, 'Password must be at least 8 characters.'),
+        passwordConfirmation: z.string().min(1, 'Please confirm your password.'),
+    })
+    .refine((d) => d.password === d.passwordConfirmation, {
+        message: 'Passwords do not match.',
+        path: ['passwordConfirmation'],
+    });
+
+type InviteFieldErrors = Partial<Record<keyof z.infer<typeof inviteSchema>, string>>;
+type RegisterFieldErrors = Partial<Record<keyof z.infer<typeof registerSchema>, string>>;
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -25,6 +49,8 @@ const showPassword = ref(false);
 
 const isValidating = ref(false);
 const error = ref<string | null>(null);
+const inviteFieldErrors = ref<InviteFieldErrors>({});
+const registerFieldErrors = ref<RegisterFieldErrors>({});
 
 const serverName = computed(() => serverStore.activeServer?.name ?? 'Server');
 const serverHost = computed(() => serverStore.activeServer?.host ?? '');
@@ -48,18 +74,32 @@ onMounted(() => {
 });
 
 async function handleValidateInvite(): Promise<void> {
-    if (!canSubmitInvite.value || !serverStore.activeServer) return;
-
-    isValidating.value = true;
+    inviteFieldErrors.value = {};
     error.value = null;
 
-    try {
-        const result = await window.api.auth.validateInvite(serverStore.activeServer.host, inviteToken.value.trim());
+    const result = inviteSchema.safeParse({ inviteToken: inviteToken.value.trim() });
+    if (!result.success) {
+        result.error.issues.forEach((e: z.ZodIssue) => {
+            const field = e.path[0] as keyof InviteFieldErrors;
+            if (!inviteFieldErrors.value[field]) inviteFieldErrors.value[field] = e.message;
+        });
+        return;
+    }
 
-        if (result.success) {
+    if (!serverStore.activeServer) return;
+
+    isValidating.value = true;
+
+    try {
+        const validateResult = await window.api.auth.validateInvite(
+            serverStore.activeServer.host,
+            result.data.inviteToken,
+        );
+
+        if (validateResult.success) {
             step.value = 'form';
         } else {
-            error.value = result.error ?? 'Invalid invite link';
+            error.value = validateResult.error ?? 'Invalid invite link';
         }
     } catch {
         error.value = 'Unable to reach the server. Please try again later.';
@@ -69,21 +109,35 @@ async function handleValidateInvite(): Promise<void> {
 }
 
 async function handleRegister(): Promise<void> {
-    if (!canSubmitForm.value) return;
-
+    registerFieldErrors.value = {};
     authStore.clearError();
     error.value = null;
 
-    const result = await authStore.register(
+    const result = registerSchema.safeParse({
+        name: name.value.trim(),
+        username: username.value.trim(),
+        email: email.value.trim(),
+        password: password.value,
+        passwordConfirmation: passwordConfirmation.value,
+    });
+    if (!result.success) {
+        result.error.issues.forEach((e: z.ZodIssue) => {
+            const field = e.path[0] as keyof RegisterFieldErrors;
+            if (!registerFieldErrors.value[field]) registerFieldErrors.value[field] = e.message;
+        });
+        return;
+    }
+
+    const registerResult = await authStore.register(
         inviteToken.value.trim(),
-        name.value.trim(),
-        username.value.trim(),
-        email.value.trim(),
-        password.value,
-        passwordConfirmation.value,
+        result.data.name,
+        result.data.username,
+        result.data.email,
+        result.data.password,
+        result.data.passwordConfirmation,
     );
 
-    if (result) {
+    if (registerResult) {
         router.push({ name: 'home' });
     } else {
         error.value = authStore.loginError;
@@ -93,6 +147,7 @@ async function handleRegister(): Promise<void> {
 function goBackToInvite(): void {
     step.value = 'invite';
     error.value = null;
+    registerFieldErrors.value = {};
 }
 
 function goToLogin(): void {
@@ -121,11 +176,15 @@ function goToLogin(): void {
                         placeholder="Paste your invite code"
                         autocomplete="off"
                         class="pl-9"
+                        :class="{ 'border-destructive': inviteFieldErrors.inviteToken }"
                         :disabled="isValidating"
                         autofocus
                     />
                 </div>
-                <p class="text-muted-foreground text-xs">Ask a server admin for an invite code.</p>
+                <p v-if="inviteFieldErrors.inviteToken" class="text-destructive text-xs">
+                    {{ inviteFieldErrors.inviteToken }}
+                </p>
+                <p v-else class="text-muted-foreground text-xs">Ask a server admin for an invite code.</p>
             </div>
 
             <div
@@ -158,8 +217,10 @@ function goToLogin(): void {
                     placeholder="Your Name"
                     autocomplete="name"
                     :disabled="authStore.isLoggingIn"
+                    :class="{ 'border-destructive': registerFieldErrors.name }"
                     autofocus
                 />
+                <p v-if="registerFieldErrors.name" class="text-destructive text-xs">{{ registerFieldErrors.name }}</p>
             </div>
 
             <div class="grid gap-2">
@@ -171,7 +232,11 @@ function goToLogin(): void {
                     placeholder="yourname"
                     autocomplete="username"
                     :disabled="authStore.isLoggingIn"
+                    :class="{ 'border-destructive': registerFieldErrors.username }"
                 />
+                <p v-if="registerFieldErrors.username" class="text-destructive text-xs">
+                    {{ registerFieldErrors.username }}
+                </p>
             </div>
 
             <div class="grid gap-2">
@@ -183,7 +248,9 @@ function goToLogin(): void {
                     placeholder="you@example.com"
                     autocomplete="email"
                     :disabled="authStore.isLoggingIn"
+                    :class="{ 'border-destructive': registerFieldErrors.email }"
                 />
+                <p v-if="registerFieldErrors.email" class="text-destructive text-xs">{{ registerFieldErrors.email }}</p>
             </div>
 
             <div class="grid gap-2">
@@ -197,6 +264,7 @@ function goToLogin(): void {
                         autocomplete="new-password"
                         :disabled="authStore.isLoggingIn"
                         class="pr-10"
+                        :class="{ 'border-destructive': registerFieldErrors.password }"
                     />
                     <button
                         type="button"
@@ -208,6 +276,9 @@ function goToLogin(): void {
                         <EyeIcon v-else class="size-4" />
                     </button>
                 </div>
+                <p v-if="registerFieldErrors.password" class="text-destructive text-xs">
+                    {{ registerFieldErrors.password }}
+                </p>
             </div>
 
             <div class="grid gap-2">
@@ -219,7 +290,11 @@ function goToLogin(): void {
                     placeholder="••••••••"
                     autocomplete="new-password"
                     :disabled="authStore.isLoggingIn"
+                    :class="{ 'border-destructive': registerFieldErrors.passwordConfirmation }"
                 />
+                <p v-if="registerFieldErrors.passwordConfirmation" class="text-destructive text-xs">
+                    {{ registerFieldErrors.passwordConfirmation }}
+                </p>
             </div>
 
             <div

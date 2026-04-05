@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export interface ReverbConfig {
@@ -83,6 +83,14 @@ export const useServerStore = defineStore('server', () => {
         connectionError.value = null;
     }
 
+    function $reset(): void {
+        activeServer.value = null;
+        servers.value = [];
+        isConnecting.value = false;
+        connectionError.value = null;
+        reverbConfig.value = null;
+    }
+
     return {
         activeServer,
         servers,
@@ -98,5 +106,10 @@ export const useServerStore = defineStore('server', () => {
         switchServer,
         removeServer,
         clearError,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useServerStore, import.meta.hot));
+}

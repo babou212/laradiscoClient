@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core';
 import { Pin, PinOff, X } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
+import { onMounted, useTemplateRef } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -17,23 +17,23 @@ defineProps<Props>();
 
 const emit = defineEmits<{
     close: [];
-    unpin: [messageId: number];
+    unpin: [messageId: string];
 }>();
 
-const panelRef = ref<HTMLElement | null>(null);
+const panelRef = useTemplateRef<HTMLElement>('panelRef');
 
-const onClickOutside = (event: MouseEvent) => {
+let ready = false;
+onMounted(() =>
+    requestAnimationFrame(() => {
+        ready = true;
+    }),
+);
+
+useEventListener(document, 'pointerdown', (event: PointerEvent) => {
+    if (!ready) return;
     if (panelRef.value && !panelRef.value.contains(event.target as Node)) {
         emit('close');
     }
-};
-
-onMounted(() => {
-    setTimeout(() => document.addEventListener('pointerdown', onClickOutside), 0);
-});
-
-onBeforeUnmount(() => {
-    document.removeEventListener('pointerdown', onClickOutside);
 });
 
 const displayContent = (message: MessageData): string => {
@@ -100,7 +100,6 @@ const renderedContent = (message: MessageData): string => {
                                 <span class="text-muted-foreground text-[10px]">
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>
-                                <EncryptionBadge :decrypt-error="message.decrypt_error" />
                             </div>
                             <div class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="renderedContent(message)" />
                         </div>

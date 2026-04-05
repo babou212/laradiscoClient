@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
-import api from '@/lib/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/notifications';
 import { getEcho } from '@/lib/echo';
 import router from '@/router';
 import { useE2eeStore } from '@/stores/e2ee';
@@ -78,9 +78,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const fetchNotifications = async () => {
         try {
-            const { data } = await api.get('/notifications');
-            notifications.value = data.notifications;
-            unreadCount.value = data.unread_count;
+            const response = await getNotifications();
+            notifications.value = response.data.map((r) => ({
+                id: r.id,
+                type: r.attributes.notification_type,
+                data: r.attributes.data as AppNotification['data'],
+                read_at: r.attributes.read_at,
+                created_at: r.attributes.created_at,
+            }));
+            unreadCount.value = response.meta?.unread_count ?? notifications.value.length;
 
             for (const notification of notifications.value) {
                 if (!notification.data.decrypted_content) {
@@ -215,9 +221,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const markAsRead = async (notificationId: string) => {
         try {
-            const { data } = await api.patch(`/notifications/${notificationId}`, { read: true });
+            const result = await markNotificationRead(notificationId);
             notifications.value = notifications.value.filter((n) => n.id !== notificationId);
-            unreadCount.value = data.unread_count;
+            unreadCount.value = result.meta.unread_count;
         } catch (err) {
             console.error('Failed to mark notification as read:', err);
         }
@@ -225,7 +231,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const markAllAsRead = async () => {
         try {
-            await api.patch('/notifications', { read: true });
+            await markAllNotificationsRead();
             notifications.value = [];
             unreadCount.value = 0;
         } catch (err) {
@@ -279,6 +285,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
         savePreferences(prefs);
     };
 
+    function $reset(): void {
+        disconnect();
+        notifications.value = [];
+        unreadCount.value = 0;
+        toasts.value = [];
+        isConnected.value = false;
+        preferences.value = loadPreferences();
+    }
+
     return {
         notifications,
         unreadCount,
@@ -293,5 +308,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
         markAsRead,
         markAllAsRead,
         dismissToast,
+        $reset,
     };
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useNotificationsStore, import.meta.hot));
+}
