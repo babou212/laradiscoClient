@@ -5,7 +5,6 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { MakerAppImage } from '@reforged/maker-appimage';
-import MakerPacman from './maker-pacman';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 
 const config: ForgeConfig = {
@@ -55,12 +54,6 @@ const config: ForgeConfig = {
             options: {
                 categories: ['Network'],
             },
-        }),
-        new MakerPacman({
-            pkgname: 'laradisco-client',
-            description: 'LaraDisco Desktop Client',
-            homepage: 'https://github.com/babou212/laradiscoClient',
-            categories: ['Network'],
         }),
     ],
     plugins: [
