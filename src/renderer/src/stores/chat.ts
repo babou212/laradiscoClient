@@ -144,9 +144,7 @@ export const useChatStore = defineStore('chat', () => {
             const avatarStore = useAvatarStore();
             avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
             avatarStore.hydrateFromUsers(
-                messages.value
-                    .filter((m) => m.thread?.last_reply?.user)
-                    .map((m) => m.thread!.last_reply!.user),
+                messages.value.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
             );
         } catch (error) {
             console.error('Failed to fetch messages:', error);

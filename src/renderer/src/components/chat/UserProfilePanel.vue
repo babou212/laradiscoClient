@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MessageSquare } from 'lucide-vue-next';
-import { computed, shallowRef, watch } from 'vue';
+import { computed, shallowRef, watch, type CSSProperties } from 'vue';
 import type { UserResource } from '@/api/types';
 import { getUserProfile } from '@/api/users';
 import { useAvatarStore } from '@/stores/avatar';
@@ -20,6 +20,7 @@ type Props = {
     user: OnlineUser | null;
     show: boolean;
     isCurrentUser?: boolean;
+    anchorPosition?: { x: number; y: number };
 };
 
 const props = defineProps<Props>();
@@ -110,6 +111,35 @@ const handleSendMessage = () => {
 const handleClose = () => {
     emit('close');
 };
+
+const PANEL_WIDTH = 320;
+const PANEL_HEIGHT_ESTIMATE = 420;
+const MARGIN = 12;
+
+const panelStyle = computed<CSSProperties | undefined>(() => {
+    if (!props.anchorPosition) return undefined;
+    const { x, y } = props.anchorPosition;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let left = x;
+    if (left + PANEL_WIDTH > vw - MARGIN) {
+        left = vw - PANEL_WIDTH - MARGIN;
+    }
+    left = Math.max(MARGIN, left);
+
+    let top = y + MARGIN;
+    if (top + PANEL_HEIGHT_ESTIMATE > vh - MARGIN) {
+        top = y - PANEL_HEIGHT_ESTIMATE - MARGIN;
+    }
+    top = Math.max(MARGIN, top);
+
+    return {
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+    };
+});
 </script>
 
 <template>
@@ -134,7 +164,9 @@ const handleClose = () => {
     >
         <div
             v-if="show && user"
-            class="border-border bg-popover fixed top-20 right-64 z-50 w-80 overflow-hidden rounded-lg border shadow-2xl"
+            class="border-border bg-popover z-50 w-80 overflow-hidden rounded-lg border shadow-2xl"
+            :class="!anchorPosition && 'fixed top-20 right-64'"
+            :style="panelStyle"
         >
             <div class="from-primary/30 via-primary/20 to-primary/10 relative h-16 bg-linear-to-br"></div>
 

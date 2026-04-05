@@ -21,7 +21,7 @@ const userNamesStore = useUserNamesStore();
 
 <template>
     <button
-        class="mt-1 flex items-center gap-1.5 rounded py-1 text-left transition-colors hover:bg-accent/40"
+        class="hover:bg-accent/40 mt-1 flex items-center gap-1.5 rounded py-1 text-left transition-colors"
         @click="$emit('openThread')"
     >
         <Avatar v-if="thread.last_reply?.user" class="size-5 shrink-0">

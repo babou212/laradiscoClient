@@ -26,10 +26,12 @@ interface Props {
     canAddReactions?: boolean;
     canSendMessages?: boolean;
     showThreadButton?: boolean;
+    isDm?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     showThreadButton: true,
+    isDm: false,
 });
 
 const emit = defineEmits<{
@@ -43,6 +45,7 @@ const emit = defineEmits<{
     toggleReaction: [emoji: string];
     toggleEmojiPicker: [];
     updateEditContent: [content: string];
+    showProfile: [rect: DOMRect];
 }>();
 
 const authStore = useAuthStore();
@@ -200,11 +203,21 @@ const renderedContentWithoutYoutube = computed(() => {
     if (!messageWithoutYoutubeUrl.value) return '';
     return renderMarkdownWithMentions(messageWithoutYoutubeUrl.value);
 });
+const emitShowProfile = (e: MouseEvent) => {
+    if (props.isDm) return;
+    const el = e.currentTarget as HTMLElement;
+    emit('showProfile', el.getBoundingClientRect());
+};
 </script>
 
 <template>
     <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
-        <Avatar v-if="message.user" class="size-10 shrink-0">
+        <Avatar
+            v-if="message.user"
+            class="size-10 shrink-0"
+            :class="!isDm && 'cursor-pointer'"
+            @click="emitShowProfile"
+        >
             <AvatarImage
                 v-if="avatarStore.getAvatarUrl(message.user.id, 'small')"
                 :src="avatarStore.getAvatarUrl(message.user.id, 'small')!"
@@ -217,7 +230,11 @@ const renderedContentWithoutYoutube = computed(() => {
 
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
-                <span class="text-sm font-semibold">
+                <span
+                    class="text-sm font-semibold"
+                    :class="!isDm && 'cursor-pointer hover:underline'"
+                    @click="emitShowProfile"
+                >
                     {{
                         message.user ? userNamesStore.getDisplayName(message.user.id, message.user.username) : 'Unknown'
                     }}

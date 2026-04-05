@@ -30,7 +30,8 @@ export async function getMessages(
     const r = await api.get(`/channels/${channelId}/messages`, {
         params: {
             sort: 'created_at',
-            include: 'user,reactions,replyTo,replyTo.user,threadStarted,threadStarted.latestReply,threadStarted.latestReply.user,encryptedAttachments',
+            include:
+                'user,reactions,replyTo,replyTo.user,threadStarted,threadStarted.latestReply,threadStarted.latestReply.user,encryptedAttachments',
             ...params,
         },
     });

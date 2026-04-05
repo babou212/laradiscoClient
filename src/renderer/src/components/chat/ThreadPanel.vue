@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, reactive, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import { coerceBroadcastMessage } from '@/api/normalizers';
 import { sendThreadTyping } from '@/api/typing';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
 import { useScrollManager } from '@/composables/useScrollManager';
@@ -391,10 +400,25 @@ const saveEdit = async (message: MessageData) => {
     }
 };
 
-const deleteMessage = async (message: MessageData) => {
-    if (!threadStore.activeThread) return;
-    await threadStore.deleteMessage(props.channelId, threadStore.activeThread.id, message.id);
-    e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
+const showDeleteDialog = ref(false);
+const pendingDeleteMessage = shallowRef<MessageData | null>(null);
+
+const deleteMessage = (message: MessageData) => {
+    pendingDeleteMessage.value = message;
+    showDeleteDialog.value = true;
+};
+
+const confirmDeleteMessage = async () => {
+    const message = pendingDeleteMessage.value;
+    if (!message || !threadStore.activeThread) return;
+
+    try {
+        await threadStore.deleteMessage(props.channelId, threadStore.activeThread.id, message.id);
+        e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
+    } finally {
+        showDeleteDialog.value = false;
+        pendingDeleteMessage.value = null;
+    }
 };
 
 const toggleReaction = async (message: MessageData, emoji: string) => {
@@ -559,5 +583,20 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             @typing="emitTyping"
             @cancel-reply="() => {}"
         />
+
+        <Dialog v-model:open="showDeleteDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Delete Message</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete this message? This cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
+                    <Button variant="destructive" @click="confirmDeleteMessage">Delete</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>

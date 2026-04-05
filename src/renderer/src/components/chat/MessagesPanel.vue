@@ -2,11 +2,13 @@
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef } from 'vue';
+import { useRouter } from 'vue-router';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
+import UserProfilePanel from './UserProfilePanel.vue';
 import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
 import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
 import {
@@ -17,6 +19,15 @@ import {
 import { normalizeMessage } from '@/api/normalizers';
 import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
 import NotificationBell from '@/components/NotificationBell.vue';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useE2EE } from '@/composables/useE2EE';
@@ -28,9 +39,12 @@ import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
 import { useAuthStore } from '@/stores/auth';
+import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
+import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
-import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData } from '@/types/chat';
+import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData, MessageUser } from '@/types/chat';
+import type { OnlineUser } from '@/types/user';
 import { extractMentionMetadata } from '@/utils/mentions';
 
 type ChannelData = {
@@ -63,6 +77,9 @@ const props = withDefaults(defineProps<Props>(), {
 const authStore = useAuthStore();
 const e2eeStore = useE2eeStore();
 const e2ee = useE2EE();
+const presenceStore = usePresenceStore();
+const dmStore = useDirectMessagesStore();
+const router = useRouter();
 const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
 
@@ -79,6 +96,43 @@ const editingMessageId = shallowRef<string | null>(null);
 const editContent = shallowRef('');
 const emojiPickerMessageId = shallowRef<string | null>(null);
 const replyingToMessage = shallowRef<MessageData | null>(null);
+
+const profileUser = shallowRef<OnlineUser | null>(null);
+const showUserProfile = shallowRef(false);
+const profileAnchor = shallowRef<{ x: number; y: number } | undefined>(undefined);
+
+const openUserProfile = (messageUser: MessageUser, rect: DOMRect) => {
+    const found = presenceStore.getUserStatus(messageUser.id);
+    profileUser.value = found ?? {
+        id: messageUser.id,
+        username: messageUser.username,
+        display_name: messageUser.username,
+        avatar_urls: messageUser.avatar_urls,
+        custom_status: null,
+        status: 'offline',
+    };
+    profileAnchor.value = { x: rect.left, y: rect.bottom };
+    showUserProfile.value = true;
+};
+
+const closeUserProfile = () => {
+    showUserProfile.value = false;
+    profileUser.value = null;
+};
+
+const startDmFromProfile = async (userId: string) => {
+    closeUserProfile();
+    try {
+        const groupId = await dmStore.startOrGetDm(userId);
+        if (groupId) {
+            router.push({ name: 'direct-messages', params: { threadId: groupId } });
+        }
+    } catch (error) {
+        if (import.meta.env.DEV) {
+            console.error('Failed to start DM:', error);
+        }
+    }
+};
 
 const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
@@ -526,8 +580,17 @@ const saveEdit = async (message: MessageData) => {
     }
 };
 
-const deleteMessage = async (message: MessageData) => {
-    if (!props.channel?.id) return;
+const showDeleteDialog = ref(false);
+const pendingDeleteMessage = shallowRef<MessageData | null>(null);
+
+const deleteMessage = (message: MessageData) => {
+    pendingDeleteMessage.value = message;
+    showDeleteDialog.value = true;
+};
+
+const confirmDeleteMessage = async () => {
+    const message = pendingDeleteMessage.value;
+    if (!message || !props.channel?.id) return;
 
     try {
         if (props.isDm) {
@@ -539,6 +602,9 @@ const deleteMessage = async (message: MessageData) => {
         e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
     } catch (error) {
         console.error('Failed to delete message:', error);
+    } finally {
+        showDeleteDialog.value = false;
+        pendingDeleteMessage.value = null;
     }
 };
 
@@ -660,6 +726,8 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                         :can-add-reactions="channelPermissions?.canAddReactions ?? true"
                         :can-send-messages="channelPermissions?.canSendMessages ?? true"
                         :show-thread-button="!isDm"
+                        :is-dm="isDm"
+                        @show-profile="(rect: DOMRect) => openUserProfile(message.user, rect)"
                         @start-edit="startEdit(message)"
                         @cancel-edit="cancelEdit"
                         @save-edit="saveEdit(message)"
@@ -712,5 +780,29 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 @navigate-to-message="(id) => {}"
             />
         </div>
+
+        <UserProfilePanel
+            :user="profileUser"
+            :show="showUserProfile"
+            :is-current-user="profileUser?.id === currentUser?.id"
+            :anchor-position="profileAnchor"
+            @close="closeUserProfile"
+            @send-message="startDmFromProfile"
+        />
+
+        <Dialog v-model:open="showDeleteDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Delete Message</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete this message? This cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
+                    <Button variant="destructive" @click="confirmDeleteMessage">Delete</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
