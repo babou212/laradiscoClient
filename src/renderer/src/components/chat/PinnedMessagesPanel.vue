@@ -2,7 +2,6 @@
 import { useEventListener } from '@vueuse/core';
 import { Pin, PinOff, X } from 'lucide-vue-next';
 import { onMounted, useTemplateRef } from 'vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -101,7 +100,6 @@ const renderedContent = (message: MessageData): string => {
                                 <span class="text-muted-foreground text-[10px]">
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>
-                                <EncryptionBadge :decrypt-error="message.decrypt_error" />
                             </div>
                             <div class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="renderedContent(message)" />
                         </div>

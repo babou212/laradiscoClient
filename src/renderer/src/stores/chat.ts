@@ -143,6 +143,11 @@ export const useChatStore = defineStore('chat', () => {
             nextCursor.value = extractCursor(response.links?.next);
             const avatarStore = useAvatarStore();
             avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
+            avatarStore.hydrateFromUsers(
+                messages.value
+                    .filter((m) => m.thread?.last_reply?.user)
+                    .map((m) => m.thread!.last_reply!.user),
+            );
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
@@ -160,6 +165,9 @@ export const useChatStore = defineStore('chat', () => {
             prevCursor.value = extractCursor(response.links?.prev);
             const avatarStore = useAvatarStore();
             avatarStore.hydrateFromUsers(older.map((m) => m.user));
+            avatarStore.hydrateFromUsers(
+                older.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
+            );
         } catch (error) {
             console.error('Failed to load older messages:', error);
         } finally {

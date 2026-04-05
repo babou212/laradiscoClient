@@ -7,7 +7,6 @@ import MessageActions from './MessageActions.vue';
 import MessageReplyPreview from './MessageReplyPreview.vue';
 import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
 import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
-import EncryptionBadge from '@/components/e2ee/EncryptionBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
@@ -226,7 +225,6 @@ const renderedContentWithoutYoutube = computed(() => {
                 <span class="text-muted-foreground text-xs">
                     {{ formatMessageDate(message.created_at) }}
                 </span>
-                <EncryptionBadge :decrypt-error="message.decrypt_error" />
                 <span v-if="message.is_pinned" class="text-primary/70 inline-flex items-center gap-0.5 text-xs">
                     <Pin :size="12" />
                     pinned

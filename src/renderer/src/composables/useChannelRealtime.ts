@@ -4,6 +4,7 @@ import { coerceBroadcastMessage } from '@/api/normalizers';
 import { useE2EE } from '@/composables/useE2EE';
 import { getEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
+import { useAvatarStore } from '@/stores/avatar';
 import { useE2eeStore } from '@/stores/e2ee';
 import { useThreadStore } from '@/stores/thread';
 import type { AvatarUrls, MessageData, MessageReaction, ThreadPreview } from '@/types/chat';
@@ -290,6 +291,13 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                                     id: String(data.last_reply.user.id),
                                 },
                             };
+                            if (data.last_reply.user.avatar_urls) {
+                                const avatarStore = useAvatarStore();
+                                avatarStore.setAvatar(
+                                    String(data.last_reply.user.id),
+                                    data.last_reply.user.avatar_urls,
+                                );
+                            }
                         }
                         msg.thread = threadPreview;
                     }
