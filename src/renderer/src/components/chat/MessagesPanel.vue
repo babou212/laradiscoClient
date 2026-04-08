@@ -209,12 +209,14 @@ const handleClickOutside = (e: MouseEvent) => {
 useEventListener(document, 'click', handleClickOutside);
 
 const handleUserContextAction = (e: Event) => {
-    const detail = (e as CustomEvent<{
-        action: string;
-        userId: string;
-        username: string;
-        rect?: { left: number; top: number; right: number; bottom: number };
-    }>).detail;
+    const detail = (
+        e as CustomEvent<{
+            action: string;
+            userId: string;
+            username: string;
+            rect?: { left: number; top: number; right: number; bottom: number };
+        }>
+    ).detail;
     if (!detail) return;
     if (detail.action === 'view-profile') {
         const messageUser: MessageUser = {

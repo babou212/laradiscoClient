@@ -475,12 +475,8 @@ function usernameDm() {
         </ContextMenuTrigger>
         <ContextMenuContent v-if="showMenu" class="w-56">
             <template v-if="messageCtx">
-                <ContextMenuItem @select="copyMessageText">
-                    <Copy /> Copy text
-                </ContextMenuItem>
-                <ContextMenuItem @select="copyMessageLink">
-                    <Link2 /> Copy message link
-                </ContextMenuItem>
+                <ContextMenuItem @select="copyMessageText"> <Copy /> Copy text </ContextMenuItem>
+                <ContextMenuItem @select="copyMessageLink"> <Link2 /> Copy message link </ContextMenuItem>
 
                 <template v-if="messageCtx.canReact || messageCtx.canReply || messageCtx.canThread">
                     <ContextMenuSeparator />
@@ -544,52 +540,30 @@ function usernameDm() {
                     </ContextMenuSubContent>
                 </ContextMenuSub>
                 <ContextMenuSeparator />
-                <ContextMenuItem @select="inputSelectAll">
-                    <SquareDashedMousePointer /> Select all
-                </ContextMenuItem>
+                <ContextMenuItem @select="inputSelectAll"> <SquareDashedMousePointer /> Select all </ContextMenuItem>
             </template>
 
             <template v-else-if="usernameCtx">
                 <ContextMenuLabel>@{{ usernameCtx.username }}</ContextMenuLabel>
-                <ContextMenuItem @select="usernameMention">
-                    <AtSign /> Mention
-                </ContextMenuItem>
-                <ContextMenuItem @select="usernameProfile">
-                    <UserRound /> View profile
-                </ContextMenuItem>
-                <ContextMenuItem @select="usernameDm">
-                    <MessageSquare /> Send message
-                </ContextMenuItem>
+                <ContextMenuItem @select="usernameMention"> <AtSign /> Mention </ContextMenuItem>
+                <ContextMenuItem @select="usernameProfile"> <UserRound /> View profile </ContextMenuItem>
+                <ContextMenuItem @select="usernameDm"> <MessageSquare /> Send message </ContextMenuItem>
             </template>
 
             <template v-else-if="imageCtx">
-                <ContextMenuItem @select="imageCopy">
-                    <ImageIcon /> Copy image
-                </ContextMenuItem>
-                <ContextMenuItem @select="imageCopyUrl">
-                    <Link2 /> Copy image address
-                </ContextMenuItem>
-                <ContextMenuItem @select="imageSaveAs">
-                    <Download /> Save image as…
-                </ContextMenuItem>
+                <ContextMenuItem @select="imageCopy"> <ImageIcon /> Copy image </ContextMenuItem>
+                <ContextMenuItem @select="imageCopyUrl"> <Link2 /> Copy image address </ContextMenuItem>
+                <ContextMenuItem @select="imageSaveAs"> <Download /> Save image as… </ContextMenuItem>
             </template>
 
             <template v-else-if="linkCtx">
-                <ContextMenuItem @select="linkOpen">
-                    <ExternalLink /> Open link
-                </ContextMenuItem>
-                <ContextMenuItem @select="linkCopy">
-                    <Link2 /> Copy link
-                </ContextMenuItem>
+                <ContextMenuItem @select="linkOpen"> <ExternalLink /> Open link </ContextMenuItem>
+                <ContextMenuItem @select="linkCopy"> <Link2 /> Copy link </ContextMenuItem>
             </template>
 
             <template v-else-if="genericCtx?.hasSelection">
-                <ContextMenuItem @select="genericCopy">
-                    <Copy /> Copy
-                </ContextMenuItem>
-                <ContextMenuItem @select="genericSelectAll">
-                    <SquareDashedMousePointer /> Select all
-                </ContextMenuItem>
+                <ContextMenuItem @select="genericCopy"> <Copy /> Copy </ContextMenuItem>
+                <ContextMenuItem @select="genericSelectAll"> <SquareDashedMousePointer /> Select all </ContextMenuItem>
             </template>
         </ContextMenuContent>
     </ContextMenu>
