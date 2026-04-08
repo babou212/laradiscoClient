@@ -81,9 +81,7 @@ onUnmounted(() => {
             class="border-border bg-popover pointer-events-auto fixed right-4 bottom-4 z-[100] w-80 overflow-hidden rounded-lg border shadow-lg"
         >
             <div class="flex items-start gap-3 p-3">
-                <div
-                    class="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full"
-                >
+                <div class="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
                     <component
                         :is="state === 'error' ? AlertTriangle : state === 'ready' ? RefreshCw : Download"
                         :size="16"
@@ -93,7 +91,9 @@ onUnmounted(() => {
                 <div class="min-w-0 flex-1">
                     <template v-if="state === 'available'">
                         <div class="text-sm font-semibold">Update available</div>
-                        <div class="text-muted-foreground mt-0.5 text-xs">Version {{ version }} is ready to download.</div>
+                        <div class="text-muted-foreground mt-0.5 text-xs">
+                            Version {{ version }} is ready to download.
+                        </div>
                         <div class="mt-2 flex gap-2">
                             <button
                                 class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1 text-xs font-medium transition-colors"
@@ -112,7 +112,9 @@ onUnmounted(() => {
 
                     <template v-else-if="state === 'downloading'">
                         <div class="text-sm font-semibold">Downloading update</div>
-                        <div class="text-muted-foreground mt-0.5 text-xs">Version {{ version }} — {{ formatPercent(progressPercent) }}</div>
+                        <div class="text-muted-foreground mt-0.5 text-xs">
+                            Version {{ version }} — {{ formatPercent(progressPercent) }}
+                        </div>
                         <div class="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
                             <div
                                 class="bg-primary h-full transition-all duration-200 ease-out"
@@ -123,7 +125,9 @@ onUnmounted(() => {
 
                     <template v-else-if="state === 'ready'">
                         <div class="text-sm font-semibold">Update ready</div>
-                        <div class="text-muted-foreground mt-0.5 text-xs">Restart LaraDisco to install version {{ version }}.</div>
+                        <div class="text-muted-foreground mt-0.5 text-xs">
+                            Restart LaraDisco to install version {{ version }}.
+                        </div>
                         <div class="mt-2 flex gap-2">
                             <button
                                 class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1 text-xs font-medium transition-colors"

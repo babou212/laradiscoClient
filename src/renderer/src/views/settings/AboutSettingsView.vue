@@ -69,17 +69,11 @@ async function checkForUpdates(): Promise<void> {
                 </Button>
 
                 <div v-if="checkMessage" class="text-sm">
-                    <div
-                        v-if="checkState === 'up-to-date'"
-                        class="text-muted-foreground flex items-center gap-2"
-                    >
+                    <div v-if="checkState === 'up-to-date'" class="text-muted-foreground flex items-center gap-2">
                         <CheckCircle2 class="h-4 w-4 text-green-500" />
                         {{ checkMessage }}
                     </div>
-                    <div
-                        v-else-if="checkState === 'available'"
-                        class="text-foreground"
-                    >
+                    <div v-else-if="checkState === 'available'" class="text-foreground">
                         {{ checkMessage }}
                     </div>
                     <div v-else-if="checkState === 'error'" class="text-destructive">
