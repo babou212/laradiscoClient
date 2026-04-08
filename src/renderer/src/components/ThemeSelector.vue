@@ -14,13 +14,6 @@ type ThemeOption = {
 
 const lightThemes: ThemeOption[] = [
     { value: 'default', label: 'Default', color: 'bg-neutral-500', description: 'Clean neutral grays' },
-    { value: 'nord', label: 'Nord', color: 'bg-[hsl(213,32%,52%)]', description: 'Cool arctic blues' },
-    { value: 'rose', label: 'Rose', color: 'bg-[hsl(347,77%,50%)]', description: 'Warm elegant pinks' },
-    { value: 'ocean', label: 'Ocean', color: 'bg-[hsl(199,89%,42%)]', description: 'Deep sea blues' },
-    { value: 'forest', label: 'Forest', color: 'bg-[hsl(142,50%,36%)]', description: 'Earthy greens' },
-    { value: 'sunset', label: 'Sunset', color: 'bg-[hsl(25,95%,50%)]', description: 'Warm golden tones' },
-    { value: 'lavender', label: 'Lavender', color: 'bg-[hsl(271,60%,58%)]', description: 'Soft purple pastels' },
-    { value: 'solarized-light', label: 'Solarized', color: 'bg-[hsl(18,89%,44%)]', description: 'Classic warm ivory' },
 ];
 
 const darkThemes: ThemeOption[] = [

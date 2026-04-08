@@ -16,8 +16,17 @@ const DARK_THEMES: ReadonlySet<Theme> = new Set([
     'crimson',
 ]);
 
+const VALID_THEMES: ReadonlySet<Theme> = new Set<Theme>(['default', ...DARK_THEMES]);
+
 export function isDarkTheme(theme: Theme): boolean {
     return DARK_THEMES.has(theme);
+}
+
+function normalizeTheme(value: string | null | undefined): Theme {
+    if (value && VALID_THEMES.has(value as Theme)) {
+        return value as Theme;
+    }
+    return 'default-dark';
 }
 
 export type UseAppearanceReturn = {
@@ -44,20 +53,27 @@ export async function initializeTheme(): Promise<void> {
         return;
     }
 
-    const savedTheme = (await window.api.settings.get('theme')) as Theme | null;
-    applyTheme(savedTheme || 'default-dark');
+    const savedTheme = (await window.api.settings.get('theme')) as string | null;
+    const resolved = normalizeTheme(savedTheme);
+    if (savedTheme && resolved !== savedTheme) {
+        window.api.settings.set('theme', resolved);
+    }
+    applyTheme(resolved);
 }
 
 const theme = ref<Theme>('default-dark');
 
 export function useAppearance(): UseAppearanceReturn {
     onMounted(async () => {
-        const savedTheme = (await window.api.settings.get('theme')) as Theme | null;
+        const savedTheme = (await window.api.settings.get('theme')) as string | null;
+        const resolved = normalizeTheme(savedTheme);
 
-        if (savedTheme) {
-            theme.value = savedTheme;
-            applyTheme(savedTheme);
+        if (savedTheme && resolved !== savedTheme) {
+            window.api.settings.set('theme', resolved);
         }
+
+        theme.value = resolved;
+        applyTheme(resolved);
     });
 
     function updateThemeLocally(value: Theme) {

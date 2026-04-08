@@ -1,13 +1,6 @@
 export type Theme =
     | 'default'
     | 'default-dark'
-    | 'nord'
-    | 'rose'
-    | 'ocean'
-    | 'forest'
-    | 'sunset'
-    | 'lavender'
-    | 'solarized-light'
     | 'dracula'
     | 'nord-dark'
     | 'midnight'
