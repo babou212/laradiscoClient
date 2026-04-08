@@ -3,6 +3,7 @@ import { contextBridge } from 'electron';
 
 import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
+import { clipboardApi } from './apis/clipboard';
 import { messagesApi } from './apis/messages';
 import { mlsApi } from './apis/mls';
 import { notificationsApi } from './apis/notifications';
@@ -25,6 +26,7 @@ const api = {
     mls: mlsApi,
     messages: messagesApi,
     attachments: attachmentsApi,
+    clipboard: clipboardApi,
 };
 
 if (process.contextIsolated) {

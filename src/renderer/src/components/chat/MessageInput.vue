@@ -456,6 +456,7 @@ useEventListener(document, 'click', handleClickOutside);
                         <textarea
                             ref="textareaRef"
                             v-model="messageInput"
+                            data-message-input
                             rows="1"
                             class="placeholder:text-muted-foreground w-full resize-none bg-transparent py-1.5 text-sm outline-none"
                             :class="{ 'cursor-not-allowed opacity-50': props.disabled }"

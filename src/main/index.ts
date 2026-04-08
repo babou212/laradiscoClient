@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, desktopCapturer, ipcMain, protocol, session, shell } from 'electron';
+import { app, BrowserWindow, clipboard, desktopCapturer, ipcMain, protocol, session, shell } from 'electron';
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
@@ -44,6 +44,11 @@ function registerWindowIpcHandlers(): void {
     });
     ipcMain.on('window:close', () => mainWindow?.close());
     ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+}
+
+function registerClipboardIpcHandlers(): void {
+    ipcMain.handle('clipboard:readText', () => clipboard.readText());
+    ipcMain.on('clipboard:writeText', (_event, text: string) => clipboard.writeText(text));
 }
 
 function createWindow(): void {
@@ -114,6 +119,7 @@ app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
     registerWindowIpcHandlers();
+    registerClipboardIpcHandlers();
     initMls();
     initPushToTalk();
     initAutoUpdater();

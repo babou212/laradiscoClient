@@ -2,6 +2,7 @@
 import { useClipboard, useEventListener } from '@vueuse/core';
 import { Pin } from 'lucide-vue-next';
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import FileAttachment from './FileAttachment.vue';
 import MessageActions from './MessageActions.vue';
 import MessageReplyPreview from './MessageReplyPreview.vue';
@@ -52,6 +53,7 @@ const authStore = useAuthStore();
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
 const currentUser = computed(() => authStore.user);
+const route = useRoute();
 
 const isOwnMessage = computed(() => props.message.user.id === currentUser.value?.id);
 const canEdit = computed(() => isOwnMessage.value);
@@ -137,6 +139,45 @@ const handleCodeCopy = (e: MouseEvent) => {
 
 useEventListener(messageRef, 'click', handleCodeCopy);
 
+const messageLink = computed(() => {
+    const origin = window.location.origin;
+    const messageId = props.message.id;
+    if (route.name === 'direct-messages' && route.params.threadId) {
+        return `${origin}/#/direct-messages/${route.params.threadId}?message=${messageId}`;
+    }
+    if (route.name === 'chat' && route.params.channelId) {
+        return `${origin}/#/channels/${route.params.channelId}?message=${messageId}`;
+    }
+    return `${origin}/#${route.fullPath}${route.fullPath.includes('?') ? '&' : '?'}message=${messageId}`;
+});
+
+const handleChatAction = (e: Event) => {
+    const detail = (e as CustomEvent<{ action: string }>).detail;
+    if (!detail) return;
+    switch (detail.action) {
+        case 'react':
+            if (canReact.value) emit('toggleEmojiPicker');
+            break;
+        case 'reply':
+            if (canReply.value) emit('reply');
+            break;
+        case 'thread':
+            if (canThread.value) emit('openThread');
+            break;
+        case 'pin':
+            if (canPin.value) emit('togglePin');
+            break;
+        case 'edit':
+            if (canEdit.value) emit('startEdit');
+            break;
+        case 'delete':
+            if (canDelete.value) emit('delete');
+            break;
+    }
+};
+
+useEventListener(messageRef, 'chat-action', handleChatAction);
+
 const handleEditKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -211,9 +252,26 @@ const emitShowProfile = (e: MouseEvent) => {
 </script>
 
 <template>
-    <div ref="messageRef" class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2">
+    <div
+        ref="messageRef"
+        data-context-message
+        :data-message-id="message.id"
+        :data-message-content="displayContent"
+        :data-message-link="messageLink"
+        :data-can-react="canReact ? 'true' : 'false'"
+        :data-can-reply="canReply ? 'true' : 'false'"
+        :data-can-thread="canThread ? 'true' : 'false'"
+        :data-can-pin="canPin ? 'true' : 'false'"
+        :data-can-edit="canEdit ? 'true' : 'false'"
+        :data-can-delete="canDelete ? 'true' : 'false'"
+        :data-is-pinned="message.is_pinned ? 'true' : 'false'"
+        class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2"
+    >
         <Avatar
             v-if="message.user"
+            :data-context-username="!isDm ? '' : undefined"
+            :data-user-id="!isDm ? message.user.id : undefined"
+            :data-username="!isDm ? message.user.username : undefined"
             class="size-10 shrink-0"
             :class="!isDm && 'cursor-pointer'"
             @click="emitShowProfile"
@@ -231,6 +289,9 @@ const emitShowProfile = (e: MouseEvent) => {
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span
+                    :data-context-username="!isDm ? '' : undefined"
+                    :data-user-id="!isDm ? message.user.id : undefined"
+                    :data-username="!isDm ? message.user.username : undefined"
                     class="text-sm font-semibold"
                     :class="!isDm && 'cursor-pointer hover:underline'"
                     @click="emitShowProfile"

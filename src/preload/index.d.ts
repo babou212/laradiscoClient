@@ -1,6 +1,7 @@
 import type { ElectronAPI } from '@electron-toolkit/preload';
 
 export type { AttachmentsApi } from './types/attachments';
+export type { ClipboardApi } from './types/clipboard';
 export type { ServerConnection, ServerApi } from './types/server';
 export type { AuthPermissions, AuthUser, AuthSession, AuthApi } from './types/auth';
 export type { PttCapturedKey, PttApi } from './types/ptt';
@@ -14,6 +15,7 @@ export type { SearchResult, MessagesApi } from './types/messages';
 
 import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
+import type { ClipboardApi } from './types/clipboard';
 import type { MessagesApi } from './types/messages';
 import type { MlsApi } from './types/mls';
 import type { NotificationsApi } from './types/notifications';
@@ -36,6 +38,7 @@ interface AppApi {
     mls: MlsApi;
     messages: MessagesApi;
     attachments: AttachmentsApi;
+    clipboard: ClipboardApi;
 }
 
 declare global {

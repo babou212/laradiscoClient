@@ -208,6 +208,33 @@ const handleClickOutside = (e: MouseEvent) => {
 
 useEventListener(document, 'click', handleClickOutside);
 
+const handleUserContextAction = (e: Event) => {
+    const detail = (e as CustomEvent<{
+        action: string;
+        userId: string;
+        username: string;
+        rect?: { left: number; top: number; right: number; bottom: number };
+    }>).detail;
+    if (!detail) return;
+    if (detail.action === 'view-profile') {
+        const messageUser: MessageUser = {
+            id: detail.userId,
+            username: detail.username,
+            avatar_urls: null,
+        };
+        const rect =
+            detail.rect ??
+            ({ left: window.innerWidth / 2, top: window.innerHeight / 2, right: 0, bottom: 0 } as DOMRect);
+        openUserProfile(messageUser, rect as DOMRect);
+        return;
+    }
+    if (detail.action === 'send-dm') {
+        startDmFromProfile(detail.userId);
+    }
+};
+
+useEventListener(document, 'chat-user-action', handleUserContextAction);
+
 onMounted(() => {
     scrollToBottom(true);
 });
