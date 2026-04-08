@@ -129,7 +129,7 @@ export async function getSettingsChannels(params?: { sort?: string; include?: st
 
 export async function createSettingsChannel(data: {
     name: string;
-    category_id: string;
+    category_id: string | null;
     channel_type?: string;
     topic?: string;
     is_private?: boolean;

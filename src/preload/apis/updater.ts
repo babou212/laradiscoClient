@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron';
 
 export const updaterApi = {
+    getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
     check: () => ipcRenderer.invoke('updater:check'),
     download: () => ipcRenderer.invoke('updater:download'),
     install: () => ipcRenderer.invoke('updater:install'),

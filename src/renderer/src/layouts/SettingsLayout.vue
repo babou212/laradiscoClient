@@ -24,6 +24,7 @@ const sidebarNavItems: SettingsNavItem[] = [
     { title: 'Voice', routeName: 'settings-voice' },
     { title: 'Screen Share', routeName: 'settings-screen-share' },
     { title: 'Notifications', routeName: 'settings-notifications' },
+    { title: 'About', routeName: 'settings-about' },
 ];
 
 const permissions = computed(() => authStore.user?.permissions);

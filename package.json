@@ -2,6 +2,7 @@
     "name": "@babou212/laradisco-client",
     "version": "1.0.0",
     "description": "LaraDisco Desktop Client",
+    "author": "LaraDisco",
     "private": false,
     "type": "module",
     "main": "out/main/index.js",
@@ -10,11 +11,15 @@
         "dev:user2": "electron-vite build --config electron.vite.config.dev2.ts && USER_DATA_DIR=/tmp/laradisco-user2 ELECTRON_RENDERER_URL=http://localhost:5173 ./node_modules/.bin/electron out2/main/index.js",
         "build": "electron-vite build",
         "preview": "electron-vite preview",
-        "package": "npm run build && electron-forge package",
-        "make": "npm run build && electron-forge make",
-        "make:win": "npm run build && electron-forge make --platform win32",
-        "make:mac": "npm run build && electron-forge make --platform darwin",
-        "make:linux": "npm run build && electron-forge make --platform linux",
+        "package": "npm run build && electron-builder --dir",
+        "make": "npm run build && electron-builder",
+        "make:win": "npm run build && electron-builder --win --publish never",
+        "make:mac": "npm run build && electron-builder --mac --publish never",
+        "make:linux": "npm run build && electron-builder --linux --publish never",
+        "publish": "npm run build && electron-builder --publish always",
+        "publish:win": "npm run build && electron-builder --win --publish always",
+        "publish:mac": "npm run build && electron-builder --mac --publish always",
+        "publish:linux": "npm run build && electron-builder --linux --publish always",
         "format": "prettier --write src/",
         "format:check": "prettier --check src/",
         "lint": "eslint . --fix",
@@ -24,18 +29,9 @@
         "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*"
     },
     "devDependencies": {
-        "@electron-forge/cli": "^7.11.1",
-        "@electron-forge/maker-deb": "^7.11.1",
-        "@electron-forge/maker-dmg": "^7.11.1",
-        "@electron-forge/maker-flatpak": "^7.11.1",
-        "@electron-forge/maker-rpm": "^7.11.1",
-        "@electron-forge/maker-squirrel": "^7.11.1",
-        "@electron-forge/maker-zip": "^7.11.1",
-        "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
         "@electron-toolkit/tsconfig": "^1.0.1",
         "@eslint/js": "^9.19.0",
         "@pinia/colada-devtools": "^0.4.5",
-        "@reforged/maker-appimage": "^5.2.0",
         "@tailwindcss/vite": "^4.1.11",
         "@types/better-sqlite3": "^7.6.13",
         "@types/dompurify": "^3.0.5",
@@ -45,6 +41,7 @@
         "@vitejs/plugin-vue": "^6.0.0",
         "@vue/eslint-config-typescript": "^14.3.0",
         "electron": "^35.0.1",
+        "electron-builder": "^26.8.1",
         "electron-vite": "^5.0.0",
         "eslint": "^9.17.0",
         "eslint-config-prettier": "^10.0.1",
@@ -103,8 +100,5 @@
     },
     "publishConfig": {
         "registry": "https://npm.pkg.github.com"
-    },
-    "config": {
-        "forge": "./forge.config.ts"
     }
 }

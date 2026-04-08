@@ -27,13 +27,29 @@ import { initAutoUpdater } from './updater';
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-    app.quit();
+    app.exit(0);
+}
+
+let mainWindow: BrowserWindow | null = null;
+
+function registerWindowIpcHandlers(): void {
+    ipcMain.on('window:minimize', () => mainWindow?.minimize());
+    ipcMain.on('window:maximize', () => {
+        if (!mainWindow) return;
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    });
+    ipcMain.on('window:close', () => mainWindow?.close());
+    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
 }
 
 function createWindow(): void {
     const isMac = process.platform === 'darwin';
 
-    const mainWindow = new BrowserWindow({
+    const win = new BrowserWindow({
         width: 1280,
         height: 800,
         minWidth: 960,
@@ -50,36 +66,39 @@ function createWindow(): void {
         },
     });
 
-    ipcMain.on('window:minimize', () => mainWindow.minimize());
-    ipcMain.on('window:maximize', () => {
-        if (mainWindow.isMaximized()) {
-            mainWindow.unmaximize();
-        } else {
-            mainWindow.maximize();
+    mainWindow = win;
+
+    win.on('maximize', () => {
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('window:maximized-change', true);
         }
     });
-    ipcMain.on('window:close', () => mainWindow.close());
-    ipcMain.handle('window:isMaximized', () => mainWindow.isMaximized());
-
-    mainWindow.on('maximize', () => {
-        mainWindow.webContents.send('window:maximized-change', true);
-    });
-    mainWindow.on('unmaximize', () => {
-        mainWindow.webContents.send('window:maximized-change', false);
+    win.on('unmaximize', () => {
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('window:maximized-change', false);
+        }
     });
 
-    mainWindow.on('ready-to-show', () => {
-        mainWindow.show();
+    win.on('ready-to-show', () => {
+        win.show();
     });
 
-    mainWindow.on('close', () => {
-        mainWindow.webContents.send('app:before-quit');
+    win.on('close', () => {
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('app:before-quit');
+        }
+    });
+
+    win.on('closed', () => {
+        if (mainWindow === win) {
+            mainWindow = null;
+        }
     });
 
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-        mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+        win.loadURL(process.env['ELECTRON_RENDERER_URL']);
     } else {
-        mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+        win.loadFile(join(__dirname, '../renderer/index.html'));
     }
 }
 
@@ -94,6 +113,7 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
     initDatabase();
     registerIpcHandlers();
+    registerWindowIpcHandlers();
     initMls();
     initPushToTalk();
     initAutoUpdater();
@@ -239,8 +259,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-    cleanupPushToTalk();
     if (process.platform !== 'darwin') {
         app.quit();
     }
+});
+
+app.on('before-quit', () => {
+    cleanupPushToTalk();
 });

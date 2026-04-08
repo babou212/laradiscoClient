@@ -1,4 +1,5 @@
 export interface UpdaterApi {
+    getVersion: () => Promise<string>;
     check: () => Promise<{ success: boolean; version?: string; error?: string }>;
     download: () => Promise<{ success: boolean; error?: string }>;
     install: () => void;

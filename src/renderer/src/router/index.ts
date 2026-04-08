@@ -127,6 +127,11 @@ const router = createRouter({
                     name: 'settings-security',
                     component: () => import('@/views/settings/SecuritySettingsView.vue'),
                 },
+                {
+                    path: 'about',
+                    name: 'settings-about',
+                    component: () => import('@/views/settings/AboutSettingsView.vue'),
+                },
             ],
         },
         {

@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
+import UpdateToast from '@/components/UpdateToast.vue';
 import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
 import { usePresenceStore } from '@/stores/presence';
 
@@ -30,6 +31,7 @@ onUnmounted(() => {
         <RouterView />
     </div>
     <NotificationToast />
+    <UpdateToast />
     <div v-show="!isSettingsPage">
         <ScreenShareViewer />
     </div>

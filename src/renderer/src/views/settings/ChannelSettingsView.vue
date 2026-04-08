@@ -215,7 +215,7 @@ const { mutateAsync: doCreateChannel } = useMutation({
     mutation: (data: typeof channelForm.value) =>
         createSettingsChannel({
             name: data.name,
-            category_id: data.category_id ?? '',
+            category_id: data.category_id || null,
             channel_type: data.type,
             topic: data.topic || undefined,
             is_private: data.is_private,

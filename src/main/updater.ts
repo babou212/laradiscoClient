@@ -1,9 +1,11 @@
 import { is } from '@electron-toolkit/utils';
-import { BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
 export function initAutoUpdater(): void {
+    ipcMain.handle('app:getVersion', () => app.getVersion());
+
     if (is.dev) return;
 
     autoUpdater.setFeedURL({
@@ -81,5 +83,5 @@ export function initAutoUpdater(): void {
     });
 
     setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 30_000);
-    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 4 * 60 * 60 * 1000);
+    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 60 * 60 * 1000);
 }

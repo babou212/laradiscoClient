@@ -62,8 +62,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-  build:
-    name: Build (${{ matrix.os }})
+  build-and-publish:
+    name: Build & Publish (${{ matrix.os }})
     needs: [version, lint]
     if: needs.version.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
@@ -72,11 +72,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            make_target: make:linux
+            publish_target: publish:linux
           - os: macos-latest
-            make_target: make:mac
+            publish_target: publish:mac
           - os: windows-latest
-            make_target: make:win
+            publish_target: publish:win
 
     steps:
       - uses: actions/checkout@v4
@@ -88,151 +88,37 @@ jobs:
 
       - run: npm ci
 
-      - name: Install Linux packaging tools
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm
+      - name: Build & publish to GitHub draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npm run ${{ matrix.publish_target }}
 
-      - name: Install Flatpak SDK (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install -y flatpak flatpak-builder
-          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
-        continue-on-error: true
-
-      - name: Build distributables
-        run: npm run ${{ matrix.make_target }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ matrix.os }}
-          path: |
-            dist/make/**/*.exe
-            dist/make/**/*.nupkg
-            dist/make/**/*.dmg
-            dist/make/**/*.zip
-            dist/make/**/*.deb
-            dist/make/**/*.rpm
-            dist/make/**/*.flatpak
-            dist/make/**/*.AppImage
-          if-no-files-found: warn
-          retention-days: 30
-
-  build-arch:
-    name: Build (Arch Linux)
-    needs: [version, lint]
+  finalize-release:
+    name: Promote Draft to Published
+    needs: [version, build-and-publish]
     if: needs.version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:base-devel
-    steps:
-      - name: Install dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm git nodejs npm fakeroot
-          useradd -m builder
-          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-      - uses: actions/checkout@v4
-
-      - name: Fix ownership
-        run: chown -R builder:builder .
-
-      - run: su builder -c 'npm ci'
-
-      - name: Build distributables
-        run: |
-          su builder -c 'npm run build && npx electron-forge make --platform linux --targets ./maker-pacman.ts'
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-arch
-          path: dist/make/**/*.pkg.tar.zst
-          if-no-files-found: error
-          retention-days: 30
-
-  release:
-    name: Create Release
-    needs: [version, build, build-arch]
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: find artifacts -type f | head -50
-
-      - name: Generate electron-updater metadata
+      - name: Flip draft → published
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
-          RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          TAG="${{ needs.version.outputs.tag }}"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
-          generate_yml() {
-            local pattern="$1"
-            local output="$2"
-            local file=$(find artifacts -name "$pattern" -type f | head -1)
-
-            if [ -z "$file" ]; then
-              echo "No file matching $pattern found, skipping $output"
-              return
-            fi
-
-            local filename=$(basename "$file")
-            local size=$(stat -c%s "$file")
-            local sha512=$(sha512sum "$file" | awk '{print $1}' | xxd -r -p | base64 -w0)
-
-            cat > "artifacts/$output" <<EOF
-          version: ${VERSION}
-          files:
-            - url: ${filename}
-              sha512: ${sha512}
-              size: ${size}
-          path: ${filename}
-          sha512: ${sha512}
-          releaseDate: '${RELEASE_DATE}'
-          EOF
-
-            echo "Generated $output for $filename"
-            cat "artifacts/$output"
-          }
-
-          generate_yml "*.exe" "latest.yml"
-          generate_yml "*.dmg" "latest-mac.yml"
-          generate_yml "*.AppImage" "latest-linux.yml"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.version.outputs.tag }}
-          name: LaraDisco ${{ needs.version.outputs.tag }}
-          draft: false
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.exe
-            artifacts/**/*.nupkg
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.flatpak
-            artifacts/**/*.pkg.tar.zst
-            artifacts/**/*.AppImage
-            artifacts/latest.yml
-            artifacts/latest-mac.yml
-            artifacts/latest-linux.yml
-
-  publish:
+  publish-package:
     name: Publish to GitHub Packages
-    needs: [version, build]
+    needs: [version, build-and-publish]
+    if: needs.version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
