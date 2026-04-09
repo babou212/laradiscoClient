@@ -7,7 +7,7 @@ export default defineConfigWithVueTs(
     vue.configs['flat/essential'],
     vueTsConfigs.recommended,
     {
-        ignores: ['out', 'out2', 'dist', 'node_modules', 'build', 'forge.config.ts', 'maker-pacman.ts', 'electron.vite.config.dev2.ts', 'src/main/mls/wasm/**'],
+        ignores: ['out', 'out2', 'dist', 'node_modules', 'build', 'scripts', 'forge.config.ts', 'maker-pacman.ts', 'electron.vite.config.dev2.ts', 'src/main/mls/wasm/**'],
     },
     {
         plugins: {
