@@ -281,7 +281,7 @@ export const useVoiceStore = defineStore('voice', () => {
             username: p.identity,
             displayName: p.name || p.identity,
             isSpeaking: p.isSpeaking,
-            isMuted: !p.isMicrophoneEnabled,
+            isMuted: p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false,
             isScreenSharing: p.isScreenShareEnabled,
             avatarUrls: findExistingAvatarUrls(p.identity),
         };
