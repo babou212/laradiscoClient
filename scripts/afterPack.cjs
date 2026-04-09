@@ -34,9 +34,10 @@ exports.default = async function afterPack(context) {
 
   console.log(`Installing ${nativePackage} into unpacked modules...`);
 
-  // Install the platform-specific sharp binary into the unpacked node_modules
+  // Install the platform-specific sharp binary into the unpacked node_modules.
+  // --force bypasses the platform/arch check when cross-compiling (e.g. arm64 host → x64 target).
   execSync(
-    `npm install --no-save --no-package-lock ${nativePackage}`,
+    `npm install --no-save --no-package-lock --force --os=${platform} --cpu=${arch} ${nativePackage}`,
     {
       cwd: unpackedModules,
       stdio: 'inherit',
