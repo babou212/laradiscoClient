@@ -246,12 +246,6 @@ async function copyMessageText() {
     await copy(highlighted || ctx.content);
 }
 
-async function copyMessageLink() {
-    const ctx = messageCtx.value;
-    if (!ctx) return;
-    await copy(ctx.link);
-}
-
 function dispatchMessageAction(action: string, detail?: Record<string, unknown>) {
     const ctx = messageCtx.value;
     if (!ctx) return;
@@ -476,7 +470,6 @@ function usernameDm() {
         <ContextMenuContent v-if="showMenu" class="w-56">
             <template v-if="messageCtx">
                 <ContextMenuItem @select="copyMessageText"> <Copy /> Copy text </ContextMenuItem>
-                <ContextMenuItem @select="copyMessageLink"> <Link2 /> Copy message link </ContextMenuItem>
 
                 <template v-if="messageCtx.canReact || messageCtx.canReply || messageCtx.canThread">
                     <ContextMenuSeparator />

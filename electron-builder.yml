@@ -2,7 +2,7 @@ appId: com.laradisco.client
 productName: LaraDisco
 copyright: Copyright © ${author}
 
-afterPack: build/afterPack.cjs
+afterPack: scripts/afterPack.cjs
 
 directories:
   output: dist
