@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
-import { CodeXml, CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
+import { CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
 import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
 import EmojiPicker from './EmojiPicker.vue';
 import GifPicker from './GifPicker.vue';
