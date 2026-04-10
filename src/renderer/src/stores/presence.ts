@@ -86,6 +86,27 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
+    const applyMemberJoined = (data: PresenceUpdate) => {
+        const userId = String(data.user_id);
+
+        if (serverMembers.value.some((m) => m.id === userId)) return;
+
+        const newMember: OnlineUser = {
+            id: userId,
+            username: data.username,
+            display_name: data.display_name ?? data.username,
+            avatar_urls: data.avatar_urls ?? null,
+            custom_status: data.custom_status ?? null,
+        };
+
+        serverMembers.value.push(newMember);
+
+        const avatarStore = useAvatarStore();
+        avatarStore.hydrateFromUsers([newMember]);
+        const userNamesStore = useUserNamesStore();
+        userNamesStore.hydrateFromUsers([newMember]);
+    };
+
     const applyPresenceUpdate = (data: PresenceUpdate) => {
         const userId = String(data.user_id);
         const idx = onlineUsers.value.findIndex((u) => u.id === userId);
@@ -118,6 +139,7 @@ export const usePresenceStore = defineStore('presence', () => {
             const echo = getEcho();
             channel = echo.private('presence');
             channel.listen('.user.presence.updated', applyPresenceUpdate);
+            channel.listen('.server.member.joined', applyMemberJoined);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);
         }

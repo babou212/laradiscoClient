@@ -16,7 +16,7 @@ import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { InputOtp } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
@@ -337,12 +337,11 @@ async function regenerateRecoveryCodes() {
                     <template v-else>
                         <form @submit.prevent="confirmTwoFactor" class="w-full space-y-4">
                             <div class="flex w-full flex-col items-center justify-center space-y-3 py-2">
-                                <Input
+                                <InputOtp
                                     v-model="code"
-                                    placeholder="Enter 6-digit code"
-                                    class="text-center text-lg tracking-widest"
-                                    maxlength="6"
+                                    :maxlength="6"
                                     :disabled="processing"
+                                    @complete="confirmTwoFactor"
                                 />
                                 <InputError :message="codeError" />
                             </div>
