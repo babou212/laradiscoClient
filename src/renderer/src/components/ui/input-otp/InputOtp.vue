@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { OTPInput } from 'vue-input-otp';
 import type { HTMLAttributes } from 'vue';
+import { OTPInput } from 'vue-input-otp';
 import { cn } from '@/lib/utils';
 
 const props = withDefaults(
