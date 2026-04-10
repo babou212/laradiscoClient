@@ -58,6 +58,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxtst-dev libxt-dev
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24

@@ -158,27 +158,6 @@ const onSelectEmoji = (emoji: string) => {
     }, 0);
 };
 
-const insertCodeBlock = () => {
-    const textarea = textareaRef.value;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = messageInput.value.slice(start, end);
-    const before = messageInput.value.slice(0, start);
-    const after = messageInput.value.slice(end);
-    messageInput.value = `${before}\`\`\`\n${selected}\n\`\`\`${after}`;
-    nextTick(() => {
-        textarea.focus();
-        if (selected) {
-            textarea.setSelectionRange(start + 4, start + 4 + selected.length);
-        } else {
-            const pos = start + 4;
-            textarea.setSelectionRange(pos, pos);
-        }
-        adjustTextareaHeight();
-    });
-};
-
 const onSelectGif = (gifUrl: string) => {
     if (!GifUrlSchema.safeParse(gifUrl).success) return;
     messageInput.value = gifUrl;
@@ -434,14 +413,6 @@ useEventListener(document, 'click', handleClickOutside);
                         "
                     >
                         <span class="text-[11px] leading-none font-extrabold">GIF</span>
-                    </button>
-                    <button
-                        type="button"
-                        title="Insert code block"
-                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
-                        @click="insertCodeBlock"
-                    >
-                        <CodeXml :size="18" />
                     </button>
                     <button
                         v-if="canAttachFiles !== false"
