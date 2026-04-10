@@ -687,6 +687,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     </button>
                     <NotificationBell />
                     <button
+                        v-if="!isDm"
                         class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                         :title="usersCollapsed ? 'Show members' : 'Hide members'"
                         @click="emit('toggleUsersCollapsed')"

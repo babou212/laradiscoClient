@@ -17,7 +17,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
     'update:modelValue': [value: string | undefined];
-    'complete': [value: string];
+    complete: [value: string];
 }>();
 </script>
 
