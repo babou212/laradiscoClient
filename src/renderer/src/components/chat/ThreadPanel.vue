@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
 import TypingIndicator from './TypingIndicator.vue';
 import { coerceBroadcastMessage } from '@/api/normalizers';
 import { sendThreadTyping } from '@/api/typing';
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useE2EE } from '@/composables/useE2EE';
-import { useScrollManager } from '@/composables/useScrollManager';
+import { useMessageScroll } from '@/composables/useMessageScroll';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -46,6 +47,7 @@ const e2ee = useE2EE();
 
 const currentUser = computed(() => authStore.user);
 const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
+const messagesContent = useTemplateRef<HTMLElement>('messagesContent');
 const editingMessageId = shallowRef<string | null>(null);
 const editContent = shallowRef('');
 const emojiPickerMessageId = shallowRef<string | null>(null);
@@ -109,7 +111,7 @@ const joinThread = (threadId: number | string) => {
             }
 
             threadStore.addThreadMessage(data.message);
-            scrollToBottom();
+            notifyNewMessage();
         })
         .listen('ThreadMessageEdited', async (data: { message: MessageData }) => {
             coerceBroadcastMessage(data.message);
@@ -207,20 +209,41 @@ const leaveThread = () => {
     typingUsers.clear();
 };
 
-const threadMessages = computed(() => threadStore.threadMessages);
-const canLoadMore = computed(() => threadStore.prevCursor != null);
+const canLoadOlder = computed(() => threadStore.prevCursor != null);
+const canLoadNewer = computed(() => false);
+const isViewingHistoryThread = computed(() => false);
 
-const { isLoadingMore, scrollToBottom, handleScroll } = useScrollManager(
-    messagesContainer,
-    threadMessages,
-    canLoadMore,
-    async () => {
+async function decryptThreadAfterLoad(): Promise<void> {
+    if (!e2eeStore.isReady) return;
+    await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
+}
+
+const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, notifyNewMessage } = useMessageScroll({
+    containerRef: messagesContainer,
+    contentRef: messagesContent,
+    canLoadOlder,
+    canLoadNewer,
+    isViewingHistory: isViewingHistoryThread,
+    onLoadOlder: async () => {
         await threadStore.loadOlderMessages(props.channelId);
-        if (e2eeStore.isReady) {
-            await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
-        }
+        await decryptThreadAfterLoad();
     },
-);
+    onLoadNewer: async () => {},
+    onLoadAround: async () => {},
+    onResetToLive: async () => {},
+});
+
+function resetThreadScroll(): void {
+    pinnedToBottom.value = true;
+    unreadNewCount.value = 0;
+    nextTick(() => {
+        if (messagesContainer.value) {
+            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+    });
+}
+
+const showPill = computed(() => !pinnedToBottom.value);
 
 const emitTyping = () => {
     const thread = threadStore.activeThread;
@@ -249,24 +272,13 @@ watch(
     () => threadStore.isLoadingMessages,
     async (loading, wasLoading) => {
         if (wasLoading && !loading) {
-            if (e2eeStore.isReady) {
-                await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
-            }
-            scrollToBottom(true);
+            await decryptThreadAfterLoad();
+            resetThreadScroll();
         }
     },
 );
 
-watch(
-    () => threadStore.threadMessages.length,
-    () => {
-        if (!isLoadingMore.value && !threadStore.isLoadingMessages) {
-            scrollToBottom();
-        }
-    },
-);
-
-onMounted(() => scrollToBottom(true));
+onMounted(() => resetThreadScroll());
 
 onUnmounted(() => {
     leaveThread();
@@ -325,7 +337,7 @@ const sendReply = async (content: string) => {
     };
 
     threadStore.addThreadMessage(optimistic);
-    scrollToBottom(true);
+    resetThreadScroll();
 
     const reply = await threadStore.sendReply(props.channelId, threadStore.parentMessage.id, messageContent, extra);
 
@@ -497,51 +509,60 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             </div>
         </div>
 
-        <div
-            ref="messagesContainer"
-            class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3"
-            @scroll="handleScroll"
-        >
-            <div v-if="threadStore.isLoadingMessages" class="flex items-center justify-center py-4">
-                <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
-            </div>
+        <div class="relative min-h-0 flex-1">
+            <div ref="messagesContainer" class="h-full overflow-y-auto overscroll-contain p-3">
+                <div ref="messagesContent">
+                    <div v-if="threadStore.isLoadingMessages" class="flex items-center justify-center py-4">
+                        <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
+                    </div>
 
-            <div v-else-if="threadStore.threadMessages.length === 0" class="flex h-full items-center justify-center">
-                <div class="text-muted-foreground text-center">
-                    <MessageSquareText :size="32" class="mx-auto mb-1.5 opacity-50" />
-                    <p class="text-xs">No replies yet. Start the conversation!</p>
+                    <div
+                        v-else-if="threadStore.threadMessages.length === 0"
+                        class="flex h-full items-center justify-center"
+                    >
+                        <div class="text-muted-foreground text-center">
+                            <MessageSquareText :size="32" class="mx-auto mb-1.5 opacity-50" />
+                            <p class="text-xs">No replies yet. Start the conversation!</p>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-1">
+                        <div v-if="isLoadingOlder" class="flex justify-center py-2">
+                            <div
+                                class="border-primary h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+                            />
+                        </div>
+
+                        <Message
+                            v-for="message in threadStore.threadMessages"
+                            :key="message.id"
+                            :message="message"
+                            :is-editing="editingMessageId === message.id"
+                            :edit-content="editContent"
+                            :show-emoji-picker="emojiPickerMessageId === message.id"
+                            :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                            :can-pin-messages="false"
+                            :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                            :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                            :show-thread-button="false"
+                            @start-edit="startEdit(message)"
+                            @cancel-edit="cancelEdit"
+                            @save-edit="saveEdit(message)"
+                            @delete="deleteMessage(message)"
+                            @reply="() => {}"
+                            @toggle-pin="() => {}"
+                            @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
+                            @toggle-emoji-picker="
+                                emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
+                            "
+                            @update-edit-content="editContent = $event"
+                        />
+                    </div>
                 </div>
             </div>
 
-            <div v-else class="space-y-1">
-                <div v-if="isLoadingMore" class="flex justify-center py-2">
-                    <div class="border-primary h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
-                </div>
-
-                <Message
-                    v-for="message in threadStore.threadMessages"
-                    :key="message.id"
-                    :message="message"
-                    :is-editing="editingMessageId === message.id"
-                    :edit-content="editContent"
-                    :show-emoji-picker="emojiPickerMessageId === message.id"
-                    :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                    :can-pin-messages="false"
-                    :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                    :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                    :show-thread-button="false"
-                    @start-edit="startEdit(message)"
-                    @cancel-edit="cancelEdit"
-                    @save-edit="saveEdit(message)"
-                    @delete="deleteMessage(message)"
-                    @reply="() => {}"
-                    @toggle-pin="() => {}"
-                    @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
-                    @toggle-emoji-picker="
-                        emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
-                    "
-                    @update-edit-content="editContent = $event"
-                />
+            <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+                <NewMessagePill :count="unreadNewCount" @click="jumpToBottom" />
             </div>
         </div>
 

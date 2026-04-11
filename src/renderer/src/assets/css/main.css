@@ -398,3 +398,16 @@
     background: var(--accent);
     font-weight: 600;
 }
+
+@keyframes message-highlight-pulse {
+    0% {
+        background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.message-highlight {
+    animation: message-highlight-pulse 2s ease-out;
+}

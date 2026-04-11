@@ -17,8 +17,8 @@ interface ChannelRealtimeOptions {
     addMessage: (msg: MessageData) => void;
     updateMessage: (id: string, partial: Partial<MessageData>) => void;
     removeMessage: (id: string) => void;
-    scrollToBottom: (force?: boolean) => void;
-    resetToBottom: () => void;
+    notifyNewMessage: () => void;
+    resetForNewChannel: () => void;
     handleTypingEvent: (data: { user_id: number; username: string; is_typing: boolean }) => void;
     clearTypingUser: (userId: number) => void;
     clearAll: () => void;
@@ -36,8 +36,8 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
         addMessage,
         updateMessage,
         removeMessage,
-        scrollToBottom,
-        resetToBottom,
+        notifyNewMessage,
+        resetForNewChannel,
         handleTypingEvent,
         clearTypingUser,
         clearAll,
@@ -132,7 +132,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     }
 
                     addMessage(data.message);
-                    scrollToBottom();
+                    notifyNewMessage();
                     return;
                 }
 
@@ -143,7 +143,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 }
 
                 addMessage(data.message);
-                scrollToBottom();
+                notifyNewMessage();
             })
             .listen('MessageEdited', async (data: { message: MessageData }) => {
                 coerceBroadcastMessage(data.message);
@@ -315,7 +315,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 pinnedMessages.value = [];
                 threadStore.closeThread();
                 if (oldId !== undefined) {
-                    resetToBottom();
+                    resetForNewChannel();
                 }
             }
         },
@@ -366,19 +366,9 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     }, 15_000);
                 }
             }
-            resetToBottom();
+            resetForNewChannel();
         }
     });
-
-    // Scroll to bottom when new messages arrive (no-op when not near bottom)
-    watch(
-        () => messages.value.length,
-        () => {
-            if (!isLoadingMessages.value) {
-                scrollToBottom();
-            }
-        },
-    );
 
     onUnmounted(() => {
         leaveChannel();

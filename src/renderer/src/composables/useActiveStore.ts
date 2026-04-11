@@ -42,9 +42,42 @@ export function useActiveStore(isDm: Ref<boolean>) {
         isDm.value ? dmStore.prevCursor != null : chatStore.prevCursor != null,
     );
 
+    const canLoadNewer = computed<boolean>(() =>
+        isDm.value ? dmStore.nextCursor != null : chatStore.nextCursor != null,
+    );
+
+    const isViewingHistory = computed<boolean>(() =>
+        isDm.value ? dmStore.isViewingHistory : chatStore.isViewingHistory,
+    );
+
     async function loadOlderMessages(): Promise<void> {
         return isDm.value ? dmStore.loadOlderMessages() : chatStore.loadOlderMessages();
     }
 
-    return { messages, isLoadingMessages, canLoadMore, addMessage, updateMessage, removeMessage, loadOlderMessages };
+    async function loadNewerMessages(): Promise<void> {
+        return isDm.value ? dmStore.loadNewerMessages() : chatStore.loadNewerMessages();
+    }
+
+    async function loadMessagesAround(messageId: string): Promise<void> {
+        return isDm.value ? dmStore.loadMessagesAround(messageId) : chatStore.loadMessagesAround(messageId);
+    }
+
+    async function resetToLive(channelId: string): Promise<void> {
+        return isDm.value ? dmStore.fetchMessages(channelId) : chatStore.fetchMessages(channelId);
+    }
+
+    return {
+        messages,
+        isLoadingMessages,
+        canLoadMore,
+        canLoadNewer,
+        isViewingHistory,
+        addMessage,
+        updateMessage,
+        removeMessage,
+        loadOlderMessages,
+        loadNewerMessages,
+        loadMessagesAround,
+        resetToLive,
+    };
 }

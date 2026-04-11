@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
 import TypingIndicator from './TypingIndicator.vue';
@@ -31,9 +32,9 @@ import {
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useE2EE } from '@/composables/useE2EE';
+import { useMessageScroll } from '@/composables/useMessageScroll';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
-import { useScrollManager } from '@/composables/useScrollManager';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
 import { extractFirstPreviewUrl } from '@/lib/extractUrls';
 import { UploadingFileSchema } from '@/lib/message-schemas';
@@ -88,6 +89,7 @@ const e2ee = useE2EE();
 const presenceStore = usePresenceStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
+const route = useRoute();
 const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
 
@@ -146,27 +148,59 @@ const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
 
 const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
+const messagesContent = useTemplateRef<HTMLElement>('messagesContent');
 
-const { isLoadingMore, isVisible, scrollToBottom, resetToBottom, handleScroll } = useScrollManager(
-    messagesContainer,
-    activeMessages,
-    activeStore.canLoadMore,
-    async () => {
-        await activeStore.loadOlderMessages();
-        if (e2eeStore.isReady) {
-            await e2ee.lookupDecryptedCache(activeMessages.value);
-            const hasUnresolved = activeMessages.value.some(
-                (m) => m.decrypted_content === undefined && !m.decrypt_error,
-            );
-            if (hasUnresolved && channelId.value) {
-                await e2ee.lookupDecryptedCache(activeMessages.value);
+async function decryptAfterLoad(): Promise<void> {
+    if (!e2eeStore.isReady) return;
+    await e2ee.lookupDecryptedCache(activeMessages.value);
+    const hasUnresolved = activeMessages.value.some((m) => m.decrypted_content === undefined && !m.decrypt_error);
+    if (hasUnresolved && channelId.value) {
+        await e2ee.lookupDecryptedCache(activeMessages.value);
+    }
+    const chId = isDmRef.value ? undefined : Number(channelId.value);
+    const dmId = isDmRef.value ? Number(channelId.value) : undefined;
+    await e2ee.decryptMessages(activeMessages.value, chId, dmId);
+}
+
+const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, jumpToMessage, notifyNewMessage } =
+    useMessageScroll({
+        containerRef: messagesContainer,
+        contentRef: messagesContent,
+        canLoadOlder: activeStore.canLoadMore,
+        canLoadNewer: activeStore.canLoadNewer,
+        isViewingHistory: activeStore.isViewingHistory,
+        onLoadOlder: async () => {
+            await activeStore.loadOlderMessages();
+            await decryptAfterLoad();
+        },
+        onLoadNewer: async () => {
+            await activeStore.loadNewerMessages();
+            await decryptAfterLoad();
+        },
+        onLoadAround: async (messageId: string) => {
+            await activeStore.loadMessagesAround(messageId);
+            await decryptAfterLoad();
+        },
+        onResetToLive: async () => {
+            if (channelId.value) {
+                await activeStore.resetToLive(String(channelId.value));
+                await decryptAfterLoad();
             }
-            const chId = isDmRef.value ? undefined : Number(channelId.value);
-            const dmId = isDmRef.value ? Number(channelId.value) : undefined;
-            await e2ee.decryptMessages(activeMessages.value, chId, dmId);
+        },
+    });
+
+function resetForNewChannel(): void {
+    pinnedToBottom.value = true;
+    unreadNewCount.value = 0;
+    nextTick(() => {
+        if (messagesContainer.value) {
+            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
         }
-    },
-);
+    });
+}
+
+const showPillForHistory = computed(() => activeStore.isViewingHistory.value);
+const showPill = computed(() => !pinnedToBottom.value || showPillForHistory.value);
 
 const typingIndicator = useTypingIndicator(
     channelId,
@@ -193,8 +227,8 @@ useChannelRealtime({
     addMessage: activeStore.addMessage,
     updateMessage: activeStore.updateMessage,
     removeMessage: activeStore.removeMessage,
-    scrollToBottom,
-    resetToBottom,
+    notifyNewMessage,
+    resetForNewChannel,
     handleTypingEvent: typingIndicator.handleTypingEvent,
     clearTypingUser: typingIndicator.clearTypingUser,
     clearAll: typingIndicator.clearAll,
@@ -246,7 +280,18 @@ const handleUserContextAction = (e: Event) => {
 useEventListener(document, 'chat-user-action', handleUserContextAction);
 
 onMounted(() => {
-    scrollToBottom(true);
+    const queryMessageId = route.query.message;
+    if (typeof queryMessageId === 'string' && queryMessageId) {
+        watch(
+            () => activeStore.isLoadingMessages.value,
+            (loading, wasLoading) => {
+                if (wasLoading && !loading) {
+                    jumpToMessage(queryMessageId);
+                }
+            },
+            { once: true },
+        );
+    }
 });
 
 const LINK_PREVIEW_TIMEOUT_MS = 10000;
@@ -530,7 +575,12 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     };
 
     activeStore.addMessage(optimisticMessage);
-    nextTick(() => scrollToBottom(true));
+    pinnedToBottom.value = true;
+    nextTick(() => {
+        if (messagesContainer.value) {
+            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+    });
     replyingToMessage.value = null;
 
     try {
@@ -745,6 +795,12 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                             :can-unpin="isDm || (channelPermissions?.canPinMessages ?? false)"
                             @close="showPinnedMessages = false"
                             @unpin="unpinFromPanel"
+                            @jump="
+                                (id: string) => {
+                                    showPinnedMessages = false;
+                                    jumpToMessage(id);
+                                }
+                            "
                         />
                     </div>
                     <button
@@ -769,54 +825,63 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 </div>
             </div>
 
-            <div
-                ref="messagesContainer"
-                class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
-                :class="{ invisible: !isVisible }"
-                @scroll="handleScroll"
-            >
-                <div v-if="isLoadingMore" class="flex justify-center py-2">
-                    <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"></div>
-                </div>
+            <div class="relative min-h-0 flex-1">
+                <div ref="messagesContainer" class="h-full overflow-y-auto overscroll-contain p-4">
+                    <div ref="messagesContent">
+                        <div v-if="isLoadingOlder" class="flex justify-center py-2">
+                            <div
+                                class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                            ></div>
+                        </div>
 
-                <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
-                    <div class="text-muted-foreground text-center">
-                        <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
-                        <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
-                        <p class="text-lg font-semibold">
-                            {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
-                        </p>
-                        <p class="text-sm">This is the start of your conversation.</p>
+                        <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
+                            <div class="text-muted-foreground text-center">
+                                <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
+                                <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
+                                <p class="text-lg font-semibold">
+                                    {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
+                                </p>
+                                <p class="text-sm">This is the start of your conversation.</p>
+                            </div>
+                        </div>
+
+                        <div v-else>
+                            <Message
+                                v-for="message in activeMessages"
+                                :key="message.id"
+                                :message="message"
+                                :is-editing="editingMessageId === message.id"
+                                :edit-content="editContent"
+                                :show-emoji-picker="emojiPickerMessageId === message.id"
+                                :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                                :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
+                                :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                                :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                                :show-thread-button="!isDm"
+                                :is-dm="isDm"
+                                @show-profile="(rect: DOMRect) => openUserProfile(message.user, rect)"
+                                @start-edit="startEdit(message)"
+                                @cancel-edit="cancelEdit"
+                                @save-edit="saveEdit(message)"
+                                @delete="deleteMessage(message)"
+                                @reply="startReply(message)"
+                                @open-thread="openThread(message)"
+                                @toggle-pin="togglePin(message)"
+                                @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
+                                @toggle-emoji-picker="
+                                    emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
+                                "
+                                @update-edit-content="editContent = $event"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div v-else>
-                    <Message
-                        v-for="message in activeMessages"
-                        :key="message.id"
-                        :message="message"
-                        :is-editing="editingMessageId === message.id"
-                        :edit-content="editContent"
-                        :show-emoji-picker="emojiPickerMessageId === message.id"
-                        :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                        :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
-                        :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                        :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                        :show-thread-button="!isDm"
-                        :is-dm="isDm"
-                        @show-profile="(rect: DOMRect) => openUserProfile(message.user, rect)"
-                        @start-edit="startEdit(message)"
-                        @cancel-edit="cancelEdit"
-                        @save-edit="saveEdit(message)"
-                        @delete="deleteMessage(message)"
-                        @reply="startReply(message)"
-                        @open-thread="openThread(message)"
-                        @toggle-pin="togglePin(message)"
-                        @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
-                        @toggle-emoji-picker="
-                            emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
-                        "
-                        @update-edit-content="editContent = $event"
+                <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+                    <NewMessagePill
+                        :count="unreadNewCount"
+                        :viewing-history="showPillForHistory"
+                        @click="jumpToBottom"
                     />
                 </div>
             </div>
@@ -854,7 +919,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 :conversation-id="Number(channel.id)"
                 :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
                 @close="showSearch = false"
-                @navigate-to-message="(id) => {}"
+                @navigate-to-message="(id: number) => jumpToMessage(String(id))"
             />
         </div>
 

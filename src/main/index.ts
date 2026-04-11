@@ -8,12 +8,19 @@ if (process.env.USER_DATA_DIR) {
 
 app.commandLine.appendSwitch(
     'enable-features',
-    ['VaapiVideoDecodeLinuxGL', 'VaapiVideoDecoder', 'PlatformHEVCDecoderSupport', 'VideoToolboxVideoDecoder'].join(
-        ',',
-    ),
+    [
+        'VaapiVideoDecodeLinuxGL',
+        'VaapiVideoDecoder',
+        'PlatformHEVCDecoderSupport',
+        'VideoToolboxVideoDecoder',
+        'WaylandWindowDecorations',
+    ].join(','),
 );
+app.commandLine.appendSwitch('disable-features', 'Vulkan,UseSkiaGraphite,VulkanFromANGLE');
+app.commandLine.appendSwitch('use-gl', 'angle');
+app.commandLine.appendSwitch('use-angle', 'gl');
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 app.commandLine.appendSwitch('enable-accelerated-video-decode');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
 
 protocol.registerSchemesAsPrivileged([
     { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },

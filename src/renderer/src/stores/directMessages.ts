@@ -55,6 +55,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     const isLoadingMore = ref(false);
 
     const selectedDmGroupId = computed(() => currentDmGroup.value?.id ?? null);
+    const isViewingHistory = computed(() => nextCursor.value !== null);
 
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
@@ -234,6 +235,36 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         }
     }
 
+    async function loadNewerMessages(): Promise<void> {
+        if (!currentDmGroup.value || !nextCursor.value || isLoadingMore.value) return;
+        isLoadingMore.value = true;
+        try {
+            const response = await getDmMessages(currentDmGroup.value.id, { cursor: nextCursor.value });
+            const newer = normalizeMessages(response.data, response.included);
+            messages.value = [...messages.value, ...newer];
+            nextCursor.value = extractCursor(response.links?.next);
+        } catch (error) {
+            console.error('Failed to load newer DM messages:', error);
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
+    async function loadMessagesAround(messageId: string): Promise<void> {
+        if (!currentDmGroup.value) return;
+        isLoadingMessages.value = true;
+        try {
+            const response = await getDmMessages(currentDmGroup.value.id, { around: messageId });
+            messages.value = normalizeMessages(response.data, response.included);
+            prevCursor.value = extractCursor(response.links?.prev);
+            nextCursor.value = extractCursor(response.links?.next);
+        } catch (error) {
+            console.error('Failed to load DM messages around target:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
     async function startOrGetDm(userId: string): Promise<string | null> {
         try {
             const found = await findDmGroup(userId);
@@ -281,6 +312,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMessages,
         isLoadingMore,
         selectedDmGroupId,
+        isViewingHistory,
         addMessage,
         updateMessage,
         removeMessage,
@@ -288,6 +320,8 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         selectDmGroup,
         fetchMessages,
         loadOlderMessages,
+        loadNewerMessages,
+        loadMessagesAround,
         startOrGetDm,
         clearCurrentDm,
         decryptLastMessages,

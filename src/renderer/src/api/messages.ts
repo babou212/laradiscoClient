@@ -25,7 +25,7 @@ export interface EditMessageData {
 
 export async function getMessages(
     channelId: string,
-    params?: { sort?: string; include?: string; cursor?: string },
+    params?: { sort?: string; include?: string; cursor?: string; around?: string },
 ): Promise<JsonApiCollectionResponse<MessageResource>> {
     const r = await api.get(`/channels/${channelId}/messages`, {
         params: {

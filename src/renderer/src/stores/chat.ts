@@ -29,6 +29,7 @@ export const useChatStore = defineStore('chat', () => {
     const categories = ref<Category[]>([]);
 
     const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
+    const isViewingHistory = computed(() => nextCursor.value !== null);
 
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
@@ -173,6 +174,46 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
+    async function loadNewerMessages(): Promise<void> {
+        if (!currentChannel.value || !nextCursor.value || isLoadingMore.value) return;
+        isLoadingMore.value = true;
+        try {
+            const response = await getMessages(currentChannel.value.id, { cursor: nextCursor.value });
+            const newer = normalizeMessages(response.data, response.included);
+            messages.value = [...messages.value, ...newer];
+            nextCursor.value = extractCursor(response.links?.next);
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(newer.map((m) => m.user));
+            avatarStore.hydrateFromUsers(
+                newer.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
+            );
+        } catch (error) {
+            console.error('Failed to load newer messages:', error);
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
+    async function loadMessagesAround(messageId: string): Promise<void> {
+        if (!currentChannel.value) return;
+        isLoadingMessages.value = true;
+        try {
+            const response = await getMessages(currentChannel.value.id, { around: messageId });
+            messages.value = normalizeMessages(response.data, response.included);
+            prevCursor.value = extractCursor(response.links?.prev);
+            nextCursor.value = extractCursor(response.links?.next);
+            const avatarStore = useAvatarStore();
+            avatarStore.hydrateFromUsers(messages.value.map((m) => m.user));
+            avatarStore.hydrateFromUsers(
+                messages.value.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
+            );
+        } catch (error) {
+            console.error('Failed to load messages around target:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
     function $reset(): void {
         currentChannel.value = null;
         currentChannelPermissions.value = null;
@@ -196,6 +237,7 @@ export const useChatStore = defineStore('chat', () => {
         serverName,
         categories,
         selectedChannelId,
+        isViewingHistory,
         addMessage,
         updateMessage,
         removeMessage,
@@ -203,6 +245,8 @@ export const useChatStore = defineStore('chat', () => {
         selectChannel,
         fetchMessages,
         loadOlderMessages,
+        loadNewerMessages,
+        loadMessagesAround,
         $reset,
     };
 });

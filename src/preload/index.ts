@@ -8,7 +8,6 @@ import { messagesApi } from './apis/messages';
 import { mlsApi } from './apis/mls';
 import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
-import { screenApi } from './apis/screen';
 import { serverApi } from './apis/server';
 import { settingsApi } from './apis/settings';
 import { unfurlApi } from './apis/unfurl';
@@ -20,7 +19,6 @@ const api = {
     auth: authApi,
     ptt: pttApi,
     notifications: notificationsApi,
-    screen: screenApi,
     settings: settingsApi,
     window: windowApi,
     updater: updaterApi,

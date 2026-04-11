@@ -18,6 +18,7 @@ defineProps<Props>();
 const emit = defineEmits<{
     close: [];
     unpin: [messageId: string];
+    jump: [messageId: string];
 }>();
 
 const panelRef = useTemplateRef<HTMLElement>('panelRef');
@@ -86,7 +87,8 @@ const renderedContent = (message: MessageData): string => {
                 <div
                     v-for="message in pinnedMessages"
                     :key="message.id"
-                    class="hover:bg-accent/50 group relative rounded-md p-2 transition-colors"
+                    class="hover:bg-accent/50 group relative cursor-pointer rounded-md p-2 transition-colors"
+                    @click="emit('jump', message.id)"
                 >
                     <div class="flex items-start gap-2">
                         <div
@@ -107,7 +109,7 @@ const renderedContent = (message: MessageData): string => {
                             v-if="canUnpin"
                             class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive hidden shrink-0 rounded p-0.5 transition-colors group-hover:block"
                             title="Unpin message"
-                            @click="emit('unpin', message.id)"
+                            @click.stop="emit('unpin', message.id)"
                         >
                             <PinOff :size="14" />
                         </button>

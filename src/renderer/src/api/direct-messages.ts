@@ -44,7 +44,7 @@ export async function getDmGroups(params?: {
 
 export async function getDmMessages(
     groupId: string,
-    params?: { sort?: string; include?: string; cursor?: string },
+    params?: { sort?: string; include?: string; cursor?: string; around?: string },
 ): Promise<
     JsonApiCollectionResponse<DirectMessageResource> & {
         meta?: { dm_group?: JsonApiResponse<DirectMessageGroupResource> } & Record<string, unknown>;
