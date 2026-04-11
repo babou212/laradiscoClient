@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
@@ -27,11 +28,6 @@ onBeforeUnmount(() => {
     }
     stopMicTest();
 });
-
-function onMicChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    voiceStore.setMicDevice(target.value);
-}
 
 function onPttToggle(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -303,18 +299,21 @@ function formatAccelerator(accel: string): string {
                 <p class="text-muted-foreground mt-1 text-sm">Select which microphone to use for voice channels</p>
             </div>
             <div class="p-6">
-                <label for="mic-select" class="mb-2 block text-sm font-medium"> Input Device </label>
-                <select
-                    id="mic-select"
-                    class="border-input bg-background focus:border-ring focus:ring-ring w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:ring-1 focus:outline-none"
-                    :value="voiceStore.selectedMicDeviceId"
-                    @change="onMicChange"
+                <label class="mb-2 block text-sm font-medium"> Input Device </label>
+                <Select
+                    :model-value="voiceStore.selectedMicDeviceId"
+                    @update:model-value="(val: string) => voiceStore.setMicDevice(val)"
                 >
-                    <option value="default">System Default</option>
-                    <option v-for="mic in voiceStore.availableMics" :key="mic.deviceId" :value="mic.deviceId">
-                        {{ mic.label || `Microphone (${mic.deviceId.slice(0, 8)})` }}
-                    </option>
-                </select>
+                    <SelectTrigger>
+                        <SelectValue placeholder="System Default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="default">System Default</SelectItem>
+                        <SelectItem v-for="mic in voiceStore.availableMics" :key="mic.deviceId" :value="mic.deviceId">
+                            {{ mic.label || `Microphone (${mic.deviceId.slice(0, 8)})` }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
                 <Button variant="outline" size="sm" class="mt-3" @click="voiceStore.refreshAvailableMics()">
                     Refresh Devices

@@ -4,7 +4,11 @@ export interface AuthPermissions {
     canManageChannels: boolean;
     canManageServer: boolean;
     canManageMessages: boolean;
+    canBanMembers: boolean;
+    canKickMembers: boolean;
     isAdministrator: boolean;
+    isBanned: boolean;
+    isJailed: boolean;
 }
 
 export interface AuthUser {

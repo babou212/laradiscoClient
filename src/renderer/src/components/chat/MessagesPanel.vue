@@ -35,6 +35,7 @@ import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useScrollManager } from '@/composables/useScrollManager';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
+import { extractFirstPreviewUrl } from '@/lib/extractUrls';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
@@ -43,7 +44,14 @@ import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
-import type { AvatarUrls, ChannelPermissions, EncryptedAttachmentMeta, MessageData, MessageUser } from '@/types/chat';
+import type {
+    AvatarUrls,
+    ChannelPermissions,
+    EncryptedAttachmentMeta,
+    LinkPreviewData,
+    MessageData,
+    MessageUser,
+} from '@/types/chat';
 import type { OnlineUser } from '@/types/user';
 import { extractMentionMetadata } from '@/utils/mentions';
 
@@ -241,6 +249,56 @@ onMounted(() => {
     scrollToBottom(true);
 });
 
+const LINK_PREVIEW_TIMEOUT_MS = 10000;
+
+async function buildLinkPreviewWithTimeout(content: string): Promise<LinkPreviewData | null> {
+    const url = extractFirstPreviewUrl(content);
+    if (!url) return null;
+    if (!props.channel?.id) return null;
+
+    try {
+        const unfurlPromise = window.api.unfurl.fetch(url);
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), LINK_PREVIEW_TIMEOUT_MS));
+        const result = await Promise.race([unfurlPromise, timeoutPromise]);
+        if (!result || result.status !== 'ok') return null;
+
+        const preview: LinkPreviewData = {
+            url: result.metadata.url,
+            title: result.metadata.title,
+            description: result.metadata.description,
+            site_name: result.metadata.site_name,
+            image_width: result.imageWidth,
+            image_height: result.imageHeight,
+            fetched_at: Date.now(),
+        };
+
+        if (result.imageBytes && result.imageMime) {
+            try {
+                const imageBytes = result.imageBytes;
+                const encrypted = await window.api.attachments.encrypt(imageBytes);
+                const imageBlob = new Blob([encrypted.encrypted], { type: 'application/octet-stream' });
+                const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
+                const uploadResponse = await uploadFn(props.channel.id, imageBlob, null);
+                preview.image = {
+                    id: uploadResponse.attachment_id,
+                    key: encrypted.key,
+                    iv: encrypted.iv,
+                    file_name: 'preview',
+                    mime_type: result.imageMime,
+                    size: imageBytes.length,
+                };
+            } catch (err) {
+                console.warn('[link preview] image upload failed:', err);
+            }
+        }
+
+        return preview;
+    } catch (err) {
+        console.warn('[link preview] unfurl failed:', err);
+        return null;
+    }
+}
+
 const sendMessage = async (content: string, files: StagedFile[] = []) => {
     if (!props.channel?.id) return;
 
@@ -394,11 +452,21 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
               })
             : undefined;
 
+    const linkPreview = await buildLinkPreviewWithTimeout(content);
+    if (linkPreview?.image?.id) {
+        attachmentIds.push(linkPreview.image.id);
+    }
+
     try {
         if (props.isDm) {
-            messageContent = await e2ee.encryptForDM(Number(props.channel.id), content, envelopeMetas);
+            messageContent = await e2ee.encryptForDM(Number(props.channel.id), content, envelopeMetas, linkPreview);
         } else {
-            messageContent = await e2ee.encryptForChannel(Number(props.channel.id), content, envelopeMetas);
+            messageContent = await e2ee.encryptForChannel(
+                Number(props.channel.id),
+                content,
+                envelopeMetas,
+                linkPreview,
+            );
         }
     } catch {
         sendError.value = 'Failed to encrypt message. Please try again.';
@@ -458,6 +526,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         created_at: new Date().toISOString(),
         decrypted_content: content,
         decrypted_attachments: attachmentMetas.length > 0 ? attachmentMetas : undefined,
+        link_preview: linkPreview,
     };
 
     activeStore.addMessage(optimisticMessage);
@@ -483,6 +552,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const serverMsg = normalizeMessage(response.data, response.included);
             serverMsg.decrypted_content = content;
             serverMsg.decrypted_attachments = attachmentMetas.length > 0 ? attachmentMetas : undefined;
+            serverMsg.link_preview = linkPreview;
             e2ee.cacheDecryptedContent(
                 Number(serverMsg.id),
                 content,
@@ -492,6 +562,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
                     userName: currentUser.value?.username ?? currentUser.value!.name,
                 },
                 envelopeMetas,
+                linkPreview,
             ).catch(() => {});
             const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
             if (idx !== -1) {

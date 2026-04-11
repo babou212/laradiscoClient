@@ -179,9 +179,79 @@ export function deleteSettingsCategory(id: string): Promise<void> {
     return api.delete(`/settings/categories/${id}`);
 }
 
+// ─── Moderation ─���────────────────────────────────────────────────────────────
+
+export interface BanData {
+    id: number;
+    user_id: number;
+    banned_by: number;
+    reason: string | null;
+    expires_at: string | null;
+    created_at: string;
+    user: { id: number; name: string; username: string };
+    banned_by_user: { id: number; name: string; username: string };
+}
+
+export async function getBans(): Promise<{ data: BanData[] }> {
+    const r = await api.get('/settings/bans');
+    return r.data;
+}
+
+export function banUser(userId: string, data: { reason?: string; expires_at?: string }): Promise<void> {
+    return api.post(`/settings/members/${userId}/ban`, data);
+}
+
+export function unbanUser(userId: string): Promise<void> {
+    return api.delete(`/settings/members/${userId}/ban`);
+}
+
+export function jailUser(userId: string): Promise<void> {
+    return api.post(`/settings/members/${userId}/jail`);
+}
+
+export function unjailUser(userId: string): Promise<void> {
+    return api.delete(`/settings/members/${userId}/jail`);
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+    id: number;
+    actor_id: number;
+    action: string;
+    target_user_id: number | null;
+    target_resource_id: number | null;
+    target_resource_type: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+    actor: { id: number; name: string; username: string } | null;
+    target_user: { id: number; name: string; username: string } | null;
+}
+
+export interface AuditLogResponse {
+    data: AuditLogEntry[];
+    next_page_url: string | null;
+    prev_page_url: string | null;
+    per_page: number;
+    current_page: number;
+}
+
+export async function getAuditLog(params?: {
+    action?: string;
+    actor_id?: number;
+    target_user_id?: number;
+    page?: number;
+    per_page?: number;
+}): Promise<AuditLogResponse> {
+    const r = await api.get('/settings/audit-log', { params });
+    return r.data;
+}
+
+// ─── Channel Overrides ──────────────────────────────────────────────────────
+
 export async function getChannelOverrides(channelId: string): Promise<unknown[]> {
     const r = await api.get(`/settings/channels/${channelId}/overrides`);
-    return r.data;
+    return r.data?.data ?? r.data;
 }
 
 export async function createChannelOverride(

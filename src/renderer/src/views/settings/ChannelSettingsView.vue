@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsChannelsQuery } from '@/queries/settings/channels';
@@ -98,8 +99,12 @@ const categories = computed<Category[]>(() => {
 
 const roles = computed<Role[]>(() => {
     const metaRoles = rawData.value?.meta?.roles;
-    if (Array.isArray(metaRoles)) return metaRoles as Role[];
-    return [];
+    if (!Array.isArray(metaRoles)) return [];
+    return metaRoles.map((r: any) => ({
+        id: String(r.id),
+        name: r.attributes?.name ?? r.name ?? '',
+        color: r.attributes?.color ?? r.color ?? '#99AAB5',
+    }));
 });
 
 const allPermissions = computed<Permission[]>(() => {
@@ -610,15 +615,16 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ch-type">Type</Label>
-                        <select
-                            id="ch-type"
-                            v-model="channelForm.type"
-                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
-                        >
-                            <option value="text">Text</option>
-                            <option value="voice">Voice</option>
-                        </select>
+                        <Label>Type</Label>
+                        <Select v-model="channelForm.type">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select type..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="voice">Voice</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div class="grid gap-2">
@@ -627,17 +633,18 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ch-category">Category</Label>
-                        <select
-                            id="ch-category"
-                            v-model="channelForm.category_id"
-                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
-                        >
-                            <option :value="null">None</option>
-                            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                                {{ cat.name }}
-                            </option>
-                        </select>
+                        <Label>Category</Label>
+                        <Select v-model="channelForm.category_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="null as any">None</SelectItem>
+                                <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
+                                    {{ cat.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -676,15 +683,16 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ech-type">Type</Label>
-                        <select
-                            id="ech-type"
-                            v-model="editChannelForm.type"
-                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
-                        >
-                            <option value="text">Text</option>
-                            <option value="voice">Voice</option>
-                        </select>
+                        <Label>Type</Label>
+                        <Select v-model="editChannelForm.type">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select type..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="voice">Voice</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div class="grid gap-2">
@@ -693,17 +701,18 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ech-category">Category</Label>
-                        <select
-                            id="ech-category"
-                            v-model="editChannelForm.category_id"
-                            class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
-                        >
-                            <option :value="null">None</option>
-                            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                                {{ cat.name }}
-                            </option>
-                        </select>
+                        <Label>Category</Label>
+                        <Select v-model="editChannelForm.category_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="null as any">None</SelectItem>
+                                <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
+                                    {{ cat.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div class="grid gap-2">
@@ -888,17 +897,27 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <h3 class="mb-3 text-sm font-semibold">Add Override</h3>
                         <form @submit.prevent="submitOverride" class="space-y-3">
                             <div class="grid gap-2">
-                                <Label for="ovr-role">Role</Label>
-                                <select
-                                    id="ovr-role"
-                                    v-model="overrideForm.role_id"
-                                    class="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:outline-none"
-                                >
-                                    <option :value="null">Select a role...</option>
-                                    <option v-for="role in availableOverrideRoles" :key="role.id" :value="role.id">
-                                        {{ role.name }}
-                                    </option>
-                                </select>
+                                <Label>Role</Label>
+                                <Select v-model="overrideForm.role_id">
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a role..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="role in availableOverrideRoles"
+                                            :key="role.id"
+                                            :value="role.id"
+                                        >
+                                            <div class="flex items-center gap-2">
+                                                <div
+                                                    class="h-3 w-3 shrink-0 rounded-full"
+                                                    :style="{ backgroundColor: role.color }"
+                                                />
+                                                {{ role.name }}
+                                            </div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div class="space-y-2">

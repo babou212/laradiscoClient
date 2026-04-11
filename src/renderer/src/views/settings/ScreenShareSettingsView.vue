@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceStore } from '@/stores/voice';
 import { type ScreenShareQualityPreset } from '@/stores/voice';
 
@@ -15,11 +16,6 @@ const screenShareQualityOptions: { value: ScreenShareQualityPreset; label: strin
     { value: 'high', label: '1080p / 60 FPS', description: 'Smooth high quality' },
     { value: 'source', label: 'Source / 60 FPS', description: 'Native resolution, highest quality' },
 ];
-
-function onScreenShareQualityChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    voiceStore.setScreenShareQuality(target.value as ScreenShareQualityPreset);
-}
 </script>
 
 <template>
@@ -32,17 +28,26 @@ function onScreenShareQualityChange(event: Event) {
                 </p>
             </div>
             <div class="p-6">
-                <label for="screen-share-quality" class="mb-2 block text-sm font-medium"> Quality Preset </label>
-                <select
-                    id="screen-share-quality"
-                    class="border-input bg-background focus:border-ring focus:ring-ring w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:ring-1 focus:outline-none"
-                    :value="voiceStore.screenShareQuality"
-                    @change="onScreenShareQualityChange"
+                <label class="mb-2 block text-sm font-medium"> Quality Preset </label>
+                <Select
+                    :model-value="voiceStore.screenShareQuality"
+                    @update:model-value="
+                        (val: string) => voiceStore.setScreenShareQuality(val as ScreenShareQualityPreset)
+                    "
                 >
-                    <option v-for="option in screenShareQualityOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select quality..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in screenShareQualityOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
                 <p class="text-muted-foreground mt-2 text-xs">
                     {{
                         screenShareQualityOptions.find((o) => o.value === voiceStore.screenShareQuality)?.description ??

@@ -58,4 +58,6 @@ export const SETTINGS_KEYS = {
     roles: () => [...SETTINGS_KEYS.root, 'roles'] as const,
     members: () => [...SETTINGS_KEYS.root, 'members'] as const,
     channels: () => [...SETTINGS_KEYS.root, 'channels'] as const,
+    bans: () => [...SETTINGS_KEYS.root, 'bans'] as const,
+    auditLog: (filters?: Record<string, unknown>) => [...SETTINGS_KEYS.root, 'audit-log', filters ?? {}] as const,
 };

@@ -44,6 +44,12 @@ const adminNavItems = computed<SettingsNavItem[]>(() => {
     if (perms.canManageChannels || perms.isAdministrator) {
         items.push({ title: 'Channels', routeName: 'settings-channels' });
     }
+    if (perms.canBanMembers || perms.canKickMembers || perms.isAdministrator) {
+        items.push({ title: 'Moderation', routeName: 'settings-moderation' });
+    }
+    if (perms.canViewAuditLog || perms.isAdministrator) {
+        items.push({ title: 'Audit Log', routeName: 'settings-audit-log' });
+    }
     return items;
 });
 

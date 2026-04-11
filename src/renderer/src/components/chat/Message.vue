@@ -5,6 +5,7 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import FileAttachment from './FileAttachment.vue';
 import MessageActions from './MessageActions.vue';
+import MessageLinkPreview from './MessageLinkPreview.vue';
 import MessageReplyPreview from './MessageReplyPreview.vue';
 import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
 import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
@@ -228,6 +229,19 @@ const messageWithoutYoutubeUrl = computed(() => {
     return displayContent.value.replace(urlPattern, '').trim();
 });
 
+const linkPreview = computed(() => props.message.link_preview ?? null);
+
+const messageWithoutPreviewUrl = computed(() => {
+    const preview = linkPreview.value;
+    if (!preview) return displayContent.value;
+    return displayContent.value.split(preview.url).join('').replace(/\s+/g, ' ').trim();
+});
+
+const renderedContentWithoutPreview = computed(() => {
+    if (!messageWithoutPreviewUrl.value) return '';
+    return renderMarkdownWithMentions(messageWithoutPreviewUrl.value);
+});
+
 const isGifUrl = computed(() => {
     return (
         displayContent.value.match(/^https?:\/\/.*\.gif$/i) ||
@@ -346,12 +360,6 @@ const emitShowProfile = (e: MouseEvent) => {
                     <img :src="displayContent" alt="GIF" class="h-auto max-w-sm" loading="lazy" />
                 </div>
 
-                <div
-                    v-else-if="messageWithoutYoutubeUrl && !youtubeVideoId"
-                    class="prose-chat text-sm wrap-break-word"
-                    v-html="renderedContent"
-                />
-
                 <template v-else-if="youtubeVideoId">
                     <div
                         v-if="messageWithoutYoutubeUrl"
@@ -360,6 +368,17 @@ const emitShowProfile = (e: MouseEvent) => {
                     />
                     <MessageYoutubeEmbed :video-id="youtubeVideoId" :url="youtubeUrl" :embed-url="youtubeEmbedUrl" />
                 </template>
+
+                <template v-else-if="linkPreview">
+                    <div
+                        v-if="messageWithoutPreviewUrl"
+                        class="prose-chat mb-2 text-sm wrap-break-word"
+                        v-html="renderedContentWithoutPreview"
+                    />
+                    <MessageLinkPreview :link-preview="linkPreview" />
+                </template>
+
+                <div v-else class="prose-chat text-sm wrap-break-word" v-html="renderedContent" />
             </div>
 
             <div v-if="message.decrypted_attachments?.length" class="mt-2 flex flex-wrap gap-2">

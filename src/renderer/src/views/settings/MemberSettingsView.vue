@@ -19,6 +19,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsMembersQuery } from '@/queries/settings/members';
 
@@ -58,10 +59,14 @@ const apiError = computed(() => {
 
 const allRoles = computed<Role[]>(() => {
     const metaRoles = rawData.value?.meta?.roles;
-    if (Array.isArray(metaRoles)) {
-        return metaRoles as Role[];
-    }
-    return [];
+    if (!Array.isArray(metaRoles)) return [];
+    return metaRoles.map((r: any) => ({
+        id: String(r.id),
+        name: r.attributes?.name ?? r.name ?? '',
+        color: r.attributes?.color ?? r.color ?? '#99AAB5',
+        position: r.attributes?.position ?? r.position ?? 0,
+        is_default: r.attributes?.is_default ?? r.is_default ?? false,
+    }));
 });
 
 const members = computed<Member[]>(() => {
@@ -281,17 +286,30 @@ function isDefaultRole(role: MemberRole): boolean {
                     >
                         This member already has all available roles.
                     </div>
-                    <Button
-                        v-for="role in selectedMember ? getAvailableRoles(selectedMember) : []"
-                        :key="role.id"
-                        variant="outline"
-                        class="w-full justify-start gap-3"
-                        @click="doAssignRoleAction(role.id)"
+                    <Select
+                        v-else
                         :disabled="processing"
+                        @update:model-value="(val: string) => doAssignRoleAction(val)"
                     >
-                        <div class="h-3 w-3 rounded-full" :style="{ backgroundColor: role.color }" />
-                        {{ role.name }}
-                    </Button>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a role..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="role in selectedMember ? getAvailableRoles(selectedMember) : []"
+                                :key="role.id"
+                                :value="role.id"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <div
+                                        class="h-3 w-3 shrink-0 rounded-full"
+                                        :style="{ backgroundColor: role.color }"
+                                    />
+                                    {{ role.name }}
+                                </div>
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </DialogContent>
         </Dialog>

@@ -11,6 +11,7 @@ import { pttApi } from './apis/ptt';
 import { screenApi } from './apis/screen';
 import { serverApi } from './apis/server';
 import { settingsApi } from './apis/settings';
+import { unfurlApi } from './apis/unfurl';
 import { updaterApi } from './apis/updater';
 import { windowApi } from './apis/window';
 
@@ -27,6 +28,7 @@ const api = {
     messages: messagesApi,
     attachments: attachmentsApi,
     clipboard: clipboardApi,
+    unfurl: unfurlApi,
 };
 
 if (process.contextIsolated) {

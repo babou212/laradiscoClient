@@ -38,6 +38,7 @@ import {
     clearSearchIndex,
 } from './database';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
+import { unfurlUrl } from './services/unfurl';
 
 interface AuthUser {
     id: string;
@@ -704,6 +705,26 @@ export function registerIpcHandlers(): void {
             }
         },
     );
+
+    ipcMain.handle('unfurl:fetch', async (_event, url: string) => {
+        try {
+            const result = await unfurlUrl(url);
+            if (result.status !== 'ok') {
+                return { status: result.status, error: result.error };
+            }
+            return {
+                status: 'ok',
+                metadata: result.metadata,
+                imageBytes: result.imageBytes ? new Uint8Array(result.imageBytes) : undefined,
+                imageMime: result.imageMime,
+                imageWidth: result.imageWidth,
+                imageHeight: result.imageHeight,
+            };
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unfurl failed';
+            return { status: 'failed' as const, error: message };
+        }
+    });
 
     ipcMain.handle(
         'attachment:generateThumbnail',

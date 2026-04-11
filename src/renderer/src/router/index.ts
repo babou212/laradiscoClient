@@ -123,6 +123,16 @@ const router = createRouter({
                     component: () => import('@/views/settings/InviteLinkSettingsView.vue'),
                 },
                 {
+                    path: 'moderation',
+                    name: 'settings-moderation',
+                    component: () => import('@/views/settings/ModerationSettingsView.vue'),
+                },
+                {
+                    path: 'audit-log',
+                    name: 'settings-audit-log',
+                    component: () => import('@/views/settings/AuditLogSettingsView.vue'),
+                },
+                {
                     path: 'security',
                     name: 'settings-security',
                     component: () => import('@/views/settings/SecuritySettingsView.vue'),

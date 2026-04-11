@@ -32,25 +32,53 @@ import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useServerStore } from '@/stores/server';
-import type { MessageData, EncryptedAttachmentMeta } from '@/types/chat';
+import type { MessageData, EncryptedAttachmentMeta, LinkPreviewData } from '@/types/chat';
 
 export interface MessageEnvelope {
     v: 1;
     text: string;
     attachments?: EncryptedAttachmentMeta[];
+    link_preview?: LinkPreviewData;
 }
 
 export interface DecryptedPayload {
     text: string;
     attachments?: EncryptedAttachmentMeta[];
+    link_preview?: LinkPreviewData;
 }
 
-function buildEnvelope(text: string, attachments?: EncryptedAttachmentMeta[]): string {
+function buildEnvelope(
+    text: string,
+    attachments?: EncryptedAttachmentMeta[],
+    linkPreview?: LinkPreviewData | null,
+): string {
     const envelope: MessageEnvelope = { v: 1, text };
     if (attachments && attachments.length > 0) {
         envelope.attachments = attachments;
     }
+    if (linkPreview) {
+        envelope.link_preview = linkPreview;
+    }
     return JSON.stringify(envelope);
+}
+
+function sanitizeLinkPreview(raw: unknown): LinkPreviewData | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const p = raw as Record<string, unknown>;
+    if (typeof p.url !== 'string' || typeof p.title !== 'string') return undefined;
+    const truncate = (s: unknown, max: number): string | undefined =>
+        typeof s === 'string' ? s.slice(0, max) : undefined;
+    const image = p.image && typeof p.image === 'object' ? (p.image as LinkPreviewData['image']) : undefined;
+    return {
+        url: p.url.slice(0, 2048),
+        title: p.title.slice(0, 300),
+        description: truncate(p.description, 600),
+        site_name: truncate(p.site_name, 100),
+        image,
+        image_width: typeof p.image_width === 'number' ? p.image_width : undefined,
+        image_height: typeof p.image_height === 'number' ? p.image_height : undefined,
+        fetched_at: typeof p.fetched_at === 'number' ? p.fetched_at : Date.now(),
+    };
 }
 
 function parsePayload(raw: string): DecryptedPayload {
@@ -60,6 +88,7 @@ function parsePayload(raw: string): DecryptedPayload {
             return {
                 text: parsed.text,
                 attachments: parsed.attachments,
+                link_preview: sanitizeLinkPreview(parsed.link_preview),
             };
         }
     } catch {
@@ -69,11 +98,34 @@ function parsePayload(raw: string): DecryptedPayload {
 }
 
 /** Serialize a DecryptedPayload for local cache storage. */
-function serializeForCache(text: string, attachments?: EncryptedAttachmentMeta[]): string {
-    if (attachments && attachments.length > 0) {
-        return JSON.stringify({ __cache: 1, text, attachments });
+function serializeForCache(
+    text: string,
+    attachments?: EncryptedAttachmentMeta[],
+    linkPreview?: LinkPreviewData | null,
+): string {
+    if ((attachments && attachments.length > 0) || linkPreview) {
+        return JSON.stringify({
+            __cache: 1,
+            text,
+            attachments,
+            link_preview: linkPreview ?? undefined,
+        });
     }
     return text;
+}
+
+interface PayloadTarget {
+    decrypted_content?: string;
+    decrypted_attachments?: EncryptedAttachmentMeta[];
+    link_preview?: LinkPreviewData | null;
+    decrypt_error?: boolean;
+}
+
+function applyPayload(target: PayloadTarget, payload: DecryptedPayload): void {
+    target.decrypted_content = payload.text;
+    target.decrypted_attachments = payload.attachments;
+    target.link_preview = payload.link_preview ?? null;
+    target.decrypt_error = false;
 }
 
 /** Deserialize a cached string back to text + attachments. */
@@ -81,7 +133,11 @@ function deserializeFromCache(cached: string): DecryptedPayload {
     try {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.__cache === 1 && typeof parsed.text === 'string') {
-            return { text: parsed.text, attachments: parsed.attachments };
+            return {
+                text: parsed.text,
+                attachments: parsed.attachments,
+                link_preview: parsed.link_preview,
+            };
         }
     } catch {
         // Legacy plain text cache entry
@@ -537,13 +593,14 @@ export function useE2EE() {
         channelId: number,
         plaintext: string,
         attachments?: EncryptedAttachmentMeta[],
+        linkPreview?: LinkPreviewData | null,
     ): Promise<string> {
         let result!: { message_bytes: string };
         await enqueueGroupOp(channelId, undefined, async () => {
             const serverId = getServerId();
             const groupId = `channel:${channelId}`;
             await ensureGroupReady(groupId, channelId, 'channel');
-            const envelope = buildEnvelope(plaintext, attachments);
+            const envelope = buildEnvelope(plaintext, attachments, linkPreview);
             result = await window.api.mls.encrypt({ serverId, groupId, plaintext: envelope });
         });
         return result.message_bytes;
@@ -553,13 +610,14 @@ export function useE2EE() {
         dmGroupId: number,
         plaintext: string,
         attachments?: EncryptedAttachmentMeta[],
+        linkPreview?: LinkPreviewData | null,
     ): Promise<string> {
         let result!: { message_bytes: string };
         await enqueueGroupOp(undefined, dmGroupId, async () => {
             const serverId = getServerId();
             const groupId = `dm:${dmGroupId}`;
             await ensureGroupReady(groupId, dmGroupId, 'dm');
-            const envelope = buildEnvelope(plaintext, attachments);
+            const envelope = buildEnvelope(plaintext, attachments, linkPreview);
             result = await window.api.mls.encrypt({ serverId, groupId, plaintext: envelope });
         });
         return result.message_bytes;
@@ -593,7 +651,11 @@ export function useE2EE() {
         if (messageId != null) {
             const numericId = Number(messageId);
             window.api.messages
-                .storeDecrypted(serverId, numericId, serializeForCache(payload.text, payload.attachments))
+                .storeDecrypted(
+                    serverId,
+                    numericId,
+                    serializeForCache(payload.text, payload.attachments, payload.link_preview),
+                )
                 .catch(() => {});
             const conversationId = dmGroupId ?? channelId;
             if (conversationId != null) {
@@ -625,10 +687,7 @@ export function useE2EE() {
             for (const m of needLookup) {
                 const pt = cached[Number(m.id)];
                 if (pt != null) {
-                    const payload = deserializeFromCache(pt);
-                    m.decrypted_content = payload.text;
-                    m.decrypted_attachments = payload.attachments;
-                    m.decrypt_error = false;
+                    applyPayload(m, deserializeFromCache(pt));
                 }
             }
         } catch (err) {
@@ -651,10 +710,7 @@ export function useE2EE() {
                 const serverId = getServerId();
                 const cached = await window.api.messages.getDecryptedBatch(serverId, [Number(message.id)]);
                 if (cached[Number(message.id)] != null) {
-                    const payload = deserializeFromCache(cached[Number(message.id)]);
-                    message.decrypted_content = payload.text;
-                    message.decrypted_attachments = payload.attachments;
-                    message.decrypt_error = false;
+                    applyPayload(message, deserializeFromCache(cached[Number(message.id)]));
                 } else {
                     message.decrypt_error = true;
                 }
@@ -667,9 +723,7 @@ export function useE2EE() {
 
         try {
             const payload = await decrypt(message.content, channelId, dmGroupId, message.id, message.user?.username);
-            message.decrypted_content = payload.text;
-            message.decrypted_attachments = payload.attachments;
-            message.decrypt_error = false;
+            applyPayload(message, payload);
         } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             console.warn(
@@ -692,9 +746,7 @@ export function useE2EE() {
             if (isForwardSecrecy) {
                 const cached = await _lookupSingleDecryptedCache(message.id);
                 if (cached != null) {
-                    message.decrypted_content = cached.text;
-                    message.decrypted_attachments = cached.attachments;
-                    message.decrypt_error = false;
+                    applyPayload(message, cached);
                 } else {
                     console.warn('[E2EE] Forward secrecy — key consumed and no cache for message:', message.id);
                     message.decrypt_error = true;
@@ -732,9 +784,7 @@ export function useE2EE() {
                                     console.error('[E2EE] Rejoin after divergence failed:', rejoinErr);
                                     const cached = await _lookupSingleDecryptedCache(message.id);
                                     if (cached != null) {
-                                        message.decrypted_content = cached.text;
-                                        message.decrypted_attachments = cached.attachments;
-                                        message.decrypt_error = false;
+                                        applyPayload(message, cached);
                                     }
                                     return;
                                 }
@@ -743,16 +793,12 @@ export function useE2EE() {
                     }
 
                     const retryPayload = await decrypt(message.content, channelId, dmGroupId, message.id);
-                    message.decrypted_content = retryPayload.text;
-                    message.decrypted_attachments = retryPayload.attachments;
-                    message.decrypt_error = false;
+                    applyPayload(message, retryPayload);
                     return;
                 } catch {
                     const cached = await _lookupSingleDecryptedCache(message.id);
                     if (cached != null) {
-                        message.decrypted_content = cached.text;
-                        message.decrypted_attachments = cached.attachments;
-                        message.decrypt_error = false;
+                        applyPayload(message, cached);
                         return;
                     }
                 }
@@ -761,9 +807,7 @@ export function useE2EE() {
             if (message.decrypt_attempts >= MAX_DECRYPT_ATTEMPTS) {
                 const cached = await _lookupSingleDecryptedCache(message.id);
                 if (cached != null) {
-                    message.decrypted_content = cached.text;
-                    message.decrypted_attachments = cached.attachments;
-                    message.decrypt_error = false;
+                    applyPayload(message, cached);
                 } else {
                     message.decrypted_content = undefined;
                     message.decrypt_error = true;
@@ -1401,9 +1445,14 @@ export function useE2EE() {
         plaintext: string,
         metadata?: { conversationType: 'channel' | 'dm'; conversationId: number; userName: string },
         attachments?: EncryptedAttachmentMeta[],
+        linkPreview?: LinkPreviewData | null,
     ): Promise<void> {
         const serverId = getServerId();
-        await window.api.messages.storeDecrypted(serverId, messageId, serializeForCache(plaintext, attachments));
+        await window.api.messages.storeDecrypted(
+            serverId,
+            messageId,
+            serializeForCache(plaintext, attachments, linkPreview),
+        );
         if (metadata) {
             window.api.messages
                 .indexForSearch({

@@ -352,7 +352,7 @@ async function confirmDelete() {
                         </div>
                         <div class="grid gap-2">
                             <Label for="create-position">Position</Label>
-                            <Input id="create-position" type="number" v-model.number="createForm.position" min="0" />
+                            <Input id="create-position" type="number" v-model.number="createForm.position" min="-1" />
                         </div>
                     </div>
 
@@ -449,7 +449,7 @@ async function confirmDelete() {
                         </div>
                         <div class="grid gap-2">
                             <Label for="edit-position">Position</Label>
-                            <Input id="edit-position" type="number" v-model.number="editForm.position" min="0" />
+                            <Input id="edit-position" type="number" v-model.number="editForm.position" min="-1" />
                         </div>
                     </div>
 

@@ -14,6 +14,13 @@ export type AuthPermissions = {
     canInviteMembers: boolean;
     canManageRoles: boolean;
     canManageChannels: boolean;
+    canManageServer: boolean;
+    canManageMessages: boolean;
+    canBanMembers: boolean;
+    canKickMembers: boolean;
+    isAdministrator: boolean;
+    isBanned: boolean;
+    isJailed: boolean;
 };
 
 export type Auth = {

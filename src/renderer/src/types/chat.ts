@@ -32,6 +32,17 @@ export interface ChannelPermissions {
     canMentionEveryone: boolean;
 }
 
+export interface LinkPreviewData {
+    url: string;
+    title: string;
+    description?: string;
+    site_name?: string;
+    image?: EncryptedAttachmentMeta;
+    image_width?: number;
+    image_height?: number;
+    fetched_at: number;
+}
+
 export interface EncryptedAttachmentMeta {
     id: string;
     key: string; // base64 AES-256-GCM key
@@ -120,6 +131,7 @@ export interface MessageData {
     decrypt_attempts?: number;
     encrypted_attachments?: ServerAttachment[];
     decrypted_attachments?: EncryptedAttachmentMeta[];
+    link_preview?: LinkPreviewData | null;
 }
 
 export interface MessagesResponse {

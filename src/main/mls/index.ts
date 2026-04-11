@@ -11,7 +11,6 @@ import {
 import type { MlsKeyBackupBundle, E2eeDeviceKeys } from './backup';
 import { MlsState } from './state';
 import {
-    initMlsTables,
     hasIdentity,
     loadIdentity,
     deleteAllMlsState,
@@ -30,16 +29,9 @@ function toBuffer(data: Uint8Array): Uint8Array<ArrayBuffer> {
     return view;
 }
 
-// ---------------------------------------------------------------------------
-// Per-server async mutex — serializes all WASM operations for a given server
-// to prevent concurrent borrows of the Provider (which trigger
-// "recursive use of an object detected" errors in wasm-bindgen).
-// ---------------------------------------------------------------------------
-
 class AsyncMutex {
     private _queue: Promise<void> = Promise.resolve();
 
-    /** Run `fn` exclusively — only one caller at a time. */
     run<T>(fn: () => Promise<T>): Promise<T> {
         let resolve!: (v: T) => void;
         let reject!: (e: unknown) => void;
@@ -122,10 +114,6 @@ export function getDirtyServerIds(): number[] {
     return Array.from(dirtyServers);
 }
 
-// ---------------------------------------------------------------------------
-// E2EE device key storage for unified backup
-// ---------------------------------------------------------------------------
-
 const e2eeDeviceKeysCache = new Map<number, E2eeDeviceKeys>();
 
 export function setE2eeDeviceKeys(serverId: number, keys: E2eeDeviceKeys): void {
@@ -145,7 +133,6 @@ function clearStateCache(serverId?: number): void {
 }
 
 export function initMls(): void {
-    initMlsTables();
     registerMlsIpcHandlers();
     registerAutoBackupHandlers();
 }
@@ -740,7 +727,6 @@ function restoreFromBundle(serverId: number, bundle: MlsKeyBackupBundle, userId?
     saveIdentity(serverId, bundle.mls.sourceDeviceId, 'restored', userId ?? null, identityBytes);
     saveProviderState(serverId, provider.to_bytes());
 
-    // Cache E2EE device keys if present in the bundle
     if (bundle.e2ee) {
         setE2eeDeviceKeys(serverId, bundle.e2ee);
     }

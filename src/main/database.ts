@@ -1,6 +1,7 @@
-import { join } from 'path';
-import Database from 'better-sqlite3';
-import { app, safeStorage } from 'electron';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { safeStorage } from 'electron';
+import { getDb, getRawDb, initDb } from './db';
+import { authSessions, decryptedMessages, serverConnections, settings } from './db/schema';
 
 export interface ServerConnection {
     id: number;
@@ -21,92 +22,52 @@ export interface AuthSession {
     created_at: string;
 }
 
-let db: Database.Database;
-
 export function initDatabase(): void {
-    const dbPath = join(app.getPath('userData'), 'laradisco.db');
-    db = new Database(dbPath);
-
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS server_connections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            host TEXT NOT NULL UNIQUE,
-            is_active INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS auth_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_id INTEGER NOT NULL UNIQUE,
-            user_id INTEGER NOT NULL,
-            user_name TEXT NOT NULL,
-            user_email TEXT NOT NULL,
-            user_avatar TEXT,
-            encrypted_token TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS decrypted_messages (
-            server_id INTEGER NOT NULL,
-            message_id INTEGER NOT NULL,
-            plaintext TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            PRIMARY KEY (server_id, message_id),
-            FOREIGN KEY (server_id) REFERENCES server_connections(id) ON DELETE CASCADE
-        );
-
-        CREATE VIRTUAL TABLE IF NOT EXISTS message_search USING fts5(
-            content,
-            server_id UNINDEXED,
-            message_id UNINDEXED,
-            conversation_type UNINDEXED,
-            conversation_id UNINDEXED,
-            user_name UNINDEXED,
-            tokenize='unicode61 remove_diacritics 2'
-        );
-    `);
+    initDb();
 }
 
-export function getDatabase(): Database.Database {
-    return db;
+export function getDatabase() {
+    return getRawDb();
 }
 
 export function addServerConnection(name: string, host: string): ServerConnection {
-    db.prepare('UPDATE server_connections SET is_active = 0').run();
+    const db = getDb();
 
-    const stmt = db.prepare(
-        'INSERT INTO server_connections (name, host, is_active) VALUES (?, ?, 1) ON CONFLICT(host) DO UPDATE SET name = excluded.name, is_active = 1',
-    );
-    stmt.run(name, host);
+    db.update(serverConnections).set({ is_active: false }).run();
 
-    return db.prepare('SELECT * FROM server_connections WHERE host = ?').get(host) as ServerConnection;
+    db.insert(serverConnections)
+        .values({ name, host, is_active: true })
+        .onConflictDoUpdate({
+            target: serverConnections.host,
+            set: { name, is_active: true },
+        })
+        .run();
+
+    return db.select().from(serverConnections).where(eq(serverConnections.host, host)).get() as ServerConnection;
 }
 
 export function getActiveServer(): ServerConnection | null {
-    return (db.prepare('SELECT * FROM server_connections WHERE is_active = 1').get() as ServerConnection) ?? null;
+    const db = getDb();
+    return (
+        (db.select().from(serverConnections).where(eq(serverConnections.is_active, true)).get() as ServerConnection) ??
+        null
+    );
 }
 
 export function getAllServers(): ServerConnection[] {
-    return db.prepare('SELECT * FROM server_connections ORDER BY created_at DESC').all() as ServerConnection[];
+    const db = getDb();
+    return db.select().from(serverConnections).orderBy(desc(serverConnections.created_at)).all() as ServerConnection[];
 }
 
 export function setActiveServer(id: number): void {
-    db.prepare('UPDATE server_connections SET is_active = 0').run();
-    db.prepare('UPDATE server_connections SET is_active = 1 WHERE id = ?').run(id);
+    const db = getDb();
+    db.update(serverConnections).set({ is_active: false }).run();
+    db.update(serverConnections).set({ is_active: true }).where(eq(serverConnections.id, id)).run();
 }
 
 export function removeServer(id: number): void {
-    db.prepare('DELETE FROM server_connections WHERE id = ?').run(id);
+    const db = getDb();
+    db.delete(serverConnections).where(eq(serverConnections.id, id)).run();
 }
 
 function requireSafeStorage(): void {
@@ -135,24 +96,36 @@ export function saveAuthSession(
     userAvatar: string | null,
     token: string,
 ): void {
+    const db = getDb();
     const encryptedToken = encryptString(token);
     const encryptedEmail = encryptString(userEmail);
 
-    db.prepare(
-        `INSERT INTO auth_sessions (server_id, user_id, user_name, user_email, user_avatar, encrypted_token)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(server_id) DO UPDATE SET
-            user_id = excluded.user_id,
-            user_name = excluded.user_name,
-            user_email = excluded.user_email,
-            user_avatar = excluded.user_avatar,
-            encrypted_token = excluded.encrypted_token,
-            created_at = datetime('now')`,
-    ).run(serverId, userId, userName, encryptedEmail, userAvatar, encryptedToken);
+    db.insert(authSessions)
+        .values({
+            server_id: serverId,
+            user_id: userId,
+            user_name: userName,
+            user_email: encryptedEmail,
+            user_avatar: userAvatar,
+            encrypted_token: encryptedToken,
+        })
+        .onConflictDoUpdate({
+            target: authSessions.server_id,
+            set: {
+                user_id: userId,
+                user_name: userName,
+                user_email: encryptedEmail,
+                user_avatar: userAvatar,
+                encrypted_token: encryptedToken,
+                created_at: sql`datetime('now')`,
+            },
+        })
+        .run();
 }
 
 export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_token'> & { token: string }) | null {
-    const session = db.prepare('SELECT * FROM auth_sessions WHERE server_id = ?').get(serverId) as
+    const db = getDb();
+    const session = db.select().from(authSessions).where(eq(authSessions.server_id, serverId)).get() as
         | AuthSession
         | undefined;
 
@@ -173,46 +146,61 @@ export function getAuthSession(serverId: number): (Omit<AuthSession, 'encrypted_
             created_at: session.created_at,
         };
     } catch {
-        db.prepare('DELETE FROM auth_sessions WHERE server_id = ?').run(serverId);
+        db.delete(authSessions).where(eq(authSessions.server_id, serverId)).run();
         return null;
     }
 }
 
 export function removeAuthSession(serverId: number): void {
-    db.prepare('DELETE FROM auth_sessions WHERE server_id = ?').run(serverId);
+    const db = getDb();
+    db.delete(authSessions).where(eq(authSessions.server_id, serverId)).run();
 }
 
 export function getSetting(key: string): string | null {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    const db = getDb();
+    const row = db.select({ value: settings.value }).from(settings).where(eq(settings.key, key)).get();
     return row?.value ?? null;
 }
 
 export function setSetting(key: string, value: string): void {
-    db.prepare(
-        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-    ).run(key, value);
+    const db = getDb();
+    db.insert(settings)
+        .values({ key, value })
+        .onConflictDoUpdate({
+            target: settings.key,
+            set: { value },
+        })
+        .run();
 }
 
 export function storeDecryptedMessage(serverId: number, messageId: number, plaintext: string): void {
+    const db = getDb();
     const encrypted = encryptString(plaintext);
-    db.prepare(
-        'INSERT INTO decrypted_messages (server_id, message_id, plaintext) VALUES (?, ?, ?) ON CONFLICT(server_id, message_id) DO UPDATE SET plaintext = excluded.plaintext',
-    ).run(serverId, messageId, encrypted);
+    db.insert(decryptedMessages)
+        .values({ server_id: serverId, message_id: messageId, plaintext: encrypted })
+        .onConflictDoUpdate({
+            target: [decryptedMessages.server_id, decryptedMessages.message_id],
+            set: { plaintext: encrypted },
+        })
+        .run();
 }
 
 export function storeDecryptedMessageIfAbsent(serverId: number, messageId: number, plaintext: string): void {
+    const db = getDb();
     const encrypted = encryptString(plaintext);
-    db.prepare('INSERT OR IGNORE INTO decrypted_messages (server_id, message_id, plaintext) VALUES (?, ?, ?)').run(
-        serverId,
-        messageId,
-        encrypted,
-    );
+    db.insert(decryptedMessages)
+        .values({ server_id: serverId, message_id: messageId, plaintext: encrypted })
+        .onConflictDoNothing()
+        .run();
 }
 
 export function getDecryptedMessage(serverId: number, messageId: number): string | null {
+    const db = getDb();
     const row = db
-        .prepare('SELECT plaintext FROM decrypted_messages WHERE server_id = ? AND message_id = ?')
-        .get(serverId, messageId) as { plaintext: string } | undefined;
+        .select({ plaintext: decryptedMessages.plaintext })
+        .from(decryptedMessages)
+        .where(and(eq(decryptedMessages.server_id, serverId), eq(decryptedMessages.message_id, messageId)))
+        .get();
     if (!row) return null;
     return decryptString(row.plaintext);
 }
@@ -221,12 +209,12 @@ export function getDecryptedMessages(serverId: number, messageIds: number[]): Ma
     const result = new Map<number, string>();
     if (messageIds.length === 0) return result;
 
-    const placeholders = messageIds.map(() => '?').join(',');
+    const db = getDb();
     const rows = db
-        .prepare(
-            `SELECT message_id, plaintext FROM decrypted_messages WHERE server_id = ? AND message_id IN (${placeholders})`,
-        )
-        .all(serverId, ...messageIds) as Array<{ message_id: number; plaintext: string }>;
+        .select({ message_id: decryptedMessages.message_id, plaintext: decryptedMessages.plaintext })
+        .from(decryptedMessages)
+        .where(and(eq(decryptedMessages.server_id, serverId), inArray(decryptedMessages.message_id, messageIds)))
+        .all();
 
     for (const row of rows) {
         result.set(row.message_id, decryptString(row.plaintext));
@@ -235,7 +223,8 @@ export function getDecryptedMessages(serverId: number, messageIds: number[]): Ma
 }
 
 export function deleteDecryptedMessages(serverId: number): void {
-    db.prepare('DELETE FROM decrypted_messages WHERE server_id = ?').run(serverId);
+    const db = getDb();
+    db.delete(decryptedMessages).where(eq(decryptedMessages.server_id, serverId)).run();
 }
 
 export interface SearchIndexParams {
@@ -249,29 +238,44 @@ export interface SearchIndexParams {
 
 export function indexMessageForSearch(params: SearchIndexParams): void {
     const { serverId, messageId, conversationType, conversationId, userName, plaintext } = params;
+    const rawDb = getRawDb();
 
     const effectiveUserName =
         userName ||
         (
-            db
+            rawDb
                 .prepare(`SELECT user_name FROM message_search WHERE server_id = ? AND message_id = ?`)
                 .get(String(serverId), String(messageId)) as { user_name: string } | undefined
         )?.user_name ||
         '';
 
-    db.prepare(
-        `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
-    ).run(String(serverId), String(messageId));
-    db.prepare(
-        `INSERT INTO message_search (content, server_id, message_id, conversation_type, conversation_id, user_name)
+    rawDb
+        .prepare(
+            `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
+        )
+        .run(String(serverId), String(messageId));
+    rawDb
+        .prepare(
+            `INSERT INTO message_search (content, server_id, message_id, conversation_type, conversation_id, user_name)
          VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(plaintext, String(serverId), String(messageId), conversationType, String(conversationId), effectiveUserName);
+        )
+        .run(
+            plaintext,
+            String(serverId),
+            String(messageId),
+            conversationType,
+            String(conversationId),
+            effectiveUserName,
+        );
 }
 
 export function removeMessageFromSearchIndex(serverId: number, messageId: number): void {
-    db.prepare(
-        `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
-    ).run(String(serverId), String(messageId));
+    const rawDb = getRawDb();
+    rawDb
+        .prepare(
+            `DELETE FROM message_search WHERE rowid IN (SELECT rowid FROM message_search WHERE server_id = ? AND message_id = ?)`,
+        )
+        .run(String(serverId), String(messageId));
 }
 
 export interface SearchResult {
@@ -294,7 +298,8 @@ export function searchMessages(
     const ftsQuery = buildFtsQuery(query);
     if (!ftsQuery) return [];
 
-    const rows = db
+    const rawDb = getRawDb();
+    const rows = rawDb
         .prepare(
             `SELECT message_id, server_id, conversation_type, conversation_id, user_name,
                     snippet(message_search, 0, '', '', '…', 30) as snippet
@@ -346,5 +351,6 @@ function buildFtsQuery(raw: string): string {
 }
 
 export function clearSearchIndex(serverId: number): void {
-    db.prepare(`DELETE FROM message_search WHERE server_id = ?`).run(String(serverId));
+    const rawDb = getRawDb();
+    rawDb.prepare(`DELETE FROM message_search WHERE server_id = ?`).run(String(serverId));
 }
