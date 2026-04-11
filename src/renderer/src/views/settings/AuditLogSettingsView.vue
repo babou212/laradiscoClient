@@ -20,7 +20,7 @@ const queryFilters = computed(() => ({
     per_page: 25,
 }));
 
-const { data: auditData, isLoading, error } = useQuery(computed(() => settingsAuditLogQuery(queryFilters.value)));
+const { data: auditData, isLoading, error } = useQuery(() => settingsAuditLogQuery(queryFilters.value));
 
 const errorMsg = computed(() => {
     if (error.value) return getApiErrorMessage(error.value);

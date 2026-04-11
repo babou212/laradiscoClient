@@ -302,7 +302,7 @@ function formatAccelerator(accel: string): string {
                 <label class="mb-2 block text-sm font-medium"> Input Device </label>
                 <Select
                     :model-value="voiceStore.selectedMicDeviceId"
-                    @update:model-value="(val: string) => voiceStore.setMicDevice(val)"
+                    @update:model-value="(val) => typeof val === 'string' && voiceStore.setMicDevice(val)"
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="System Default" />

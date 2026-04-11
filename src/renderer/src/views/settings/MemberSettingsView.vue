@@ -289,7 +289,7 @@ function isDefaultRole(role: MemberRole): boolean {
                     <Select
                         v-else
                         :disabled="processing"
-                        @update:model-value="(val: string) => doAssignRoleAction(val)"
+                        @update:model-value="(val) => typeof val === 'string' && doAssignRoleAction(val)"
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Select a role..." />
