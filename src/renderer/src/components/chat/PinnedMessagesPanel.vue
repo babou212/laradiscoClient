@@ -2,10 +2,16 @@
 import { useEventListener } from '@vueuse/core';
 import { Pin, PinOff, X } from 'lucide-vue-next';
 import { onMounted, useTemplateRef } from 'vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
+import { useAvatarStore } from '@/stores/avatar';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { MessageData } from '@/types/chat';
+
+const avatarStore = useAvatarStore();
+const userNamesStore = useUserNamesStore();
 
 type Props = {
     pinnedMessages: MessageData[];
@@ -91,14 +97,19 @@ const renderedContent = (message: MessageData): string => {
                     @click="emit('jump', message.id)"
                 >
                     <div class="flex items-start gap-2">
-                        <div
-                            class="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-                        >
-                            {{ message.user.username[0].toUpperCase() }}
-                        </div>
+                        <Avatar v-if="message.user" class="size-6 shrink-0">
+                            <AvatarImage
+                                v-if="avatarStore.getAvatarUrl(message.user.id, 'thumb')"
+                                :src="avatarStore.getAvatarUrl(message.user.id, 'thumb')!"
+                                :alt="message.user.username"
+                            />
+                            <AvatarFallback class="bg-primary text-primary-foreground text-[10px] font-semibold">
+                                {{ userNamesStore.getDisplayName(message.user.id, message.user.username)[0].toUpperCase() }}
+                            </AvatarFallback>
+                        </Avatar>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-baseline gap-1.5">
-                                <span class="text-xs font-semibold">{{ message.user.username }}</span>
+                                <span class="text-xs font-semibold">{{ userNamesStore.getDisplayName(message.user.id, message.user.username) }}</span>
                                 <span class="text-muted-foreground text-[10px]">
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>

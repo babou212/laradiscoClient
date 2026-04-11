@@ -21,6 +21,7 @@ export interface Channel {
     type: string;
     is_private?: boolean;
     permissions?: ChannelPermissions;
+    has_unread?: boolean;
 }
 
 export interface ChannelPermissions {

@@ -39,7 +39,7 @@ export function useMessageScroll(options: UseMessageScrollOptions) {
 
     useResizeObserver(contentRef, () => {
         if (pinnedToBottom.value && containerRef.value) {
-            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+            containerRef.value.scrollTo({ top: containerRef.value.scrollHeight, behavior: 'smooth' });
         }
     });
 

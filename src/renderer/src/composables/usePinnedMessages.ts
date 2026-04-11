@@ -10,7 +10,9 @@ import {
     unpinDmMessage,
 } from '@/api/pins';
 import { useE2EE } from '@/composables/useE2EE';
+import { useAvatarStore } from '@/stores/avatar';
 import { useE2eeStore } from '@/stores/e2ee';
+import { useUserNamesStore } from '@/stores/userNames';
 import type { MessageData } from '@/types/chat';
 
 export function usePinnedMessages(
@@ -20,6 +22,8 @@ export function usePinnedMessages(
 ) {
     const e2eeStore = useE2eeStore();
     const e2ee = useE2EE();
+    const avatarStore = useAvatarStore();
+    const userNamesStore = useUserNamesStore();
 
     const pinnedMessages = ref<MessageData[]>([]);
     const showPinnedMessages = shallowRef(false);
@@ -32,6 +36,9 @@ export function usePinnedMessages(
             const id = String(channelId.value);
             const response = isDm.value ? await getDmPins(id) : await getChannelPins(id);
             pinnedMessages.value = normalizeMessages(response.data, response.included);
+            const users = pinnedMessages.value.map((m) => m.user).filter(Boolean);
+            avatarStore.hydrateFromUsers(users);
+            userNamesStore.hydrateFromUsers(users);
         } catch (error) {
             console.error('Failed to fetch pinned messages:', error);
         } finally {

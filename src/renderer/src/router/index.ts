@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
 import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
+import { useChatStore } from '@/stores/chat';
 import { useE2eeStore } from '@/stores/e2ee';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
@@ -169,9 +170,11 @@ function connectRealtime(userId: number): void {
 
     const presenceStore = usePresenceStore();
     const notificationsStore = useNotificationsStore();
+    const chatStore = useChatStore();
 
     presenceStore.connect();
     notificationsStore.connect(userId);
+    chatStore.connectUnread(userId);
     startPresenceUpdater();
 }
 
@@ -181,10 +184,12 @@ function disconnectRealtime(): void {
 
     const presenceStore = usePresenceStore();
     const notificationsStore = useNotificationsStore();
+    const chatStore = useChatStore();
 
     presenceStore.goOffline();
     stopPresenceUpdater();
 
+    chatStore.disconnectUnread();
     notificationsStore.disconnect();
     presenceStore.disconnect();
     disconnectEcho();

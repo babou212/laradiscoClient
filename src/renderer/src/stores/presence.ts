@@ -107,6 +107,31 @@ export const usePresenceStore = defineStore('presence', () => {
         userNamesStore.hydrateFromUsers([newMember]);
     };
 
+    const applyProfileUpdate = (data: {
+        user_id: number | string;
+        username: string;
+        display_name: string | null;
+        avatar_urls: import('@/types/chat').AvatarUrls | null;
+    }) => {
+        const userId = String(data.user_id);
+        const displayName = data.display_name ?? data.username;
+
+        const avatarStore = useAvatarStore();
+        const userNamesStore = useUserNamesStore();
+        avatarStore.setAvatar(userId, data.avatar_urls);
+        userNamesStore.setDisplayName(userId, displayName);
+
+        const patch = (u: OnlineUser) => {
+            u.username = data.username;
+            u.display_name = displayName;
+            u.avatar_urls = data.avatar_urls ?? null;
+        };
+        const online = onlineUsers.value.find((u) => u.id === userId);
+        if (online) patch(online);
+        const member = serverMembers.value.find((m) => m.id === userId);
+        if (member) patch(member);
+    };
+
     const applyPresenceUpdate = (data: PresenceUpdate) => {
         const userId = String(data.user_id);
         const idx = onlineUsers.value.findIndex((u) => u.id === userId);
@@ -139,6 +164,7 @@ export const usePresenceStore = defineStore('presence', () => {
             const echo = getEcho();
             channel = echo.private('presence');
             channel.listen('.user.presence.updated', applyPresenceUpdate);
+            channel.listen('.user.profile.updated', applyProfileUpdate);
             channel.listen('.server.member.joined', applyMemberJoined);
         } catch (error) {
             console.error('Failed to connect to presence channel:', error);

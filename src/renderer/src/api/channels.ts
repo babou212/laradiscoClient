@@ -32,3 +32,7 @@ export async function updateChannel(id: string, data: UpdateChannelData): Promis
     const r = await api.put(`/settings/channels/${id}`, data);
     return r.data;
 }
+
+export async function markChannelRead(id: string): Promise<void> {
+    await api.post(`/channels/${id}/read`);
+}

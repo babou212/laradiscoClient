@@ -41,6 +41,7 @@ import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
 import type { StagedFile } from '@/lib/message-schemas';
 import { useAuthStore } from '@/stores/auth';
+import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
@@ -84,6 +85,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const authStore = useAuthStore();
+const chatStore = useChatStore();
 const e2eeStore = useE2eeStore();
 const e2ee = useE2EE();
 const presenceStore = usePresenceStore();
@@ -198,6 +200,26 @@ function resetForNewChannel(): void {
         }
     });
 }
+
+function maybeMarkChannelRead(): void {
+    if (isDmRef.value) return;
+    if (!pinnedToBottom.value) return;
+    const ch = chatStore.currentChannel;
+    if (ch?.has_unread && ch.id === String(channelId.value ?? '')) {
+        chatStore.markChannelRead(ch.id);
+    }
+}
+
+watch(pinnedToBottom, (bottom) => {
+    if (bottom) maybeMarkChannelRead();
+});
+
+watch(
+    () => chatStore.currentChannel?.has_unread,
+    (hasUnread) => {
+        if (hasUnread) maybeMarkChannelRead();
+    },
+);
 
 const showPillForHistory = computed(() => activeStore.isViewingHistory.value);
 const showPill = computed(() => !pinnedToBottom.value || showPillForHistory.value);

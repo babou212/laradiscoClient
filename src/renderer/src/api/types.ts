@@ -62,6 +62,7 @@ export interface ChannelAttributes {
     is_private?: boolean;
     position?: number;
     channelPermissions?: ChannelPermissions;
+    has_unread?: boolean;
 }
 
 export interface ChannelPermissions {

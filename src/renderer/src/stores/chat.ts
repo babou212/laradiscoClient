@@ -2,10 +2,11 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useAvatarStore } from './avatar';
 import { getCategories } from '@/api/categories';
-import { getChannel } from '@/api/channels';
+import { getChannel, markChannelRead as apiMarkChannelRead } from '@/api/channels';
 import { getMessages } from '@/api/messages';
 import { normalizeMessages } from '@/api/normalizers';
 import type { ChannelAttributes } from '@/api/types';
+import { getEcho } from '@/lib/echo';
 import type { Category, Channel, ChannelPermissions, MessageData } from '@/types/chat';
 
 function extractCursor(url: string | null | undefined): string | null {
@@ -79,6 +80,7 @@ export const useChatStore = defineStore('chat', () => {
                     type: inc.attributes.channel_type,
                     is_private: inc.attributes.is_private,
                     permissions: inc.attributes.channelPermissions,
+                    has_unread: inc.attributes.has_unread ?? false,
                 }));
 
             return {
@@ -117,7 +119,6 @@ export const useChatStore = defineStore('chat', () => {
             }
         }
 
-        // Fallback: fetch from API
         const response = await getChannel(id);
         const attrs = response.data.attributes;
         currentChannel.value = {
@@ -214,6 +215,58 @@ export const useChatStore = defineStore('chat', () => {
         }
     }
 
+    function setChannelUnread(channelId: string | number, hasUnread: boolean): void {
+        const id = String(channelId);
+        for (const cat of categories.value) {
+            const ch = cat.channels.find((c) => c.id === id);
+            if (ch) {
+                ch.has_unread = hasUnread;
+                return;
+            }
+        }
+    }
+
+    async function markChannelRead(channelId: string | number): Promise<void> {
+        const id = String(channelId);
+        setChannelUnread(id, false);
+        try {
+            await apiMarkChannelRead(id);
+        } catch (error) {
+            console.error('Failed to mark channel as read:', error);
+        }
+    }
+
+    let unreadChannelName: string | null = null;
+
+    function connectUnread(userId: string | number): void {
+        disconnectUnread();
+        const echo = getEcho();
+        if (!echo) return;
+
+        const name = `user.${userId}`;
+        unreadChannelName = name;
+
+        echo.private(name).listen(
+            '.ChannelActivity',
+            (payload: { channel_id: number | string; message_created_at: string }) => {
+                const channelId = String(payload.channel_id);
+                if (currentChannel.value?.id === channelId) {
+                    return;
+                }
+                setChannelUnread(channelId, true);
+            },
+        );
+    }
+
+    function disconnectUnread(): void {
+        if (!unreadChannelName) return;
+        const echo = getEcho();
+        if (echo) {
+            echo.leave(unreadChannelName);
+        }
+        unreadChannelName = null;
+    }
+
     function $reset(): void {
         currentChannel.value = null;
         currentChannelPermissions.value = null;
@@ -241,6 +294,10 @@ export const useChatStore = defineStore('chat', () => {
         addMessage,
         updateMessage,
         removeMessage,
+        setChannelUnread,
+        markChannelRead,
+        connectUnread,
+        disconnectUnread,
         fetchCategories,
         selectChannel,
         fetchMessages,
