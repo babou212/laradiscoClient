@@ -33,8 +33,7 @@ const screenShareQualityOptions: { value: ScreenShareQualityPreset; label: strin
                     :model-value="voiceStore.screenShareQuality"
                     @update:model-value="
                         (val) =>
-                            typeof val === 'string' &&
-                            voiceStore.setScreenShareQuality(val as ScreenShareQualityPreset)
+                            typeof val === 'string' && voiceStore.setScreenShareQuality(val as ScreenShareQualityPreset)
                     "
                 >
                     <SelectTrigger>
