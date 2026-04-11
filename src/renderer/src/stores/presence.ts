@@ -6,6 +6,7 @@ import { getMembers } from '@/api/members';
 import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import { getEcho } from '@/lib/echo';
 import type { OnlineUser, PresenceUpdate, UserStatusType } from '@/types';
+import type { AvatarUrls } from '@/types/chat';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const SYNC_INTERVAL_MS = 120_000;
@@ -111,7 +112,7 @@ export const usePresenceStore = defineStore('presence', () => {
         user_id: number | string;
         username: string;
         display_name: string | null;
-        avatar_urls: import('@/types/chat').AvatarUrls | null;
+        avatar_urls: AvatarUrls | null;
     }) => {
         const userId = String(data.user_id);
         const displayName = data.display_name ?? data.username;

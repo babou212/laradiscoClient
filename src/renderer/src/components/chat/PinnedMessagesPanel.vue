@@ -104,12 +104,18 @@ const renderedContent = (message: MessageData): string => {
                                 :alt="message.user.username"
                             />
                             <AvatarFallback class="bg-primary text-primary-foreground text-[10px] font-semibold">
-                                {{ userNamesStore.getDisplayName(message.user.id, message.user.username)[0].toUpperCase() }}
+                                {{
+                                    userNamesStore
+                                        .getDisplayName(message.user.id, message.user.username)[0]
+                                        .toUpperCase()
+                                }}
                             </AvatarFallback>
                         </Avatar>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-baseline gap-1.5">
-                                <span class="text-xs font-semibold">{{ userNamesStore.getDisplayName(message.user.id, message.user.username) }}</span>
+                                <span class="text-xs font-semibold">{{
+                                    userNamesStore.getDisplayName(message.user.id, message.user.username)
+                                }}</span>
                                 <span class="text-muted-foreground text-[10px]">
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>

@@ -160,7 +160,7 @@ const statusOptions = [
                                     selectedChannelId === channel.id
                                         ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                                         : channel.has_unread
-                                          ? 'text-white font-semibold hover:bg-sidebar-accent/50'
+                                          ? 'hover:bg-sidebar-accent/50 font-semibold text-white'
                                           : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                                 "
                                 @click="selectChannel(channel.id)"
