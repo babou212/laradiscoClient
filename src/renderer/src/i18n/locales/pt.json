@@ -1,0 +1,980 @@
+{
+    "common": {
+        "loading": "Carregando",
+        "loadingEllipsis": "Carregando...",
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "continue": "Continuar",
+        "back": "Voltar",
+        "sending": "Enviando...",
+        "saveSuccess": "Salvo com sucesso",
+        "retry": "Tentar novamente",
+        "close": "Fechar"
+    },
+    "validation": {
+        "emailRequired": "O e-mail é obrigatório",
+        "emailInvalid": "Insira um endereço de e-mail válido.",
+        "passwordRequired": "A senha é obrigatória",
+        "passwordMin8": "A senha deve ter pelo menos 8 caracteres.",
+        "passwordConfirmRequired": "Confirme sua senha.",
+        "passwordsMatch": "As senhas não coincidem.",
+        "displayNameRequired": "O nome de exibição é obrigatório.",
+        "usernameRequired": "O nome de usuário é obrigatório.",
+        "usernameInvalidChars": "O nome de usuário só pode conter letras, números, underscores, pontos e hífens.",
+        "inviteRequired": "O código de convite é obrigatório.",
+        "codeLength6": "O código de redefinição deve ter 6 dígitos.",
+        "codeNumeric": "O código de redefinição deve ser numérico."
+    },
+    "auth": {
+        "serverFallback": "Servidor",
+        "login": {
+            "title": "Bem-vindo de volta",
+            "descriptionPrefix": "Entre em {server}",
+            "email": "E-mail",
+            "password": "Senha",
+            "emailPlaceholder": "seu{'@'}exemplo.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "Entrar",
+            "signingIn": "Entrando...",
+            "forgotPassword": "Esqueceu sua senha?",
+            "noAccount": "Não tem uma conta? Cadastre-se",
+            "changeServer": "Mudar servidor"
+        },
+        "register": {
+            "joinTitle": "Entrar no servidor",
+            "createTitle": "Criar conta",
+            "inviteDescription": "Insira seu código de convite para começar",
+            "signupDescription": "Cadastre-se em {server}",
+            "inviteCodeLabel": "Código de convite",
+            "invitePlaceholder": "Cole seu código de convite",
+            "askAdmin": "Peça um código de convite a um administrador do servidor.",
+            "continue": "Continuar",
+            "validating": "Validando...",
+            "alreadyHaveAccount": "Já tem uma conta? Entre",
+            "displayName": "Nome de exibição",
+            "displayNamePlaceholder": "Seu nome",
+            "username": "Nome de usuário",
+            "usernamePlaceholder": "seunome",
+            "email": "E-mail",
+            "emailPlaceholder": "seu{'@'}exemplo.com",
+            "password": "Senha",
+            "confirmPassword": "Confirmar senha",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "Criar conta",
+            "creatingAccount": "Criando conta...",
+            "useDifferentInvite": "Usar outro código de convite",
+            "invalidInvite": "Link de convite inválido",
+            "unableToReach": "Não foi possível conectar ao servidor. Tente novamente mais tarde."
+        },
+        "forgot": {
+            "resetTitle": "Redefinir senha",
+            "doneTitle": "Senha redefinida",
+            "emailDescription": "Insira seu e-mail e enviaremos um código de 6 dígitos.",
+            "codeDescription": "Insira o código enviado para {email} e escolha uma nova senha.",
+            "successHeading": "Sua senha foi redefinida com sucesso.",
+            "successSub": "Agora você pode entrar com sua nova senha.",
+            "email": "E-mail",
+            "emailPlaceholder": "seu{'@'}exemplo.com",
+            "resetCode": "Código de redefinição",
+            "codePlaceholder": "000000",
+            "newPassword": "Nova senha",
+            "confirmPassword": "Confirmar senha",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "Enviar código",
+            "sending": "Enviando...",
+            "resetPassword": "Redefinir senha",
+            "resetting": "Redefinindo...",
+            "tryAgain": "Não recebeu o código? Tente novamente",
+            "backToLogin": "Voltar ao login",
+            "tooManyRequests": "Muitas solicitações. Aguarde um momento e tente novamente.",
+            "unableToReach": "Não foi possível conectar ao servidor. Tente novamente mais tarde.",
+            "invalidInput": "Entrada inválida."
+        },
+        "twoFactor": {
+            "title": "Autenticação em dois fatores",
+            "recoveryTitle": "Código de recuperação",
+            "description": "Insira o código de 6 dígitos do seu aplicativo de autenticação para continuar.",
+            "recoveryDescription": "Insira um dos seus códigos de recuperação de emergência para verificar sua identidade.",
+            "recoveryCode": "Código de recuperação",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "Usar um código de recuperação",
+            "useAuthInstead": "Usar o código de autenticação",
+            "backToLogin": "Voltar ao login"
+        }
+    },
+    "settings": {
+        "header": "Configurações",
+        "subheader": "Gerencie seu perfil e as configurações da sua conta",
+        "back": "Voltar",
+        "navAriaLabel": "Configurações",
+        "appearance": {
+            "title": "Tema",
+            "description": "Selecione um tema para mudar a aparência do aplicativo"
+        },
+        "password": {
+            "title": "Atualizar senha",
+            "description": "Certifique-se de que sua conta use uma senha longa e aleatória para maior segurança",
+            "currentPassword": "Senha atual",
+            "newPassword": "Nova senha",
+            "confirmPassword": "Confirmar senha",
+            "currentPlaceholder": "Senha atual",
+            "newPlaceholder": "Nova senha",
+            "confirmPlaceholder": "Confirmar senha",
+            "save": "Salvar senha"
+        },
+        "notifications": {
+            "title": "Notificações",
+            "description": "Controle como e quando você recebe notificações",
+            "typesHeading": "Tipos de notificação",
+            "deliveryHeading": "Métodos de entrega",
+            "mentionLabel": "Notificações de menções",
+            "mentionDescription": "Receba notificações quando alguém mencionar você com {'@'}usuário, {'@'}everyone ou {'@'}here",
+            "dmLabel": "Notificações de mensagens diretas",
+            "dmDescription": "Receba notificações quando alguém lhe enviar uma mensagem direta",
+            "toastLabel": "Avisos no aplicativo",
+            "toastDescription": "Exibe avisos no canto da tela",
+            "browserLabel": "Notificações da área de trabalho",
+            "browserDescription": "Exibe notificações da área de trabalho quando o aplicativo está em segundo plano",
+            "save": "Salvar preferências"
+        },
+        "language": {
+            "title": "Idioma",
+            "description": "Escolha o idioma usado em todo o aplicativo",
+            "label": "Idioma da interface",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文"
+            }
+        },
+        "nav": {
+            "profile": "Perfil",
+            "password": "Senha",
+            "twoFactor": "Autenticação em dois fatores",
+            "security": "Segurança",
+            "appearance": "Aparência",
+            "voice": "Voz",
+            "screenShare": "Compartilhar tela",
+            "notifications": "Notificações",
+            "language": "Idioma",
+            "about": "Sobre",
+            "server": "Servidor",
+            "inviteLinks": "Links de convite",
+            "roles": "Cargos",
+            "members": "Membros",
+            "channels": "Canais",
+            "moderation": "Moderação",
+            "auditLog": "Registro de auditoria"
+        },
+        "common": {
+            "cancel": "Cancelar",
+            "save": "Salvar",
+            "saveChanges": "Salvar alterações",
+            "delete": "Excluir",
+            "loading": "Carregando...",
+            "unknown": "Desconhecido",
+            "none": "Nenhum",
+            "processing": "Processando..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "Avatar",
+                "description": "Sua foto de perfil visível para outros usuários",
+                "change": "Mudar avatar",
+                "upload": "Enviar avatar",
+                "remove": "Remover avatar"
+            },
+            "info": {
+                "title": "Informações do perfil",
+                "description": "Atualize seu nome e endereço de e-mail",
+                "name": "Nome",
+                "namePlaceholder": "Nome completo",
+                "email": "E-mail",
+                "emailPlaceholder": "E-mail",
+                "save": "Salvar alterações",
+                "saved": "Salvo com sucesso"
+            },
+            "danger": {
+                "title": "Zona de perigo",
+                "description": "Exclua sua conta e todos os seus dados permanentemente",
+                "warningTitle": "Esta ação não pode ser desfeita",
+                "warningBody": "Ao excluir sua conta, todos os seus dados serão apagados permanentemente.",
+                "deleteAccount": "Excluir conta",
+                "confirmTitle": "Tem certeza de que deseja excluir sua conta?",
+                "confirmBody": "Ao excluir sua conta, todos os seus recursos e dados também serão excluídos permanentemente. Insira sua senha para confirmar.",
+                "passwordLabel": "Senha",
+                "passwordPlaceholder": "Senha"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "Microfone",
+                "description": "Selecione qual microfone usar nos canais de voz",
+                "input": "Dispositivo de entrada",
+                "systemDefault": "Padrão do sistema",
+                "refresh": "Atualizar dispositivos",
+                "micFallback": "Microfone ({id})"
+            },
+            "pushToTalk": {
+                "title": "Pressionar para falar",
+                "description": "Mantenha uma tecla pressionada para ativar seu microfone. Funciona em todas as janelas e aplicativos.",
+                "enable": "Ativar pressionar para falar",
+                "keybind": "Atalho de teclado",
+                "pressAnyKey": "Pressione qualquer tecla ou combinação…",
+                "notSet": "Não definido",
+                "setKey": "Definir tecla",
+                "changeKey": "Mudar tecla",
+                "cancel": "Cancelar",
+                "clear": "Limpar",
+                "hint": "Pressione qualquer tecla ou combinação (ex.: F5, Espaço, Alt + Z, Ctrl + Shift + M). Mantenha pressionado para falar — solte para silenciar.",
+                "playSound": "Reproduzir som ao pressionar para falar",
+                "errors": {
+                    "unsupportedGlobal": "«{key}» não pode ser usado como atalho global.",
+                    "keyNotSupported": "Essa tecla não é compatível.",
+                    "captureNotReady": "A captura de teclas não está pronta. Tente novamente.",
+                    "captureFailed": "Não foi possível capturar a tecla. Tente novamente."
+                }
+            },
+            "audio": {
+                "title": "Processamento de áudio",
+                "description": "Supressão de ruído e melhorias de áudio integradas",
+                "noiseSuppression": "Supressão de ruído",
+                "noiseSuppressionHint": "Filtra ruídos de fundo como cliques de teclado, ventiladores e sons ambientes.",
+                "echoCancellation": "Cancelamento de eco",
+                "echoCancellationHint": "Evita que o microfone capte o áudio dos seus alto-falantes.",
+                "autoGain": "Controle automático de ganho",
+                "autoGainHint": "Ajusta automaticamente o volume do microfone para manter um nível constante."
+            },
+            "test": {
+                "title": "Teste de microfone",
+                "description": "Teste seu microfone e visualize o nível de entrada com as configurações de processamento de áudio aplicadas.",
+                "start": "Testar microfone",
+                "stop": "Parar teste",
+                "listening": "Ouvindo...",
+                "hint": "Fale no seu microfone — você se ouvirá e verá o nível de entrada. Use fones de ouvido para evitar feedback."
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "Criptografia",
+                "description": "Gerencie as configurações de criptografia de ponta a ponta",
+                "active": "Criptografia ativa",
+                "notSetUp": "Criptografia não configurada",
+                "activeDescription": "Suas mensagens estão criptografadas de ponta a ponta.",
+                "notSetUpDescription": "Configure a criptografia para proteger suas mensagens."
+            },
+            "keyBackup": {
+                "title": "Backup de chaves",
+                "description": "Faça backup das suas chaves para usar a criptografia em vários dispositivos",
+                "exists": "Há um backup disponível",
+                "none": "Sem backup",
+                "existsDescription": "Suas chaves estão com backup e podem ser restauradas em novos dispositivos.",
+                "noneDescription": "Crie um backup para usar a criptografia em outros dispositivos.",
+                "update": "Atualizar backup",
+                "create": "Criar backup"
+            },
+            "devices": {
+                "title": "Dispositivos",
+                "description": "Gerencie os dispositivos vinculados à sua identidade de criptografia",
+                "empty": "Nenhum dispositivo encontrado.",
+                "thisDevice": "Este dispositivo",
+                "added": "Adicionado em {date}"
+            },
+            "auditLog": {
+                "title": "Registro de auditoria",
+                "description": "Registro de transparência — histórico criptográfico de todos os eventos de criptografia",
+                "load": "Carregar registro de auditoria",
+                "deviceLabel": "Dispositivo:",
+                "hashLabel": "Hash:",
+                "events": {
+                    "identity_created": "Identidade criada",
+                    "device_registered": "Dispositivo registrado",
+                    "device_revoked": "Dispositivo revogado",
+                    "backup_created": "Backup de chaves criado",
+                    "backup_restored": "Backup de chaves restaurado",
+                    "key_package_uploaded": "Pacotes de chaves enviados",
+                    "signed_prekey_rotated": "Prekey assinada rotacionada"
+                }
+            },
+            "danger": {
+                "title": "Zona de perigo",
+                "resetTitle": "Redefinir criptografia",
+                "resetDescription": "Remove todas as chaves de criptografia locais. Você precisará configurar a criptografia novamente.",
+                "reset": "Redefinir"
+            },
+            "dialogs": {
+                "revokeTitle": "Revogar dispositivo",
+                "revokeDescription": "Tem certeza de que deseja revogar {name}? Este dispositivo não conseguirá mais descriptografar novas mensagens.",
+                "revoke": "Revogar",
+                "renameTitle": "Renomear dispositivo",
+                "renameDescription": "Insira um novo nome para este dispositivo.",
+                "renamePlaceholder": "Nome do dispositivo",
+                "rename": "Renomear",
+                "wipeTitle": "Redefinir criptografia",
+                "wipeDescription": "Isso excluirá permanentemente todas as chaves de criptografia deste dispositivo. Você perderá a capacidade de descriptografar mensagens existentes, a menos que tenha um backup de chaves. Esta ação não pode ser desfeita.",
+                "wipeConfirm": "Excluir todas as chaves",
+                "never": "Nunca"
+            }
+        },
+        "twoFactor": {
+            "title": "Autenticação em dois fatores",
+            "description": "Adicione uma camada extra de segurança à sua conta",
+            "disabledBadge": "Desativada",
+            "enabledBadge": "Ativada",
+            "disabledBody": "Ao ativar a autenticação em dois fatores, será solicitado um PIN seguro ao entrar. Esse PIN é obtido de um aplicativo compatível com TOTP no seu celular.",
+            "enabledBody": "Com a autenticação em dois fatores ativada, será solicitado um PIN seguro e aleatório ao entrar, que você pode obter do aplicativo compatível com TOTP no seu celular.",
+            "continueSetup": "Continuar configuração",
+            "enable": "Ativar 2FA",
+            "disable": "Desativar 2FA",
+            "recovery": {
+                "title": "Códigos de recuperação 2FA",
+                "description": "Os códigos de recuperação permitem recuperar o acesso caso você perca seu dispositivo 2FA. Guarde-os em um gerenciador de senhas seguro.",
+                "hide": "Ocultar códigos de recuperação",
+                "view": "Ver códigos de recuperação",
+                "regenerate": "Regenerar códigos",
+                "hintPrefix": "Cada código de recuperação pode ser usado uma vez. Se precisar de mais, clique em",
+                "hintRegen": "Regenerar códigos",
+                "hintSuffix": "acima.",
+                "failedToFetch": "Não foi possível obter os códigos de recuperação"
+            },
+            "setup": {
+                "scanTitle": "Ativar autenticação em dois fatores",
+                "scanDescription": "Escaneie o código QR ou insira a chave de configuração no seu aplicativo de autenticação",
+                "verifyTitle": "Verificar código de autenticação",
+                "verifyDescription": "Insira o código de 6 dígitos do seu aplicativo de autenticação",
+                "continue": "Continuar",
+                "orManual": "ou insira o código manualmente",
+                "back": "Voltar",
+                "confirm": "Confirmar",
+                "invalidCode": "Código inválido",
+                "failedToFetchQr": "Não foi possível obter o código QR",
+                "failedToFetchKey": "Não foi possível obter a chave de configuração"
+            }
+        },
+        "screenShare": {
+            "title": "Qualidade ao compartilhar tela",
+            "description": "Escolha a qualidade ao compartilhar sua tela.",
+            "label": "Predefinição de qualidade",
+            "placeholder": "Selecione a qualidade...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "Menor uso de largura de banda",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "Qualidade equilibrada",
+                "high": "1080p / 60 FPS",
+                "highDescription": "Alta qualidade fluida",
+                "source": "Fonte / 60 FPS",
+                "sourceDescription": "Resolução nativa, máxima qualidade"
+            }
+        },
+        "channels": {
+            "title": "Canais",
+            "description": "Gerencie categorias, canais e substituições de permissões por canal.",
+            "newCategory": "Nova categoria",
+            "newChannel": "Novo canal",
+            "loading": "Carregando canais...",
+            "emptyTitle": "Ainda não há canais",
+            "emptyDescription": "Crie uma categoria e adicione canais para começar.",
+            "emptyCategory": "Não há canais nesta categoria.",
+            "privateBadge": "Privado",
+            "unknown": "Desconhecido",
+            "roleLabel": "Cargo",
+            "userLabel": "Usuário",
+            "create": {
+                "title": "Criar canal",
+                "description": "Adicione um novo canal ao servidor.",
+                "name": "Nome",
+                "namePlaceholder": "nome-do-canal",
+                "type": "Tipo",
+                "typePlaceholder": "Selecione o tipo...",
+                "typeText": "Texto",
+                "typeVoice": "Voz",
+                "topic": "Tópico",
+                "topicPlaceholder": "Sobre o que é este canal?",
+                "category": "Categoria",
+                "categoryNone": "Nenhuma",
+                "privateLabel": "Canal privado (requer acesso explícito por cargo/usuário)",
+                "submit": "Criar canal"
+            },
+            "edit": {
+                "title": "Editar canal",
+                "description": "Atualize as configurações do canal.",
+                "name": "Nome",
+                "topic": "Tópico",
+                "category": "Categoria",
+                "slowmode": "Modo lento (segundos)",
+                "privateLabel": "Canal privado",
+                "submit": "Salvar alterações"
+            },
+            "delete": {
+                "title": "Excluir canal",
+                "description": "Tem certeza de que deseja excluir {name}? Todas as mensagens deste canal serão perdidas. Esta ação não pode ser desfeita.",
+                "submit": "Excluir canal"
+            },
+            "category": {
+                "createTitle": "Criar categoria",
+                "createDescription": "Adicione uma nova categoria para organizar os canais.",
+                "name": "Nome",
+                "namePlaceholder": "Nome da categoria",
+                "create": "Criar",
+                "editTitle": "Editar categoria",
+                "editDescription": "Atualize o nome da categoria.",
+                "save": "Salvar",
+                "deleteTitle": "Excluir categoria",
+                "deleteDescription": "Tem certeza de que deseja excluir {name}? Todos os canais desta categoria também serão excluídos. Esta ação não pode ser desfeita.",
+                "deleteSubmit": "Excluir categoria"
+            },
+            "overrides": {
+                "title": "Substituições de permissões",
+                "description": "Gerencie as substituições de permissões para #{name}. As substituições permitem ou negam permissões específicas para os cargos neste canal.",
+                "loading": "Carregando...",
+                "current": "Substituições atuais",
+                "add": "Adicionar substituição",
+                "role": "Cargo",
+                "rolePlaceholder": "Selecione um cargo...",
+                "permissions": "Permissões",
+                "allow": "Permitir",
+                "deny": "Negar",
+                "save": "Salvar substituição"
+            }
+        },
+        "members": {
+            "title": "Membros",
+            "description": "Gerencie os cargos dos membros. Atribua ou remova cargos para controlar as permissões.",
+            "searchPlaceholder": "Buscar membros...",
+            "loading": "Carregando...",
+            "emptyTitle": "Nenhum membro encontrado",
+            "emptyTrySearch": "Tente outro termo de busca.",
+            "emptyNone": "Ainda não há membros cadastrados.",
+            "addRole": "Adicionar cargo",
+            "assign": {
+                "title": "Atribuir cargo",
+                "description": "Selecione um cargo para atribuir a {name}.",
+                "placeholder": "Selecione um cargo...",
+                "allAssigned": "Este membro já possui todos os cargos disponíveis."
+            },
+            "remove": {
+                "title": "Remover cargo",
+                "description": "Tem certeza de que deseja remover o cargo {role} de {name}?",
+                "submit": "Remover cargo"
+            }
+        },
+        "roles": {
+            "title": "Cargos",
+            "description": "Gerencie os cargos do servidor e suas permissões. Cargos em posições mais altas sobrepõem os mais baixos.",
+            "createRole": "Criar cargo",
+            "loading": "Carregando...",
+            "emptyTitle": "Ainda não há cargos",
+            "emptyDescription": "Crie um cargo para gerenciar permissões.",
+            "defaultBadge": "Padrão",
+            "adminBadge": "Administrador",
+            "memberCount": "{n} membro | {n} membros",
+            "position": "Posição: {n}",
+            "permissionsCount": "{n} permissões",
+            "form": {
+                "name": "Nome",
+                "namePlaceholder": "Nome do cargo",
+                "color": "Cor",
+                "position": "Posição",
+                "displaySeparately": "Exibir separadamente",
+                "mentionable": "Mencionável",
+                "permissions": "Permissões",
+                "categories": {
+                    "general": "Servidor geral",
+                    "membership": "Membros",
+                    "text": "Canais de texto",
+                    "voice": "Canais de voz",
+                    "admin": "Administrador"
+                }
+            },
+            "create": {
+                "title": "Criar cargo",
+                "description": "Crie um novo cargo com permissões específicas.",
+                "submit": "Criar cargo"
+            },
+            "edit": {
+                "title": "Editar cargo",
+                "description": "Modifique as configurações e permissões do cargo.",
+                "submit": "Salvar alterações"
+            },
+            "delete": {
+                "title": "Excluir cargo",
+                "description": "Tem certeza de que deseja excluir o cargo {name}? Todos os usuários com este cargo perderão suas permissões. Esta ação não pode ser desfeita.",
+                "submit": "Excluir cargo"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "Banimentos ativos",
+                "description": "Visualize e gerencie usuários banidos. Os banimentos impedem que os usuários acessem o servidor.",
+                "loading": "Carregando...",
+                "emptyTitle": "Não há banimentos ativos",
+                "emptyDescription": "Todos os usuários têm acesso ao servidor.",
+                "bannedBadge": "Banido",
+                "reasonLabel": "Motivo: {reason}",
+                "noReason": "Sem motivo",
+                "byUser": "Por {user}",
+                "expires": "Expira: {date}",
+                "unban": "Remover banimento"
+            },
+            "actions": {
+                "title": "Ações do membro",
+                "description": "Bana ou coloque membros na prisão. Membros na prisão têm permissões restritas e só podem ver canais.",
+                "searchPlaceholder": "Buscar membros...",
+                "empty": "Nenhum membro encontrado.",
+                "jail": "Prender",
+                "ban": "Banir"
+            },
+            "banDialog": {
+                "title": "Banir membro",
+                "description": "Banir {name} do servidor. Ele não poderá acessar nenhum canal.",
+                "reason": "Motivo (opcional)",
+                "reasonPlaceholder": "Por que este usuário está sendo banido?",
+                "expires": "Expira em (opcional)",
+                "pickDate": "Escolha uma data",
+                "permanentHint": "Deixe em branco para banimento permanente.",
+                "submit": "Banir usuário"
+            },
+            "jailDialog": {
+                "title": "Prender membro",
+                "description": "Prender {name}? Isso removerá todos os seus cargos e restringirá o acesso a somente leitura.",
+                "submit": "Prender usuário"
+            }
+        },
+        "auditLog": {
+            "title": "Registro de auditoria",
+            "description": "Um histórico de todas as ações de moderação e administração realizadas no servidor.",
+            "filterPlaceholder": "Filtrar por ação",
+            "loading": "Carregando...",
+            "emptyTitle": "Não há entradas no registro",
+            "emptyDescription": "As ações de moderação aparecerão aqui.",
+            "unknownActor": "Desconhecido",
+            "previous": "Anterior",
+            "next": "Próximo",
+            "page": "Página {n}",
+            "relative": {
+                "justNow": "Agora mesmo",
+                "minutesAgo": "há {n} min",
+                "hoursAgo": "há {n} h",
+                "daysAgo": "há {n} d"
+            },
+            "actions": {
+                "ban": "Banido",
+                "unban": "Banimento removido",
+                "jail": "Preso",
+                "unjail": "Solto",
+                "message_delete": "Mensagem excluída",
+                "thread_message_delete": "Resposta de tópico excluída",
+                "role_assign": "Cargo atribuído",
+                "role_remove": "Cargo removido",
+                "role_create": "Cargo criado",
+                "role_update": "Cargo atualizado",
+                "role_delete": "Cargo excluído",
+                "channel_create": "Canal criado",
+                "channel_update": "Canal atualizado",
+                "channel_delete": "Canal excluído",
+                "channel_override_update": "Substituição de canal atualizada",
+                "channel_override_delete": "Substituição de canal excluída"
+            },
+            "filters": {
+                "all": "Todas as ações",
+                "ban": "Banimentos",
+                "unban": "Remoções de banimento",
+                "jail": "Prisões",
+                "unjail": "Solturas",
+                "message_delete": "Exclusões de mensagens",
+                "role_assign": "Cargo atribuído",
+                "role_remove": "Cargo removido",
+                "role_create": "Cargo criado",
+                "role_update": "Cargo atualizado",
+                "role_delete": "Cargo excluído",
+                "channel_create": "Canal criado",
+                "channel_update": "Canal atualizado",
+                "channel_delete": "Canal excluído"
+            },
+            "target": {
+                "unknownUser": "Usuário desconhecido",
+                "messageBy": "mensagem de {'@'}{user}",
+                "messageByInChannel": "mensagem de {'@'}{user} em #{channel}",
+                "messageGeneric": "mensagem",
+                "messageInChannel": "mensagem em #{channel}",
+                "roleOnUser": "{role} em {'@'}{user}",
+                "roleOnly": "{role}",
+                "roleFallback": "cargo",
+                "channelFallback": "canal",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "Motivo: {reason}",
+                "expires": "Expira: {date}"
+            }
+        },
+        "about": {
+            "title": "Sobre",
+            "description": "Informações sobre esta instalação do LaraDisco.",
+            "version": "Versão",
+            "updates": {
+                "title": "Atualizações",
+                "description": "O LaraDisco verifica atualizações automaticamente a cada hora. Você também pode verificar manualmente.",
+                "check": "Verificar atualizações",
+                "checking": "Verificando…",
+                "available": "A versão {version} está disponível.",
+                "upToDate": "Você está usando a versão mais recente.",
+                "failed": "Não foi possível verificar as atualizações"
+            }
+        },
+        "inviteLinks": {
+            "title": "Links de convite",
+            "description": "Gere links de convite de uso único para novos membros. Os links expiram após 1 hora.",
+            "generate": "Gerar",
+            "loading": "Carregando...",
+            "emptyTitle": "Ainda não há links de convite",
+            "emptyDescription": "Gere um link para convidar alguém a se cadastrar.",
+            "created": "Criado em {date}",
+            "expires": "Expira em {date}",
+            "expiresNever": "Nunca",
+            "usedBy": "Usado por",
+            "statusActive": "Ativo",
+            "statusUsed": "Usado",
+            "statusExpired": "Expirado"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "Minimizar",
+        "maximize": "Maximizar",
+        "close": "Fechar"
+    },
+    "notifications": {
+        "messageFrom": "Mensagem de {user}",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "{mention} em #{channel}",
+        "encryptedMessage": "[Mensagem criptografada]",
+        "sentMessage": "enviou uma mensagem para você",
+        "inChannelPrefix": "em #{channel}"
+    },
+    "dates": {
+        "todayAt": "Hoje às {time}",
+        "yesterdayAt": "Ontem às {time}"
+    },
+    "home": {
+        "welcome": "Bem-vindo a {server}",
+        "selectChannelPrompt": "Selecione um canal na barra lateral para começar a conversar."
+    },
+    "directMessages": {
+        "title": "Suas mensagens diretas",
+        "emptyPrompt": "Selecione uma conversa ou inicie uma nova."
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "Conecte-se ao seu servidor para começar",
+        "serverAddress": "Endereço do servidor",
+        "placeholder": "chat.exemplo.com",
+        "connectedTo": "Conectado a {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "Conectando...",
+        "testConnection": "Testar conexão",
+        "continue": "Continuar",
+        "savedServers": "Servidores salvos",
+        "active": "Ativo"
+    },
+    "updates": {
+        "available": "Atualização disponível",
+        "downloadPrompt": "A versão {version} está pronta para download.",
+        "download": "Baixar",
+        "later": "Mais tarde",
+        "downloading": "Baixando atualização",
+        "downloadingProgress": "Versão {version} — {percent}",
+        "ready": "Atualização pronta",
+        "restartPrompt": "Reinicie o LaraDisco para instalar a versão {version}.",
+        "restartNow": "Reiniciar agora",
+        "failed": "Erro na atualização",
+        "downloadFailed": "O download falhou"
+    },
+    "appContextMenu": {
+        "copyText": "Copiar texto",
+        "addReaction": "Adicionar reação",
+        "reply": "Responder",
+        "replyInThread": "Responder no tópico",
+        "pinMessage": "Fixar mensagem",
+        "unpinMessage": "Desafixar mensagem",
+        "editMessage": "Editar mensagem",
+        "deleteMessage": "Excluir mensagem",
+        "cut": "Recortar",
+        "copy": "Copiar",
+        "paste": "Colar",
+        "pastePlain": "Colar como texto simples",
+        "wrapCodeBlock": "Envolver como bloco de código",
+        "language": "Linguagem",
+        "plainText": "Texto simples",
+        "selectAll": "Selecionar tudo",
+        "mention": "Mencionar",
+        "viewProfile": "Ver perfil",
+        "sendMessage": "Enviar mensagem",
+        "copyImage": "Copiar imagem",
+        "copyImageAddress": "Copiar endereço da imagem",
+        "saveImageAs": "Salvar imagem como…",
+        "openLink": "Abrir link",
+        "copyLink": "Copiar link"
+    },
+    "userMenu": {
+        "settings": "Configurações",
+        "logout": "Sair"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "Dispensar",
+            "unknown": "Desconhecido",
+            "encryptedMessage": "[Mensagem criptografada]",
+            "unableToDecrypt": "[Não foi possível descriptografar]",
+            "unableToDecryptInline": "[Não foi possível descriptografar esta mensagem]"
+        },
+        "messages": {
+            "selectChannel": "Selecione um canal",
+            "welcomeChannel": "Bem-vindo a #{channel}",
+            "conversationWith": "Conversa com {name}",
+            "conversationStart": "Este é o início da sua conversa.",
+            "pinned": "fixado",
+            "edited": "(editado)",
+            "escapeTo": "esc para",
+            "cancelInline": "cancelar",
+            "enterTo": "enter para",
+            "saveInline": "salvar",
+            "unknownUser": "Desconhecido",
+            "deleteDialogTitle": "Excluir mensagem",
+            "deleteDialogDescription": "Tem certeza de que deseja excluir esta mensagem? Esta ação não pode ser desfeita.",
+            "deleteConfirm": "Excluir",
+            "cancel": "Cancelar",
+            "noPermissionToSend": "Você não tem permissão para enviar mensagens neste canal.",
+            "pinnedMessagesTooltip": "Mensagens fixadas",
+            "searchMessagesTooltip": "Buscar mensagens",
+            "showMembers": "Mostrar membros",
+            "hideMembers": "Ocultar membros",
+            "encryptionNotSetUp": "A criptografia não está configurada. Conclua a configuração de E2EE antes de enviar mensagens.",
+            "failedToEncrypt": "Não foi possível criptografar a mensagem. Tente novamente.",
+            "failedToSend": "Não foi possível enviar a mensagem. Tente novamente.",
+            "failedToUpload": "Não foi possível enviar {fileName}. Tente novamente."
+        },
+        "composer": {
+            "attachFile": "Anexar arquivo",
+            "placeholderChannel": "Enviar mensagem para #{channel}",
+            "placeholderDefault": "Enviar mensagem para #canal",
+            "placeholderDisabled": "Enviando rápido demais — aguarde um momento…",
+            "replyingTo": "Respondendo a {user}",
+            "fileTooLarge": "{count} arquivos excedem o limite de 100 MB: {files}",
+            "preparing": "Preparando…",
+            "encrypting": "Criptografando…",
+            "finishing": "Finalizando…"
+        },
+        "thread": {
+            "title": "Tópico",
+            "followTooltip": "Seguir tópico",
+            "unfollowTooltip": "Deixar de seguir tópico",
+            "noReplies": "Ainda não há respostas. Inicie a conversa!",
+            "replyPlaceholder": "Responder no tópico...",
+            "replyCount": "{count} resposta | {count} respostas",
+            "encryptionNotSetUp": "A criptografia não está configurada.",
+            "failedToEncrypt": "Não foi possível criptografar a mensagem.",
+            "failedToSendReply": "Não foi possível enviar a resposta.",
+            "deleteDialogTitle": "Excluir mensagem",
+            "deleteDialogDescription": "Tem certeza de que deseja excluir esta mensagem? Esta ação não pode ser desfeita.",
+            "deleteConfirm": "Excluir",
+            "cancel": "Cancelar"
+        },
+        "messageActions": {
+            "addReaction": "Adicionar reação",
+            "reply": "Responder",
+            "replyInThread": "Responder no tópico",
+            "pinMessage": "Fixar mensagem",
+            "unpinMessage": "Desafixar mensagem",
+            "editMessage": "Editar mensagem",
+            "deleteMessage": "Excluir mensagem"
+        },
+        "pinned": {
+            "title": "Mensagens fixadas",
+            "empty": "Ainda não há mensagens fixadas.",
+            "unpinTooltip": "Desafixar mensagem"
+        },
+        "files": {
+            "download": "Baixar",
+            "close": "Fechar",
+            "failedToLoadAudio": "Não foi possível carregar o áudio",
+            "failedToLoadVideo": "Não foi possível carregar o vídeo"
+        },
+        "gifs": {
+            "searchPlaceholder": "Buscar GIFs...",
+            "noResults": "Nenhum GIF encontrado",
+            "categories": {
+                "excited": "Animado",
+                "happy": "Feliz",
+                "sad": "Triste",
+                "love": "Amor",
+                "angry": "Raiva",
+                "laugh": "Risada",
+                "dance": "Dança",
+                "thumbsUp": "Joinha",
+                "facepalm": "Facepalm"
+            }
+        },
+        "search": {
+            "titleInConversation": "Buscar em {name}",
+            "closeTooltip": "Fechar busca (Esc)",
+            "closeLabel": "Fechar busca",
+            "placeholder": "Buscar mensagens…",
+            "ariaLabel": "Buscar mensagens",
+            "searching": "Buscando…",
+            "noResults": "Sem resultados",
+            "resultsCount": "{count} resultado encontrado | {count} resultados encontrados",
+            "typeToSearch": "Digite para buscar mensagens",
+            "offlineNote": "A busca é totalmente local — funciona sem conexão e nunca sai do seu dispositivo",
+            "tryDifferent": "Tente outros termos de busca",
+            "loadMore": "Carregar mais resultados",
+            "unknownUser": "Desconhecido"
+        },
+        "onlineUsers": {
+            "online": "Online — {count}",
+            "idle": "Ausente — {count}",
+            "dnd": "Não perturbe — {count}",
+            "offline": "Offline — {count}"
+        },
+        "typing": {
+            "one": "{user} está digitando...",
+            "several": "Várias pessoas estão digitando..."
+        },
+        "mentions": {
+            "label": "Menções",
+            "searching": "Buscando...",
+            "everyoneDescription": "Notificar todos os membros deste servidor",
+            "hereDescription": "Notificar os membros online deste canal"
+        },
+        "voice": {
+            "connected": "Voz conectada",
+            "poorConnection": "Conexão ruim",
+            "connectionLost": "Conexão perdida",
+            "disconnect": "Desconectar",
+            "mute": "Silenciar",
+            "unmute": "Ativar microfone",
+            "deafen": "Silenciar áudio",
+            "undeafen": "Ativar áudio",
+            "shareScreen": "Compartilhar tela",
+            "stopSharing": "Parar compartilhamento"
+        },
+        "dm": {
+            "title": "Mensagens diretas",
+            "newMessageTooltip": "Nova mensagem",
+            "searchPlaceholder": "Busque ou inicie uma conversa",
+            "noUsersFound": "Nenhum usuário encontrado",
+            "noDmsYet": "Ainda não há mensagens diretas",
+            "startConversationHint": "Clique em + para iniciar uma conversa",
+            "backToChannels": "Voltar aos canais",
+            "unableToDecrypt": "[Não foi possível descriptografar]"
+        },
+        "userProfile": {
+            "unknownUser": "Usuário desconhecido",
+            "memberSince": "Membro desde",
+            "memberSinceUnknown": "Desconhecido",
+            "roles": "Cargos",
+            "sendMessage": "Enviar mensagem",
+            "status": {
+                "online": "Online",
+                "idle": "Ausente",
+                "dnd": "Não perturbe",
+                "offline": "Offline"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "Mensagens diretas",
+            "statusOnline": "Online",
+            "statusDnd": "Não perturbe",
+            "statusInvisible": "Invisível",
+            "settings": "Configurações",
+            "logout": "Sair"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "Ir para o presente",
+            "jumpToBottom": "Ir para o final",
+            "newMessages": "{count} nova mensagem | {count} novas mensagens"
+        },
+        "threadPreview": {
+            "replies": "{count} resposta | {count} respostas",
+            "lastReply": "Última resposta {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "Abrir no navegador"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "Alternar áudio",
+            "expand": "Expandir",
+            "fullscreen": "Tela cheia",
+            "popOut": "Janela flutuante",
+            "close": "Fechar"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "Criptografia de ponta a ponta",
+            "description": "Proteja suas mensagens para que só você e os destinatários pretendidos possam lê-las.",
+            "checking": "Verificando o status da criptografia...",
+            "restoreTitle": "Restaurar suas chaves",
+            "restoreDescription": "Um backup de chaves foi encontrado. Insira seu PIN para restaurar sua identidade de criptografia neste dispositivo.",
+            "deviceName": "Nome do dispositivo",
+            "deviceNamePlaceholder": "ex.: Meu notebook",
+            "backupPin": "PIN do backup",
+            "backupPinPlaceholder": "Insira seu PIN",
+            "incorrectPin": "PIN incorreto",
+            "restoreContinue": "Restaurar e continuar",
+            "newIdentity": "Nova identidade",
+            "generating": "Gerando suas chaves de criptografia...",
+            "allSet": "Tudo pronto!",
+            "allSetDescription": "A criptografia de ponta a ponta está ativa. Suas mensagens agora estão protegidas."
+        },
+        "backup": {
+            "restoreTitle": "Restaurar backup de chaves",
+            "createTitle": "Criar backup de chaves",
+            "restoreDescription": "Insira o PIN que você usou ao criar seu backup.",
+            "createDescription": "Escolha um PIN para criptografar seu backup de chaves. Você precisará desse PIN para restaurar suas chaves em outro dispositivo.",
+            "keysRestored": "Chaves restauradas com sucesso!",
+            "backupCreated": "Backup criado com sucesso!",
+            "backupPinLabel": "PIN do backup",
+            "choosePinLabel": "Escolha um PIN",
+            "pinPlaceholderRestore": "Insira seu PIN",
+            "pinPlaceholderCreate": "Mínimo 6 caracteres",
+            "confirmPin": "Confirmar PIN",
+            "confirmPinPlaceholder": "Insira o PIN novamente",
+            "pinsDoNotMatch": "Os PINs não coincidem",
+            "backupFailed": "Erro ao criar o backup",
+            "restoreFailed": "Erro ao restaurar",
+            "importantLabel": "Importante:",
+            "warningPinOnly": "Este PIN é usado apenas para criptografar seu backup de chaves",
+            "warningNeverSent": "Nunca é enviado ao servidor",
+            "warningForgotten": "Se você esquecer seu PIN, não poderá restaurar suas chaves",
+            "warningStrong": "O backup usa criptografia robusta (Argon2id + AES-256-GCM)",
+            "restoreKeys": "Restaurar chaves",
+            "createBackup": "Criar backup"
+        },
+        "avatarCrop": {
+            "title": "Atualizar avatar",
+            "description": "Recorte e envie uma nova foto de perfil",
+            "selectPrompt": "Selecione uma imagem para usar como seu avatar",
+            "chooseImage": "Escolher imagem",
+            "chooseDifferent": "Escolher outra imagem",
+            "saving": "Salvando...",
+            "saveAvatar": "Salvar avatar"
+        }
+    },
+    "notificationBell": {
+        "title": "Notificações",
+        "markAllRead": "Marcar todas como lidas",
+        "markAsRead": "Marcar como lida",
+        "empty": "Não há novas notificações",
+        "sentMessage": "enviou uma mensagem para você",
+        "inChannel": "em #{channel}"
+    }
+}

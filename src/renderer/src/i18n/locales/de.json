@@ -1,0 +1,980 @@
+{
+    "common": {
+        "loading": "Wird geladen",
+        "loadingEllipsis": "Wird geladen...",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "continue": "Weiter",
+        "back": "Zurück",
+        "sending": "Wird gesendet...",
+        "saveSuccess": "Erfolgreich gespeichert",
+        "retry": "Erneut versuchen",
+        "close": "Schließen"
+    },
+    "validation": {
+        "emailRequired": "E-Mail-Adresse ist erforderlich",
+        "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
+        "passwordRequired": "Passwort ist erforderlich",
+        "passwordMin8": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+        "passwordConfirmRequired": "Bitte bestätige dein Passwort.",
+        "passwordsMatch": "Die Passwörter stimmen nicht überein.",
+        "displayNameRequired": "Anzeigename ist erforderlich.",
+        "usernameRequired": "Benutzername ist erforderlich.",
+        "usernameInvalidChars": "Der Benutzername darf nur Buchstaben, Zahlen, Unterstriche, Punkte und Bindestriche enthalten.",
+        "inviteRequired": "Einladungscode ist erforderlich.",
+        "codeLength6": "Der Reset-Code muss 6 Ziffern haben.",
+        "codeNumeric": "Der Reset-Code muss numerisch sein."
+    },
+    "auth": {
+        "serverFallback": "Server",
+        "login": {
+            "title": "Willkommen zurück",
+            "descriptionPrefix": "Bei {server} anmelden",
+            "email": "E-Mail",
+            "password": "Passwort",
+            "emailPlaceholder": "du{'@'}beispiel.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "Anmelden",
+            "signingIn": "Anmeldung läuft...",
+            "forgotPassword": "Passwort vergessen?",
+            "noAccount": "Noch kein Konto? Registrieren",
+            "changeServer": "Server wechseln"
+        },
+        "register": {
+            "joinTitle": "Server beitreten",
+            "createTitle": "Konto erstellen",
+            "inviteDescription": "Gib deinen Einladungscode ein, um loszulegen",
+            "signupDescription": "Für {server} registrieren",
+            "inviteCodeLabel": "Einladungscode",
+            "invitePlaceholder": "Einladungscode einfügen",
+            "askAdmin": "Frage einen Server-Admin nach einem Einladungscode.",
+            "continue": "Weiter",
+            "validating": "Wird überprüft...",
+            "alreadyHaveAccount": "Bereits ein Konto? Anmelden",
+            "displayName": "Anzeigename",
+            "displayNamePlaceholder": "Dein Name",
+            "username": "Benutzername",
+            "usernamePlaceholder": "deinname",
+            "email": "E-Mail",
+            "emailPlaceholder": "du{'@'}beispiel.com",
+            "password": "Passwort",
+            "confirmPassword": "Passwort bestätigen",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "Konto erstellen",
+            "creatingAccount": "Konto wird erstellt...",
+            "useDifferentInvite": "Anderen Einladungscode verwenden",
+            "invalidInvite": "Ungültiger Einladungslink",
+            "unableToReach": "Der Server ist nicht erreichbar. Bitte versuche es später erneut."
+        },
+        "forgot": {
+            "resetTitle": "Passwort zurücksetzen",
+            "doneTitle": "Passwort zurückgesetzt",
+            "emailDescription": "Gib deine E-Mail-Adresse ein, und wir senden dir einen 6-stelligen Reset-Code.",
+            "codeDescription": "Gib den an {email} gesendeten Code ein und wähle ein neues Passwort.",
+            "successHeading": "Dein Passwort wurde erfolgreich zurückgesetzt.",
+            "successSub": "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
+            "email": "E-Mail",
+            "emailPlaceholder": "du{'@'}beispiel.com",
+            "resetCode": "Reset-Code",
+            "codePlaceholder": "000000",
+            "newPassword": "Neues Passwort",
+            "confirmPassword": "Passwort bestätigen",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "Reset-Code senden",
+            "sending": "Wird gesendet...",
+            "resetPassword": "Passwort zurücksetzen",
+            "resetting": "Wird zurückgesetzt...",
+            "tryAgain": "Keinen Code erhalten? Erneut versuchen",
+            "backToLogin": "Zurück zur Anmeldung",
+            "tooManyRequests": "Zu viele Anfragen. Bitte warte einen Moment und versuche es erneut.",
+            "unableToReach": "Der Server ist nicht erreichbar. Bitte versuche es später erneut.",
+            "invalidInput": "Ungültige Eingabe."
+        },
+        "twoFactor": {
+            "title": "Zwei-Faktor-Authentifizierung",
+            "recoveryTitle": "Wiederherstellungscode",
+            "description": "Gib den 6-stelligen Code aus deiner Authentifizierungs-App ein, um fortzufahren.",
+            "recoveryDescription": "Gib einen deiner Notfall-Wiederherstellungscodes ein, um deine Identität zu bestätigen.",
+            "recoveryCode": "Wiederherstellungscode",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "Stattdessen einen Wiederherstellungscode verwenden",
+            "useAuthInstead": "Stattdessen einen Authentifizierungscode verwenden",
+            "backToLogin": "Zurück zur Anmeldung"
+        }
+    },
+    "settings": {
+        "header": "Einstellungen",
+        "subheader": "Verwalte dein Profil und deine Kontoeinstellungen",
+        "back": "Zurück",
+        "navAriaLabel": "Einstellungen",
+        "appearance": {
+            "title": "Design",
+            "description": "Wähle ein Design, um das Erscheinungsbild der Anwendung zu ändern"
+        },
+        "password": {
+            "title": "Passwort aktualisieren",
+            "description": "Stelle sicher, dass dein Konto ein langes, zufälliges Passwort verwendet, um sicher zu bleiben",
+            "currentPassword": "Aktuelles Passwort",
+            "newPassword": "Neues Passwort",
+            "confirmPassword": "Passwort bestätigen",
+            "currentPlaceholder": "Aktuelles Passwort",
+            "newPlaceholder": "Neues Passwort",
+            "confirmPlaceholder": "Passwort bestätigen",
+            "save": "Passwort speichern"
+        },
+        "notifications": {
+            "title": "Benachrichtigungen",
+            "description": "Steuere, wie und wann du Benachrichtigungen erhältst",
+            "typesHeading": "Benachrichtigungstypen",
+            "deliveryHeading": "Zustellmethoden",
+            "mentionLabel": "Erwähnungs-Benachrichtigungen",
+            "mentionDescription": "Werde benachrichtigt, wenn dich jemand mit {'@'}benutzername, {'@'}everyone oder {'@'}here erwähnt",
+            "dmLabel": "Direktnachricht-Benachrichtigungen",
+            "dmDescription": "Werde benachrichtigt, wenn dir jemand eine Direktnachricht sendet",
+            "toastLabel": "In-App-Pop-ups",
+            "toastDescription": "Toast-Benachrichtigungen in der Ecke des Bildschirms anzeigen",
+            "browserLabel": "Desktop-Benachrichtigungen",
+            "browserDescription": "Desktop-Benachrichtigungen anzeigen, wenn die App im Hintergrund läuft",
+            "save": "Einstellungen speichern"
+        },
+        "language": {
+            "title": "Sprache",
+            "description": "Wähle die Sprache, die in der gesamten Anwendung verwendet wird",
+            "label": "Anzeigesprache",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文"
+            }
+        },
+        "nav": {
+            "profile": "Profil",
+            "password": "Passwort",
+            "twoFactor": "Zwei-Faktor-Auth",
+            "security": "Sicherheit",
+            "appearance": "Erscheinungsbild",
+            "voice": "Sprache",
+            "screenShare": "Bildschirmfreigabe",
+            "notifications": "Benachrichtigungen",
+            "language": "Sprache",
+            "about": "Über",
+            "server": "Server",
+            "inviteLinks": "Einladungslinks",
+            "roles": "Rollen",
+            "members": "Mitglieder",
+            "channels": "Kanäle",
+            "moderation": "Moderation",
+            "auditLog": "Prüfprotokoll"
+        },
+        "common": {
+            "cancel": "Abbrechen",
+            "save": "Speichern",
+            "saveChanges": "Änderungen speichern",
+            "delete": "Löschen",
+            "loading": "Wird geladen...",
+            "unknown": "Unbekannt",
+            "none": "Keine",
+            "processing": "Wird verarbeitet..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "Avatar",
+                "description": "Dein Profilbild, das für andere Benutzer sichtbar ist",
+                "change": "Avatar ändern",
+                "upload": "Avatar hochladen",
+                "remove": "Avatar entfernen"
+            },
+            "info": {
+                "title": "Profilinformationen",
+                "description": "Aktualisiere deinen Namen und deine E-Mail-Adresse",
+                "name": "Name",
+                "namePlaceholder": "Vollständiger Name",
+                "email": "E-Mail-Adresse",
+                "emailPlaceholder": "E-Mail-Adresse",
+                "save": "Änderungen speichern",
+                "saved": "Erfolgreich gespeichert"
+            },
+            "danger": {
+                "title": "Gefahrenzone",
+                "description": "Lösche dein Konto und alle zugehörigen Daten endgültig",
+                "warningTitle": "Diese Aktion kann nicht rückgängig gemacht werden",
+                "warningBody": "Sobald du dein Konto löschst, werden alle deine Daten dauerhaft entfernt.",
+                "deleteAccount": "Konto löschen",
+                "confirmTitle": "Bist du sicher, dass du dein Konto löschen möchtest?",
+                "confirmBody": "Sobald dein Konto gelöscht ist, werden auch alle zugehörigen Ressourcen und Daten dauerhaft gelöscht. Bitte gib dein Passwort zur Bestätigung ein.",
+                "passwordLabel": "Passwort",
+                "passwordPlaceholder": "Passwort"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "Mikrofon",
+                "description": "Wähle das Mikrofon, das für Sprachkanäle verwendet werden soll",
+                "input": "Eingabegerät",
+                "systemDefault": "Systemstandard",
+                "refresh": "Geräte aktualisieren",
+                "micFallback": "Mikrofon ({id})"
+            },
+            "pushToTalk": {
+                "title": "Push-to-Talk",
+                "description": "Halte eine Taste gedrückt, um dein Mikrofon zu aktivieren. Funktioniert fenster- und app-übergreifend.",
+                "enable": "Push-to-Talk aktivieren",
+                "keybind": "Tastenbelegung",
+                "pressAnyKey": "Drücke eine Taste oder Kombination…",
+                "notSet": "Nicht festgelegt",
+                "setKey": "Taste festlegen",
+                "changeKey": "Taste ändern",
+                "cancel": "Abbrechen",
+                "clear": "Löschen",
+                "hint": "Drücke eine beliebige Taste oder Tastenkombination (z. B. F5, Leertaste, Alt + Z, Strg + Umschalt + M). Halte die Taste zum Sprechen – loslassen zum Stummschalten.",
+                "playSound": "Ton bei Push-to-Talk abspielen",
+                "errors": {
+                    "unsupportedGlobal": "\"{key}\" kann nicht als globales Tastenkürzel verwendet werden.",
+                    "keyNotSupported": "Diese Taste wird nicht unterstützt.",
+                    "captureNotReady": "Tastenerfassung nicht bereit. Bitte versuche es erneut.",
+                    "captureFailed": "Taste konnte nicht erfasst werden. Bitte versuche es erneut."
+                }
+            },
+            "audio": {
+                "title": "Audioverarbeitung",
+                "description": "Integrierte Rauschunterdrückung und Audio-Verbesserungen",
+                "noiseSuppression": "Rauschunterdrückung",
+                "noiseSuppressionHint": "Filtert Hintergrundgeräusche wie Tastaturklicks, Lüfter und Umgebungsgeräusche heraus.",
+                "echoCancellation": "Echounterdrückung",
+                "echoCancellationHint": "Verhindert, dass der Ton deiner Lautsprecher von deinem Mikrofon aufgenommen wird.",
+                "autoGain": "Automatische Lautstärkeregelung",
+                "autoGainHint": "Passt die Lautstärke deines Mikrofons automatisch an, um ein gleichbleibendes Niveau zu halten."
+            },
+            "test": {
+                "title": "Mikrofontest",
+                "description": "Teste dein Mikrofon und sieh den Eingangspegel mit deinen aktuellen Audioverarbeitungseinstellungen.",
+                "start": "Mikrofon testen",
+                "stop": "Test beenden",
+                "listening": "Hört zu...",
+                "hint": "Sprich in dein Mikrofon – du hörst dich selbst und siehst den Eingangspegel. Verwende Kopfhörer, um Rückkopplungen zu vermeiden."
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "Verschlüsselung",
+                "description": "Verwalte deine Ende-zu-Ende-Verschlüsselungseinstellungen",
+                "active": "Verschlüsselung aktiv",
+                "notSetUp": "Verschlüsselung nicht eingerichtet",
+                "activeDescription": "Deine Nachrichten sind Ende-zu-Ende-verschlüsselt.",
+                "notSetUpDescription": "Richte die Verschlüsselung ein, um deine Nachrichten zu schützen."
+            },
+            "keyBackup": {
+                "title": "Schlüssel-Sicherung",
+                "description": "Sichere deine Schlüssel, um Verschlüsselung auf mehreren Geräten zu nutzen",
+                "exists": "Sicherung vorhanden",
+                "none": "Keine Sicherung",
+                "existsDescription": "Deine Schlüssel sind gesichert und können auf neuen Geräten wiederhergestellt werden.",
+                "noneDescription": "Erstelle eine Sicherung, um Verschlüsselung auf anderen Geräten zu nutzen.",
+                "update": "Sicherung aktualisieren",
+                "create": "Sicherung erstellen"
+            },
+            "devices": {
+                "title": "Geräte",
+                "description": "Verwalte Geräte, die mit deiner Verschlüsselungsidentität verknüpft sind",
+                "empty": "Keine Geräte gefunden.",
+                "thisDevice": "Dieses Gerät",
+                "added": "Hinzugefügt {date}"
+            },
+            "auditLog": {
+                "title": "Prüfprotokoll",
+                "description": "Schlüsseltransparenz-Protokoll – kryptografische Aufzeichnung aller Verschlüsselungsereignisse",
+                "load": "Prüfprotokoll laden",
+                "deviceLabel": "Gerät:",
+                "hashLabel": "Hash:",
+                "events": {
+                    "identity_created": "Identität erstellt",
+                    "device_registered": "Gerät registriert",
+                    "device_revoked": "Gerät widerrufen",
+                    "backup_created": "Schlüsselsicherung erstellt",
+                    "backup_restored": "Schlüsselsicherung wiederhergestellt",
+                    "key_package_uploaded": "Schlüsselpakete hochgeladen",
+                    "signed_prekey_rotated": "Signierter Prekey rotiert"
+                }
+            },
+            "danger": {
+                "title": "Gefahrenzone",
+                "resetTitle": "Verschlüsselung zurücksetzen",
+                "resetDescription": "Lösche alle lokalen Verschlüsselungsschlüssel. Du musst die Verschlüsselung erneut einrichten.",
+                "reset": "Zurücksetzen"
+            },
+            "dialogs": {
+                "revokeTitle": "Gerät widerrufen",
+                "revokeDescription": "Bist du sicher, dass du {name} widerrufen möchtest? Dieses Gerät kann dann keine neuen Nachrichten mehr entschlüsseln.",
+                "revoke": "Widerrufen",
+                "renameTitle": "Gerät umbenennen",
+                "renameDescription": "Gib einen neuen Namen für dieses Gerät ein.",
+                "renamePlaceholder": "Gerätename",
+                "rename": "Umbenennen",
+                "wipeTitle": "Verschlüsselung zurücksetzen",
+                "wipeDescription": "Dadurch werden alle Verschlüsselungsschlüssel von diesem Gerät dauerhaft gelöscht. Du verlierst die Möglichkeit, bestehende Nachrichten zu entschlüsseln, es sei denn, du hast eine Schlüsselsicherung. Diese Aktion kann nicht rückgängig gemacht werden.",
+                "wipeConfirm": "Alle Schlüssel löschen",
+                "never": "Nie"
+            }
+        },
+        "twoFactor": {
+            "title": "Zwei-Faktor-Authentifizierung",
+            "description": "Füge deinem Konto eine zusätzliche Sicherheitsebene hinzu",
+            "disabledBadge": "Deaktiviert",
+            "enabledBadge": "Aktiviert",
+            "disabledBody": "Wenn du die Zwei-Faktor-Authentifizierung aktivierst, wirst du beim Anmelden nach einer sicheren PIN gefragt. Diese PIN kann aus einer TOTP-unterstützten App auf deinem Handy abgerufen werden.",
+            "enabledBody": "Mit aktivierter Zwei-Faktor-Authentifizierung wirst du beim Anmelden nach einer sicheren, zufälligen PIN gefragt, die du aus der TOTP-unterstützten App auf deinem Handy abrufen kannst.",
+            "continueSetup": "Einrichtung fortsetzen",
+            "enable": "2FA aktivieren",
+            "disable": "2FA deaktivieren",
+            "recovery": {
+                "title": "2FA-Wiederherstellungscodes",
+                "description": "Mit Wiederherstellungscodes erhältst du wieder Zugang, wenn du dein 2FA-Gerät verlierst. Bewahre sie in einem sicheren Passwort-Manager auf.",
+                "hide": "Wiederherstellungscodes ausblenden",
+                "view": "Wiederherstellungscodes anzeigen",
+                "regenerate": "Codes neu generieren",
+                "hintPrefix": "Jeder Wiederherstellungscode kann einmal verwendet werden. Wenn du mehr brauchst, klicke auf",
+                "hintRegen": "Codes neu generieren",
+                "hintSuffix": "oben.",
+                "failedToFetch": "Wiederherstellungscodes konnten nicht abgerufen werden"
+            },
+            "setup": {
+                "scanTitle": "Zwei-Faktor-Authentifizierung aktivieren",
+                "scanDescription": "Scanne den QR-Code oder gib den Einrichtungsschlüssel in deiner Authentifizierungs-App ein",
+                "verifyTitle": "Authentifizierungscode bestätigen",
+                "verifyDescription": "Gib den 6-stelligen Code aus deiner Authentifizierungs-App ein",
+                "continue": "Weiter",
+                "orManual": "oder gib den Code manuell ein",
+                "back": "Zurück",
+                "confirm": "Bestätigen",
+                "invalidCode": "Ungültiger Code",
+                "failedToFetchQr": "QR-Code konnte nicht abgerufen werden",
+                "failedToFetchKey": "Einrichtungsschlüssel konnte nicht abgerufen werden"
+            }
+        },
+        "screenShare": {
+            "title": "Bildschirmfreigabe-Qualität",
+            "description": "Wähle die Qualitätsvoreinstellung für die Bildschirmfreigabe.",
+            "label": "Qualitätsvoreinstellung",
+            "placeholder": "Qualität auswählen...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "Geringere Bandbreitennutzung",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "Ausgewogene Qualität",
+                "high": "1080p / 60 FPS",
+                "highDescription": "Flüssige hohe Qualität",
+                "source": "Quelle / 60 FPS",
+                "sourceDescription": "Native Auflösung, höchste Qualität"
+            }
+        },
+        "channels": {
+            "title": "Kanäle",
+            "description": "Verwalte Kategorien, Kanäle und kanalspezifische Berechtigungsüberschreibungen.",
+            "newCategory": "Neue Kategorie",
+            "newChannel": "Neuer Kanal",
+            "loading": "Kanäle werden geladen...",
+            "emptyTitle": "Noch keine Kanäle",
+            "emptyDescription": "Erstelle eine Kategorie und füge Kanäle hinzu, um loszulegen.",
+            "emptyCategory": "Keine Kanäle in dieser Kategorie.",
+            "privateBadge": "Privat",
+            "unknown": "Unbekannt",
+            "roleLabel": "Rolle",
+            "userLabel": "Benutzer",
+            "create": {
+                "title": "Kanal erstellen",
+                "description": "Füge dem Server einen neuen Kanal hinzu.",
+                "name": "Name",
+                "namePlaceholder": "kanal-name",
+                "type": "Typ",
+                "typePlaceholder": "Typ auswählen...",
+                "typeText": "Text",
+                "typeVoice": "Sprache",
+                "topic": "Thema",
+                "topicPlaceholder": "Worum geht es in diesem Kanal?",
+                "category": "Kategorie",
+                "categoryNone": "Keine",
+                "privateLabel": "Privater Kanal (erfordert expliziten Rollen-/Benutzerzugriff)",
+                "submit": "Kanal erstellen"
+            },
+            "edit": {
+                "title": "Kanal bearbeiten",
+                "description": "Kanaleinstellungen aktualisieren.",
+                "name": "Name",
+                "topic": "Thema",
+                "category": "Kategorie",
+                "slowmode": "Langsamer Modus (Sekunden)",
+                "privateLabel": "Privater Kanal",
+                "submit": "Änderungen speichern"
+            },
+            "delete": {
+                "title": "Kanal löschen",
+                "description": "Bist du sicher, dass du {name} löschen möchtest? Alle Nachrichten in diesem Kanal gehen verloren. Dies kann nicht rückgängig gemacht werden.",
+                "submit": "Kanal löschen"
+            },
+            "category": {
+                "createTitle": "Kategorie erstellen",
+                "createDescription": "Füge eine neue Kategorie zur Organisation von Kanälen hinzu.",
+                "name": "Name",
+                "namePlaceholder": "Kategoriename",
+                "create": "Erstellen",
+                "editTitle": "Kategorie bearbeiten",
+                "editDescription": "Kategorienamen aktualisieren.",
+                "save": "Speichern",
+                "deleteTitle": "Kategorie löschen",
+                "deleteDescription": "Bist du sicher, dass du {name} löschen möchtest? Alle Kanäle in dieser Kategorie werden ebenfalls gelöscht. Dies kann nicht rückgängig gemacht werden.",
+                "deleteSubmit": "Kategorie löschen"
+            },
+            "overrides": {
+                "title": "Berechtigungs-Überschreibungen",
+                "description": "Verwalte Berechtigungs-Überschreibungen für #{name}. Überschreibungen erlauben oder verweigern bestimmte Berechtigungen für Rollen in diesem Kanal.",
+                "loading": "Wird geladen...",
+                "current": "Aktuelle Überschreibungen",
+                "add": "Überschreibung hinzufügen",
+                "role": "Rolle",
+                "rolePlaceholder": "Rolle auswählen...",
+                "permissions": "Berechtigungen",
+                "allow": "Erlauben",
+                "deny": "Verweigern",
+                "save": "Überschreibung speichern"
+            }
+        },
+        "members": {
+            "title": "Mitglieder",
+            "description": "Verwalte Mitgliederrollen. Weise Rollen zu oder entferne sie, um Berechtigungen zu steuern.",
+            "searchPlaceholder": "Mitglieder suchen...",
+            "loading": "Wird geladen...",
+            "emptyTitle": "Keine Mitglieder gefunden",
+            "emptyTrySearch": "Versuche einen anderen Suchbegriff.",
+            "emptyNone": "Noch keine Mitglieder registriert.",
+            "addRole": "Rolle hinzufügen",
+            "assign": {
+                "title": "Rolle zuweisen",
+                "description": "Wähle eine Rolle, die {name} zugewiesen werden soll.",
+                "placeholder": "Rolle auswählen...",
+                "allAssigned": "Dieses Mitglied hat bereits alle verfügbaren Rollen."
+            },
+            "remove": {
+                "title": "Rolle entfernen",
+                "description": "Bist du sicher, dass du die Rolle {role} von {name} entfernen möchtest?",
+                "submit": "Rolle entfernen"
+            }
+        },
+        "roles": {
+            "title": "Rollen",
+            "description": "Verwalte Serverrollen und ihre Berechtigungen. Rollen mit höherer Position haben Vorrang vor niedrigeren.",
+            "createRole": "Rolle erstellen",
+            "loading": "Wird geladen...",
+            "emptyTitle": "Noch keine Rollen",
+            "emptyDescription": "Erstelle eine Rolle, um Berechtigungen zu verwalten.",
+            "defaultBadge": "Standard",
+            "adminBadge": "Admin",
+            "memberCount": "{n} Mitglied | {n} Mitglieder",
+            "position": "Position: {n}",
+            "permissionsCount": "{n} Berechtigungen",
+            "form": {
+                "name": "Name",
+                "namePlaceholder": "Rollenname",
+                "color": "Farbe",
+                "position": "Position",
+                "displaySeparately": "Separat anzeigen",
+                "mentionable": "Erwähnbar",
+                "permissions": "Berechtigungen",
+                "categories": {
+                    "general": "Allgemeiner Server",
+                    "membership": "Mitgliedschaft",
+                    "text": "Textkanäle",
+                    "voice": "Sprachkanäle",
+                    "admin": "Admin"
+                }
+            },
+            "create": {
+                "title": "Rolle erstellen",
+                "description": "Erstelle eine neue Rolle mit bestimmten Berechtigungen.",
+                "submit": "Rolle erstellen"
+            },
+            "edit": {
+                "title": "Rolle bearbeiten",
+                "description": "Rolleneinstellungen und Berechtigungen ändern.",
+                "submit": "Änderungen speichern"
+            },
+            "delete": {
+                "title": "Rolle löschen",
+                "description": "Bist du sicher, dass du die Rolle {name} löschen möchtest? Alle Benutzer mit dieser Rolle verlieren ihre Berechtigungen. Diese Aktion kann nicht rückgängig gemacht werden.",
+                "submit": "Rolle löschen"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "Aktive Sperren",
+                "description": "Gesperrte Benutzer anzeigen und verwalten. Sperren verhindern, dass Benutzer auf den Server zugreifen.",
+                "loading": "Wird geladen...",
+                "emptyTitle": "Keine aktiven Sperren",
+                "emptyDescription": "Alle Benutzer haben Zugriff auf den Server.",
+                "bannedBadge": "Gesperrt",
+                "reasonLabel": "Grund: {reason}",
+                "noReason": "Kein Grund angegeben",
+                "byUser": "Von {user}",
+                "expires": "Läuft ab: {date}",
+                "unban": "Entsperren"
+            },
+            "actions": {
+                "title": "Mitglieder-Aktionen",
+                "description": "Mitglieder sperren oder in den Zwinger setzen. Gefangene Benutzer haben eingeschränkte Berechtigungen und können nur Kanäle ansehen.",
+                "searchPlaceholder": "Mitglieder suchen...",
+                "empty": "Keine Mitglieder gefunden.",
+                "jail": "Einsperren",
+                "ban": "Sperren"
+            },
+            "banDialog": {
+                "title": "Mitglied sperren",
+                "description": "Sperre {name} vom Server. Sie können dann auf keine Kanäle mehr zugreifen.",
+                "reason": "Grund (optional)",
+                "reasonPlaceholder": "Warum wird dieser Benutzer gesperrt?",
+                "expires": "Läuft ab am (optional)",
+                "pickDate": "Datum wählen",
+                "permanentHint": "Leer lassen für eine dauerhafte Sperre.",
+                "submit": "Benutzer sperren"
+            },
+            "jailDialog": {
+                "title": "Mitglied einsperren",
+                "description": "{name} einsperren? Dadurch werden alle ihre Rollen entfernt und sie werden auf Nur-Lese-Zugriff beschränkt.",
+                "submit": "Benutzer einsperren"
+            }
+        },
+        "auditLog": {
+            "title": "Prüfprotokoll",
+            "description": "Eine Aufzeichnung aller Moderations- und Verwaltungsaktionen auf dem Server.",
+            "filterPlaceholder": "Nach Aktion filtern",
+            "loading": "Wird geladen...",
+            "emptyTitle": "Keine Einträge im Prüfprotokoll",
+            "emptyDescription": "Moderationsaktionen werden hier angezeigt.",
+            "unknownActor": "Unbekannt",
+            "previous": "Zurück",
+            "next": "Weiter",
+            "page": "Seite {n}",
+            "relative": {
+                "justNow": "Gerade eben",
+                "minutesAgo": "vor {n} Min.",
+                "hoursAgo": "vor {n} Std.",
+                "daysAgo": "vor {n} T."
+            },
+            "actions": {
+                "ban": "Gesperrt",
+                "unban": "Entsperrt",
+                "jail": "Eingesperrt",
+                "unjail": "Freigelassen",
+                "message_delete": "Nachricht gelöscht",
+                "thread_message_delete": "Thread-Antwort gelöscht",
+                "role_assign": "Rolle zugewiesen",
+                "role_remove": "Rolle entfernt",
+                "role_create": "Rolle erstellt",
+                "role_update": "Rolle aktualisiert",
+                "role_delete": "Rolle gelöscht",
+                "channel_create": "Kanal erstellt",
+                "channel_update": "Kanal aktualisiert",
+                "channel_delete": "Kanal gelöscht",
+                "channel_override_update": "Kanal-Überschreibung aktualisiert",
+                "channel_override_delete": "Kanal-Überschreibung gelöscht"
+            },
+            "filters": {
+                "all": "Alle Aktionen",
+                "ban": "Sperren",
+                "unban": "Entsperrungen",
+                "jail": "Einsperrungen",
+                "unjail": "Freilassungen",
+                "message_delete": "Nachrichten-Löschungen",
+                "role_assign": "Rolle zugewiesen",
+                "role_remove": "Rolle entfernt",
+                "role_create": "Rolle erstellt",
+                "role_update": "Rolle aktualisiert",
+                "role_delete": "Rolle gelöscht",
+                "channel_create": "Kanal erstellt",
+                "channel_update": "Kanal aktualisiert",
+                "channel_delete": "Kanal gelöscht"
+            },
+            "target": {
+                "unknownUser": "Unbekannter Benutzer",
+                "messageBy": "Nachricht von {'@'}{user}",
+                "messageByInChannel": "Nachricht von {'@'}{user} in #{channel}",
+                "messageGeneric": "Nachricht",
+                "messageInChannel": "Nachricht in #{channel}",
+                "roleOnUser": "{role} bei {'@'}{user}",
+                "roleOnly": "{role}",
+                "roleFallback": "Rolle",
+                "channelFallback": "Kanal",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "Grund: {reason}",
+                "expires": "Läuft ab: {date}"
+            }
+        },
+        "about": {
+            "title": "Über",
+            "description": "Informationen zu dieser LaraDisco-Installation.",
+            "version": "Version",
+            "updates": {
+                "title": "Updates",
+                "description": "LaraDisco sucht stündlich automatisch nach Updates. Du kannst auch manuell suchen.",
+                "check": "Nach Updates suchen",
+                "checking": "Wird geprüft…",
+                "available": "Version {version} ist verfügbar.",
+                "upToDate": "Du verwendest die neueste Version.",
+                "failed": "Suche nach Updates fehlgeschlagen"
+            }
+        },
+        "inviteLinks": {
+            "title": "Einladungslinks",
+            "description": "Erstelle Einmal-Einladungslinks für neue Mitglieder. Links laufen nach 1 Stunde ab.",
+            "generate": "Erstellen",
+            "loading": "Wird geladen...",
+            "emptyTitle": "Noch keine Einladungslinks",
+            "emptyDescription": "Erstelle einen Link, um jemanden zur Registrierung einzuladen.",
+            "created": "Erstellt {date}",
+            "expires": "Läuft ab {date}",
+            "expiresNever": "Nie",
+            "usedBy": "Verwendet von",
+            "statusActive": "Aktiv",
+            "statusUsed": "Verwendet",
+            "statusExpired": "Abgelaufen"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "Minimieren",
+        "maximize": "Maximieren",
+        "close": "Schließen"
+    },
+    "notifications": {
+        "messageFrom": "Nachricht von {user}",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "{mention} in #{channel}",
+        "encryptedMessage": "[Verschlüsselte Nachricht]",
+        "sentMessage": "hat eine Nachricht gesendet",
+        "inChannelPrefix": "in #{channel}"
+    },
+    "dates": {
+        "todayAt": "Heute um {time}",
+        "yesterdayAt": "Gestern um {time}"
+    },
+    "home": {
+        "welcome": "Willkommen bei {server}",
+        "selectChannelPrompt": "Wähle einen Kanal aus der Seitenleiste, um zu chatten."
+    },
+    "directMessages": {
+        "title": "Deine Direktnachrichten",
+        "emptyPrompt": "Wähle eine Unterhaltung aus oder starte eine neue."
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "Verbinde dich mit deinem Server, um loszulegen",
+        "serverAddress": "Serveradresse",
+        "placeholder": "chat.beispiel.com",
+        "connectedTo": "Verbunden mit {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "Verbindung wird hergestellt...",
+        "testConnection": "Verbindung testen",
+        "continue": "Weiter",
+        "savedServers": "Gespeicherte Server",
+        "active": "Aktiv"
+    },
+    "updates": {
+        "available": "Update verfügbar",
+        "downloadPrompt": "Version {version} ist zum Download bereit.",
+        "download": "Herunterladen",
+        "later": "Später",
+        "downloading": "Update wird heruntergeladen",
+        "downloadingProgress": "Version {version} — {percent}",
+        "ready": "Update bereit",
+        "restartPrompt": "Starte LaraDisco neu, um Version {version} zu installieren.",
+        "restartNow": "Jetzt neu starten",
+        "failed": "Update fehlgeschlagen",
+        "downloadFailed": "Download fehlgeschlagen"
+    },
+    "appContextMenu": {
+        "copyText": "Text kopieren",
+        "addReaction": "Reaktion hinzufügen",
+        "reply": "Antworten",
+        "replyInThread": "Im Thread antworten",
+        "pinMessage": "Nachricht anheften",
+        "unpinMessage": "Nachricht lösen",
+        "editMessage": "Nachricht bearbeiten",
+        "deleteMessage": "Nachricht löschen",
+        "cut": "Ausschneiden",
+        "copy": "Kopieren",
+        "paste": "Einfügen",
+        "pastePlain": "Als Klartext einfügen",
+        "wrapCodeBlock": "Als Codeblock umschließen",
+        "language": "Sprache",
+        "plainText": "Klartext",
+        "selectAll": "Alles auswählen",
+        "mention": "Erwähnen",
+        "viewProfile": "Profil anzeigen",
+        "sendMessage": "Nachricht senden",
+        "copyImage": "Bild kopieren",
+        "copyImageAddress": "Bildadresse kopieren",
+        "saveImageAs": "Bild speichern unter…",
+        "openLink": "Link öffnen",
+        "copyLink": "Link kopieren"
+    },
+    "userMenu": {
+        "settings": "Einstellungen",
+        "logout": "Abmelden"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "Schließen",
+            "unknown": "Unbekannt",
+            "encryptedMessage": "[Verschlüsselte Nachricht]",
+            "unableToDecrypt": "[Entschlüsselung nicht möglich]",
+            "unableToDecryptInline": "[Diese Nachricht kann nicht entschlüsselt werden]"
+        },
+        "messages": {
+            "selectChannel": "Kanal auswählen",
+            "welcomeChannel": "Willkommen in #{channel}",
+            "conversationWith": "Unterhaltung mit {name}",
+            "conversationStart": "Dies ist der Beginn deiner Unterhaltung.",
+            "pinned": "angeheftet",
+            "edited": "(bearbeitet)",
+            "escapeTo": "Esc zum",
+            "cancelInline": "Abbrechen",
+            "enterTo": "Enter zum",
+            "saveInline": "Speichern",
+            "unknownUser": "Unbekannt",
+            "deleteDialogTitle": "Nachricht löschen",
+            "deleteDialogDescription": "Bist du sicher, dass du diese Nachricht löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
+            "deleteConfirm": "Löschen",
+            "cancel": "Abbrechen",
+            "noPermissionToSend": "Du hast keine Berechtigung, Nachrichten in diesem Kanal zu senden.",
+            "pinnedMessagesTooltip": "Angeheftete Nachrichten",
+            "searchMessagesTooltip": "Nachrichten durchsuchen",
+            "showMembers": "Mitglieder anzeigen",
+            "hideMembers": "Mitglieder ausblenden",
+            "encryptionNotSetUp": "Verschlüsselung ist nicht eingerichtet. Bitte schließe die E2EE-Einrichtung ab, bevor du Nachrichten sendest.",
+            "failedToEncrypt": "Nachricht konnte nicht verschlüsselt werden. Bitte versuche es erneut.",
+            "failedToSend": "Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
+            "failedToUpload": "Hochladen von {fileName} fehlgeschlagen. Bitte versuche es erneut."
+        },
+        "composer": {
+            "attachFile": "Datei anhängen",
+            "placeholderChannel": "Nachricht an #{channel}",
+            "placeholderDefault": "Nachricht an #kanal",
+            "placeholderDisabled": "Zu schnell gesendet — bitte warten…",
+            "replyingTo": "Antwort an {user}",
+            "fileTooLarge": "{count} Dateien überschreiten das 100-MB-Limit: {files}",
+            "preparing": "Wird vorbereitet…",
+            "encrypting": "Wird verschlüsselt…",
+            "finishing": "Wird abgeschlossen…"
+        },
+        "thread": {
+            "title": "Thread",
+            "followTooltip": "Thread folgen",
+            "unfollowTooltip": "Thread nicht mehr folgen",
+            "noReplies": "Noch keine Antworten. Starte die Unterhaltung!",
+            "replyPlaceholder": "Im Thread antworten...",
+            "replyCount": "{count} Antwort | {count} Antworten",
+            "encryptionNotSetUp": "Verschlüsselung ist nicht eingerichtet.",
+            "failedToEncrypt": "Nachricht konnte nicht verschlüsselt werden.",
+            "failedToSendReply": "Antwort konnte nicht gesendet werden.",
+            "deleteDialogTitle": "Nachricht löschen",
+            "deleteDialogDescription": "Bist du sicher, dass du diese Nachricht löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
+            "deleteConfirm": "Löschen",
+            "cancel": "Abbrechen"
+        },
+        "messageActions": {
+            "addReaction": "Reaktion hinzufügen",
+            "reply": "Antworten",
+            "replyInThread": "Im Thread antworten",
+            "pinMessage": "Nachricht anheften",
+            "unpinMessage": "Nachricht lösen",
+            "editMessage": "Nachricht bearbeiten",
+            "deleteMessage": "Nachricht löschen"
+        },
+        "pinned": {
+            "title": "Angeheftete Nachrichten",
+            "empty": "Noch keine angehefteten Nachrichten.",
+            "unpinTooltip": "Nachricht lösen"
+        },
+        "files": {
+            "download": "Herunterladen",
+            "close": "Schließen",
+            "failedToLoadAudio": "Audio konnte nicht geladen werden",
+            "failedToLoadVideo": "Video konnte nicht geladen werden"
+        },
+        "gifs": {
+            "searchPlaceholder": "GIFs suchen...",
+            "noResults": "Keine GIFs gefunden",
+            "categories": {
+                "excited": "Aufgeregt",
+                "happy": "Glücklich",
+                "sad": "Traurig",
+                "love": "Liebe",
+                "angry": "Wütend",
+                "laugh": "Lachen",
+                "dance": "Tanzen",
+                "thumbsUp": "Daumen hoch",
+                "facepalm": "Facepalm"
+            }
+        },
+        "search": {
+            "titleInConversation": "In {name} suchen",
+            "closeTooltip": "Suche schließen (Esc)",
+            "closeLabel": "Suche schließen",
+            "placeholder": "Nachrichten suchen…",
+            "ariaLabel": "Nachrichten suchen",
+            "searching": "Wird gesucht…",
+            "noResults": "Keine Ergebnisse gefunden",
+            "resultsCount": "{count} Ergebnis gefunden | {count} Ergebnisse gefunden",
+            "typeToSearch": "Tippe, um Nachrichten zu suchen",
+            "offlineNote": "Die Suche ist vollständig lokal – funktioniert offline und verlässt niemals dein Gerät",
+            "tryDifferent": "Versuche andere Suchbegriffe",
+            "loadMore": "Weitere Ergebnisse laden",
+            "unknownUser": "Unbekannt"
+        },
+        "onlineUsers": {
+            "online": "Online — {count}",
+            "idle": "Abwesend — {count}",
+            "dnd": "Bitte nicht stören — {count}",
+            "offline": "Offline — {count}"
+        },
+        "typing": {
+            "one": "{user} schreibt...",
+            "several": "Mehrere Personen schreiben..."
+        },
+        "mentions": {
+            "label": "Erwähnungen",
+            "searching": "Wird gesucht...",
+            "everyoneDescription": "Alle Mitglieder auf diesem Server benachrichtigen",
+            "hereDescription": "Online-Mitglieder in diesem Kanal benachrichtigen"
+        },
+        "voice": {
+            "connected": "Sprachverbindung hergestellt",
+            "poorConnection": "Schlechte Verbindung",
+            "connectionLost": "Verbindung verloren",
+            "disconnect": "Trennen",
+            "mute": "Stummschalten",
+            "unmute": "Stummschaltung aufheben",
+            "deafen": "Taub schalten",
+            "undeafen": "Taub-Schaltung aufheben",
+            "shareScreen": "Bildschirm teilen",
+            "stopSharing": "Teilen beenden"
+        },
+        "dm": {
+            "title": "Direktnachrichten",
+            "newMessageTooltip": "Neue Nachricht",
+            "searchPlaceholder": "Unterhaltung finden oder starten",
+            "noUsersFound": "Keine Benutzer gefunden",
+            "noDmsYet": "Noch keine Direktnachrichten",
+            "startConversationHint": "Klicke auf +, um eine Unterhaltung zu starten",
+            "backToChannels": "Zurück zu den Kanälen",
+            "unableToDecrypt": "[Entschlüsselung nicht möglich]"
+        },
+        "userProfile": {
+            "unknownUser": "Unbekannter Benutzer",
+            "memberSince": "Mitglied seit",
+            "memberSinceUnknown": "Unbekannt",
+            "roles": "Rollen",
+            "sendMessage": "Nachricht senden",
+            "status": {
+                "online": "Online",
+                "idle": "Abwesend",
+                "dnd": "Bitte nicht stören",
+                "offline": "Offline"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "Direktnachrichten",
+            "statusOnline": "Online",
+            "statusDnd": "Bitte nicht stören",
+            "statusInvisible": "Unsichtbar",
+            "settings": "Einstellungen",
+            "logout": "Abmelden"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "Zur Gegenwart springen",
+            "jumpToBottom": "Nach unten springen",
+            "newMessages": "{count} neue Nachricht | {count} neue Nachrichten"
+        },
+        "threadPreview": {
+            "replies": "{count} Antwort | {count} Antworten",
+            "lastReply": "Letzte Antwort {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "Im Browser öffnen"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "Ton umschalten",
+            "expand": "Erweitern",
+            "fullscreen": "Vollbild",
+            "popOut": "Herauslösen",
+            "close": "Schließen"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "Ende-zu-Ende-Verschlüsselung",
+            "description": "Sichere deine Nachrichten, damit nur du und die beabsichtigten Empfänger sie lesen können.",
+            "checking": "Verschlüsselungsstatus wird geprüft...",
+            "restoreTitle": "Schlüssel wiederherstellen",
+            "restoreDescription": "Eine Schlüsselsicherung wurde gefunden. Gib deine Sicherungs-PIN ein, um deine Verschlüsselungsidentität auf diesem Gerät wiederherzustellen.",
+            "deviceName": "Gerätename",
+            "deviceNamePlaceholder": "z. B. Mein Laptop",
+            "backupPin": "Sicherungs-PIN",
+            "backupPinPlaceholder": "Gib deine Sicherungs-PIN ein",
+            "incorrectPin": "Falsche PIN",
+            "restoreContinue": "Wiederherstellen & Fortfahren",
+            "newIdentity": "Neue Identität",
+            "generating": "Deine Verschlüsselungsschlüssel werden generiert...",
+            "allSet": "Alles eingerichtet!",
+            "allSetDescription": "Die Ende-zu-Ende-Verschlüsselung ist aktiv. Deine Nachrichten sind jetzt gesichert."
+        },
+        "backup": {
+            "restoreTitle": "Schlüsselsicherung wiederherstellen",
+            "createTitle": "Schlüsselsicherung erstellen",
+            "restoreDescription": "Gib die PIN ein, die du beim Erstellen der Sicherung verwendet hast.",
+            "createDescription": "Wähle eine PIN, um deine Schlüsselsicherung zu verschlüsseln. Du benötigst diese PIN, um deine Schlüssel auf einem anderen Gerät wiederherzustellen.",
+            "keysRestored": "Schlüssel erfolgreich wiederhergestellt!",
+            "backupCreated": "Sicherung erfolgreich erstellt!",
+            "backupPinLabel": "Sicherungs-PIN",
+            "choosePinLabel": "PIN wählen",
+            "pinPlaceholderRestore": "Gib deine Sicherungs-PIN ein",
+            "pinPlaceholderCreate": "Mindestens 6 Zeichen",
+            "confirmPin": "PIN bestätigen",
+            "confirmPinPlaceholder": "PIN erneut eingeben",
+            "pinsDoNotMatch": "PINs stimmen nicht überein",
+            "backupFailed": "Sicherung fehlgeschlagen",
+            "restoreFailed": "Wiederherstellung fehlgeschlagen",
+            "importantLabel": "Wichtig:",
+            "warningPinOnly": "Diese PIN wird nur zum Verschlüsseln deiner Schlüsselsicherung verwendet",
+            "warningNeverSent": "Sie wird niemals an den Server gesendet",
+            "warningForgotten": "Wenn du deine PIN vergisst, kannst du deine Schlüssel nicht wiederherstellen",
+            "warningStrong": "Die Sicherung verwendet starke Verschlüsselung (Argon2id + AES-256-GCM)",
+            "restoreKeys": "Schlüssel wiederherstellen",
+            "createBackup": "Sicherung erstellen"
+        },
+        "avatarCrop": {
+            "title": "Avatar aktualisieren",
+            "description": "Neues Profilbild zuschneiden und hochladen",
+            "selectPrompt": "Wähle ein Bild als Avatar",
+            "chooseImage": "Bild auswählen",
+            "chooseDifferent": "Anderes Bild auswählen",
+            "saving": "Wird gespeichert...",
+            "saveAvatar": "Avatar speichern"
+        }
+    },
+    "notificationBell": {
+        "title": "Benachrichtigungen",
+        "markAllRead": "Alle als gelesen markieren",
+        "markAsRead": "Als gelesen markieren",
+        "empty": "Keine neuen Benachrichtigungen",
+        "sentMessage": "hat eine Nachricht gesendet",
+        "inChannel": "in #{channel}"
+    }
+}

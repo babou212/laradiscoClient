@@ -1,6 +1,6 @@
 # LaraDisco Desktop Client
 
-A secure, cross-platform desktop communication app built with **Electron**, **Vue 3**, and **TypeScript**. LaraDisco delivers real-time messaging, voice/video calls, screen sharing, and end-to-end encryption — all powered by a Laravel backend.
+A secure, cross-platform desktop communication app built with **Electron**, **Vue 3**, and **TypeScript**. LaraDisco delivers real-time messaging, voice/video calls, screen sharing, and end-to-end encryption.
 
 ## Features
 
@@ -22,23 +22,24 @@ A secure, cross-platform desktop communication app built with **Electron**, **Vu
 
 | Layer | Technologies |
 |-------|-------------|
-| Framework | Electron 35, Vue 3.5, TypeScript 5 |
-| Build | electron-vite, Electron Forge |
-| State | Pinia 3 |
+| Framework | Electron 41, Vue 3.5, TypeScript 5 |
+| Build | electron-vite 5, electron-builder |
+| State | Pinia 3, Pinia Colada |
 | Routing | Vue Router 4 (hash mode) |
 | UI | Tailwind CSS 4, shadcn-vue (New York style), PrimeVue, Reka UI, Lucide icons |
+| i18n | Vue I18n 11 |
 | Real-time | Laravel Echo, Pusher |
 | Voice/Video | LiveKit Client SDK |
 | Crypto | OpenMLS (WASM), @noble/curves, @noble/hashes, hash-wasm |
-| Database | better-sqlite3 |
+| Database | better-sqlite3, Drizzle ORM |
 | HTTP | Axios |
 | Media | Sharp (thumbnails), Howler (audio), FFmpeg |
 | Validation | Zod |
 
 ## Prerequisites
 
-- **Node.js** >= 18
-- **npm** >= 9
+- **Node.js** >= 24
+- **npm** >= 11
 - A running [LaraDisco](../laradisco) server instance
 
 ## Getting Started
@@ -62,11 +63,6 @@ The app will launch with hot-reload enabled for the renderer process.
 |---------|-------------|
 | `npm run dev` | Start the app in development mode |
 | `npm run build` | Build for production |
-| `npm run package` | Create a redistributable package |
-| `npm run make` | Build platform-specific installers |
-| `npm run make:win` | Build Windows installer |
-| `npm run make:mac` | Build macOS DMG |
-| `npm run make:linux` | Build Linux packages |
 | `npm run typecheck` | Run TypeScript type checking |
 | `npm run lint` | Lint with ESLint |
 | `npm run format` | Format with Prettier |
@@ -82,7 +78,9 @@ src/
 │   ├── ptt.ts             # Push-to-talk global hotkeys
 │   ├── updater.ts         # Auto-update logic
 │   ├── crypto/            # AES file encryption
+│   ├── db/                # SQLite schema & setup
 │   ├── media/             # Thumbnail generation
+│   ├── services/          # URL unfurling & normalization
 │   └── mls/               # OpenMLS WASM integration
 │       ├── index.ts       # MLS coordinator & IPC handlers
 │       ├── backup.ts      # Key backup/restore with PIN
@@ -100,6 +98,7 @@ src/
         ├── assets/        # CSS (Tailwind, themes)
         ├── components/    # Vue components + shadcn-vue UI
         ├── composables/   # Vue composables
+        ├── i18n/          # Internationalization (de, en, es, fr, pl, pt, ru, zh)
         ├── layouts/       # Page layouts (app, auth, settings)
         ├── lib/           # Libraries (Echo, markdown, schemas)
         ├── queries/       # TanStack Query functions
@@ -112,19 +111,19 @@ src/
 
 ## Packaging & Distribution
 
-Built with Electron Forge, producing platform-specific installers:
+Built with electron-builder, producing platform-specific installers:
 
 | Platform | Formats |
 |----------|---------|
-| Windows | Squirrel installer, ZIP |
+| Windows | NSIS installer |
 | macOS | DMG, ZIP |
-| Linux | DEB, RPM, Flatpak, AppImage |
+| Linux | AppImage |
 
 ## CI/CD
 
 GitHub Actions workflows handle:
 
-- **CI** — Lint, typecheck, build matrix (Ubuntu, macOS, Windows), Snyk security scan
+- **CI** — Lint, typecheck, build matrix (Ubuntu, macOS, Windows)
 - **Release** — Automatic GitHub Releases with platform-specific artifacts on push to `main`
 
 ## Security
@@ -134,7 +133,10 @@ GitHub Actions workflows handle:
 - HTML sanitization via DOMPurify
 - End-to-end encryption with MLS (Messaging Layer Security)
 - AES file encryption for attachments
-- Snyk vulnerability scanning in CI
+
+## Translations
+
+Language translations have been generated using AI and may not be fully accurate. If you notice any errors or would like to improve a translation, contributions are welcome.
 
 ## License
 

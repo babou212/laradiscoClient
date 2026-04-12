@@ -143,7 +143,13 @@
             "label": "Display language",
             "options": {
                 "en": "English",
-                "es": "Español"
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文"
             }
         },
         "nav": {
