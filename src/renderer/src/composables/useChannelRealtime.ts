@@ -314,9 +314,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 showPinnedMessages.value = false;
                 pinnedMessages.value = [];
                 threadStore.closeThread();
-                if (oldId !== undefined) {
-                    resetForNewChannel();
-                }
+                resetForNewChannel();
             }
         },
         { immediate: true },
@@ -366,7 +364,6 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     }, 15_000);
                 }
             }
-            resetForNewChannel();
         }
     });
 

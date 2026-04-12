@@ -4,6 +4,8 @@ import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } fro
 import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { VList } from 'virtua/vue';
+import type { VListHandle } from 'virtua/vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import NewMessagePill from './NewMessagePill.vue';
@@ -33,10 +35,10 @@ import {
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useE2EE } from '@/composables/useE2EE';
-import { useMessageScroll } from '@/composables/useMessageScroll';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
+import { useVirtualMessageScroll } from '@/composables/useVirtualMessageScroll';
 import { extractFirstPreviewUrl } from '@/lib/extractUrls';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
@@ -151,8 +153,7 @@ const startDmFromProfile = async (userId: string) => {
 const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
 
-const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
-const messagesContent = useTemplateRef<HTMLElement>('messagesContent');
+const vlistRef = useTemplateRef<VListHandle>('vlistRef');
 
 async function decryptAfterLoad(): Promise<void> {
     if (!e2eeStore.isReady) return;
@@ -166,41 +167,45 @@ async function decryptAfterLoad(): Promise<void> {
     await e2ee.decryptMessages(activeMessages.value, chId, dmId);
 }
 
-const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, jumpToMessage, notifyNewMessage } =
-    useMessageScroll({
-        containerRef: messagesContainer,
-        contentRef: messagesContent,
-        canLoadOlder: activeStore.canLoadMore,
-        canLoadNewer: activeStore.canLoadNewer,
-        isViewingHistory: activeStore.isViewingHistory,
-        onLoadOlder: async () => {
-            await activeStore.loadOlderMessages();
+const {
+    pinnedToBottom,
+    unreadNewCount,
+    isLoadingOlder,
+    isPrepend,
+    onScroll: handleVListScroll,
+    jumpToBottom,
+    jumpToMessage,
+    notifyNewMessage,
+    scrollToBottom,
+    resetScroll,
+} = useVirtualMessageScroll({
+    vlistRef,
+    messages: activeMessages,
+    canLoadOlder: activeStore.canLoadMore,
+    canLoadNewer: activeStore.canLoadNewer,
+    isViewingHistory: activeStore.isViewingHistory,
+    onLoadOlder: async () => {
+        await activeStore.loadOlderMessages();
+        await decryptAfterLoad();
+    },
+    onLoadNewer: async () => {
+        await activeStore.loadNewerMessages();
+        await decryptAfterLoad();
+    },
+    onLoadAround: async (messageId: string) => {
+        await activeStore.loadMessagesAround(messageId);
+        await decryptAfterLoad();
+    },
+    onResetToLive: async () => {
+        if (channelId.value) {
+            await activeStore.resetToLive(String(channelId.value));
             await decryptAfterLoad();
-        },
-        onLoadNewer: async () => {
-            await activeStore.loadNewerMessages();
-            await decryptAfterLoad();
-        },
-        onLoadAround: async (messageId: string) => {
-            await activeStore.loadMessagesAround(messageId);
-            await decryptAfterLoad();
-        },
-        onResetToLive: async () => {
-            if (channelId.value) {
-                await activeStore.resetToLive(String(channelId.value));
-                await decryptAfterLoad();
-            }
-        },
-    });
+        }
+    },
+});
 
 function resetForNewChannel(): void {
-    pinnedToBottom.value = true;
-    unreadNewCount.value = 0;
-    nextTick(() => {
-        if (messagesContainer.value) {
-            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-        }
-    });
+    resetScroll();
 }
 
 function maybeMarkChannelRead(): void {
@@ -600,11 +605,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
 
     activeStore.addMessage(optimisticMessage);
     pinnedToBottom.value = true;
-    nextTick(() => {
-        if (messagesContainer.value) {
-            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-        }
-    });
+    nextTick(() => scrollToBottom());
     replyingToMessage.value = null;
 
     try {
@@ -850,62 +851,69 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
             </div>
 
             <div class="relative min-h-0 flex-1">
-                <div ref="messagesContainer" class="h-full overflow-y-auto overscroll-contain p-4">
-                    <div ref="messagesContent">
-                        <div v-if="isLoadingOlder" class="flex justify-center py-2">
-                            <div
-                                class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
-                            ></div>
-                        </div>
-
-                        <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
-                            <div class="text-muted-foreground text-center">
-                                <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
-                                <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
-                                <p class="text-lg font-semibold">
-                                    {{
-                                        isDm
-                                            ? t('chat.messages.conversationWith', { name: channel?.name ?? '' })
-                                            : t('chat.messages.welcomeChannel', { channel: channel?.name ?? '' })
-                                    }}
-                                </p>
-                                <p class="text-sm">{{ t('chat.messages.conversationStart') }}</p>
-                            </div>
-                        </div>
-
-                        <div v-else>
-                            <Message
-                                v-for="message in activeMessages"
-                                :key="message.id"
-                                :message="message"
-                                :is-editing="editingMessageId === message.id"
-                                :edit-content="editContent"
-                                :show-emoji-picker="emojiPickerMessageId === message.id"
-                                :can-manage-messages="channelPermissions?.canManageMessages ?? false"
-                                :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
-                                :can-add-reactions="channelPermissions?.canAddReactions ?? true"
-                                :can-send-messages="channelPermissions?.canSendMessages ?? true"
-                                :show-thread-button="!isDm"
-                                :is-dm="isDm"
-                                @show-profile="(rect: DOMRect) => openUserProfile(message.user, rect)"
-                                @start-edit="startEdit(message)"
-                                @cancel-edit="cancelEdit"
-                                @save-edit="saveEdit(message)"
-                                @delete="deleteMessage(message)"
-                                @reply="startReply(message)"
-                                @open-thread="openThread(message)"
-                                @toggle-pin="togglePin(message)"
-                                @toggle-reaction="(emoji) => toggleReaction(message, emoji)"
-                                @toggle-emoji-picker="
-                                    emojiPickerMessageId = emojiPickerMessageId === message.id ? null : message.id
-                                "
-                                @update-edit-content="editContent = $event"
-                            />
-                        </div>
+                <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
+                    <div class="text-muted-foreground text-center">
+                        <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
+                        <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
+                        <p class="text-lg font-semibold">
+                            {{
+                                isDm
+                                    ? t('chat.messages.conversationWith', { name: channel?.name ?? '' })
+                                    : t('chat.messages.welcomeChannel', { channel: channel?.name ?? '' })
+                            }}
+                        </p>
+                        <p class="text-sm">{{ t('chat.messages.conversationStart') }}</p>
                     </div>
                 </div>
 
-                <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+                <VList
+                    v-else
+                    ref="vlistRef"
+                    :data="activeMessages"
+                    :shift="isPrepend"
+                    :buffer-size="1800"
+                    class="h-full overscroll-contain px-4"
+                    @scroll="handleVListScroll"
+                >
+                    <template #default="{ item }: { item: MessageData }">
+                        <Message
+                            :message="item"
+                            :is-editing="editingMessageId === item.id"
+                            :edit-content="editContent"
+                            :show-emoji-picker="emojiPickerMessageId === item.id"
+                            :can-manage-messages="channelPermissions?.canManageMessages ?? false"
+                            :can-pin-messages="isDm || (channelPermissions?.canPinMessages ?? false)"
+                            :can-add-reactions="channelPermissions?.canAddReactions ?? true"
+                            :can-send-messages="channelPermissions?.canSendMessages ?? true"
+                            :show-thread-button="!isDm"
+                            :is-dm="isDm"
+                            @show-profile="(rect: DOMRect) => openUserProfile(item.user, rect)"
+                            @start-edit="startEdit(item)"
+                            @cancel-edit="cancelEdit"
+                            @save-edit="saveEdit(item)"
+                            @delete="deleteMessage(item)"
+                            @reply="startReply(item)"
+                            @open-thread="openThread(item)"
+                            @toggle-pin="togglePin(item)"
+                            @toggle-reaction="(emoji) => toggleReaction(item, emoji)"
+                            @toggle-emoji-picker="
+                                emojiPickerMessageId = emojiPickerMessageId === item.id ? null : item.id
+                            "
+                            @update-edit-content="editContent = $event"
+                        />
+                    </template>
+                </VList>
+
+                <div
+                    v-if="isLoadingOlder"
+                    class="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-2"
+                >
+                    <div
+                        class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                    ></div>
+                </div>
+
+                <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
                     <NewMessagePill
                         :count="unreadNewCount"
                         :viewing-history="showPillForHistory"
@@ -978,3 +986,6 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+</style>
