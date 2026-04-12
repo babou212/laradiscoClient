@@ -32,16 +32,16 @@ onUnmounted(() => {
 
 <template>
     <TooltipProvider :delay-duration="0">
-    <AppContextMenu>
-        <TitleBar />
-        <div class="h-[calc(100vh-var(--titlebar-height))] overflow-hidden">
-            <RouterView />
-        </div>
-        <NotificationToast />
-        <UpdateToast />
-        <div v-show="!isSettingsPage">
-            <ScreenShareViewer />
-        </div>
-    </AppContextMenu>
+        <AppContextMenu>
+            <TitleBar />
+            <div class="h-[calc(100vh-var(--titlebar-height))] overflow-hidden">
+                <RouterView />
+            </div>
+            <NotificationToast />
+            <UpdateToast />
+            <div v-show="!isSettingsPage">
+                <ScreenShareViewer />
+            </div>
+        </AppContextMenu>
     </TooltipProvider>
 </template>
