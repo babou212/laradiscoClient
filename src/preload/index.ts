@@ -10,6 +10,7 @@ import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
 import { serverApi } from './apis/server';
 import { settingsApi } from './apis/settings';
+import { trayApi } from './apis/tray';
 import { unfurlApi } from './apis/unfurl';
 import { updaterApi } from './apis/updater';
 import { windowApi } from './apis/window';
@@ -27,6 +28,7 @@ const api = {
     attachments: attachmentsApi,
     clipboard: clipboardApi,
     unfurl: unfurlApi,
+    tray: trayApi,
 };
 
 if (process.contextIsolated) {

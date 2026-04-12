@@ -64,6 +64,10 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: LaraDisco
 
+extraResources:
+  - from: "build/tray"
+    to: "tray"
+
 linux:
   category: Network
   executableName: laradisco-client

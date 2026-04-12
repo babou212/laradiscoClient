@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/notifications';
 import { t } from '@/i18n';
 import { getEcho } from '@/lib/echo';
@@ -73,6 +73,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const toasts = ref<ToastNotification[]>([]);
     const isConnected = ref(false);
     const preferences = ref<NotificationPreferences>(loadPreferences());
+
+    // Push unread count to system tray badge
+    watch(unreadCount, (count) => {
+        window.api.tray.updateUnreadCount(count);
+    });
 
     let userId: number | null = null;
     let nativeClickListenerRegistered = false;

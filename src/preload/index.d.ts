@@ -11,6 +11,7 @@ export type { WindowApi } from './types/window';
 export type { UpdaterApi } from './types/updater';
 export type { MlsSetupResult, MlsKeyBackup, MlsGroupInfo, MlsApi } from './types/mls';
 export type { SearchResult, MessagesApi } from './types/messages';
+export type { TrayApi } from './types/tray';
 export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unfurl';
 
 import type { AttachmentsApi } from './types/attachments';
@@ -22,6 +23,7 @@ import type { NotificationsApi } from './types/notifications';
 import type { PttApi } from './types/ptt';
 import type { ServerApi } from './types/server';
 import type { SettingsApi } from './types/settings';
+import type { TrayApi } from './types/tray';
 import type { UnfurlApi } from './types/unfurl';
 import type { UpdaterApi } from './types/updater';
 import type { WindowApi } from './types/window';
@@ -39,6 +41,7 @@ interface AppApi {
     attachments: AttachmentsApi;
     clipboard: ClipboardApi;
     unfurl: UnfurlApi;
+    tray: TrayApi;
 }
 
 declare global {

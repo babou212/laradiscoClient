@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { app, BrowserWindow, clipboard, desktopCapturer, ipcMain, protocol, session, shell } from 'electron';
+import { app, BrowserWindow, clipboard, desktopCapturer, ipcMain, net, protocol, session, shell } from 'electron';
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
@@ -37,12 +37,14 @@ if (existsSync(widevineManifest)) {
 
 protocol.registerSchemesAsPrivileged([
     { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },
+    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 import { initDatabase } from './database';
 import { registerIpcHandlers, getVideoCache } from './ipc';
 import { initMls } from './mls';
 import { cleanupPushToTalk, initPushToTalk } from './ptt';
+import { getIsQuitting, initTray, setIsQuitting } from './tray';
 import { initAutoUpdater } from './updater';
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -108,7 +110,12 @@ function createWindow(): void {
         win.show();
     });
 
-    win.on('close', () => {
+    win.on('close', (event) => {
+        if (!getIsQuitting()) {
+            event.preventDefault();
+            win.hide();
+            return;
+        }
         if (!win.webContents.isDestroyed()) {
             win.webContents.send('app:before-quit');
         }
@@ -123,7 +130,7 @@ function createWindow(): void {
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
         win.loadURL(process.env['ELECTRON_RENDERER_URL']);
     } else {
-        win.loadFile(join(__dirname, '../renderer/index.html'));
+        win.loadURL('app://renderer/index.html');
     }
 }
 
@@ -180,6 +187,14 @@ app.whenReady().then(() => {
         });
     });
 
+    session.defaultSession.protocol.handle('app', (request) => {
+        const url = new URL(request.url);
+        let filePath = url.pathname;
+        if (filePath === '/' || filePath === '') filePath = '/index.html';
+        const fullPath = join(__dirname, '../renderer', filePath);
+        return net.fetch(`file://${fullPath}`);
+    });
+
     electronApp.setAppUserModelId('com.laradisco.client');
 
     const defaultUserAgent = session.defaultSession.getUserAgent();
@@ -216,7 +231,11 @@ app.whenReady().then(() => {
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         const url = new URL(details.url);
-        const isAppPage = url.protocol === 'file:' || url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+        const isAppPage =
+            url.protocol === 'app:' ||
+            url.protocol === 'file:' ||
+            url.hostname === 'localhost' ||
+            url.hostname === '127.0.0.1';
 
         if (isAppPage) {
             callback({
@@ -253,7 +272,7 @@ app.whenReady().then(() => {
 
     app.on('web-contents-created', (_event, contents) => {
         contents.on('will-navigate', (event, url) => {
-            const appOrigins = ['http://localhost', process.env['ELECTRON_RENDERER_URL'] ?? ''];
+            const appOrigins = ['app://renderer', 'http://localhost', process.env['ELECTRON_RENDERER_URL'] ?? ''];
             const isAllowed = appOrigins.some((o) => o && url.startsWith(o));
             if (!isAllowed && !url.startsWith('file://')) {
                 event.preventDefault();
@@ -277,19 +296,25 @@ app.whenReady().then(() => {
 
     createWindow();
 
+    if (mainWindow) {
+        initTray(mainWindow);
+    }
+
     app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+        } else {
             createWindow();
         }
     });
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    // Tray keeps the app alive — don't quit when windows close
 });
 
 app.on('before-quit', () => {
+    setIsQuitting(true);
     cleanupPushToTalk();
 });
