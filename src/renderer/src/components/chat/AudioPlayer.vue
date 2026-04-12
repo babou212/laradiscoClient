@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { Slider } from '@/components/ui/slider';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -253,13 +254,14 @@ onBeforeUnmount(cleanup);
                 <div class="text-foreground truncate text-sm font-medium">{{ attachment.file_name }}</div>
                 <div class="text-destructive text-xs">{{ t('chat.files.failedToLoadAudio') }}</div>
             </div>
-            <button
-                class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                :title="t('chat.files.download')"
-                @click="downloadFile"
-            >
-                <Download :size="16" />
-            </button>
+            <SimpleTooltip :content="t('chat.files.download')">
+                <button
+                    class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                    @click="downloadFile"
+                >
+                    <Download :size="16" />
+                </button>
+            </SimpleTooltip>
         </div>
 
         <!-- Audio player -->
@@ -277,13 +279,14 @@ onBeforeUnmount(cleanup);
                         {{ formatFileSize(attachment.size) }}
                     </div>
                 </div>
-                <button
-                    class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                    :title="t('chat.files.download')"
-                    @click="downloadFile"
-                >
-                    <Download :size="14" />
-                </button>
+                <SimpleTooltip :content="t('chat.files.download')">
+                    <button
+                        class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                        @click="downloadFile"
+                    >
+                        <Download :size="14" />
+                    </button>
+                </SimpleTooltip>
             </div>
 
             <!-- Controls row: play/pause, seek bar, time -->

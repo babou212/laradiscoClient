@@ -67,6 +67,9 @@ nsis:
 linux:
   category: Network
   executableName: laradisco-client
+  extraFiles:
+    - from: "node_modules/electron/dist/WidevineCdm"
+      to: "WidevineCdm"
   target:
     - target: AppImage
       arch:

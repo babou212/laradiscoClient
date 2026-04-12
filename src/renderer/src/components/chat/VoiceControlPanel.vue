@@ -2,6 +2,7 @@
 import { Mic, MicOff, Volume2, VolumeOff, PhoneOff, MonitorUp, MonitorOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
@@ -45,14 +46,15 @@ const qualityInfo = computed(() => {
                     {{ qualityInfo.label }}
                 </span>
             </div>
-            <button
-                type="button"
-                class="text-sidebar-foreground/50 hover:text-sidebar-foreground flex size-7 items-center justify-center rounded transition-colors hover:bg-white/10"
-                :title="t('chat.voice.disconnect')"
-                @click="voiceStore.leaveChannel()"
-            >
-                <PhoneOff :size="15" />
-            </button>
+            <SimpleTooltip :content="t('chat.voice.disconnect')">
+                <button
+                    type="button"
+                    class="text-sidebar-foreground/50 hover:text-sidebar-foreground flex size-7 items-center justify-center rounded transition-colors hover:bg-white/10"
+                    @click="voiceStore.leaveChannel()"
+                >
+                    <PhoneOff :size="15" />
+                </button>
+            </SimpleTooltip>
         </div>
 
         <!-- Channel name -->
@@ -62,50 +64,55 @@ const qualityInfo = computed(() => {
 
         <!-- Control buttons row -->
         <div class="flex items-center gap-1">
-            <button
-                type="button"
-                class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
-                :class="
-                    voiceStore.isMicMuted
-                        ? 'bg-white/10 text-red-400 hover:bg-white/15'
-                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
-                "
-                :title="voiceStore.isMicMuted ? t('chat.voice.unmute') : t('chat.voice.mute')"
-                @click="voiceStore.toggleMic()"
-            >
-                <MicOff v-if="voiceStore.isMicMuted" :size="15" />
-                <Mic v-else :size="15" />
-            </button>
+            <SimpleTooltip :content="voiceStore.isMicMuted ? t('chat.voice.unmute') : t('chat.voice.mute')">
+                <button
+                    type="button"
+                    class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
+                    :class="
+                        voiceStore.isMicMuted
+                            ? 'bg-white/10 text-red-400 hover:bg-white/15'
+                            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
+                    "
+                    @click="voiceStore.toggleMic()"
+                >
+                    <MicOff v-if="voiceStore.isMicMuted" :size="15" />
+                    <Mic v-else :size="15" />
+                </button>
+            </SimpleTooltip>
 
-            <button
-                type="button"
-                class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
-                :class="
-                    voiceStore.isSoundMuted
-                        ? 'bg-white/10 text-red-400 hover:bg-white/15'
-                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
-                "
-                :title="voiceStore.isSoundMuted ? t('chat.voice.undeafen') : t('chat.voice.deafen')"
-                @click="voiceStore.toggleSound()"
-            >
-                <VolumeOff v-if="voiceStore.isSoundMuted" :size="15" />
-                <Volume2 v-else :size="15" />
-            </button>
+            <SimpleTooltip :content="voiceStore.isSoundMuted ? t('chat.voice.undeafen') : t('chat.voice.deafen')">
+                <button
+                    type="button"
+                    class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
+                    :class="
+                        voiceStore.isSoundMuted
+                            ? 'bg-white/10 text-red-400 hover:bg-white/15'
+                            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
+                    "
+                    @click="voiceStore.toggleSound()"
+                >
+                    <VolumeOff v-if="voiceStore.isSoundMuted" :size="15" />
+                    <Volume2 v-else :size="15" />
+                </button>
+            </SimpleTooltip>
 
-            <button
-                type="button"
-                class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
-                :class="
-                    voiceStore.isScreenSharing
-                        ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
-                "
-                :title="voiceStore.isScreenSharing ? t('chat.voice.stopSharing') : t('chat.voice.shareScreen')"
-                @click="toggleScreenShare"
+            <SimpleTooltip
+                :content="voiceStore.isScreenSharing ? t('chat.voice.stopSharing') : t('chat.voice.shareScreen')"
             >
-                <MonitorOff v-if="voiceStore.isScreenSharing" :size="15" />
-                <MonitorUp v-else :size="15" />
-            </button>
+                <button
+                    type="button"
+                    class="flex h-7 flex-1 items-center justify-center rounded transition-colors"
+                    :class="
+                        voiceStore.isScreenSharing
+                            ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
+                    "
+                    @click="toggleScreenShare"
+                >
+                    <MonitorOff v-if="voiceStore.isScreenSharing" :size="15" />
+                    <MonitorUp v-else :size="15" />
+                </button>
+            </SimpleTooltip>
         </div>
     </div>
 </template>

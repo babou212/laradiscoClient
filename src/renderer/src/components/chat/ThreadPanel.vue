@@ -19,6 +19,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useE2EE } from '@/composables/useE2EE';
 import { useMessageScroll } from '@/composables/useMessageScroll';
 import { getEcho } from '@/lib/echo';
@@ -461,19 +462,22 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
                 <span class="text-sm font-semibold">{{ t('chat.thread.title') }}</span>
             </div>
             <div class="flex items-center gap-1">
-                <button
+                <SimpleTooltip
                     v-if="threadStore.activeThread"
-                    class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                    :title="
+                    :content="
                         threadStore.activeThread.is_following
                             ? t('chat.thread.unfollowTooltip')
                             : t('chat.thread.followTooltip')
                     "
-                    @click="toggleFollow"
                 >
-                    <BellRing v-if="threadStore.activeThread.is_following" :size="16" class="text-primary" />
-                    <BellOff v-else :size="16" />
-                </button>
+                    <button
+                        class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                        @click="toggleFollow"
+                    >
+                        <BellRing v-if="threadStore.activeThread.is_following" :size="16" class="text-primary" />
+                        <BellOff v-else :size="16" />
+                    </button>
+                </SimpleTooltip>
                 <button
                     class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                     @click="emit('close')"

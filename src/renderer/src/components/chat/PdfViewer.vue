@@ -3,6 +3,7 @@ import { Download, FileText, Loader2, X } from 'lucide-vue-next';
 import { onBeforeUnmount, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -112,20 +113,22 @@ function formatFileSize(bytes: number): string {
                                 {{ attachment.file_name }} &middot; {{ formatFileSize(attachment.size) }}
                             </div>
                             <div class="flex gap-1">
-                                <button
-                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                    :title="t('chat.files.download')"
-                                    @click.stop="downloadFile"
-                                >
-                                    <Download :size="16" />
-                                </button>
-                                <button
-                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                    :title="t('chat.files.close')"
-                                    @click.stop="lightboxOpen = false"
-                                >
-                                    <X :size="16" />
-                                </button>
+                                <SimpleTooltip :content="t('chat.files.download')">
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                        @click.stop="downloadFile"
+                                    >
+                                        <Download :size="16" />
+                                    </button>
+                                </SimpleTooltip>
+                                <SimpleTooltip :content="t('chat.files.close')">
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                        @click.stop="lightboxOpen = false"
+                                    >
+                                        <X :size="16" />
+                                    </button>
+                                </SimpleTooltip>
                             </div>
                         </div>
 

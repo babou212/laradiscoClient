@@ -13,6 +13,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useVoiceStore, type ScreenShareParticipant } from '@/stores/voice';
 
 const { t } = useI18n();
@@ -248,39 +249,43 @@ onBeforeUnmount(() => {
                     >
                         <ChevronRight :size="18" />
                     </button>
-                    <button
-                        type="button"
-                        class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.toggleAudio')"
-                        @click="toggleAudio"
-                    >
-                        <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="18" />
-                        <Volume2 v-else :size="18" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.expand')"
-                        @click="setMode('channel')"
-                    >
-                        <Minimize2 :size="18" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.popOut')"
-                        @click="setMode('pip')"
-                    >
-                        <PictureInPicture2 :size="18" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
-                        :title="t('chat.screenShareViewer.close')"
-                        @click="close"
-                    >
-                        <X :size="18" />
-                    </button>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.toggleAudio')">
+                        <button
+                            type="button"
+                            class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="toggleAudio"
+                        >
+                            <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="18" />
+                            <Volume2 v-else :size="18" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.expand')">
+                        <button
+                            type="button"
+                            class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="setMode('channel')"
+                        >
+                            <Minimize2 :size="18" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.popOut')">
+                        <button
+                            type="button"
+                            class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="setMode('pip')"
+                        >
+                            <PictureInPicture2 :size="18" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.close')">
+                        <button
+                            type="button"
+                            class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
+                            @click="close"
+                        >
+                            <X :size="18" />
+                        </button>
+                    </SimpleTooltip>
                 </div>
             </div>
 
@@ -325,39 +330,43 @@ onBeforeUnmount(() => {
                     >
                         <ChevronRight :size="16" />
                     </button>
-                    <button
-                        type="button"
-                        class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.toggleAudio')"
-                        @click="toggleAudio"
-                    >
-                        <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="16" />
-                        <Volume2 v-else :size="16" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.fullscreen')"
-                        @click="setMode('fullscreen')"
-                    >
-                        <Fullscreen :size="16" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        :title="t('chat.screenShareViewer.popOut')"
-                        @click="setMode('pip')"
-                    >
-                        <PictureInPicture2 :size="16" />
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
-                        :title="t('chat.screenShareViewer.close')"
-                        @click="close"
-                    >
-                        <X :size="16" />
-                    </button>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.toggleAudio')">
+                        <button
+                            type="button"
+                            class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="toggleAudio"
+                        >
+                            <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="16" />
+                            <Volume2 v-else :size="16" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.fullscreen')">
+                        <button
+                            type="button"
+                            class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="setMode('fullscreen')"
+                        >
+                            <Fullscreen :size="16" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.popOut')">
+                        <button
+                            type="button"
+                            class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
+                            @click="setMode('pip')"
+                        >
+                            <PictureInPicture2 :size="16" />
+                        </button>
+                    </SimpleTooltip>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.close')">
+                        <button
+                            type="button"
+                            class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
+                            @click="close"
+                        >
+                            <X :size="16" />
+                        </button>
+                    </SimpleTooltip>
                 </div>
             </div>
 
@@ -394,14 +403,15 @@ onBeforeUnmount(() => {
                             {{ activeParticipant.displayName }}
                         </span>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                        :title="t('chat.screenShareViewer.close')"
-                        @click.stop="close"
-                    >
-                        <X :size="14" />
-                    </button>
+                    <SimpleTooltip :content="t('chat.screenShareViewer.close')">
+                        <button
+                            type="button"
+                            class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                            @click.stop="close"
+                        >
+                            <X :size="14" />
+                        </button>
+                    </SimpleTooltip>
                 </div>
 
                 <div class="flex items-center justify-between px-2 py-1.5">
@@ -429,31 +439,34 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
                     <div class="flex items-center gap-0.5">
-                        <button
-                            type="button"
-                            class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            :title="t('chat.screenShareViewer.toggleAudio')"
-                            @click.stop="toggleAudio"
-                        >
-                            <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="14" />
-                            <Volume2 v-else :size="14" />
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            :title="t('chat.screenShareViewer.expand')"
-                            @click.stop="setMode('channel')"
-                        >
-                            <Maximize2 :size="14" />
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            :title="t('chat.screenShareViewer.fullscreen')"
-                            @click.stop="setMode('fullscreen')"
-                        >
-                            <Fullscreen :size="14" />
-                        </button>
+                        <SimpleTooltip :content="t('chat.screenShareViewer.toggleAudio')">
+                            <button
+                                type="button"
+                                class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                                @click.stop="toggleAudio"
+                            >
+                                <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="14" />
+                                <Volume2 v-else :size="14" />
+                            </button>
+                        </SimpleTooltip>
+                        <SimpleTooltip :content="t('chat.screenShareViewer.expand')">
+                            <button
+                                type="button"
+                                class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                                @click.stop="setMode('channel')"
+                            >
+                                <Maximize2 :size="14" />
+                            </button>
+                        </SimpleTooltip>
+                        <SimpleTooltip :content="t('chat.screenShareViewer.fullscreen')">
+                            <button
+                                type="button"
+                                class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                                @click.stop="setMode('fullscreen')"
+                            >
+                                <Fullscreen :size="14" />
+                            </button>
+                        </SimpleTooltip>
                     </div>
                 </div>
             </div>

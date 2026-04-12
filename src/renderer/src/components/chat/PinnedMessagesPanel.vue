@@ -5,6 +5,7 @@ import { onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAvatarStore } from '@/stores/avatar';
@@ -124,14 +125,14 @@ const renderedContent = (message: MessageData): string => {
                             </div>
                             <div class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="renderedContent(message)" />
                         </div>
-                        <button
-                            v-if="canUnpin"
-                            class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive hidden shrink-0 rounded p-0.5 transition-colors group-hover:block"
-                            :title="t('chat.pinned.unpinTooltip')"
-                            @click.stop="emit('unpin', message.id)"
-                        >
-                            <PinOff :size="14" />
-                        </button>
+                        <SimpleTooltip v-if="canUnpin" :content="t('chat.pinned.unpinTooltip')">
+                            <button
+                                class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive hidden shrink-0 rounded p-0.5 transition-colors group-hover:block"
+                                @click.stop="emit('unpin', message.id)"
+                            >
+                                <PinOff :size="14" />
+                            </button>
+                        </SimpleTooltip>
                     </div>
                 </div>
             </div>

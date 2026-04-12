@@ -11,6 +11,7 @@ import type { AuditLogEntry } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { currentDateFnsLocale } from '@/i18n';
 import { settingsAuditLogQuery } from '@/queries/settings/auditLog';
 
@@ -251,9 +252,11 @@ const filterOptions = computed<{ value: string; label: string }[]>(() => [
                                     </span>
                                 </div>
                             </div>
-                            <span class="text-muted-foreground shrink-0 text-xs" :title="formatDate(entry.created_at)">
-                                {{ formatRelativeDate(entry.created_at) }}
-                            </span>
+                            <SimpleTooltip :content="formatDate(entry.created_at)">
+                                <span class="text-muted-foreground shrink-0 text-xs">
+                                    {{ formatRelativeDate(entry.created_at) }}
+                                </span>
+                            </SimpleTooltip>
                         </div>
                     </div>
                 </div>

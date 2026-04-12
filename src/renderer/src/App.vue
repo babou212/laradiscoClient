@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router';
 import AppContextMenu from '@/components/AppContextMenu.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import UpdateToast from '@/components/UpdateToast.vue';
 import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
 import { usePresenceStore } from '@/stores/presence';
@@ -30,6 +31,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <TooltipProvider :delay-duration="0">
     <AppContextMenu>
         <TitleBar />
         <div class="h-[calc(100vh-var(--titlebar-height))] overflow-hidden">
@@ -41,4 +43,5 @@ onUnmounted(() => {
             <ScreenShareViewer />
         </div>
     </AppContextMenu>
+    </TooltipProvider>
 </template>

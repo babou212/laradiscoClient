@@ -6,6 +6,7 @@ import AudioPlayer from './AudioPlayer.vue';
 import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
 
@@ -218,20 +219,22 @@ watch(
                         </div>
 
                         <div class="absolute -top-3 -right-3 flex gap-1">
-                            <button
-                                class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                :title="t('chat.files.download')"
-                                @click.stop="downloadFile"
-                            >
-                                <Download :size="16" />
-                            </button>
-                            <button
-                                class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                :title="t('chat.files.close')"
-                                @click.stop="lightboxOpen = false"
-                            >
-                                <X :size="16" />
-                            </button>
+                            <SimpleTooltip :content="t('chat.files.download')">
+                                <button
+                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                    @click.stop="downloadFile"
+                                >
+                                    <Download :size="16" />
+                                </button>
+                            </SimpleTooltip>
+                            <SimpleTooltip :content="t('chat.files.close')">
+                                <button
+                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                                    @click.stop="lightboxOpen = false"
+                                >
+                                    <X :size="16" />
+                                </button>
+                            </SimpleTooltip>
                         </div>
 
                         <div class="text-muted-foreground mt-2 text-center text-xs">

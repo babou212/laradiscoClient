@@ -1,4 +1,5 @@
-import { join } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, clipboard, desktopCapturer, ipcMain, protocol, session, shell } from 'electron';
 
@@ -21,6 +22,18 @@ app.commandLine.appendSwitch('use-gl', 'angle');
 app.commandLine.appendSwitch('use-angle', 'gl');
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 app.commandLine.appendSwitch('enable-accelerated-video-decode');
+
+// Load Widevine CDM for DRM playback (YouTube, etc.)
+const widevinePath = join(
+    process.resourcesPath ? dirname(process.resourcesPath) : dirname(process.execPath),
+    'WidevineCdm',
+);
+const widevineManifest = join(widevinePath, 'manifest.json');
+if (existsSync(widevineManifest)) {
+    const { version } = JSON.parse(readFileSync(widevineManifest, 'utf8'));
+    app.commandLine.appendSwitch('widevine-cdm-path', join(widevinePath, '_platform_specific', 'linux_x64'));
+    app.commandLine.appendSwitch('widevine-cdm-version', version);
+}
 
 protocol.registerSchemesAsPrivileged([
     { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },

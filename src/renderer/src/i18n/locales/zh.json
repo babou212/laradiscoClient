@@ -976,5 +976,8 @@
         "empty": "没有新通知",
         "sentMessage": "发送了一条消息",
         "inChannel": "在 #{channel}"
+    },
+    "sidebar": {
+        "toggleSidebar": "切换侧边栏"
     }
 }

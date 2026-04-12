@@ -3,6 +3,7 @@ import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next'
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { formatMessageDate } from '@/lib/utils';
 import { useNotificationsStore, type AppNotification } from '@/stores/notifications';
 
@@ -59,20 +60,21 @@ onUnmounted(() => {
 
 <template>
     <div class="relative">
-        <button
-            data-notification-bell
-            class="text-muted-foreground hover:bg-accent hover:text-foreground relative rounded p-1.5 transition-colors"
-            :title="t('notificationBell.title')"
-            @click="showDropdown = !showDropdown"
-        >
-            <Bell :size="20" />
-            <span
-                v-if="notificationStore.unreadCount > 0"
-                class="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold"
+        <SimpleTooltip :content="t('notificationBell.title')">
+            <button
+                data-notification-bell
+                class="text-muted-foreground hover:bg-accent hover:text-foreground relative rounded p-1.5 transition-colors"
+                @click="showDropdown = !showDropdown"
             >
-                {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
-            </span>
-        </button>
+                <Bell :size="20" />
+                <span
+                    v-if="notificationStore.unreadCount > 0"
+                    class="bg-destructive text-destructive-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold"
+                >
+                    {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
+                </span>
+            </button>
+        </SimpleTooltip>
 
         <div
             v-if="showDropdown"
@@ -144,16 +146,17 @@ onUnmounted(() => {
                             {{ formatMessageDate(notification.created_at) }}
                         </p>
                     </div>
-                    <div
-                        role="button"
-                        tabindex="0"
-                        class="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
-                        :title="t('notificationBell.markAsRead')"
-                        @click.stop="notificationStore.markAsRead(notification.id)"
-                        @keydown.enter.stop="notificationStore.markAsRead(notification.id)"
-                    >
-                        <Check :size="14" />
-                    </div>
+                    <SimpleTooltip :content="t('notificationBell.markAsRead')">
+                        <div
+                            role="button"
+                            tabindex="0"
+                            class="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+                            @click.stop="notificationStore.markAsRead(notification.id)"
+                            @keydown.enter.stop="notificationStore.markAsRead(notification.id)"
+                        >
+                            <Check :size="14" />
+                        </div>
+                    </SimpleTooltip>
                 </button>
             </div>
         </div>

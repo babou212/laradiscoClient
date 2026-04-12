@@ -3,6 +3,7 @@ import { watchDebounced, useEventListener } from '@vueuse/core';
 import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 
 type Props = {
@@ -89,14 +90,15 @@ onMounted(() => {
                     <span id="search-modal-title" class="text-sm font-medium">{{
                         t('chat.search.titleInConversation', { name: conversationName })
                     }}</span>
-                    <button
-                        class="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded p-1 transition-colors"
-                        :title="t('chat.search.closeTooltip')"
-                        :aria-label="t('chat.search.closeLabel')"
-                        @click="handleClose"
-                    >
-                        <X :size="16" aria-hidden="true" />
-                    </button>
+                    <SimpleTooltip :content="t('chat.search.closeTooltip')">
+                        <button
+                            class="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded p-1 transition-colors"
+                            :aria-label="t('chat.search.closeLabel')"
+                            @click="handleClose"
+                        >
+                            <X :size="16" aria-hidden="true" />
+                        </button>
+                    </SimpleTooltip>
                 </div>
 
                 <div class="border-border border-b p-3">

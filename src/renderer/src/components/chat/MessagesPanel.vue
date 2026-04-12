@@ -32,6 +32,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useE2EE } from '@/composables/useE2EE';
@@ -805,14 +806,15 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
 
                 <div class="ml-4 flex items-center gap-2">
                     <div class="relative">
-                        <button
-                            class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
-                            :class="{ 'bg-muted text-foreground': showPinnedMessages }"
-                            :title="t('chat.messages.pinnedMessagesTooltip')"
-                            @click="togglePinnedPanel"
-                        >
-                            <Pin :size="18" />
-                        </button>
+                        <SimpleTooltip :content="t('chat.messages.pinnedMessagesTooltip')">
+                            <button
+                                class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
+                                :class="{ 'bg-muted text-foreground': showPinnedMessages }"
+                                @click="togglePinnedPanel"
+                            >
+                                <Pin :size="18" />
+                            </button>
+                        </SimpleTooltip>
                         <PinnedMessagesPanel
                             v-if="showPinnedMessages && channel"
                             :pinned-messages="pinnedMessages"
@@ -828,25 +830,28 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                             "
                         />
                     </div>
-                    <button
-                        v-if="e2eeStore.isReady"
-                        class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
-                        :class="{ 'bg-muted text-foreground': showSearch }"
-                        :title="t('chat.messages.searchMessagesTooltip')"
-                        @click="showSearch = !showSearch"
-                    >
-                        <Search :size="18" />
-                    </button>
+                    <SimpleTooltip v-if="e2eeStore.isReady" :content="t('chat.messages.searchMessagesTooltip')">
+                        <button
+                            class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
+                            :class="{ 'bg-muted text-foreground': showSearch }"
+                            @click="showSearch = !showSearch"
+                        >
+                            <Search :size="18" />
+                        </button>
+                    </SimpleTooltip>
                     <NotificationBell />
-                    <button
+                    <SimpleTooltip
                         v-if="!isDm"
-                        class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                        :title="usersCollapsed ? t('chat.messages.showMembers') : t('chat.messages.hideMembers')"
-                        @click="emit('toggleUsersCollapsed')"
+                        :content="usersCollapsed ? t('chat.messages.showMembers') : t('chat.messages.hideMembers')"
                     >
-                        <PanelRightOpen v-if="usersCollapsed" :size="16" />
-                        <PanelRightClose v-else :size="16" />
-                    </button>
+                        <button
+                            class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                            @click="emit('toggleUsersCollapsed')"
+                        >
+                            <PanelRightOpen v-if="usersCollapsed" :size="16" />
+                            <PanelRightClose v-else :size="16" />
+                        </button>
+                    </SimpleTooltip>
                 </div>
             </div>
 

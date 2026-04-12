@@ -5,6 +5,7 @@ import { shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getMembers } from '@/api/members';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useAvatarStore } from '@/stores/avatar';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
@@ -122,15 +123,16 @@ const toggleNewDmSearch = () => {
     <div class="border-sidebar-border bg-sidebar flex h-full w-60 flex-col border-r">
         <div class="border-sidebar-border flex h-12 items-center justify-between border-b px-4 shadow-sm">
             <h2 class="text-sidebar-foreground text-sm font-semibold">{{ t('chat.dm.title') }}</h2>
-            <button
-                type="button"
-                class="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground rounded p-1 transition-colors"
-                :title="t('chat.dm.newMessageTooltip')"
-                @click="toggleNewDmSearch"
-            >
-                <Plus v-if="!showNewDmSearch" :size="18" />
-                <X v-else :size="18" />
-            </button>
+            <SimpleTooltip :content="t('chat.dm.newMessageTooltip')">
+                <button
+                    type="button"
+                    class="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground rounded p-1 transition-colors"
+                    @click="toggleNewDmSearch"
+                >
+                    <Plus v-if="!showNewDmSearch" :size="18" />
+                    <X v-else :size="18" />
+                </button>
+            </SimpleTooltip>
         </div>
 
         <div v-if="showNewDmSearch" class="border-sidebar-border border-b p-2">

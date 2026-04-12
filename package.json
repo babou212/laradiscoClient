@@ -1,6 +1,6 @@
 {
     "name": "@babou212/laradisco-client",
-    "version": "1.0.17",
+    "version": "1.0.18",
     "description": "LaraDisco Desktop Client",
     "author": "Dylan Cree",
     "private": false,
@@ -26,7 +26,8 @@
         "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
         "typecheck:renderer": "vue-tsc --noEmit -p tsconfig.renderer.json",
         "typecheck": "npm run typecheck:node && npm run typecheck:renderer",
-        "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*"
+        "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*",
+        "postinstall": "node scripts/install-ffmpeg.mjs && node scripts/install-widevine.mjs"
     },
     "devDependencies": {
         "@electron-toolkit/tsconfig": "^1.0.1",

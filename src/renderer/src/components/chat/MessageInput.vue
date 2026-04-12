@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import EmojiPicker from './EmojiPicker.vue';
 import GifPicker from './GifPicker.vue';
 import MentionDropdown from './MentionDropdown.vue';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import {
     FileAddSchema,
     GifUrlSchema,
@@ -419,15 +420,15 @@ useEventListener(document, 'click', handleClickOutside);
                     >
                         <span class="text-[11px] leading-none font-extrabold">GIF</span>
                     </button>
-                    <button
-                        v-if="canAttachFiles !== false"
-                        type="button"
-                        :title="t('chat.composer.attachFile')"
-                        class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
-                        @click="triggerFileInput"
-                    >
-                        <Paperclip :size="18" />
-                    </button>
+                    <SimpleTooltip v-if="canAttachFiles !== false" :content="t('chat.composer.attachFile')">
+                        <button
+                            type="button"
+                            class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
+                            @click="triggerFileInput"
+                        >
+                            <Paperclip :size="18" />
+                        </button>
+                    </SimpleTooltip>
                     <div class="flex flex-1 flex-col">
                         <textarea
                             ref="textareaRef"
