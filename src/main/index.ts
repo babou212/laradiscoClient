@@ -210,6 +210,15 @@ app.whenReady().then(() => {
         },
         (details, callback) => {
             details.requestHeaders['User-Agent'] = cleanUserAgent;
+            if (
+                !details.requestHeaders['Referer'] ||
+                details.requestHeaders['Referer'].startsWith('app://') ||
+                details.requestHeaders['Referer'].startsWith('file://') ||
+                details.requestHeaders['Referer'].startsWith('http://localhost')
+            ) {
+                details.requestHeaders['Referer'] = 'https://www.youtube-nocookie.com/';
+                details.requestHeaders['Origin'] = 'https://www.youtube-nocookie.com';
+            }
             callback({ requestHeaders: details.requestHeaders });
         },
     );

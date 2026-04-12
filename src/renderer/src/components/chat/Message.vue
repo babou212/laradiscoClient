@@ -222,7 +222,7 @@ const youtubeUrl = computed(() => {
 
 const youtubeEmbedUrl = computed(() => {
     if (!youtubeVideoId.value) return '';
-    return `https://www.youtube-nocookie.com/embed/${youtubeVideoId.value}?autoplay=1&rel=0`;
+    return `https://www.youtube-nocookie.com/embed/${youtubeVideoId.value}?autoplay=1&rel=0&origin=https://www.youtube-nocookie.com`;
 });
 
 const messageWithoutYoutubeUrl = computed(() => {

@@ -31,6 +31,7 @@ const openExternal = () => {
                 class="h-full w-full border-none"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen
+                referrerpolicy="origin"
             />
             <template v-else>
                 <img
