@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { CornerDownRight, MessageSquareText, Pencil, Pin, PinOff, SmilePlus, Trash2 } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 import EmojiPicker from './EmojiPicker.vue';
+
+const { t } = useI18n();
 
 defineProps<{
     canReact: boolean;
@@ -33,7 +36,7 @@ const emit = defineEmits<{
             v-if="canReact"
             data-reaction-button
             class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-            title="Add reaction"
+            :title="t('chat.messageActions.addReaction')"
             @click.stop="emit('toggleEmojiPicker')"
         >
             <SmilePlus :size="16" />
@@ -41,7 +44,7 @@ const emit = defineEmits<{
         <button
             v-if="canReply"
             class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-            title="Reply"
+            :title="t('chat.messageActions.reply')"
             @click="emit('reply')"
         >
             <CornerDownRight :size="16" />
@@ -49,7 +52,7 @@ const emit = defineEmits<{
         <button
             v-if="canThread"
             class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-            title="Reply in Thread"
+            :title="t('chat.messageActions.replyInThread')"
             @click="emit('openThread')"
         >
             <MessageSquareText :size="16" />
@@ -57,7 +60,7 @@ const emit = defineEmits<{
         <button
             v-if="canPin"
             class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-            :title="isPinned ? 'Unpin message' : 'Pin message'"
+            :title="isPinned ? t('chat.messageActions.unpinMessage') : t('chat.messageActions.pinMessage')"
             @click="emit('togglePin')"
         >
             <PinOff v-if="isPinned" :size="16" />
@@ -66,7 +69,7 @@ const emit = defineEmits<{
         <button
             v-if="canEdit"
             class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-            title="Edit message"
+            :title="t('chat.messageActions.editMessage')"
             @click="emit('startEdit')"
         >
             <Pencil :size="16" />
@@ -74,7 +77,7 @@ const emit = defineEmits<{
         <button
             v-if="canDelete"
             class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
-            title="Delete message"
+            :title="t('chat.messageActions.deleteMessage')"
             @click="emit('delete')"
         >
             <Trash2 :size="16" />

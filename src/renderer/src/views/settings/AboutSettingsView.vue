@@ -3,7 +3,10 @@
 <script setup lang="ts">
 import { CheckCircle2, Loader2 } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
+
+const { t } = useI18n();
 
 type CheckState = 'idle' | 'checking' | 'up-to-date' | 'available' | 'error';
 
@@ -22,7 +25,7 @@ async function checkForUpdates(): Promise<void> {
 
     if (!result.success) {
         checkState.value = 'error';
-        checkMessage.value = result.error ?? 'Failed to check for updates';
+        checkMessage.value = result.error ?? t('settings.about.updates.failed');
         return;
     }
 
@@ -30,10 +33,10 @@ async function checkForUpdates(): Promise<void> {
         // The main process has already emitted updater:update-available, which
         // the global UpdateToast picks up. Just reflect it in this panel too.
         checkState.value = 'available';
-        checkMessage.value = `Version ${result.version} is available.`;
+        checkMessage.value = t('settings.about.updates.available', { version: result.version });
     } else {
         checkState.value = 'up-to-date';
-        checkMessage.value = 'You are running the latest version.';
+        checkMessage.value = t('settings.about.updates.upToDate');
     }
 }
 </script>
@@ -42,13 +45,13 @@ async function checkForUpdates(): Promise<void> {
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">About</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Information about this LaraDisco install.</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.about.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.about.description') }}</p>
             </div>
             <div class="space-y-4 p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="text-sm font-medium">Version</div>
+                        <div class="text-sm font-medium">{{ t('settings.about.version') }}</div>
                         <div class="text-muted-foreground text-xs">{{ version || '—' }}</div>
                     </div>
                 </div>
@@ -57,15 +60,19 @@ async function checkForUpdates(): Promise<void> {
 
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Updates</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.about.updates.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    LaraDisco checks for updates automatically every hour. You can also check manually.
+                    {{ t('settings.about.updates.description') }}
                 </p>
             </div>
             <div class="space-y-4 p-6">
                 <Button :disabled="checkState === 'checking'" @click="checkForUpdates">
                     <Loader2 v-if="checkState === 'checking'" class="mr-2 h-4 w-4 animate-spin" />
-                    {{ checkState === 'checking' ? 'Checking…' : 'Check for updates' }}
+                    {{
+                        checkState === 'checking'
+                            ? t('settings.about.updates.checking')
+                            : t('settings.about.updates.check')
+                    }}
                 </Button>
 
                 <div v-if="checkMessage" class="text-sm">

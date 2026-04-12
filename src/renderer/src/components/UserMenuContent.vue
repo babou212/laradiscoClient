@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { LogOut, Settings } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
     DropdownMenuGroup,
@@ -17,6 +18,7 @@ type Props = {
 
 defineProps<Props>();
 
+const { t } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -40,12 +42,12 @@ const goToSettings = () => {
     <DropdownMenuGroup>
         <DropdownMenuItem class="cursor-pointer" @click="goToSettings">
             <Settings class="mr-2 h-4 w-4" />
-            Settings
+            {{ t('userMenu.settings') }}
         </DropdownMenuItem>
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
     <DropdownMenuItem class="cursor-pointer" @click="handleLogout">
         <LogOut class="mr-2 h-4 w-4" />
-        Log out
+        {{ t('userMenu.logout') }}
     </DropdownMenuItem>
 </template>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ExternalLink } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watchEffect } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { LinkPreviewData } from '@/types/chat';
+
+const { t } = useI18n();
 
 const props = defineProps<{
     linkPreview: LinkPreviewData;
@@ -64,7 +67,7 @@ const openExternal = () => {
                 @click="openExternal"
             >
                 <ExternalLink :size="10" />
-                <span>Open in browser</span>
+                <span>{{ t('chat.linkPreview.openInBrowser') }}</span>
             </button>
         </div>
         <img

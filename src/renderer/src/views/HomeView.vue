@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import ChannelSidebar from '@/components/chat/ChannelSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
@@ -9,6 +10,7 @@ import { useChatStore } from '@/stores/chat';
 import { useThreadStore } from '@/stores/thread';
 import { useVoiceStore } from '@/stores/voice';
 
+const { t } = useI18n();
 const router = useRouter();
 const chatStore = useChatStore();
 const threadStore = useThreadStore();
@@ -78,8 +80,8 @@ const handleSwitchToDms = () => {
 
             <div v-else class="bg-background flex flex-1 flex-col items-center justify-center text-center">
                 <div class="text-muted-foreground">
-                    <p class="text-2xl font-bold">Welcome to {{ chatStore.serverName }}</p>
-                    <p class="mt-2 text-sm">Select a channel from the sidebar to start chatting.</p>
+                    <p class="text-2xl font-bold">{{ t('home.welcome', { server: chatStore.serverName }) }}</p>
+                    <p class="mt-2 text-sm">{{ t('home.selectChannelPrompt') }}</p>
                 </div>
             </div>
         </div>

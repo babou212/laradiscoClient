@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { CircleStencil, Cropper } from 'vue-advanced-cropper';
+import { useI18n } from 'vue-i18n';
 import 'vue-advanced-cropper/dist/style.css';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+
+const { t } = useI18n();
 
 const props = defineProps<{
     open: boolean;
@@ -116,8 +119,8 @@ async function save() {
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="max-w-lg overflow-hidden">
             <DialogHeader>
-                <DialogTitle>Update avatar</DialogTitle>
-                <DialogDescription class="sr-only">Crop and upload a new profile picture</DialogDescription>
+                <DialogTitle>{{ t('e2ee.avatarCrop.title') }}</DialogTitle>
+                <DialogDescription class="sr-only">{{ t('e2ee.avatarCrop.description') }}</DialogDescription>
             </DialogHeader>
 
             <input
@@ -129,8 +132,8 @@ async function save() {
             />
 
             <div v-if="!imageSrc" class="flex flex-col items-center justify-center gap-4 py-12">
-                <p class="text-muted-foreground text-sm">Select an image to use as your avatar</p>
-                <Button @click="triggerFileSelect">Choose image</Button>
+                <p class="text-muted-foreground text-sm">{{ t('e2ee.avatarCrop.selectPrompt') }}</p>
+                <Button @click="triggerFileSelect">{{ t('e2ee.avatarCrop.chooseImage') }}</Button>
             </div>
 
             <div v-else class="space-y-4">
@@ -156,14 +159,16 @@ async function save() {
                 </div>
 
                 <div class="flex justify-center">
-                    <Button variant="ghost" size="sm" @click="triggerFileSelect">Choose different image</Button>
+                    <Button variant="ghost" size="sm" @click="triggerFileSelect">
+                        {{ t('e2ee.avatarCrop.chooseDifferent') }}
+                    </Button>
                 </div>
             </div>
 
             <DialogFooter>
-                <Button variant="outline" @click="emit('update:open', false)">Cancel</Button>
+                <Button variant="outline" @click="emit('update:open', false)">{{ t('common.cancel') }}</Button>
                 <Button v-if="imageSrc" :disabled="saving" @click="save">
-                    {{ saving ? 'Saving...' : 'Save avatar' }}
+                    {{ saving ? t('e2ee.avatarCrop.saving') : t('e2ee.avatarCrop.saveAvatar') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

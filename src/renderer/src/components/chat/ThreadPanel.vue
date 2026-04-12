@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import NewMessagePill from './NewMessagePill.vue';
@@ -44,6 +45,7 @@ const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
 const threadStore = useThreadStore();
 const e2ee = useE2EE();
+const { t } = useI18n();
 
 const currentUser = computed(() => authStore.user);
 const messagesContainer = useTemplateRef<HTMLElement>('messagesContainer');
@@ -60,7 +62,7 @@ let currentThreadListener: string | null = null;
 const parentDisplayContent = computed(() => {
     const msg = threadStore.parentMessage;
     if (!msg) return '';
-    if (msg.decrypt_error) return '[Unable to decrypt this message]';
+    if (msg.decrypt_error) return t('chat.common.unableToDecryptInline');
     return msg.decrypted_content ?? '';
 });
 
@@ -292,14 +294,14 @@ const sendReply = async (content: string) => {
     let messageContent = content;
 
     if (!e2eeStore.isReady) {
-        sendError.value = 'Encryption is not set up.';
+        sendError.value = t('chat.thread.encryptionNotSetUp');
         return;
     }
 
     try {
         messageContent = await e2ee.encryptForChannel(Number(props.channelId), content);
     } catch {
-        sendError.value = 'Failed to encrypt message.';
+        sendError.value = t('chat.thread.failedToEncrypt');
         return;
     }
 
@@ -352,7 +354,7 @@ const sendReply = async (content: string) => {
         if (idx !== -1) threadStore.threadMessages.splice(idx, 1, reply);
     } else {
         threadStore.removeThreadMessage(optimistic.id);
-        sendError.value = 'Failed to send reply.';
+        sendError.value = t('chat.thread.failedToSendReply');
     }
 };
 
@@ -456,13 +458,17 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         <div class="border-border flex h-12 items-center justify-between border-b px-3 shadow-sm">
             <div class="flex items-center gap-2">
                 <MessageSquareText :size="18" class="text-primary" />
-                <span class="text-sm font-semibold">Thread</span>
+                <span class="text-sm font-semibold">{{ t('chat.thread.title') }}</span>
             </div>
             <div class="flex items-center gap-1">
                 <button
                     v-if="threadStore.activeThread"
                     class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                    :title="threadStore.activeThread.is_following ? 'Unfollow thread' : 'Follow thread'"
+                    :title="
+                        threadStore.activeThread.is_following
+                            ? t('chat.thread.unfollowTooltip')
+                            : t('chat.thread.followTooltip')
+                    "
                     @click="toggleFollow"
                 >
                     <BellRing v-if="threadStore.activeThread.is_following" :size="16" class="text-primary" />
@@ -504,8 +510,13 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
                 </div>
             </div>
             <div v-if="threadStore.activeThread" class="text-muted-foreground mt-2 text-[10px]">
-                {{ threadStore.activeThread.message_count }}
-                {{ threadStore.activeThread.message_count === 1 ? 'reply' : 'replies' }}
+                {{
+                    t(
+                        'chat.thread.replyCount',
+                        { count: threadStore.activeThread.message_count },
+                        threadStore.activeThread.message_count,
+                    )
+                }}
             </div>
         </div>
 
@@ -522,7 +533,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
                     >
                         <div class="text-muted-foreground text-center">
                             <MessageSquareText :size="32" class="mx-auto mb-1.5 opacity-50" />
-                            <p class="text-xs">No replies yet. Start the conversation!</p>
+                            <p class="text-xs">{{ t('chat.thread.noReplies') }}</p>
                         </div>
                     </div>
 
@@ -572,7 +583,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         >
             <span class="flex-1">{{ sendError }}</span>
             <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-[10px]" @click="sendError = null">
-                Dismiss
+                {{ t('chat.common.dismiss') }}
             </button>
         </div>
 
@@ -581,7 +592,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         <MessageInput
             v-if="channelPermissions?.canSendMessages !== false"
             :channel-name="'thread'"
-            :placeholder="'Reply in thread...'"
+            :placeholder="t('chat.thread.replyPlaceholder')"
             @send="sendReply"
             @typing="emitTyping"
             @cancel-reply="() => {}"
@@ -590,14 +601,18 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         <Dialog v-model:open="showDeleteDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Delete Message</DialogTitle>
+                    <DialogTitle>{{ t('chat.thread.deleteDialogTitle') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete this message? This cannot be undone.
+                        {{ t('chat.thread.deleteDialogDescription') }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
-                    <Button variant="destructive" @click="confirmDeleteMessage">Delete</Button>
+                    <Button variant="outline" @click="showDeleteDialog = false">
+                        {{ t('chat.thread.cancel') }}
+                    </Button>
+                    <Button variant="destructive" @click="confirmDeleteMessage">
+                        {{ t('chat.thread.deleteConfirm') }}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

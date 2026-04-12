@@ -22,6 +22,7 @@ import {
     UserRound,
 } from 'lucide-vue-next';
 import { computed, shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -33,6 +34,8 @@ import {
     ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+
+const { t } = useI18n();
 
 type EditableEl = HTMLInputElement | HTMLTextAreaElement;
 
@@ -88,7 +91,7 @@ const context = shallowRef<MenuContext | null>(null);
 const { copy } = useClipboard({ legacy: true });
 
 const CODE_LANGUAGES: ReadonlyArray<{ id: string; label: string }> = [
-    { id: '', label: 'Plain text' },
+    { id: '', label: '' },
     { id: 'js', label: 'JavaScript' },
     { id: 'ts', label: 'TypeScript' },
     { id: 'jsx', label: 'JSX' },
@@ -116,6 +119,9 @@ const CODE_LANGUAGES: ReadonlyArray<{ id: string; label: string }> = [
     { id: 'lua', label: 'Lua' },
     { id: 'r', label: 'R' },
 ];
+
+const codeLanguageLabel = (lang: { id: string; label: string }): string =>
+    lang.id === '' ? t('appContextMenu.plainText') : lang.label;
 
 const messageCtx = computed(() => (context.value?.type === 'message' ? context.value : null));
 const inputCtx = computed(() => (context.value?.type === 'input' ? context.value : null));
@@ -469,18 +475,20 @@ function usernameDm() {
         </ContextMenuTrigger>
         <ContextMenuContent v-if="showMenu" class="w-56">
             <template v-if="messageCtx">
-                <ContextMenuItem @select="copyMessageText"> <Copy /> Copy text </ContextMenuItem>
+                <ContextMenuItem @select="copyMessageText">
+                    <Copy /> {{ t('appContextMenu.copyText') }}
+                </ContextMenuItem>
 
                 <template v-if="messageCtx.canReact || messageCtx.canReply || messageCtx.canThread">
                     <ContextMenuSeparator />
                     <ContextMenuItem v-if="messageCtx.canReact" @select="dispatchMessageAction('react')">
-                        <SmilePlus /> Add reaction
+                        <SmilePlus /> {{ t('appContextMenu.addReaction') }}
                     </ContextMenuItem>
                     <ContextMenuItem v-if="messageCtx.canReply" @select="dispatchMessageAction('reply')">
-                        <Reply /> Reply
+                        <Reply /> {{ t('appContextMenu.reply') }}
                     </ContextMenuItem>
                     <ContextMenuItem v-if="messageCtx.canThread" @select="dispatchMessageAction('thread')">
-                        <MessageSquareText /> Reply in thread
+                        <MessageSquareText /> {{ t('appContextMenu.replyInThread') }}
                     </ContextMenuItem>
                 </template>
 
@@ -488,75 +496,95 @@ function usernameDm() {
                     <ContextMenuSeparator />
                     <ContextMenuItem v-if="messageCtx.canPin" @select="dispatchMessageAction('pin')">
                         <component :is="messageCtx.isPinned ? PinOff : Pin" />
-                        {{ messageCtx.isPinned ? 'Unpin message' : 'Pin message' }}
+                        {{ messageCtx.isPinned ? t('appContextMenu.unpinMessage') : t('appContextMenu.pinMessage') }}
                     </ContextMenuItem>
                     <ContextMenuItem v-if="messageCtx.canEdit" @select="dispatchMessageAction('edit')">
-                        <Pencil /> Edit message
+                        <Pencil /> {{ t('appContextMenu.editMessage') }}
                     </ContextMenuItem>
                     <ContextMenuItem
                         v-if="messageCtx.canDelete"
                         variant="destructive"
                         @select="dispatchMessageAction('delete')"
                     >
-                        <Trash2 /> Delete message
+                        <Trash2 /> {{ t('appContextMenu.deleteMessage') }}
                     </ContextMenuItem>
                 </template>
             </template>
 
             <template v-else-if="inputCtx">
                 <ContextMenuItem :disabled="!inputCtx.hasSelection || inputCtx.isReadonly" @select="inputCut">
-                    <Scissors /> Cut
+                    <Scissors /> {{ t('appContextMenu.cut') }}
                 </ContextMenuItem>
                 <ContextMenuItem :disabled="!inputCtx.hasSelection" @select="inputCopy">
-                    <Copy /> Copy
+                    <Copy /> {{ t('appContextMenu.copy') }}
                 </ContextMenuItem>
                 <ContextMenuItem :disabled="inputCtx.isReadonly" @select="inputPaste">
-                    <CornerDownRight /> Paste
+                    <CornerDownRight /> {{ t('appContextMenu.paste') }}
                 </ContextMenuItem>
                 <ContextMenuItem :disabled="inputCtx.isReadonly" @select="inputPastePlain">
-                    <CornerDownRight /> Paste as plain text
+                    <CornerDownRight /> {{ t('appContextMenu.pastePlain') }}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuSub>
                     <ContextMenuSubTrigger :disabled="inputCtx.isReadonly">
-                        <Code2 /> Wrap as code block
+                        <Code2 /> {{ t('appContextMenu.wrapCodeBlock') }}
                     </ContextMenuSubTrigger>
                     <ContextMenuSubContent class="max-h-80 w-44 overflow-y-auto">
-                        <ContextMenuLabel>Language</ContextMenuLabel>
+                        <ContextMenuLabel>{{ t('appContextMenu.language') }}</ContextMenuLabel>
                         <ContextMenuItem
                             v-for="lang in CODE_LANGUAGES"
                             :key="lang.id || 'plain'"
                             @select="inputWrapCodeBlock(lang.id)"
                         >
-                            {{ lang.label }}
+                            {{ codeLanguageLabel(lang) }}
                         </ContextMenuItem>
                     </ContextMenuSubContent>
                 </ContextMenuSub>
                 <ContextMenuSeparator />
-                <ContextMenuItem @select="inputSelectAll"> <SquareDashedMousePointer /> Select all </ContextMenuItem>
+                <ContextMenuItem @select="inputSelectAll">
+                    <SquareDashedMousePointer /> {{ t('appContextMenu.selectAll') }}
+                </ContextMenuItem>
             </template>
 
             <template v-else-if="usernameCtx">
                 <ContextMenuLabel>@{{ usernameCtx.username }}</ContextMenuLabel>
-                <ContextMenuItem @select="usernameMention"> <AtSign /> Mention </ContextMenuItem>
-                <ContextMenuItem @select="usernameProfile"> <UserRound /> View profile </ContextMenuItem>
-                <ContextMenuItem @select="usernameDm"> <MessageSquare /> Send message </ContextMenuItem>
+                <ContextMenuItem @select="usernameMention">
+                    <AtSign /> {{ t('appContextMenu.mention') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="usernameProfile">
+                    <UserRound /> {{ t('appContextMenu.viewProfile') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="usernameDm">
+                    <MessageSquare /> {{ t('appContextMenu.sendMessage') }}
+                </ContextMenuItem>
             </template>
 
             <template v-else-if="imageCtx">
-                <ContextMenuItem @select="imageCopy"> <ImageIcon /> Copy image </ContextMenuItem>
-                <ContextMenuItem @select="imageCopyUrl"> <Link2 /> Copy image address </ContextMenuItem>
-                <ContextMenuItem @select="imageSaveAs"> <Download /> Save image as… </ContextMenuItem>
+                <ContextMenuItem @select="imageCopy">
+                    <ImageIcon /> {{ t('appContextMenu.copyImage') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="imageCopyUrl">
+                    <Link2 /> {{ t('appContextMenu.copyImageAddress') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="imageSaveAs">
+                    <Download /> {{ t('appContextMenu.saveImageAs') }}
+                </ContextMenuItem>
             </template>
 
             <template v-else-if="linkCtx">
-                <ContextMenuItem @select="linkOpen"> <ExternalLink /> Open link </ContextMenuItem>
-                <ContextMenuItem @select="linkCopy"> <Link2 /> Copy link </ContextMenuItem>
+                <ContextMenuItem @select="linkOpen">
+                    <ExternalLink /> {{ t('appContextMenu.openLink') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="linkCopy">
+                    <Link2 /> {{ t('appContextMenu.copyLink') }}
+                </ContextMenuItem>
             </template>
 
             <template v-else-if="genericCtx?.hasSelection">
-                <ContextMenuItem @select="genericCopy"> <Copy /> Copy </ContextMenuItem>
-                <ContextMenuItem @select="genericSelectAll"> <SquareDashedMousePointer /> Select all </ContextMenuItem>
+                <ContextMenuItem @select="genericCopy"> <Copy /> {{ t('appContextMenu.copy') }} </ContextMenuItem>
+                <ContextMenuItem @select="genericSelectAll">
+                    <SquareDashedMousePointer /> {{ t('appContextMenu.selectAll') }}
+                </ContextMenuItem>
             </template>
         </ContextMenuContent>
     </ContextMenu>

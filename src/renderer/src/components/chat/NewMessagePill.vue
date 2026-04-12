@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowDown } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Props {
     count: number;
@@ -15,11 +16,12 @@ defineEmits<{
     click: [];
 }>();
 
+const { t } = useI18n();
+
 const label = computed(() => {
-    if (props.viewingHistory) return 'Jump to present';
-    if (props.count === 0) return 'Jump to bottom';
-    if (props.count === 1) return '1 new message';
-    return `${props.count} new messages`;
+    if (props.viewingHistory) return t('chat.newMessagePill.jumpToPresent');
+    if (props.count === 0) return t('chat.newMessagePill.jumpToBottom');
+    return t('chat.newMessagePill.newMessages', { count: props.count }, props.count);
 });
 </script>
 

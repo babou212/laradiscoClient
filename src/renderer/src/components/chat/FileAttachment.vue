@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Download, File, Image, Loader2, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AudioPlayer from './AudioPlayer.vue';
 import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
@@ -11,6 +12,8 @@ import type { EncryptedAttachmentMeta } from '@/types/chat';
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
 }>();
+
+const { t } = useI18n();
 
 const thumbnailUrl = shallowRef<string | null>(props.attachment.thumbnail_data_url ?? null);
 const thumbnailLoading = shallowRef(false);
@@ -217,14 +220,14 @@ watch(
                         <div class="absolute -top-3 -right-3 flex gap-1">
                             <button
                                 class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                title="Download"
+                                :title="t('chat.files.download')"
                                 @click.stop="downloadFile"
                             >
                                 <Download :size="16" />
                             </button>
                             <button
                                 class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                title="Close"
+                                :title="t('chat.files.close')"
                                 @click.stop="lightboxOpen = false"
                             >
                                 <X :size="16" />

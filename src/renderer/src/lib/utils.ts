@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import type { ClassValue } from 'clsx';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
+import { currentDateFnsLocale, t } from '@/i18n';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -27,15 +28,17 @@ export function formatMessageDate(dateValue: unknown): string {
             return '';
         }
 
+        const locale = currentDateFnsLocale.value;
+
         if (isToday(date)) {
-            return `Today at ${format(date, 'h:mm a')}`;
+            return t('dates.todayAt', { time: format(date, 'h:mm a', { locale }) });
         }
 
         if (isYesterday(date)) {
-            return `Yesterday at ${format(date, 'h:mm a')}`;
+            return t('dates.yesterdayAt', { time: format(date, 'h:mm a', { locale }) });
         }
 
-        return format(date, 'MM/dd/yyyy');
+        return format(date, 'MM/dd/yyyy', { locale });
     } catch {
         return '';
     }

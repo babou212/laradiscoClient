@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { AlertTriangle, Download, RefreshCw, X } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 type ToastState = 'idle' | 'available' | 'downloading' | 'ready' | 'error';
+
+const { t } = useI18n();
 
 const state = ref<ToastState>('idle');
 const version = ref<string>('');
@@ -23,7 +26,7 @@ async function handleDownload(): Promise<void> {
     progressPercent.value = 0;
     const result = await window.api.updater.download();
     if (!result.success) {
-        errorMessage.value = result.error ?? 'Download failed';
+        errorMessage.value = result.error ?? t('updates.downloadFailed');
         state.value = 'error';
     }
 }
@@ -90,30 +93,35 @@ onUnmounted(() => {
 
                 <div class="min-w-0 flex-1">
                     <template v-if="state === 'available'">
-                        <div class="text-sm font-semibold">Update available</div>
+                        <div class="text-sm font-semibold">{{ t('updates.available') }}</div>
                         <div class="text-muted-foreground mt-0.5 text-xs">
-                            Version {{ version }} is ready to download.
+                            {{ t('updates.downloadPrompt', { version }) }}
                         </div>
                         <div class="mt-2 flex gap-2">
                             <button
                                 class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1 text-xs font-medium transition-colors"
                                 @click="handleDownload"
                             >
-                                Download
+                                {{ t('updates.download') }}
                             </button>
                             <button
                                 class="hover:bg-accent text-muted-foreground hover:text-foreground rounded px-3 py-1 text-xs font-medium transition-colors"
                                 @click="dismiss"
                             >
-                                Later
+                                {{ t('updates.later') }}
                             </button>
                         </div>
                     </template>
 
                     <template v-else-if="state === 'downloading'">
-                        <div class="text-sm font-semibold">Downloading update</div>
+                        <div class="text-sm font-semibold">{{ t('updates.downloading') }}</div>
                         <div class="text-muted-foreground mt-0.5 text-xs">
-                            Version {{ version }} — {{ formatPercent(progressPercent) }}
+                            {{
+                                t('updates.downloadingProgress', {
+                                    version,
+                                    percent: formatPercent(progressPercent),
+                                })
+                            }}
                         </div>
                         <div class="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
                             <div
@@ -124,28 +132,28 @@ onUnmounted(() => {
                     </template>
 
                     <template v-else-if="state === 'ready'">
-                        <div class="text-sm font-semibold">Update ready</div>
+                        <div class="text-sm font-semibold">{{ t('updates.ready') }}</div>
                         <div class="text-muted-foreground mt-0.5 text-xs">
-                            Restart LaraDisco to install version {{ version }}.
+                            {{ t('updates.restartPrompt', { version }) }}
                         </div>
                         <div class="mt-2 flex gap-2">
                             <button
                                 class="bg-primary text-primary-foreground hover:bg-primary/90 rounded px-3 py-1 text-xs font-medium transition-colors"
                                 @click="handleRestart"
                             >
-                                Restart now
+                                {{ t('updates.restartNow') }}
                             </button>
                             <button
                                 class="hover:bg-accent text-muted-foreground hover:text-foreground rounded px-3 py-1 text-xs font-medium transition-colors"
                                 @click="dismiss"
                             >
-                                Later
+                                {{ t('updates.later') }}
                             </button>
                         </div>
                     </template>
 
                     <template v-else-if="state === 'error'">
-                        <div class="text-sm font-semibold">Update failed</div>
+                        <div class="text-sm font-semibold">{{ t('updates.failed') }}</div>
                         <div class="text-muted-foreground mt-0.5 text-xs break-words">{{ errorMessage }}</div>
                     </template>
                 </div>

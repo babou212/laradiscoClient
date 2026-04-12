@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core';
 import { Search, X, Loader2 } from 'lucide-vue-next';
-import { nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { TenorGif } from '@/types/chat';
 
 const emit = defineEmits<{
     select: [gifUrl: string];
 }>();
+
+const { t } = useI18n();
 
 const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
 const searchQuery = shallowRef('');
@@ -27,17 +30,17 @@ watchDebounced(
     { debounce: 350 },
 );
 
-const categories = [
-    { id: 'excited', label: 'Excited' },
-    { id: 'happy', label: 'Happy' },
-    { id: 'sad', label: 'Sad' },
-    { id: 'love', label: 'Love' },
-    { id: 'angry', label: 'Angry' },
-    { id: 'laugh', label: 'Laugh' },
-    { id: 'dance', label: 'Dance' },
-    { id: 'thumbs up', label: 'Thumbs Up' },
-    { id: 'facepalm', label: 'Facepalm' },
-];
+const categories = computed(() => [
+    { id: 'excited', label: t('chat.gifs.categories.excited') },
+    { id: 'happy', label: t('chat.gifs.categories.happy') },
+    { id: 'sad', label: t('chat.gifs.categories.sad') },
+    { id: 'love', label: t('chat.gifs.categories.love') },
+    { id: 'angry', label: t('chat.gifs.categories.angry') },
+    { id: 'laugh', label: t('chat.gifs.categories.laugh') },
+    { id: 'dance', label: t('chat.gifs.categories.dance') },
+    { id: 'thumbs up', label: t('chat.gifs.categories.thumbsUp') },
+    { id: 'facepalm', label: t('chat.gifs.categories.facepalm') },
+]);
 
 const fetchGifs = async (query?: string, append = false) => {
     if (append) {
@@ -130,7 +133,7 @@ onMounted(() => {
                     ref="searchInputRef"
                     v-model="searchQuery"
                     type="text"
-                    placeholder="Search GIFs..."
+                    :placeholder="t('chat.gifs.searchPlaceholder')"
                     class="border-input bg-background focus:ring-ring w-full rounded-md border py-2 pr-9 pl-9 text-sm outline-none focus:ring-2"
                 />
                 <button
@@ -171,7 +174,7 @@ onMounted(() => {
 
             <div v-else-if="gifs.length === 0" class="flex h-full flex-col items-center justify-center gap-2">
                 <Search :size="32" class="text-muted-foreground/50" />
-                <div class="text-muted-foreground text-sm">No GIFs found</div>
+                <div class="text-muted-foreground text-sm">{{ t('chat.gifs.noResults') }}</div>
             </div>
 
             <div v-else class="columns-2 gap-2">

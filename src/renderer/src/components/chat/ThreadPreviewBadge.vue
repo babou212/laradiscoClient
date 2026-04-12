@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatMessageDate } from '@/lib/utils';
 import { useAvatarStore } from '@/stores/avatar';
@@ -17,6 +18,7 @@ defineEmits<{
 
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
+const { t } = useI18n();
 </script>
 
 <template>
@@ -39,10 +41,10 @@ const userNamesStore = useUserNamesStore();
             </AvatarFallback>
         </Avatar>
         <span class="text-primary text-xs font-semibold hover:underline">
-            {{ thread.message_count }} {{ thread.message_count === 1 ? 'reply' : 'replies' }}
+            {{ t('chat.threadPreview.replies', { count: thread.message_count }, thread.message_count) }}
         </span>
         <span v-if="thread.last_message_at" class="text-muted-foreground text-xs">
-            Last reply {{ formatMessageDate(thread.last_message_at) }}
+            {{ t('chat.threadPreview.lastReply', { time: formatMessageDate(thread.last_message_at) }) }}
         </span>
     </button>
 </template>

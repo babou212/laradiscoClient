@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core';
 import { ArrowLeft, Plus, Search, X } from 'lucide-vue-next';
 import { shallowRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getMembers } from '@/api/members';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAvatarStore } from '@/stores/avatar';
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 
 const presenceStore = usePresenceStore();
 const avatarStore = useAvatarStore();
+const { t, locale } = useI18n();
 
 const showNewDmSearch = shallowRef(false);
 const searchQuery = shallowRef('');
@@ -81,17 +83,18 @@ const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const localeTag = locale.value;
 
     if (diffInHours < 24) {
-        return date.toLocaleTimeString('en-US', {
+        return date.toLocaleTimeString(localeTag, {
             hour: 'numeric',
             minute: '2-digit',
         });
     }
     if (diffInHours < 24 * 7) {
-        return date.toLocaleDateString('en-US', { weekday: 'short' });
+        return date.toLocaleDateString(localeTag, { weekday: 'short' });
     }
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(localeTag, { month: 'short', day: 'numeric' });
 };
 
 const truncateMessage = (content: string, maxLength: number = 40) => {
@@ -118,11 +121,11 @@ const toggleNewDmSearch = () => {
 <template>
     <div class="border-sidebar-border bg-sidebar flex h-full w-60 flex-col border-r">
         <div class="border-sidebar-border flex h-12 items-center justify-between border-b px-4 shadow-sm">
-            <h2 class="text-sidebar-foreground text-sm font-semibold">Direct Messages</h2>
+            <h2 class="text-sidebar-foreground text-sm font-semibold">{{ t('chat.dm.title') }}</h2>
             <button
                 type="button"
                 class="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground rounded p-1 transition-colors"
-                title="New Message"
+                :title="t('chat.dm.newMessageTooltip')"
                 @click="toggleNewDmSearch"
             >
                 <Plus v-if="!showNewDmSearch" :size="18" />
@@ -137,7 +140,7 @@ const toggleNewDmSearch = () => {
                     v-model="searchQuery"
                     type="text"
                     class="bg-sidebar-accent/50 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:bg-sidebar-accent w-full rounded py-1.5 pr-2 pl-8 text-sm focus:outline-none"
-                    placeholder="Find or start a conversation"
+                    :placeholder="t('chat.dm.searchPlaceholder')"
                 />
             </div>
             <div v-if="searchResults.length > 0" class="mt-1 max-h-48 overflow-y-auto">
@@ -171,7 +174,7 @@ const toggleNewDmSearch = () => {
                 v-else-if="searchQuery && !isSearching"
                 class="text-sidebar-foreground/50 px-2 py-3 text-center text-xs"
             >
-                No users found
+                {{ t('chat.dm.noUsersFound') }}
             </div>
         </div>
 
@@ -183,14 +186,14 @@ const toggleNewDmSearch = () => {
                     @click="$emit('switchToChannels')"
                 >
                     <ArrowLeft :size="18" />
-                    Back to Channels
+                    {{ t('chat.dm.backToChannels') }}
                 </button>
             </div>
 
             <div class="p-2">
                 <div v-if="dmGroups.length === 0" class="text-sidebar-foreground/50 px-2 py-8 text-center text-sm">
-                    <p>No direct messages yet</p>
-                    <p class="mt-1 text-xs">Click + to start a conversation</p>
+                    <p>{{ t('chat.dm.noDmsYet') }}</p>
+                    <p class="mt-1 text-xs">{{ t('chat.dm.startConversationHint') }}</p>
                 </div>
 
                 <button
@@ -237,8 +240,8 @@ const toggleNewDmSearch = () => {
                                 dm.last_message.decrypted_content
                                     ? truncateMessage(dm.last_message.decrypted_content)
                                     : dm.last_message.decrypt_error
-                                      ? '[Unable to decrypt]'
-                                      : '[Encrypted message]'
+                                      ? t('chat.common.unableToDecrypt')
+                                      : t('chat.common.encryptedMessage')
                             }}
                         </p>
                     </div>

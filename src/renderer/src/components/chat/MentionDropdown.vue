@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { computed, onUnmounted, shallowRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { searchMentions } from '@/api/members';
 
 export interface MentionUser {
@@ -26,20 +27,22 @@ const users = shallowRef<MentionUser[]>([]);
 const loading = shallowRef(false);
 const selectedIndex = shallowRef(0);
 
+const { t } = useI18n();
+
 const specialMentions = computed(() => {
     const items: Array<{ label: string; value: string; description: string }> = [];
     if ('everyone'.startsWith(props.query.toLowerCase()) || props.query === '') {
         items.push({
             label: '@everyone',
             value: 'everyone',
-            description: 'Notify all members in this server',
+            description: t('chat.mentions.everyoneDescription'),
         });
     }
     if ('here'.startsWith(props.query.toLowerCase()) || props.query === '') {
         items.push({
             label: '@here',
             value: 'here',
-            description: 'Notify online members in this channel',
+            description: t('chat.mentions.hereDescription'),
         });
     }
     return items;
@@ -154,7 +157,7 @@ onUnmounted(() => {
         class="border-border bg-popover absolute bottom-full left-0 z-50 mb-1 w-72 overflow-hidden rounded-lg border shadow-lg"
     >
         <div class="max-h-60 overflow-y-auto p-1">
-            <div class="text-muted-foreground px-2 py-1.5 text-xs font-semibold">Mentions</div>
+            <div class="text-muted-foreground px-2 py-1.5 text-xs font-semibold">{{ t('chat.mentions.label') }}</div>
 
             <button
                 v-for="(item, index) in allItems"
@@ -196,7 +199,7 @@ onUnmounted(() => {
             </button>
 
             <div v-if="loading" class="text-muted-foreground flex items-center justify-center py-2 text-xs">
-                Searching...
+                {{ t('chat.mentions.searching') }}
             </div>
         </div>
     </div>

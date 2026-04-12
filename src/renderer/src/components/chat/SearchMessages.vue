@@ -2,6 +2,7 @@
 import { watchDebounced, useEventListener } from '@vueuse/core';
 import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
 
 type Props = {
@@ -19,6 +20,8 @@ const emit = defineEmits<{
 
 const { isSearching, searchResults, searchError, hasMore, searchInConversation, loadMoreResults, clearSearch } =
     useEncryptedSearch();
+
+const { t } = useI18n();
 
 const searchQuery = shallowRef('');
 const searchInput = useTemplateRef<HTMLInputElement>('searchInput');
@@ -39,8 +42,8 @@ watchDebounced(
 const statusMessage = computed(() => {
     if (isSearching.value || !searchQuery.value.trim()) return '';
     if (searchError.value) return searchError.value;
-    if (searchResults.value.length === 0) return 'No results found';
-    return `${searchResults.value.length} result${searchResults.value.length === 1 ? '' : 's'} found`;
+    if (searchResults.value.length === 0) return t('chat.search.noResults');
+    return t('chat.search.resultsCount', { count: searchResults.value.length }, searchResults.value.length);
 });
 
 function handleLoadMore() {
@@ -83,11 +86,13 @@ onMounted(() => {
             >
                 <div class="border-border flex h-12 items-center gap-2 border-b px-3">
                     <Search :size="16" class="text-muted-foreground" aria-hidden="true" />
-                    <span id="search-modal-title" class="text-sm font-medium">Search in {{ conversationName }}</span>
+                    <span id="search-modal-title" class="text-sm font-medium">{{
+                        t('chat.search.titleInConversation', { name: conversationName })
+                    }}</span>
                     <button
                         class="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded p-1 transition-colors"
-                        title="Close search (Esc)"
-                        aria-label="Close search"
+                        :title="t('chat.search.closeTooltip')"
+                        :aria-label="t('chat.search.closeLabel')"
                         @click="handleClose"
                     >
                         <X :size="16" aria-hidden="true" />
@@ -105,8 +110,8 @@ onMounted(() => {
                             ref="searchInput"
                             v-model="searchQuery"
                             type="text"
-                            placeholder="Search messages…"
-                            aria-label="Search messages"
+                            :placeholder="t('chat.search.placeholder')"
+                            :aria-label="t('chat.search.ariaLabel')"
                             class="border-border bg-muted/50 placeholder-muted-foreground focus-visible:border-primary focus-visible:bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm transition-colors outline-none"
                         />
                     </div>
@@ -117,7 +122,7 @@ onMounted(() => {
                 <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain" :aria-busy="isSearching">
                     <div v-if="isSearching" class="flex items-center justify-center py-8">
                         <Loader2 :size="20" class="text-muted-foreground animate-spin" aria-hidden="true" />
-                        <span class="text-muted-foreground ml-2 text-sm">Searching…</span>
+                        <span class="text-muted-foreground ml-2 text-sm">{{ t('chat.search.searching') }}</span>
                     </div>
 
                     <div v-else-if="searchError" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
@@ -127,9 +132,9 @@ onMounted(() => {
 
                     <div v-else-if="!searchQuery.trim()" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
                         <Search :size="32" class="text-muted-foreground/50" aria-hidden="true" />
-                        <p class="text-muted-foreground text-sm">Type to search messages</p>
+                        <p class="text-muted-foreground text-sm">{{ t('chat.search.typeToSearch') }}</p>
                         <p class="text-muted-foreground/70 text-xs">
-                            Search is fully local — works offline, never leaves your device
+                            {{ t('chat.search.offlineNote') }}
                         </p>
                     </div>
 
@@ -138,8 +143,8 @@ onMounted(() => {
                         class="flex flex-col items-center gap-2 px-4 py-8 text-center"
                     >
                         <Search :size="32" class="text-muted-foreground/50" aria-hidden="true" />
-                        <p class="text-muted-foreground text-sm">No results found</p>
-                        <p class="text-muted-foreground/70 text-xs">Try different search terms</p>
+                        <p class="text-muted-foreground text-sm">{{ t('chat.search.noResults') }}</p>
+                        <p class="text-muted-foreground/70 text-xs">{{ t('chat.search.tryDifferent') }}</p>
                     </div>
 
                     <div v-else class="divide-border divide-y">
@@ -151,7 +156,7 @@ onMounted(() => {
                         >
                             <div class="flex items-center gap-2">
                                 <span class="text-foreground text-xs font-medium">
-                                    {{ result.userName || 'Unknown' }}
+                                    {{ result.userName || t('chat.search.unknownUser') }}
                                 </span>
                             </div>
                             <p class="text-muted-foreground line-clamp-2 text-xs">{{ result.snippet }}</p>
@@ -163,7 +168,7 @@ onMounted(() => {
                                 @click="handleLoadMore"
                             >
                                 <ChevronDown :size="14" aria-hidden="true" />
-                                Load more results
+                                {{ t('chat.search.loadMore') }}
                             </button>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ import { useClipboard } from '@vueuse/core';
 import DOMPurify from 'dompurify';
 import { Check, Copy, Eye, EyeOff, LockKeyhole, RefreshCw, ShieldBan, ShieldCheck } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
     getTwoFactorStatus,
     enableTwoFactor as apiEnableTwoFactor,
@@ -21,6 +22,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
 
+const { t } = useI18n();
 const { theme } = useAppearance();
 const {
     qrCodeSvg,
@@ -107,7 +109,7 @@ async function confirmTwoFactor() {
         clearTwoFactorAuthData();
     } catch (err: unknown) {
         const axiosErr = err as { response?: { data?: { error?: string } } };
-        codeError.value = axiosErr.response?.data?.error ?? 'Invalid code';
+        codeError.value = axiosErr.response?.data?.error ?? t('settings.twoFactor.setup.invalidCode');
         code.value = '';
     } finally {
         processing.value = false;
@@ -147,53 +149,54 @@ async function regenerateRecoveryCodes() {
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Two-Factor Authentication</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Add an additional layer of security to your account</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.twoFactor.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.twoFactor.description') }}</p>
             </div>
 
             <div class="p-6">
-                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">{{ t('settings.common.loading') }}</div>
 
                 <div v-else-if="!twoFactorEnabled" class="space-y-5">
-                    <Badge variant="destructive">Disabled</Badge>
+                    <Badge variant="destructive">{{ t('settings.twoFactor.disabledBadge') }}</Badge>
 
                     <p class="text-muted-foreground">
-                        When you enable two-factor authentication, you will be prompted for a secure pin during login.
-                        This pin can be retrieved from a TOTP-supported application on your phone.
+                        {{ t('settings.twoFactor.disabledBody') }}
                     </p>
 
                     <div>
                         <Button v-if="hasSetupData" @click="showSetupModal = true">
-                            <ShieldCheck class="mr-2 h-4 w-4" />Continue Setup
+                            <ShieldCheck class="mr-2 h-4 w-4" />{{ t('settings.twoFactor.continueSetup') }}
                         </Button>
                         <Button v-else @click="enableTwoFactor" :disabled="processing">
-                            <ShieldCheck class="mr-2 h-4 w-4" />Enable 2FA
+                            <ShieldCheck class="mr-2 h-4 w-4" />{{ t('settings.twoFactor.enable') }}
                         </Button>
                     </div>
                 </div>
 
                 <div v-else class="space-y-5">
-                    <Badge variant="default">Enabled</Badge>
+                    <Badge variant="default">{{ t('settings.twoFactor.enabledBadge') }}</Badge>
 
                     <p class="text-muted-foreground">
-                        With two-factor authentication enabled, you will be prompted for a secure, random pin during
-                        login, which you can retrieve from the TOTP-supported application on your phone.
+                        {{ t('settings.twoFactor.enabledBody') }}
                     </p>
 
                     <div class="rounded-lg border p-4">
                         <div class="mb-2 flex items-center gap-3">
                             <LockKeyhole class="h-4 w-4" />
-                            <h3 class="text-sm font-semibold">2FA Recovery Codes</h3>
+                            <h3 class="text-sm font-semibold">{{ t('settings.twoFactor.recovery.title') }}</h3>
                         </div>
                         <p class="text-muted-foreground mb-3 text-sm">
-                            Recovery codes let you regain access if you lose your 2FA device. Store them in a secure
-                            password manager.
+                            {{ t('settings.twoFactor.recovery.description') }}
                         </p>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <Button @click="toggleRecoveryCodes" class="w-fit">
                                 <component :is="isRecoveryCodesVisible ? EyeOff : Eye" class="mr-2 h-4 w-4" />
-                                {{ isRecoveryCodesVisible ? 'Hide' : 'View' }} Recovery Codes
+                                {{
+                                    isRecoveryCodesVisible
+                                        ? t('settings.twoFactor.recovery.hide')
+                                        : t('settings.twoFactor.recovery.view')
+                                }}
                             </Button>
 
                             <Button
@@ -202,7 +205,7 @@ async function regenerateRecoveryCodes() {
                                 @click="regenerateRecoveryCodes"
                                 :disabled="processing"
                             >
-                                <RefreshCw class="mr-2 h-4 w-4" /> Regenerate Codes
+                                <RefreshCw class="mr-2 h-4 w-4" /> {{ t('settings.twoFactor.recovery.regenerate') }}
                             </Button>
                         </div>
 
@@ -229,8 +232,9 @@ async function regenerateRecoveryCodes() {
                                     </div>
                                 </div>
                                 <p class="text-muted-foreground text-xs">
-                                    Each recovery code can be used once. If you need more, click
-                                    <span class="font-bold">Regenerate Codes</span> above.
+                                    {{ t('settings.twoFactor.recovery.hintPrefix') }}
+                                    <span class="font-bold">{{ t('settings.twoFactor.recovery.hintRegen') }}</span>
+                                    {{ t('settings.twoFactor.recovery.hintSuffix') }}
                                 </p>
                             </div>
                         </div>
@@ -238,7 +242,7 @@ async function regenerateRecoveryCodes() {
 
                     <Button variant="destructive" @click="disableTwoFactor" :disabled="processing">
                         <ShieldBan class="mr-2 h-4 w-4" />
-                        Disable 2FA
+                        {{ t('settings.twoFactor.disable') }}
                     </Button>
                 </div>
             </div>
@@ -256,13 +260,17 @@ async function regenerateRecoveryCodes() {
             <DialogContent class="sm:max-w-md">
                 <DialogHeader class="flex items-center justify-center">
                     <DialogTitle>
-                        {{ showVerificationStep ? 'Verify Authentication Code' : 'Enable Two-Factor Authentication' }}
+                        {{
+                            showVerificationStep
+                                ? t('settings.twoFactor.setup.verifyTitle')
+                                : t('settings.twoFactor.setup.scanTitle')
+                        }}
                     </DialogTitle>
                     <DialogDescription class="text-center">
                         {{
                             showVerificationStep
-                                ? 'Enter the 6-digit code from your authenticator app'
-                                : 'Scan the QR code or enter the setup key in your authenticator app'
+                                ? t('settings.twoFactor.setup.verifyDescription')
+                                : t('settings.twoFactor.setup.scanDescription')
                         }}
                     </DialogDescription>
                 </DialogHeader>
@@ -296,14 +304,16 @@ async function regenerateRecoveryCodes() {
                             </div>
 
                             <div class="flex w-full items-center space-x-5">
-                                <Button class="w-full" @click="handleContinue">Continue</Button>
+                                <Button class="w-full" @click="handleContinue">
+                                    {{ t('settings.twoFactor.setup.continue') }}
+                                </Button>
                             </div>
 
                             <div class="relative flex w-full items-center justify-center">
                                 <div class="bg-border absolute inset-0 top-1/2 h-px w-full" />
-                                <span class="bg-background text-muted-foreground relative px-2 py-1 text-sm"
-                                    >or, enter the code manually</span
-                                >
+                                <span class="bg-background text-muted-foreground relative px-2 py-1 text-sm">
+                                    {{ t('settings.twoFactor.setup.orManual') }}
+                                </span>
                             </div>
 
                             <div class="flex w-full items-center justify-center space-x-2">
@@ -354,10 +364,10 @@ async function regenerateRecoveryCodes() {
                                     @click="showVerificationStep = false"
                                     :disabled="processing"
                                 >
-                                    Back
+                                    {{ t('settings.twoFactor.setup.back') }}
                                 </Button>
                                 <Button type="submit" class="flex-1" :disabled="processing || code.length < 6">
-                                    Confirm
+                                    {{ t('settings.twoFactor.setup.confirm') }}
                                 </Button>
                             </div>
                         </form>

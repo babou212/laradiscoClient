@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Shield, Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import KeyBackupDialog from './KeyBackupDialog.vue';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useE2eeStore } from '@/stores/e2ee';
 
+const { t } = useI18n();
 const router = useRouter();
 const e2eeStore = useE2eeStore();
 
@@ -56,7 +58,7 @@ async function handleRestore() {
     if (success) {
         await e2eeStore.performDeviceSetup(deviceName.value.trim() || 'Desktop');
     } else {
-        pinError.value = e2eeStore.error ?? 'Incorrect PIN';
+        pinError.value = e2eeStore.error ?? t('e2ee.wizard.incorrectPin');
     }
 }
 
@@ -92,16 +94,16 @@ watch(step, (newStep) => {
                 <div class="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
                     <Shield class="text-primary h-8 w-8" />
                 </div>
-                <h1 class="text-2xl font-bold tracking-tight">End-to-End Encryption</h1>
+                <h1 class="text-2xl font-bold tracking-tight">{{ t('e2ee.wizard.title') }}</h1>
                 <p class="text-muted-foreground mt-2 text-sm">
-                    Secure your messages so only you and the intended recipients can read them.
+                    {{ t('e2ee.wizard.description') }}
                 </p>
             </div>
 
             <!-- Loading / Checking -->
             <div v-if="isChecking" class="flex flex-col items-center gap-3 py-8">
                 <Loader2 class="text-muted-foreground h-6 w-6 animate-spin" />
-                <p class="text-muted-foreground text-sm">Checking encryption status...</p>
+                <p class="text-muted-foreground text-sm">{{ t('e2ee.wizard.checking') }}</p>
             </div>
 
             <!-- Restore from Backup -->
@@ -109,31 +111,30 @@ watch(step, (newStep) => {
                 <div class="flex items-start gap-3">
                     <Key class="text-primary mt-0.5 h-5 w-5 shrink-0" />
                     <div>
-                        <h2 class="font-semibold">Restore Your Keys</h2>
+                        <h2 class="font-semibold">{{ t('e2ee.wizard.restoreTitle') }}</h2>
                         <p class="text-muted-foreground mt-1 text-sm">
-                            A key backup was found. Enter your backup PIN to restore your encryption identity on this
-                            device.
+                            {{ t('e2ee.wizard.restoreDescription') }}
                         </p>
                     </div>
                 </div>
 
                 <div class="space-y-3">
                     <div>
-                        <Label for="device-name-restore">Device Name</Label>
+                        <Label for="device-name-restore">{{ t('e2ee.wizard.deviceName') }}</Label>
                         <Input
                             id="device-name-restore"
                             v-model="deviceName"
-                            placeholder="e.g. My Laptop"
+                            :placeholder="t('e2ee.wizard.deviceNamePlaceholder')"
                             class="mt-1.5"
                         />
                     </div>
                     <div>
-                        <Label for="backup-pin">Backup PIN</Label>
+                        <Label for="backup-pin">{{ t('e2ee.wizard.backupPin') }}</Label>
                         <Input
                             id="backup-pin"
                             v-model="backupPin"
                             type="password"
-                            placeholder="Enter your backup PIN"
+                            :placeholder="t('e2ee.wizard.backupPinPlaceholder')"
                             class="mt-1.5"
                             @keydown.enter="handleRestore"
                         />
@@ -144,9 +145,9 @@ watch(step, (newStep) => {
                 <div class="flex gap-2">
                     <Button class="flex-1" :disabled="!backupPin || e2eeStore.isSettingUp" @click="handleRestore">
                         <Loader2 v-if="e2eeStore.isSettingUp" class="mr-2 h-4 w-4 animate-spin" />
-                        Restore & Continue
+                        {{ t('e2ee.wizard.restoreContinue') }}
                     </Button>
-                    <Button variant="ghost" @click="skipRestore"> New Identity </Button>
+                    <Button variant="ghost" @click="skipRestore">{{ t('e2ee.wizard.newIdentity') }}</Button>
                 </div>
 
                 <p v-if="e2eeStore.error && !pinError" class="text-destructive text-sm">
@@ -159,13 +160,15 @@ watch(step, (newStep) => {
             <div v-else-if="step === 'setup'" class="bg-card space-y-4 rounded-lg border p-6">
                 <div class="flex flex-col items-center gap-3 py-4">
                     <Loader2 v-if="e2eeStore.isSettingUp" class="text-primary h-6 w-6 animate-spin" />
-                    <p class="text-muted-foreground text-sm">Generating your encryption keys...</p>
+                    <p class="text-muted-foreground text-sm">{{ t('e2ee.wizard.generating') }}</p>
                 </div>
 
                 <p v-if="e2eeStore.error" class="text-destructive text-sm">
                     <AlertCircle class="mr-1 inline h-4 w-4" />
                     {{ e2eeStore.error }}
-                    <Button variant="link" class="ml-2 h-auto p-0 text-sm" @click="autoSetup"> Retry </Button>
+                    <Button variant="link" class="ml-2 h-auto p-0 text-sm" @click="autoSetup">
+                        {{ t('common.retry') }}
+                    </Button>
                 </p>
             </div>
 
@@ -174,9 +177,9 @@ watch(step, (newStep) => {
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
                     <CheckCircle2 class="h-6 w-6 text-green-500" />
                 </div>
-                <h2 class="font-semibold">You're All Set!</h2>
+                <h2 class="font-semibold">{{ t('e2ee.wizard.allSet') }}</h2>
                 <p class="text-muted-foreground text-sm">
-                    End-to-end encryption is active. Your messages are now secured.
+                    {{ t('e2ee.wizard.allSetDescription') }}
                 </p>
             </div>
         </div>

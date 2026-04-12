@@ -10,6 +10,7 @@ import {
     CheckCircle2Icon,
 } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { z } from 'zod';
 import { forgotPassword, resetPassword } from '@/api/auth';
@@ -19,23 +20,29 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useServerStore } from '@/stores/server';
 
-const emailSchema = z.object({
-    email: z.string().min(1, 'Email is required').email('Please enter a valid email address.'),
-});
+const { t } = useI18n();
 
-const resetSchema = z
-    .object({
-        code: z.string().length(6, 'Reset code must be 6 digits.').regex(/^\d+$/, 'Reset code must be numeric.'),
-        password: z.string().min(8, 'Password must be at least 8 characters.'),
-        passwordConfirmation: z.string().min(1, 'Please confirm your password.'),
-    })
-    .refine((d) => d.password === d.passwordConfirmation, {
-        message: 'Passwords do not match.',
-        path: ['passwordConfirmation'],
-    });
+const emailSchema = computed(() =>
+    z.object({
+        email: z.string().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
+    }),
+);
 
-type EmailFieldErrors = Partial<Record<keyof z.infer<typeof emailSchema>, string>>;
-type ResetFieldErrors = Partial<Record<keyof z.infer<typeof resetSchema>, string>>;
+const resetSchema = computed(() =>
+    z
+        .object({
+            code: z.string().length(6, t('validation.codeLength6')).regex(/^\d+$/, t('validation.codeNumeric')),
+            password: z.string().min(8, t('validation.passwordMin8')),
+            passwordConfirmation: z.string().min(1, t('validation.passwordConfirmRequired')),
+        })
+        .refine((d) => d.password === d.passwordConfirmation, {
+            message: t('validation.passwordsMatch'),
+            path: ['passwordConfirmation'],
+        }),
+);
+
+type EmailFieldErrors = Partial<Record<keyof z.infer<typeof emailSchema.value>, string>>;
+type ResetFieldErrors = Partial<Record<keyof z.infer<typeof resetSchema.value>, string>>;
 
 const router = useRouter();
 const serverStore = useServerStore();
@@ -72,7 +79,7 @@ async function handleSendCode(): Promise<void> {
     emailFieldErrors.value = {};
     error.value = null;
 
-    const result = emailSchema.safeParse({ email: email.value.trim() });
+    const result = emailSchema.value.safeParse({ email: email.value.trim() });
     if (!result.success) {
         result.error.issues.forEach((e: z.ZodIssue) => {
             const field = e.path[0] as keyof EmailFieldErrors;
@@ -89,11 +96,11 @@ async function handleSendCode(): Promise<void> {
     } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 422) {
             const messages = err.response.data?.errors;
-            error.value = messages?.email?.[0] ?? 'Please enter a valid email address.';
+            error.value = messages?.email?.[0] ?? t('validation.emailInvalid');
         } else if (axios.isAxiosError(err) && err.response?.status === 429) {
-            error.value = 'Too many requests. Please wait a moment and try again.';
+            error.value = t('auth.forgot.tooManyRequests');
         } else {
-            error.value = 'Unable to reach the server. Please try again later.';
+            error.value = t('auth.forgot.unableToReach');
         }
     } finally {
         isSubmitting.value = false;
@@ -104,7 +111,7 @@ async function handleReset(): Promise<void> {
     resetFieldErrors.value = {};
     error.value = null;
 
-    const result = resetSchema.safeParse({
+    const result = resetSchema.value.safeParse({
         code: code.value.trim(),
         password: password.value,
         passwordConfirmation: passwordConfirmation.value,
@@ -130,11 +137,12 @@ async function handleReset(): Promise<void> {
     } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 422) {
             const messages = err.response.data?.errors;
-            error.value = messages?.code?.[0] ?? messages?.password?.[0] ?? messages?.email?.[0] ?? 'Invalid input.';
+            error.value =
+                messages?.code?.[0] ?? messages?.password?.[0] ?? messages?.email?.[0] ?? t('auth.forgot.invalidInput');
         } else if (axios.isAxiosError(err) && err.response?.status === 429) {
-            error.value = 'Too many requests. Please wait a moment and try again.';
+            error.value = t('auth.forgot.tooManyRequests');
         } else {
-            error.value = 'Unable to reach the server. Please try again later.';
+            error.value = t('auth.forgot.unableToReach');
         }
     } finally {
         isSubmitting.value = false;
@@ -148,12 +156,12 @@ function goBack(): void {
 
 <template>
     <AuthLayout
-        :title="step === 'done' ? 'Password Reset' : 'Reset Password'"
+        :title="step === 'done' ? t('auth.forgot.doneTitle') : t('auth.forgot.resetTitle')"
         :description="
             step === 'email'
-                ? 'Enter your email address and we\'ll send you a 6-digit reset code.'
+                ? t('auth.forgot.emailDescription')
                 : step === 'code'
-                  ? `Enter the code sent to ${email} and choose a new password.`
+                  ? t('auth.forgot.codeDescription', { email })
                   : ''
         "
     >
@@ -162,15 +170,15 @@ function goBack(): void {
                 <CheckCircle2Icon class="text-primary size-6" />
             </div>
             <div class="space-y-2">
-                <p class="text-foreground text-sm">Your password has been reset successfully.</p>
-                <p class="text-muted-foreground text-xs">You can now sign in with your new password.</p>
+                <p class="text-foreground text-sm">{{ t('auth.forgot.successHeading') }}</p>
+                <p class="text-muted-foreground text-xs">{{ t('auth.forgot.successSub') }}</p>
             </div>
-            <Button class="w-full" @click="goBack">Back to login</Button>
+            <Button class="w-full" @click="goBack">{{ t('auth.forgot.backToLogin') }}</Button>
         </div>
 
         <form v-else-if="step === 'code'" @submit.prevent="handleReset" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="code">Reset Code</Label>
+                <Label for="code">{{ t('auth.forgot.resetCode') }}</Label>
                 <div class="relative">
                     <ShieldCheckIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
@@ -179,7 +187,7 @@ function goBack(): void {
                         type="text"
                         inputmode="numeric"
                         autocomplete="one-time-code"
-                        placeholder="000000"
+                        :placeholder="t('auth.forgot.codePlaceholder')"
                         maxlength="6"
                         class="pl-9 text-center font-mono tracking-widest"
                         :class="{ 'border-destructive': resetFieldErrors.code }"
@@ -191,13 +199,13 @@ function goBack(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="password">New Password</Label>
+                <Label for="password">{{ t('auth.forgot.newPassword') }}</Label>
                 <div class="relative">
                     <Input
                         id="password"
                         v-model="password"
                         :type="showPassword ? 'text' : 'password'"
-                        placeholder="••••••••"
+                        :placeholder="t('auth.forgot.passwordPlaceholder')"
                         autocomplete="new-password"
                         :disabled="isSubmitting"
                         class="pr-10"
@@ -217,12 +225,12 @@ function goBack(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm Password</Label>
+                <Label for="password_confirmation">{{ t('auth.forgot.confirmPassword') }}</Label>
                 <Input
                     id="password_confirmation"
                     v-model="passwordConfirmation"
                     :type="showPassword ? 'text' : 'password'"
-                    placeholder="••••••••"
+                    :placeholder="t('auth.forgot.passwordPlaceholder')"
                     autocomplete="new-password"
                     :disabled="isSubmitting"
                     :class="{ 'border-destructive': resetFieldErrors.passwordConfirmation }"
@@ -242,8 +250,8 @@ function goBack(): void {
             <div class="flex flex-col gap-3 pt-1">
                 <Button type="submit" :disabled="!canSubmitReset" class="w-full">
                     <Loader2Icon v-if="isSubmitting" class="animate-spin" />
-                    <span v-if="isSubmitting">Resetting...</span>
-                    <span v-else>Reset Password</span>
+                    <span v-if="isSubmitting">{{ t('auth.forgot.resetting') }}</span>
+                    <span v-else>{{ t('auth.forgot.resetPassword') }}</span>
                 </Button>
                 <Button
                     type="button"
@@ -259,25 +267,25 @@ function goBack(): void {
                         resetFieldErrors = {};
                     "
                 >
-                    Didn't receive a code? Try again
+                    {{ t('auth.forgot.tryAgain') }}
                 </Button>
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
                     <ArrowLeftIcon class="size-3" />
-                    Back to login
+                    {{ t('auth.forgot.backToLogin') }}
                 </Button>
             </div>
         </form>
 
         <form v-else @submit.prevent="handleSendCode" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="email">Email</Label>
+                <Label for="email">{{ t('auth.forgot.email') }}</Label>
                 <div class="relative">
                     <MailIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="email"
                         v-model="email"
                         type="email"
-                        placeholder="you@example.com"
+                        :placeholder="t('auth.forgot.emailPlaceholder')"
                         autocomplete="email"
                         class="pl-9"
                         :class="{ 'border-destructive': emailFieldErrors.email }"
@@ -298,12 +306,12 @@ function goBack(): void {
             <div class="flex flex-col gap-3 pt-1">
                 <Button type="submit" :disabled="!canSubmitEmail" class="w-full">
                     <Loader2Icon v-if="isSubmitting" class="animate-spin" />
-                    <span v-if="isSubmitting">Sending...</span>
-                    <span v-else>Send Reset Code</span>
+                    <span v-if="isSubmitting">{{ t('auth.forgot.sending') }}</span>
+                    <span v-else>{{ t('auth.forgot.sendResetCode') }}</span>
                 </Button>
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
                     <ArrowLeftIcon class="size-3" />
-                    Back to login
+                    {{ t('auth.forgot.backToLogin') }}
                 </Button>
             </div>
         </form>

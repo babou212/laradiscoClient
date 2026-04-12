@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { MessageSquare } from 'lucide-vue-next';
 import { computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import DirectMessagesSidebar from '@/components/chat/DirectMessagesSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
@@ -8,6 +9,7 @@ import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import { useVoiceStore } from '@/stores/voice';
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const dmStore = useDirectMessagesStore();
@@ -87,8 +89,8 @@ const handleStartDm = async (userId: string) => {
         <div v-else class="bg-background flex flex-1 flex-col items-center justify-center text-center">
             <div class="text-muted-foreground">
                 <MessageSquare :size="48" class="mx-auto mb-3 opacity-40" />
-                <p class="text-lg font-semibold">Your Direct Messages</p>
-                <p class="mt-1 text-sm">Select a conversation or start a new one.</p>
+                <p class="text-lg font-semibold">{{ t('directMessages.title') }}</p>
+                <p class="mt-1 text-sm">{{ t('directMessages.emptyPrompt') }}</p>
             </div>
         </div>
     </div>

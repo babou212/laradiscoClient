@@ -2,6 +2,7 @@
 import { useClipboard, useEventListener } from '@vueuse/core';
 import { Pin } from 'lucide-vue-next';
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import FileAttachment from './FileAttachment.vue';
 import MessageActions from './MessageActions.vue';
@@ -55,6 +56,7 @@ const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
 const currentUser = computed(() => authStore.user);
 const route = useRoute();
+const { t } = useI18n();
 
 const isOwnMessage = computed(() => props.message.user.id === currentUser.value?.id);
 const canEdit = computed(() => isOwnMessage.value);
@@ -69,7 +71,7 @@ const isDecrypting = computed(() => {
 });
 
 const displayContent = computed(() => {
-    if (props.message.decrypt_error) return '[Unable to decrypt this message]';
+    if (props.message.decrypt_error) return t('chat.common.unableToDecryptInline');
     return props.message.decrypted_content ?? '';
 });
 
@@ -82,7 +84,7 @@ const isReplyDecrypting = computed(() => {
 const replyDisplayContent = computed(() => {
     if (!props.message.reply_to) return '';
     const reply = props.message.reply_to;
-    if (reply.decrypt_error) return '[Unable to decrypt]';
+    if (reply.decrypt_error) return t('chat.common.unableToDecrypt');
     return reply.decrypted_content ?? '';
 });
 
@@ -311,7 +313,9 @@ const emitShowProfile = (e: MouseEvent) => {
                     @click="emitShowProfile"
                 >
                     {{
-                        message.user ? userNamesStore.getDisplayName(message.user.id, message.user.username) : 'Unknown'
+                        message.user
+                            ? userNamesStore.getDisplayName(message.user.id, message.user.username)
+                            : t('chat.messages.unknownUser')
                     }}
                 </span>
                 <span class="text-muted-foreground text-xs">
@@ -319,9 +323,11 @@ const emitShowProfile = (e: MouseEvent) => {
                 </span>
                 <span v-if="message.is_pinned" class="text-primary/70 inline-flex items-center gap-0.5 text-xs">
                     <Pin :size="12" />
-                    pinned
+                    {{ t('chat.messages.pinned') }}
                 </span>
-                <span v-if="message.is_edited" class="text-muted-foreground text-xs italic"> (edited) </span>
+                <span v-if="message.is_edited" class="text-muted-foreground text-xs italic">
+                    {{ t('chat.messages.edited') }}
+                </span>
             </div>
 
             <MessageReplyPreview
@@ -341,12 +347,16 @@ const emitShowProfile = (e: MouseEvent) => {
                 />
                 <div class="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                     <span
-                        >escape to
-                        <button class="text-primary hover:underline" @click="emit('cancelEdit')">cancel</button></span
+                        >{{ t('chat.messages.escapeTo') }}
+                        <button class="text-primary hover:underline" @click="emit('cancelEdit')">
+                            {{ t('chat.messages.cancelInline') }}
+                        </button></span
                     >
                     <span
-                        >• enter to
-                        <button class="text-primary hover:underline" @click="emit('saveEdit')">save</button></span
+                        >• {{ t('chat.messages.enterTo') }}
+                        <button class="text-primary hover:underline" @click="emit('saveEdit')">
+                            {{ t('chat.messages.saveInline') }}
+                        </button></span
                     >
                 </div>
             </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Loader2Icon, CheckCircle2Icon } from 'lucide-vue-next';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useServerStore } from '@/stores/server';
 
+const { t } = useI18n();
 const router = useRouter();
 const serverStore = useServerStore();
 
@@ -44,15 +46,15 @@ async function connectAndSave(): Promise<void> {
 </script>
 
 <template>
-    <AuthLayout title="LaraDisco" description="Connect to your server to get started">
+    <AuthLayout :title="t('serverConnect.title')" :description="t('serverConnect.description')">
         <form @submit.prevent="testConnection" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="host">Server Address</Label>
+                <Label for="host">{{ t('serverConnect.serverAddress') }}</Label>
                 <Input
                     id="host"
                     v-model="host"
                     type="text"
-                    placeholder="chat.example.com"
+                    :placeholder="t('serverConnect.placeholder')"
                     :disabled="isTestingConnection"
                 />
             </div>
@@ -70,23 +72,29 @@ async function connectAndSave(): Promise<void> {
             >
                 <CheckCircle2Icon class="mt-0.5 size-4 shrink-0" />
                 <div>
-                    <p class="font-medium">Connected to {{ serverInfo.app }}</p>
-                    <p class="mt-0.5 text-xs opacity-70">Laravel {{ serverInfo.version }}</p>
+                    <p class="font-medium">{{ t('serverConnect.connectedTo', { app: serverInfo.app }) }}</p>
+                    <p class="mt-0.5 text-xs opacity-70">
+                        {{ t('serverConnect.laravelVersion', { version: serverInfo.version }) }}
+                    </p>
                 </div>
             </div>
 
             <div class="flex flex-col gap-3 pt-1">
                 <Button v-if="!serverInfo" type="submit" :disabled="isTestingConnection || !host.trim()" class="w-full">
                     <Loader2Icon v-if="isTestingConnection" class="animate-spin" />
-                    <span v-if="isTestingConnection">Connecting...</span>
-                    <span v-else>Test Connection</span>
+                    <span v-if="isTestingConnection">{{ t('serverConnect.connecting') }}</span>
+                    <span v-else>{{ t('serverConnect.testConnection') }}</span>
                 </Button>
-                <Button v-else type="button" @click="connectAndSave" class="w-full"> Continue </Button>
+                <Button v-else type="button" @click="connectAndSave" class="w-full">
+                    {{ t('serverConnect.continue') }}
+                </Button>
             </div>
         </form>
 
         <div v-if="serverStore.servers.length > 0" class="border-border border-t pt-6">
-            <p class="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">Saved Servers</p>
+            <p class="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">
+                {{ t('serverConnect.savedServers') }}
+            </p>
             <div class="space-y-2">
                 <button
                     v-for="server in serverStore.servers"
@@ -106,7 +114,7 @@ async function connectAndSave(): Promise<void> {
                         v-if="server.is_active"
                         class="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500 dark:text-green-400"
                     >
-                        Active
+                        {{ t('serverConnect.active') }}
                     </span>
                 </button>
             </div>

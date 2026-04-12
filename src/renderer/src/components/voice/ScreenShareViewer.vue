@@ -12,8 +12,10 @@ import {
     PictureInPicture2,
 } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useVoiceStore, type ScreenShareParticipant } from '@/stores/voice';
 
+const { t } = useI18n();
 const voiceStore = useVoiceStore();
 
 const isDragging = ref(false);
@@ -249,7 +251,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Toggle audio"
+                        :title="t('chat.screenShareViewer.toggleAudio')"
                         @click="toggleAudio"
                     >
                         <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="18" />
@@ -258,7 +260,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Expand"
+                        :title="t('chat.screenShareViewer.expand')"
                         @click="setMode('channel')"
                     >
                         <Minimize2 :size="18" />
@@ -266,7 +268,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Pop out"
+                        :title="t('chat.screenShareViewer.popOut')"
                         @click="setMode('pip')"
                     >
                         <PictureInPicture2 :size="18" />
@@ -274,7 +276,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
-                        title="Close"
+                        :title="t('chat.screenShareViewer.close')"
                         @click="close"
                     >
                         <X :size="18" />
@@ -326,7 +328,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Toggle audio"
+                        :title="t('chat.screenShareViewer.toggleAudio')"
                         @click="toggleAudio"
                     >
                         <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="16" />
@@ -335,7 +337,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Fullscreen"
+                        :title="t('chat.screenShareViewer.fullscreen')"
                         @click="setMode('fullscreen')"
                     >
                         <Fullscreen :size="16" />
@@ -343,7 +345,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"
-                        title="Pop out"
+                        :title="t('chat.screenShareViewer.popOut')"
                         @click="setMode('pip')"
                     >
                         <PictureInPicture2 :size="16" />
@@ -351,7 +353,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-1 text-[#b5bac1] transition-colors hover:bg-[#ed4245] hover:text-white"
-                        title="Close"
+                        :title="t('chat.screenShareViewer.close')"
                         @click="close"
                     >
                         <X :size="16" />
@@ -395,7 +397,7 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                        title="Close"
+                        :title="t('chat.screenShareViewer.close')"
                         @click.stop="close"
                     >
                         <X :size="14" />
@@ -430,7 +432,7 @@ onBeforeUnmount(() => {
                         <button
                             type="button"
                             class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            title="Toggle audio"
+                            :title="t('chat.screenShareViewer.toggleAudio')"
                             @click.stop="toggleAudio"
                         >
                             <VolumeX v-if="voiceStore.screenShareAudioMuted" :size="14" />
@@ -439,7 +441,7 @@ onBeforeUnmount(() => {
                         <button
                             type="button"
                             class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            title="Expand"
+                            :title="t('chat.screenShareViewer.expand')"
                             @click.stop="setMode('channel')"
                         >
                             <Maximize2 :size="14" />
@@ -447,7 +449,7 @@ onBeforeUnmount(() => {
                         <button
                             type="button"
                             class="rounded p-0.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-                            title="Fullscreen"
+                            :title="t('chat.screenShareViewer.fullscreen')"
                             @click.stop="setMode('fullscreen')"
                         >
                             <Fullscreen :size="14" />

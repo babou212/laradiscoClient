@@ -3,6 +3,7 @@
 <script setup lang="ts">
 import { useMutation } from '@pinia/colada';
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { extractValidationErrors } from '@/api/errors';
 import {
@@ -31,6 +32,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
@@ -142,8 +144,8 @@ async function handleDeleteAccount() {
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Avatar</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Your profile picture visible to other users</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.profile.avatar.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.profile.avatar.description') }}</p>
             </div>
 
             <div class="flex items-center gap-6 p-6">
@@ -158,7 +160,11 @@ async function handleDeleteAccount() {
 
                 <div class="flex flex-col gap-2">
                     <Button size="sm" @click="showAvatarDialog = true">
-                        {{ avatarStore.getCurrentUserAvatarUrl() ? 'Change avatar' : 'Upload avatar' }}
+                        {{
+                            avatarStore.getCurrentUserAvatarUrl()
+                                ? t('settings.profile.avatar.change')
+                                : t('settings.profile.avatar.upload')
+                        }}
                     </Button>
                     <Button
                         v-if="avatarStore.getCurrentUserAvatarUrl()"
@@ -167,7 +173,7 @@ async function handleDeleteAccount() {
                         :disabled="avatarDeleting"
                         @click="deleteAvatar"
                     >
-                        Remove avatar
+                        {{ t('settings.profile.avatar.remove') }}
                     </Button>
                 </div>
             </div>
@@ -177,27 +183,27 @@ async function handleDeleteAccount() {
 
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Profile information</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Update your name and email address</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.profile.info.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.profile.info.description') }}</p>
             </div>
 
             <div class="p-6">
                 <form @submit.prevent="handleUpdateProfile" class="space-y-5">
                     <div class="grid gap-2">
-                        <Label for="name">Name</Label>
+                        <Label for="name">{{ t('settings.profile.info.name') }}</Label>
                         <Input
                             id="name"
                             v-model="name"
                             class="mt-1 block w-full"
                             required
                             autocomplete="name"
-                            placeholder="Full name"
+                            :placeholder="t('settings.profile.info.namePlaceholder')"
                         />
                         <InputError :message="errors.name" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="email">Email address</Label>
+                        <Label for="email">{{ t('settings.profile.info.email') }}</Label>
                         <Input
                             id="email"
                             type="email"
@@ -205,13 +211,13 @@ async function handleDeleteAccount() {
                             class="mt-1 block w-full"
                             required
                             autocomplete="username"
-                            placeholder="Email address"
+                            :placeholder="t('settings.profile.info.emailPlaceholder')"
                         />
                         <InputError :message="errors.email" />
                     </div>
 
                     <div class="flex items-center gap-4 pt-2">
-                        <Button :disabled="processing">Save changes</Button>
+                        <Button :disabled="processing">{{ t('settings.profile.info.save') }}</Button>
 
                         <Transition
                             enter-active-class="transition ease-in-out"
@@ -223,7 +229,7 @@ async function handleDeleteAccount() {
                                 v-show="recentlySuccessful"
                                 class="text-sm font-medium text-green-600 dark:text-green-500"
                             >
-                                Saved successfully
+                                {{ t('settings.profile.info.saved') }}
                             </p>
                         </Transition>
                     </div>
@@ -233,8 +239,8 @@ async function handleDeleteAccount() {
 
         <div class="border-destructive/50 bg-card overflow-hidden rounded-lg border">
             <div class="border-destructive/50 bg-destructive/10 border-b px-6 py-4">
-                <h2 class="text-destructive text-lg font-semibold">Danger zone</h2>
-                <p class="text-destructive/80 mt-1 text-sm">Permanently delete your account and all of its data</p>
+                <h2 class="text-destructive text-lg font-semibold">{{ t('settings.profile.danger.title') }}</h2>
+                <p class="text-destructive/80 mt-1 text-sm">{{ t('settings.profile.danger.description') }}</p>
             </div>
 
             <div class="space-y-4 p-6">
@@ -251,9 +257,11 @@ async function handleDeleteAccount() {
                             </svg>
                         </div>
                         <div class="space-y-1">
-                            <p class="text-destructive text-sm font-medium">This action cannot be undone</p>
+                            <p class="text-destructive text-sm font-medium">
+                                {{ t('settings.profile.danger.warningTitle') }}
+                            </p>
                             <p class="text-muted-foreground text-sm">
-                                Once you delete your account, all of your data will be permanently removed.
+                                {{ t('settings.profile.danger.warningBody') }}
                             </p>
                         </div>
                     </div>
@@ -261,25 +269,28 @@ async function handleDeleteAccount() {
 
                 <Dialog v-model:open="showDeleteDialog">
                     <DialogTrigger as-child>
-                        <Button variant="destructive" class="w-full sm:w-auto"> Delete account </Button>
+                        <Button variant="destructive" class="w-full sm:w-auto">
+                            {{ t('settings.profile.danger.deleteAccount') }}
+                        </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <form @submit.prevent="handleDeleteAccount" class="space-y-6">
                             <DialogHeader class="space-y-3">
-                                <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
+                                <DialogTitle>{{ t('settings.profile.danger.confirmTitle') }}</DialogTitle>
                                 <DialogDescription>
-                                    Once your account is deleted, all of its resources and data will also be permanently
-                                    deleted. Please enter your password to confirm.
+                                    {{ t('settings.profile.danger.confirmBody') }}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div class="grid gap-2">
-                                <Label for="delete-password" class="sr-only">Password</Label>
+                                <Label for="delete-password" class="sr-only">
+                                    {{ t('settings.profile.danger.passwordLabel') }}
+                                </Label>
                                 <Input
                                     id="delete-password"
                                     type="password"
                                     v-model="deletePassword"
-                                    placeholder="Password"
+                                    :placeholder="t('settings.profile.danger.passwordPlaceholder')"
                                 />
                                 <InputError :message="deleteErrors.password" />
                             </div>
@@ -293,11 +304,11 @@ async function handleDeleteAccount() {
                                             deleteErrors = {};
                                         "
                                     >
-                                        Cancel
+                                        {{ t('settings.common.cancel') }}
                                     </Button>
                                 </DialogClose>
                                 <Button type="submit" variant="destructive" :disabled="deleteProcessing">
-                                    Delete account
+                                    {{ t('settings.profile.danger.deleteAccount') }}
                                 </Button>
                             </DialogFooter>
                         </form>

@@ -2,10 +2,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useNotificationsStore } from '@/stores/notifications';
+
+const { t } = useI18n();
 
 const enableToastNotifications = ref(true);
 const enableBrowserNotifications = ref(true);
@@ -72,14 +75,14 @@ function submit() {
     <div>
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Notifications</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Control how and when you receive notifications</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.notifications.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.notifications.description') }}</p>
             </div>
 
             <div class="p-6">
                 <form class="space-y-6" @submit.prevent="submit">
                     <div class="space-y-4">
-                        <h3 class="text-sm font-medium">Notification Types</h3>
+                        <h3 class="text-sm font-medium">{{ t('settings.notifications.typesHeading') }}</h3>
 
                         <div class="flex items-start gap-3">
                             <Checkbox
@@ -89,10 +92,10 @@ function submit() {
                             />
                             <div class="space-y-1">
                                 <Label for="enable_mention_notifications" class="cursor-pointer">
-                                    Mention notifications
+                                    {{ t('settings.notifications.mentionLabel') }}
                                 </Label>
                                 <p class="text-muted-foreground text-sm">
-                                    Get notified when someone mentions you with @username, @everyone, or @here
+                                    {{ t('settings.notifications.mentionDescription') }}
                                 </p>
                             </div>
                         </div>
@@ -105,10 +108,10 @@ function submit() {
                             />
                             <div class="space-y-1">
                                 <Label for="enable_dm_notifications" class="cursor-pointer">
-                                    Direct message notifications
+                                    {{ t('settings.notifications.dmLabel') }}
                                 </Label>
                                 <p class="text-muted-foreground text-sm">
-                                    Get notified when someone sends you a direct message
+                                    {{ t('settings.notifications.dmDescription') }}
                                 </p>
                             </div>
                         </div>
@@ -116,7 +119,7 @@ function submit() {
 
                     <div class="border-t pt-6">
                         <div class="space-y-4">
-                            <h3 class="text-sm font-medium">Delivery Methods</h3>
+                            <h3 class="text-sm font-medium">{{ t('settings.notifications.deliveryHeading') }}</h3>
 
                             <div class="flex items-start gap-3">
                                 <Checkbox
@@ -126,10 +129,10 @@ function submit() {
                                 />
                                 <div class="space-y-1">
                                     <Label for="enable_toast_notifications" class="cursor-pointer">
-                                        In-app pop-ups
+                                        {{ t('settings.notifications.toastLabel') }}
                                     </Label>
                                     <p class="text-muted-foreground text-sm">
-                                        Show toast notifications in the corner of the screen
+                                        {{ t('settings.notifications.toastDescription') }}
                                     </p>
                                 </div>
                             </div>
@@ -142,10 +145,10 @@ function submit() {
                                 />
                                 <div class="space-y-1">
                                     <Label for="enable_browser_notifications" class="cursor-pointer">
-                                        Desktop notifications
+                                        {{ t('settings.notifications.browserLabel') }}
                                     </Label>
                                     <p class="text-muted-foreground text-sm">
-                                        Show desktop notifications when the app is in the background
+                                        {{ t('settings.notifications.browserDescription') }}
                                     </p>
                                 </div>
                             </div>
@@ -153,7 +156,9 @@ function submit() {
                     </div>
 
                     <div class="flex items-center gap-4 border-t pt-6">
-                        <Button type="submit" :disabled="processing || !isDirty"> Save preferences </Button>
+                        <Button type="submit" :disabled="processing || !isDirty">
+                            {{ t('settings.notifications.save') }}
+                        </Button>
 
                         <Transition
                             enter-active-class="transition ease-in-out"
@@ -165,7 +170,7 @@ function submit() {
                                 v-show="recentlySuccessful"
                                 class="text-sm font-medium text-green-600 dark:text-green-500"
                             >
-                                Saved successfully
+                                {{ t('common.saveSuccess') }}
                             </p>
                         </Transition>
                     </div>

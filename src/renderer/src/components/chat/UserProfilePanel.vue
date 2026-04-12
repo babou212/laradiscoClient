@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { format } from 'date-fns';
 import { MessageSquare } from 'lucide-vue-next';
 import { computed, shallowRef, watch, type CSSProperties } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { UserResource } from '@/api/types';
 import { getUserProfile } from '@/api/users';
+import { currentDateFnsLocale } from '@/i18n';
 import { useAvatarStore } from '@/stores/avatar';
 import { useUserNamesStore } from '@/stores/userNames';
 import type { OnlineUser } from '@/types/user';
@@ -31,6 +34,7 @@ const emit = defineEmits<{
 
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
+const { t } = useI18n();
 
 const fullUser = shallowRef<UserResource | null>(null);
 const includedRoles = shallowRef<IncludedRole[]>([]);
@@ -72,12 +76,12 @@ const statusColors: Record<string, string> = {
     offline: 'bg-gray-500',
 };
 
-const statusLabels: Record<string, string> = {
-    online: 'Online',
-    idle: 'Idle',
-    dnd: 'Do Not Disturb',
-    offline: 'Offline',
-};
+const statusLabels = computed<Record<string, string>>(() => ({
+    online: t('chat.userProfile.status.online'),
+    idle: t('chat.userProfile.status.idle'),
+    dnd: t('chat.userProfile.status.dnd'),
+    offline: t('chat.userProfile.status.offline'),
+}));
 
 const userInitials = computed(() => {
     if (!props.user) return '?';
@@ -86,20 +90,16 @@ const userInitials = computed(() => {
 });
 
 const displayName = computed(() => {
-    if (!props.user) return 'Unknown User';
+    if (!props.user) return t('chat.userProfile.unknownUser');
     const name = userNamesStore.getDisplayName(props.user.id, props.user.display_name || props.user.username);
-    return name.trim() || 'Unknown User';
+    return name.trim() || t('chat.userProfile.unknownUser');
 });
 
 const memberSince = computed(() => {
-    if (!fullUser.value?.attributes?.created_at) return 'Unknown';
+    if (!fullUser.value?.attributes?.created_at) return t('chat.userProfile.memberSinceUnknown');
     const date = new Date(fullUser.value.attributes.created_at);
-    if (isNaN(date.getTime())) return 'Unknown';
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
+    if (isNaN(date.getTime())) return t('chat.userProfile.memberSinceUnknown');
+    return format(date, 'PP', { locale: currentDateFnsLocale.value });
 });
 
 const handleSendMessage = () => {
@@ -206,12 +206,16 @@ const panelStyle = computed<CSSProperties | undefined>(() => {
                     </p>
                     <div class="mt-2 flex items-center gap-1.5">
                         <div class="size-2 rounded-full" :class="statusColors[user.status || 'offline']"></div>
-                        <span class="text-muted-foreground text-xs">{{ statusLabels[user.status || 'offline'] }}</span>
+                        <span class="text-muted-foreground text-xs">{{
+                            statusLabels[user.status || 'offline']
+                        }}</span>
                     </div>
                 </div>
 
                 <div class="bg-background/50 rounded-lg p-3">
-                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Member Since</h3>
+                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                        {{ t('chat.userProfile.memberSince') }}
+                    </h3>
                     <div v-if="loading" class="bg-muted mt-1 h-5 w-24 animate-pulse rounded"></div>
                     <p v-else class="text-popover-foreground mt-1 text-sm">
                         {{ memberSince }}
@@ -219,7 +223,9 @@ const panelStyle = computed<CSSProperties | undefined>(() => {
                 </div>
 
                 <div v-if="loading || includedRoles.length" class="bg-background/50 rounded-lg p-3">
-                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Roles</h3>
+                    <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                        {{ t('chat.userProfile.roles') }}
+                    </h3>
                     <div v-if="loading" class="mt-2 flex flex-wrap gap-1.5">
                         <span class="bg-muted h-6 w-16 animate-pulse rounded-full"></span>
                         <span class="bg-muted h-6 w-20 animate-pulse rounded-full"></span>
@@ -246,7 +252,7 @@ const panelStyle = computed<CSSProperties | undefined>(() => {
                     @click="handleSendMessage"
                 >
                     <MessageSquare :size="16" />
-                    Send Message
+                    {{ t('chat.userProfile.sendMessage') }}
                 </button>
             </div>
         </div>

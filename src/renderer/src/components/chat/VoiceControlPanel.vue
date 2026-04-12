@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Mic, MicOff, Volume2, VolumeOff, PhoneOff, MonitorUp, MonitorOff } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
+const { t } = useI18n();
 
 function toggleScreenShare() {
     if (voiceStore.isScreenSharing) {
@@ -16,15 +18,15 @@ function toggleScreenShare() {
 const qualityInfo = computed(() => {
     switch (voiceStore.connectionQuality) {
         case 'excellent':
-            return { bars: 3, color: 'text-green-500', label: 'Voice Connected' };
+            return { bars: 3, color: 'text-green-500', label: t('chat.voice.connected') };
         case 'good':
-            return { bars: 2, color: 'text-green-500', label: 'Voice Connected' };
+            return { bars: 2, color: 'text-green-500', label: t('chat.voice.connected') };
         case 'poor':
-            return { bars: 1, color: 'text-yellow-500', label: 'Poor Connection' };
+            return { bars: 1, color: 'text-yellow-500', label: t('chat.voice.poorConnection') };
         case 'lost':
-            return { bars: 0, color: 'text-red-500', label: 'Connection Lost' };
+            return { bars: 0, color: 'text-red-500', label: t('chat.voice.connectionLost') };
         default:
-            return { bars: 3, color: 'text-green-500', label: 'Voice Connected' };
+            return { bars: 3, color: 'text-green-500', label: t('chat.voice.connected') };
     }
 });
 </script>
@@ -46,7 +48,7 @@ const qualityInfo = computed(() => {
             <button
                 type="button"
                 class="text-sidebar-foreground/50 hover:text-sidebar-foreground flex size-7 items-center justify-center rounded transition-colors hover:bg-white/10"
-                title="Disconnect"
+                :title="t('chat.voice.disconnect')"
                 @click="voiceStore.leaveChannel()"
             >
                 <PhoneOff :size="15" />
@@ -68,7 +70,7 @@ const qualityInfo = computed(() => {
                         ? 'bg-white/10 text-red-400 hover:bg-white/15'
                         : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                 "
-                :title="voiceStore.isMicMuted ? 'Unmute' : 'Mute'"
+                :title="voiceStore.isMicMuted ? t('chat.voice.unmute') : t('chat.voice.mute')"
                 @click="voiceStore.toggleMic()"
             >
                 <MicOff v-if="voiceStore.isMicMuted" :size="15" />
@@ -83,7 +85,7 @@ const qualityInfo = computed(() => {
                         ? 'bg-white/10 text-red-400 hover:bg-white/15'
                         : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                 "
-                :title="voiceStore.isSoundMuted ? 'Undeafen' : 'Deafen'"
+                :title="voiceStore.isSoundMuted ? t('chat.voice.undeafen') : t('chat.voice.deafen')"
                 @click="voiceStore.toggleSound()"
             >
                 <VolumeOff v-if="voiceStore.isSoundMuted" :size="15" />
@@ -98,7 +100,7 @@ const qualityInfo = computed(() => {
                         ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
                         : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                 "
-                :title="voiceStore.isScreenSharing ? 'Stop Sharing' : 'Share Screen'"
+                :title="voiceStore.isScreenSharing ? t('chat.voice.stopSharing') : t('chat.voice.shareScreen')"
                 @click="toggleScreenShare"
             >
                 <MonitorOff v-if="voiceStore.isScreenSharing" :size="15" />

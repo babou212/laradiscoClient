@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/notifications';
+import { t } from '@/i18n';
 import { getEcho } from '@/lib/echo';
 import router from '@/router';
 import { useE2eeStore } from '@/stores/e2ee';
@@ -244,21 +245,24 @@ export const useNotificationsStore = defineStore('notifications', () => {
         let title: string;
 
         if (data.notification_type === 'direct_message') {
-            title = `Message from ${data.sender_username}`;
+            title = t('notifications.messageFrom', { user: data.sender_username });
         } else {
             const mentionLabel =
                 data.mention_type === 'everyone'
-                    ? '@everyone'
+                    ? t('notifications.mentionEveryone')
                     : data.mention_type === 'here'
-                      ? '@here'
-                      : `@${data.sender_username}`;
-            title = `${mentionLabel} in #${data.channel_name}`;
+                      ? t('notifications.mentionHere')
+                      : t('notifications.mentionUser', { user: data.sender_username });
+            title = t('notifications.mentionInChannel', {
+                mention: mentionLabel,
+                channel: data.channel_name ?? '',
+            });
         }
 
         const displayContent = data.decrypted_content ?? null;
         const body = displayContent
             ? `${data.sender_username}: ${displayContent.substring(0, 100)}`
-            : `${data.sender_username}: [Encrypted message]`;
+            : `${data.sender_username}: ${t('notifications.encryptedMessage')}`;
 
         window.api.notifications.show({ title, body, notificationId: notification.id });
     };

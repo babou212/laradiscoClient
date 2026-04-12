@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -24,6 +25,7 @@ const emit = defineEmits<{
     (e: 'complete'): void;
 }>();
 
+const { t } = useI18n();
 const e2eeStore = useE2eeStore();
 
 const pin = ref('');
@@ -50,10 +52,10 @@ async function handleCreate() {
             success.value = true;
             setTimeout(() => emit('complete'), 1500);
         } else {
-            error.value = e2eeStore.error ?? 'Backup failed';
+            error.value = e2eeStore.error ?? t('e2ee.backup.backupFailed');
         }
     } catch (err: unknown) {
-        error.value = err instanceof Error ? err.message : 'Backup failed';
+        error.value = err instanceof Error ? err.message : t('e2ee.backup.backupFailed');
     } finally {
         processing.value = false;
     }
@@ -70,10 +72,10 @@ async function handleRestore() {
             success.value = true;
             setTimeout(() => emit('complete'), 1500);
         } else {
-            error.value = e2eeStore.error ?? 'Incorrect PIN';
+            error.value = e2eeStore.error ?? t('e2ee.wizard.incorrectPin');
         }
     } catch (err: unknown) {
-        error.value = err instanceof Error ? err.message : 'Restore failed';
+        error.value = err instanceof Error ? err.message : t('e2ee.backup.restoreFailed');
     } finally {
         processing.value = false;
     }
@@ -101,14 +103,10 @@ function handleSubmit() {
             <DialogHeader>
                 <DialogTitle class="flex items-center gap-2">
                     <Key class="text-primary h-5 w-5" />
-                    {{ restoreMode ? 'Restore Key Backup' : 'Create Key Backup' }}
+                    {{ restoreMode ? t('e2ee.backup.restoreTitle') : t('e2ee.backup.createTitle') }}
                 </DialogTitle>
                 <DialogDescription>
-                    {{
-                        restoreMode
-                            ? 'Enter the PIN you used when creating your backup.'
-                            : "Choose a PIN to encrypt your key backup. You'll need this PIN to restore your keys on another device."
-                    }}
+                    {{ restoreMode ? t('e2ee.backup.restoreDescription') : t('e2ee.backup.createDescription') }}
                 </DialogDescription>
             </DialogHeader>
 
@@ -118,7 +116,7 @@ function handleSubmit() {
                     <CheckCircle2 class="h-6 w-6 text-green-500" />
                 </div>
                 <p class="font-medium">
-                    {{ restoreMode ? 'Keys Restored Successfully!' : 'Backup Created Successfully!' }}
+                    {{ restoreMode ? t('e2ee.backup.keysRestored') : t('e2ee.backup.backupCreated') }}
                 </p>
             </div>
 
@@ -126,29 +124,35 @@ function handleSubmit() {
             <div v-else class="space-y-4 py-2">
                 <div>
                     <Label for="backup-pin-input">
-                        {{ restoreMode ? 'Backup PIN' : 'Choose a PIN' }}
+                        {{ restoreMode ? t('e2ee.backup.backupPinLabel') : t('e2ee.backup.choosePinLabel') }}
                     </Label>
                     <Input
                         id="backup-pin-input"
                         v-model="pin"
                         type="password"
-                        :placeholder="restoreMode ? 'Enter your backup PIN' : 'Minimum 6 characters'"
+                        :placeholder="
+                            restoreMode
+                                ? t('e2ee.backup.pinPlaceholderRestore')
+                                : t('e2ee.backup.pinPlaceholderCreate')
+                        "
                         class="mt-1.5"
                         @keydown.enter="handleSubmit"
                     />
                 </div>
 
                 <div v-if="!restoreMode">
-                    <Label for="backup-pin-confirm">Confirm PIN</Label>
+                    <Label for="backup-pin-confirm">{{ t('e2ee.backup.confirmPin') }}</Label>
                     <Input
                         id="backup-pin-confirm"
                         v-model="pinConfirm"
                         type="password"
-                        placeholder="Enter PIN again"
+                        :placeholder="t('e2ee.backup.confirmPinPlaceholder')"
                         class="mt-1.5"
                         @keydown.enter="handleSubmit"
                     />
-                    <p v-if="pinConfirm && !pinsMatch" class="text-destructive mt-1 text-sm">PINs do not match</p>
+                    <p v-if="pinConfirm && !pinsMatch" class="text-destructive mt-1 text-sm">
+                        {{ t('e2ee.backup.pinsDoNotMatch') }}
+                    </p>
                 </div>
 
                 <p v-if="error" class="text-destructive text-sm">
@@ -157,21 +161,21 @@ function handleSubmit() {
                 </p>
 
                 <div v-if="!restoreMode" class="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
-                    <p><strong>Important:</strong></p>
+                    <p><strong>{{ t('e2ee.backup.importantLabel') }}</strong></p>
                     <ul class="mt-1 list-inside list-disc space-y-1">
-                        <li>This PIN is used only for encrypting your key backup</li>
-                        <li>It is never sent to the server</li>
-                        <li>If you forget your PIN, you cannot restore your keys</li>
-                        <li>The backup uses strong encryption (Argon2id + AES-256-GCM)</li>
+                        <li>{{ t('e2ee.backup.warningPinOnly') }}</li>
+                        <li>{{ t('e2ee.backup.warningNeverSent') }}</li>
+                        <li>{{ t('e2ee.backup.warningForgotten') }}</li>
+                        <li>{{ t('e2ee.backup.warningStrong') }}</li>
                     </ul>
                 </div>
             </div>
 
             <DialogFooter v-if="!success">
-                <Button variant="ghost" @click="emit('close')">Cancel</Button>
+                <Button variant="ghost" @click="emit('close')">{{ t('common.cancel') }}</Button>
                 <Button :disabled="!canSubmit || processing" @click="handleSubmit">
                     <Loader2 v-if="processing" class="mr-2 h-4 w-4 animate-spin" />
-                    {{ restoreMode ? 'Restore Keys' : 'Create Backup' }}
+                    {{ restoreMode ? t('e2ee.backup.restoreKeys') : t('e2ee.backup.createBackup') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

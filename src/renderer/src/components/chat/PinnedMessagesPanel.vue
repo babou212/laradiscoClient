@@ -2,6 +2,7 @@
 import { useEventListener } from '@vueuse/core';
 import { Pin, PinOff, X } from 'lucide-vue-next';
 import { onMounted, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
@@ -12,6 +13,7 @@ import type { MessageData } from '@/types/chat';
 
 const avatarStore = useAvatarStore();
 const userNamesStore = useUserNamesStore();
+const { t } = useI18n();
 
 type Props = {
     pinnedMessages: MessageData[];
@@ -44,7 +46,7 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
 });
 
 const displayContent = (message: MessageData): string => {
-    if (message.decrypt_error) return '[Unable to decrypt this message]';
+    if (message.decrypt_error) return t('chat.common.unableToDecryptInline');
     return message.decrypted_content ?? '';
 };
 
@@ -61,7 +63,7 @@ const renderedContent = (message: MessageData): string => {
         <div class="border-border flex items-center justify-between border-b px-3 py-2">
             <div class="flex items-center gap-1.5">
                 <Pin :size="14" class="text-primary" />
-                <span class="text-sm font-semibold">Pinned Messages</span>
+                <span class="text-sm font-semibold">{{ t('chat.pinned.title') }}</span>
             </div>
             <button
                 class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-0.5 transition-colors"
@@ -85,7 +87,7 @@ const renderedContent = (message: MessageData): string => {
             <div v-else-if="pinnedMessages.length === 0" class="py-6 text-center">
                 <div class="text-muted-foreground">
                     <Pin :size="32" class="mx-auto mb-1.5 opacity-50" />
-                    <p class="text-xs">No pinned messages yet.</p>
+                    <p class="text-xs">{{ t('chat.pinned.empty') }}</p>
                 </div>
             </div>
 
@@ -125,7 +127,7 @@ const renderedContent = (message: MessageData): string => {
                         <button
                             v-if="canUnpin"
                             class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive hidden shrink-0 rounded p-0.5 transition-colors group-hover:block"
-                            title="Unpin message"
+                            :title="t('chat.pinned.unpinTooltip')"
                             @click.stop="emit('unpin', message.id)"
                         >
                             <PinOff :size="14" />

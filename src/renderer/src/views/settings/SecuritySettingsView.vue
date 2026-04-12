@@ -13,6 +13,7 @@ import {
     ChevronUp,
 } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { getAuditLog } from '@/api/e2ee';
 import KeyBackupDialog from '@/components/e2ee/KeyBackupDialog.vue';
@@ -30,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/stores/auth';
 import { useE2eeStore, type E2eeDevice } from '@/stores/e2ee';
 
+const { t } = useI18n();
 const e2eeStore = useE2eeStore();
 const authStore = useAuthStore();
 
@@ -70,16 +72,9 @@ async function loadAuditLog() {
 }
 
 function eventLabel(eventType: string): string {
-    const labels: Record<string, string> = {
-        identity_created: 'Identity Created',
-        device_registered: 'Device Registered',
-        device_revoked: 'Device Revoked',
-        backup_created: 'Key Backup Created',
-        backup_restored: 'Key Backup Restored',
-        key_package_uploaded: 'Key Packages Uploaded',
-        signed_prekey_rotated: 'Signed Prekey Rotated',
-    };
-    return labels[eventType] ?? eventType.replace(/_/g, ' ');
+    const key = `settings.security.auditLog.events.${eventType}`;
+    const translated = t(key);
+    return translated === key ? eventType.replace(/_/g, ' ') : translated;
 }
 
 onMounted(async () => {
@@ -127,7 +122,7 @@ async function handleWipe() {
 }
 
 function formatDate(dateStr: string | null): string {
-    if (!dateStr) return 'Never';
+    if (!dateStr) return t('settings.security.dialogs.never');
     return new Date(dateStr).toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
@@ -142,8 +137,8 @@ function formatDate(dateStr: string | null): string {
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Encryption</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Manage your end-to-end encryption settings</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.security.encryption.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.security.encryption.description') }}</p>
             </div>
 
             <div class="p-6">
@@ -159,13 +154,17 @@ function formatDate(dateStr: string | null): string {
                     </div>
                     <div>
                         <p class="font-medium">
-                            {{ e2eeStore.isReady ? 'Encryption Active' : 'Encryption Not Set Up' }}
+                            {{
+                                e2eeStore.isReady
+                                    ? t('settings.security.encryption.active')
+                                    : t('settings.security.encryption.notSetUp')
+                            }}
                         </p>
                         <p class="text-muted-foreground text-sm">
                             {{
                                 e2eeStore.isReady
-                                    ? 'Your messages are end-to-end encrypted.'
-                                    : 'Set up encryption to secure your messages.'
+                                    ? t('settings.security.encryption.activeDescription')
+                                    : t('settings.security.encryption.notSetUpDescription')
                             }}
                         </p>
                     </div>
@@ -175,9 +174,9 @@ function formatDate(dateStr: string | null): string {
 
         <div v-if="e2eeStore.isReady" class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Key Backup</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.security.keyBackup.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    Back up your keys to use encryption on multiple devices
+                    {{ t('settings.security.keyBackup.description') }}
                 </p>
             </div>
 
@@ -187,13 +186,17 @@ function formatDate(dateStr: string | null): string {
                         <Key class="text-muted-foreground h-5 w-5" />
                         <div>
                             <p class="font-medium">
-                                {{ e2eeStore.hasBackup ? 'Backup Exists' : 'No Backup' }}
+                                {{
+                                    e2eeStore.hasBackup
+                                        ? t('settings.security.keyBackup.exists')
+                                        : t('settings.security.keyBackup.none')
+                                }}
                             </p>
                             <p class="text-muted-foreground text-sm">
                                 {{
                                     e2eeStore.hasBackup
-                                        ? 'Your keys are backed up and can be restored on new devices.'
-                                        : 'Create a backup to use encryption on other devices.'
+                                        ? t('settings.security.keyBackup.existsDescription')
+                                        : t('settings.security.keyBackup.noneDescription')
                                 }}
                             </p>
                         </div>
@@ -203,7 +206,11 @@ function formatDate(dateStr: string | null): string {
                         size="sm"
                         @click="showBackupDialog = true"
                     >
-                        {{ e2eeStore.hasBackup ? 'Update Backup' : 'Create Backup' }}
+                        {{
+                            e2eeStore.hasBackup
+                                ? t('settings.security.keyBackup.update')
+                                : t('settings.security.keyBackup.create')
+                        }}
                     </Button>
                 </div>
             </div>
@@ -213,9 +220,9 @@ function formatDate(dateStr: string | null): string {
             <div class="bg-muted/50 border-b px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-lg font-semibold">Devices</h2>
+                        <h2 class="text-lg font-semibold">{{ t('settings.security.devices.title') }}</h2>
                         <p class="text-muted-foreground mt-1 text-sm">
-                            Manage devices linked to your encryption identity
+                            {{ t('settings.security.devices.description') }}
                         </p>
                     </div>
                 </div>
@@ -227,7 +234,7 @@ function formatDate(dateStr: string | null): string {
                 </div>
 
                 <div v-else-if="e2eeStore.devices.length === 0" class="text-muted-foreground py-4 text-center text-sm">
-                    No devices found.
+                    {{ t('settings.security.devices.empty') }}
                 </div>
 
                 <div v-else class="space-y-3">
@@ -242,10 +249,12 @@ function formatDate(dateStr: string | null): string {
                                 <div class="flex items-center gap-2">
                                     <p class="font-medium">{{ device.device_name }}</p>
                                     <Badge v-if="device.is_current" variant="secondary" class="text-xs">
-                                        This device
+                                        {{ t('settings.security.devices.thisDevice') }}
                                     </Badge>
                                 </div>
-                                <p class="text-muted-foreground text-xs">Added {{ formatDate(device.created_at) }}</p>
+                                <p class="text-muted-foreground text-xs">
+                                    {{ t('settings.security.devices.added', { date: formatDate(device.created_at) }) }}
+                                </p>
                             </div>
                         </div>
 
@@ -271,9 +280,9 @@ function formatDate(dateStr: string | null): string {
             <div class="bg-muted/50 border-b px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-lg font-semibold">Audit Log</h2>
+                        <h2 class="text-lg font-semibold">{{ t('settings.security.auditLog.title') }}</h2>
                         <p class="text-muted-foreground mt-1 text-sm">
-                            Key transparency log — cryptographic record of all encryption events
+                            {{ t('settings.security.auditLog.description') }}
                         </p>
                     </div>
                     <div class="flex gap-1">
@@ -291,7 +300,9 @@ function formatDate(dateStr: string | null): string {
                 </div>
 
                 <div v-else-if="auditLog.length === 0" class="text-muted-foreground py-4 text-center text-sm">
-                    <Button variant="outline" size="sm" @click="loadAuditLog"> Load audit log </Button>
+                    <Button variant="outline" size="sm" @click="loadAuditLog">
+                        {{ t('settings.security.auditLog.load') }}
+                    </Button>
                 </div>
 
                 <div v-else class="max-h-80 space-y-2 overflow-y-auto">
@@ -306,10 +317,12 @@ function formatDate(dateStr: string | null): string {
                             </span>
                         </div>
                         <div v-if="entry.device_id" class="text-muted-foreground mt-1 text-xs">
-                            Device: <code class="bg-muted rounded px-1">{{ entry.device_id.slice(0, 16) }}...</code>
+                            {{ t('settings.security.auditLog.deviceLabel') }}
+                            <code class="bg-muted rounded px-1">{{ entry.device_id.slice(0, 16) }}...</code>
                         </div>
                         <div v-if="entry.entry_hash" class="text-muted-foreground mt-1 text-xs">
-                            Hash: <code class="bg-muted rounded px-1">{{ entry.entry_hash.slice(0, 16) }}...</code>
+                            {{ t('settings.security.auditLog.hashLabel') }}
+                            <code class="bg-muted rounded px-1">{{ entry.entry_hash.slice(0, 16) }}...</code>
                         </div>
                     </div>
                 </div>
@@ -318,18 +331,20 @@ function formatDate(dateStr: string | null): string {
 
         <div v-if="e2eeStore.isReady" class="border-destructive/50 bg-card rounded-lg border">
             <div class="border-destructive/50 bg-destructive/5 border-b px-6 py-4">
-                <h2 class="text-destructive text-lg font-semibold">Danger Zone</h2>
+                <h2 class="text-destructive text-lg font-semibold">{{ t('settings.security.danger.title') }}</h2>
             </div>
 
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="font-medium">Reset Encryption</p>
+                        <p class="font-medium">{{ t('settings.security.danger.resetTitle') }}</p>
                         <p class="text-muted-foreground text-sm">
-                            Delete all local encryption keys. You will need to set up encryption again.
+                            {{ t('settings.security.danger.resetDescription') }}
                         </p>
                     </div>
-                    <Button variant="destructive" size="sm" @click="showWipeDialog = true"> Reset </Button>
+                    <Button variant="destructive" size="sm" @click="showWipeDialog = true">
+                        {{ t('settings.security.danger.reset') }}
+                    </Button>
                 </div>
             </div>
         </div>
@@ -344,17 +359,22 @@ function formatDate(dateStr: string | null): string {
         >
             <DialogContent class="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Revoke Device</DialogTitle>
+                    <DialogTitle>{{ t('settings.security.dialogs.revokeTitle') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to revoke <strong>{{ targetDevice?.device_name }}</strong
-                        >? This device will no longer be able to decrypt new messages.
+                        {{
+                            t('settings.security.dialogs.revokeDescription', {
+                                name: targetDevice?.device_name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="ghost" @click="showRevokeDialog = false">Cancel</Button>
+                    <Button variant="ghost" @click="showRevokeDialog = false">
+                        {{ t('settings.common.cancel') }}
+                    </Button>
                     <Button variant="destructive" :disabled="processing" @click="handleRevoke">
                         <Loader2 v-if="processing" class="mr-2 h-4 w-4 animate-spin" />
-                        Revoke
+                        {{ t('settings.security.dialogs.revoke') }}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -370,17 +390,23 @@ function formatDate(dateStr: string | null): string {
         >
             <DialogContent class="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Rename Device</DialogTitle>
-                    <DialogDescription> Enter a new name for this device. </DialogDescription>
+                    <DialogTitle>{{ t('settings.security.dialogs.renameTitle') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.security.dialogs.renameDescription') }}</DialogDescription>
                 </DialogHeader>
                 <div class="py-2">
-                    <Input v-model="newDeviceName" placeholder="Device name" @keydown.enter="handleRename" />
+                    <Input
+                        v-model="newDeviceName"
+                        :placeholder="t('settings.security.dialogs.renamePlaceholder')"
+                        @keydown.enter="handleRename"
+                    />
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" @click="showRenameDialog = false">Cancel</Button>
+                    <Button variant="ghost" @click="showRenameDialog = false">
+                        {{ t('settings.common.cancel') }}
+                    </Button>
                     <Button :disabled="!newDeviceName.trim() || processing" @click="handleRename">
                         <Loader2 v-if="processing" class="mr-2 h-4 w-4 animate-spin" />
-                        Rename
+                        {{ t('settings.security.dialogs.rename') }}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -398,18 +424,19 @@ function formatDate(dateStr: string | null): string {
                 <DialogHeader>
                     <DialogTitle class="text-destructive flex items-center gap-2">
                         <AlertTriangle class="h-5 w-5" />
-                        Reset Encryption
+                        {{ t('settings.security.dialogs.wipeTitle') }}
                     </DialogTitle>
                     <DialogDescription>
-                        This will permanently delete all encryption keys from this device. You will lose the ability to
-                        decrypt existing messages unless you have a key backup. This action cannot be undone.
+                        {{ t('settings.security.dialogs.wipeDescription') }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="ghost" @click="showWipeDialog = false">Cancel</Button>
+                    <Button variant="ghost" @click="showWipeDialog = false">
+                        {{ t('settings.common.cancel') }}
+                    </Button>
                     <Button variant="destructive" :disabled="processing" @click="handleWipe">
                         <Loader2 v-if="processing" class="mr-2 h-4 w-4 animate-spin" />
-                        Delete All Keys
+                        {{ t('settings.security.dialogs.wipeConfirm') }}
                     </Button>
                 </DialogFooter>
             </DialogContent>

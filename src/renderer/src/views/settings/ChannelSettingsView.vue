@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { ChevronDown, ChevronRight, Folder, Hash, Lock, Pencil, Plus, Shield, Trash2, Volume2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { extractValidationErrors } from '@/api/errors';
 import {
     createSettingsChannel,
@@ -33,6 +34,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsChannelsQuery } from '@/queries/settings/channels';
+
+const { t } = useI18n();
 
 type Permission = { value: string; label: string };
 type Role = { id: string; name: string; color: string };
@@ -467,19 +470,19 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
-                    <h2 class="text-lg font-semibold">Channels</h2>
+                    <h2 class="text-lg font-semibold">{{ t('settings.channels.title') }}</h2>
                     <p class="text-muted-foreground mt-1 text-sm">
-                        Manage categories, channels, and per-channel permission overrides.
+                        {{ t('settings.channels.description') }}
                     </p>
                 </div>
                 <div class="flex gap-2">
                     <Button @click="openCreateCategory" size="sm" variant="outline">
                         <Folder class="mr-1.5 h-4 w-4" />
-                        New Category
+                        {{ t('settings.channels.newCategory') }}
                     </Button>
                     <Button @click="openCreateChannel()" size="sm">
                         <Plus class="mr-1.5 h-4 w-4" />
-                        New Channel
+                        {{ t('settings.channels.newChannel') }}
                     </Button>
                 </div>
             </div>
@@ -487,7 +490,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
             <div class="p-6">
                 <!-- Loading -->
                 <div v-if="isLoading" class="flex items-center justify-center py-8">
-                    <div class="text-muted-foreground text-sm">Loading channels...</div>
+                    <div class="text-muted-foreground text-sm">{{ t('settings.channels.loading') }}</div>
                 </div>
 
                 <!-- Empty -->
@@ -498,8 +501,8 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <div class="border-border bg-muted mb-3 rounded-full border p-3">
                         <Hash class="text-muted-foreground h-6 w-6" />
                     </div>
-                    <p class="text-sm font-medium">No channels yet</p>
-                    <p class="text-muted-foreground mt-1 text-sm">Create a category and add channels to get started.</p>
+                    <p class="text-sm font-medium">{{ t('settings.channels.emptyTitle') }}</p>
+                    <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.channels.emptyDescription') }}</p>
                 </div>
 
                 <!-- Category list -->
@@ -556,9 +559,9 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                         <div class="flex items-center gap-2">
                                             <span class="text-sm font-medium">{{ channel.name }}</span>
                                             <Lock v-if="channel.is_private" class="text-muted-foreground h-3 w-3" />
-                                            <Badge v-if="channel.is_private" variant="secondary" class="text-xs"
-                                                >Private</Badge
-                                            >
+                                            <Badge v-if="channel.is_private" variant="secondary" class="text-xs">{{
+                                                t('settings.channels.privateBadge')
+                                            }}</Badge>
                                         </div>
                                         <p v-if="channel.topic" class="text-muted-foreground text-xs">
                                             {{ channel.topic }}
@@ -592,7 +595,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                 v-if="category.channels.length === 0"
                                 class="text-muted-foreground px-4 py-4 text-center text-xs"
                             >
-                                No channels in this category.
+                                {{ t('settings.channels.emptyCategory') }}
                             </div>
                         </div>
                     </div>
@@ -603,43 +606,53 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showCreateChannelDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Create Channel</DialogTitle>
-                    <DialogDescription>Add a new channel to the server.</DialogDescription>
+                    <DialogTitle>{{ t('settings.channels.create.title') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.channels.create.description') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitCreateChannel" class="space-y-4">
                     <div class="grid gap-2">
-                        <Label for="ch-name">Name</Label>
-                        <Input id="ch-name" v-model="channelForm.name" placeholder="channel-name" />
+                        <Label for="ch-name">{{ t('settings.channels.create.name') }}</Label>
+                        <Input
+                            id="ch-name"
+                            v-model="channelForm.name"
+                            :placeholder="t('settings.channels.create.namePlaceholder')"
+                        />
                         <p v-if="channelErrors.name" class="text-destructive text-sm">{{ channelErrors.name }}</p>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label>Type</Label>
+                        <Label>{{ t('settings.channels.create.type') }}</Label>
                         <Select v-model="channelForm.type">
                             <SelectTrigger>
-                                <SelectValue placeholder="Select type..." />
+                                <SelectValue :placeholder="t('settings.channels.create.typePlaceholder')" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="voice">Voice</SelectItem>
+                                <SelectItem value="text">{{ t('settings.channels.create.typeText') }}</SelectItem>
+                                <SelectItem value="voice">{{ t('settings.channels.create.typeVoice') }}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ch-topic">Topic</Label>
-                        <Input id="ch-topic" v-model="channelForm.topic" placeholder="What's this channel about?" />
+                        <Label for="ch-topic">{{ t('settings.channels.create.topic') }}</Label>
+                        <Input
+                            id="ch-topic"
+                            v-model="channelForm.topic"
+                            :placeholder="t('settings.channels.create.topicPlaceholder')"
+                        />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label>Category</Label>
+                        <Label>{{ t('settings.channels.create.category') }}</Label>
                         <Select v-model="channelForm.category_id">
                             <SelectTrigger>
-                                <SelectValue placeholder="None" />
+                                <SelectValue :placeholder="t('settings.channels.create.categoryNone')" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem :value="null as any">None</SelectItem>
+                                <SelectItem :value="null as any">{{
+                                    t('settings.channels.create.categoryNone')
+                                }}</SelectItem>
                                 <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
                                     {{ cat.name }}
                                 </SelectItem>
@@ -653,14 +666,18 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                             :model-value="channelForm.is_private"
                             @update:model-value="channelForm.is_private = !!$event"
                         />
-                        <Label for="ch-private" class="text-sm"
-                            >Private channel (requires explicit role/user access)</Label
-                        >
+                        <Label for="ch-private" class="text-sm">{{
+                            t('settings.channels.create.privateLabel')
+                        }}</Label>
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showCreateChannelDialog = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Create Channel</Button>
+                        <Button type="button" variant="outline" @click="showCreateChannelDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{
+                            t('settings.channels.create.submit')
+                        }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -669,13 +686,13 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showEditChannelDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Edit Channel</DialogTitle>
-                    <DialogDescription>Update channel settings.</DialogDescription>
+                    <DialogTitle>{{ t('settings.channels.edit.title') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.channels.edit.description') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitEditChannel" class="space-y-4">
                     <div class="grid gap-2">
-                        <Label for="ech-name">Name</Label>
+                        <Label for="ech-name">{{ t('settings.channels.edit.name') }}</Label>
                         <Input id="ech-name" v-model="editChannelForm.name" />
                         <p v-if="editChannelErrors.name" class="text-destructive text-sm">
                             {{ editChannelErrors.name }}
@@ -683,31 +700,33 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label>Type</Label>
+                        <Label>{{ t('settings.channels.create.type') }}</Label>
                         <Select v-model="editChannelForm.type">
                             <SelectTrigger>
-                                <SelectValue placeholder="Select type..." />
+                                <SelectValue :placeholder="t('settings.channels.create.typePlaceholder')" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="voice">Voice</SelectItem>
+                                <SelectItem value="text">{{ t('settings.channels.create.typeText') }}</SelectItem>
+                                <SelectItem value="voice">{{ t('settings.channels.create.typeVoice') }}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ech-topic">Topic</Label>
+                        <Label for="ech-topic">{{ t('settings.channels.edit.topic') }}</Label>
                         <Input id="ech-topic" v-model="editChannelForm.topic" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label>Category</Label>
+                        <Label>{{ t('settings.channels.edit.category') }}</Label>
                         <Select v-model="editChannelForm.category_id">
                             <SelectTrigger>
-                                <SelectValue placeholder="None" />
+                                <SelectValue :placeholder="t('settings.channels.create.categoryNone')" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem :value="null as any">None</SelectItem>
+                                <SelectItem :value="null as any">{{
+                                    t('settings.channels.create.categoryNone')
+                                }}</SelectItem>
                                 <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
                                     {{ cat.name }}
                                 </SelectItem>
@@ -716,7 +735,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="ech-slowmode">Slowmode (seconds)</Label>
+                        <Label for="ech-slowmode">{{ t('settings.channels.edit.slowmode') }}</Label>
                         <Input
                             id="ech-slowmode"
                             type="number"
@@ -732,12 +751,14 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                             :model-value="editChannelForm.is_private"
                             @update:model-value="editChannelForm.is_private = !!$event"
                         />
-                        <Label for="ech-private" class="text-sm">Private channel</Label>
+                        <Label for="ech-private" class="text-sm">{{ t('settings.channels.edit.privateLabel') }}</Label>
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showEditChannelDialog = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Save Changes</Button>
+                        <Button type="button" variant="outline" @click="showEditChannelDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{ t('settings.channels.edit.submit') }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -746,18 +767,18 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showDeleteChannelDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Delete Channel</DialogTitle>
+                    <DialogTitle>{{ t('settings.channels.delete.title') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete
-                        <strong>{{ deletingChannel?.name }}</strong
-                        >? All messages in this channel will be lost. This cannot be undone.
+                        {{ t('settings.channels.delete.description', { name: deletingChannel?.name ?? '' }) }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteChannelDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteChannel"
-                        >Delete Channel</Button
-                    >
+                    <Button variant="outline" @click="showDeleteChannelDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteChannel">{{
+                        t('settings.channels.delete.submit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -765,21 +786,27 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showCreateCategoryDialog">
             <DialogContent class="sm:max-w-sm">
                 <DialogHeader>
-                    <DialogTitle>Create Category</DialogTitle>
-                    <DialogDescription>Add a new category to organize channels.</DialogDescription>
+                    <DialogTitle>{{ t('settings.channels.category.createTitle') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.channels.category.createDescription') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitCreateCategory" class="space-y-4">
                     <div class="grid gap-2">
-                        <Label for="cat-name">Name</Label>
-                        <Input id="cat-name" v-model="categoryForm.name" placeholder="Category name" />
+                        <Label for="cat-name">{{ t('settings.channels.category.name') }}</Label>
+                        <Input
+                            id="cat-name"
+                            v-model="categoryForm.name"
+                            :placeholder="t('settings.channels.category.namePlaceholder')"
+                        />
                         <p v-if="categoryErrors.name" class="text-destructive text-sm">{{ categoryErrors.name }}</p>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showCreateCategoryDialog = false"
-                            >Cancel</Button
-                        >
-                        <Button type="submit" :disabled="processing">Create</Button>
+                        <Button type="button" variant="outline" @click="showCreateCategoryDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{
+                            t('settings.channels.category.create')
+                        }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -788,21 +815,25 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showEditCategoryDialog">
             <DialogContent class="sm:max-w-sm">
                 <DialogHeader>
-                    <DialogTitle>Edit Category</DialogTitle>
-                    <DialogDescription>Update the category name.</DialogDescription>
+                    <DialogTitle>{{ t('settings.channels.category.editTitle') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.channels.category.editDescription') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitEditCategory" class="space-y-4">
                     <div class="grid gap-2">
-                        <Label for="ecat-name">Name</Label>
+                        <Label for="ecat-name">{{ t('settings.channels.category.name') }}</Label>
                         <Input id="ecat-name" v-model="editCategoryForm.name" />
                         <p v-if="editCategoryErrors.name" class="text-destructive text-sm">
                             {{ editCategoryErrors.name }}
                         </p>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showEditCategoryDialog = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Save</Button>
+                        <Button type="button" variant="outline" @click="showEditCategoryDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{
+                            t('settings.channels.category.save')
+                        }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -811,18 +842,22 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showDeleteCategoryDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Delete Category</DialogTitle>
+                    <DialogTitle>{{ t('settings.channels.category.deleteTitle') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete
-                        <strong>{{ deletingCategory?.name }}</strong
-                        >? All channels in this category will also be deleted. This cannot be undone.
+                        {{
+                            t('settings.channels.category.deleteDescription', {
+                                name: deletingCategory?.name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteCategoryDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteCategory"
-                        >Delete Category</Button
-                    >
+                    <Button variant="outline" @click="showDeleteCategoryDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="processing" @click="confirmDeleteCategory">{{
+                        t('settings.channels.category.deleteSubmit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -830,19 +865,21 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         <Dialog v-model:open="showOverridesDialog">
             <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Permission Overrides</DialogTitle>
+                    <DialogTitle>{{ t('settings.channels.overrides.title') }}</DialogTitle>
                     <DialogDescription>
-                        Manage permission overrides for
-                        <strong>#{{ overridesChannel?.name }}</strong
-                        >. Overrides allow or deny specific permissions for roles on this channel.
+                        {{
+                            t('settings.channels.overrides.description', { name: overridesChannel?.name ?? '' })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div v-if="loadingOverrides" class="text-muted-foreground py-4 text-center text-sm">Loading...</div>
+                <div v-if="loadingOverrides" class="text-muted-foreground py-4 text-center text-sm">
+                    {{ t('settings.channels.overrides.loading') }}
+                </div>
 
                 <div v-else class="space-y-4">
                     <div v-if="channelOverrides.length > 0" class="space-y-2">
-                        <h3 class="text-sm font-semibold">Current Overrides</h3>
+                        <h3 class="text-sm font-semibold">{{ t('settings.channels.overrides.current') }}</h3>
                         <div
                             v-for="override in channelOverrides"
                             :key="override.id"
@@ -856,10 +893,18 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                         :style="{ backgroundColor: override.role.color }"
                                     />
                                     <span class="text-sm font-medium">
-                                        {{ override.role?.name ?? override.user?.username ?? 'Unknown' }}
+                                        {{
+                                            override.role?.name ??
+                                            override.user?.username ??
+                                            t('settings.channels.unknown')
+                                        }}
                                     </span>
                                     <Badge variant="secondary" class="text-xs">
-                                        {{ override.role ? 'Role' : 'User' }}
+                                        {{
+                                            override.role
+                                                ? t('settings.channels.roleLabel')
+                                                : t('settings.channels.userLabel')
+                                        }}
                                     </Badge>
                                 </div>
                                 <Button
@@ -894,13 +939,13 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                     <Separator />
 
                     <div>
-                        <h3 class="mb-3 text-sm font-semibold">Add Override</h3>
+                        <h3 class="mb-3 text-sm font-semibold">{{ t('settings.channels.overrides.add') }}</h3>
                         <form @submit.prevent="submitOverride" class="space-y-3">
                             <div class="grid gap-2">
-                                <Label>Role</Label>
+                                <Label>{{ t('settings.channels.overrides.role') }}</Label>
                                 <Select v-model="overrideForm.role_id">
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a role..." />
+                                        <SelectValue :placeholder="t('settings.channels.overrides.rolePlaceholder')" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem
@@ -922,7 +967,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
 
                             <div class="space-y-2">
                                 <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                                    Permissions
+                                    {{ t('settings.channels.overrides.permissions') }}
                                 </p>
                                 <div class="grid gap-1.5">
                                     <div
@@ -942,7 +987,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                                 ]"
                                                 @click="toggleOverridePermission('allow', perm)"
                                             >
-                                                Allow
+                                                {{ t('settings.channels.overrides.allow') }}
                                             </button>
                                             <button
                                                 type="button"
@@ -954,7 +999,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                                 ]"
                                                 @click="toggleOverridePermission('deny', perm)"
                                             >
-                                                Deny
+                                                {{ t('settings.channels.overrides.deny') }}
                                             </button>
                                         </div>
                                     </div>
@@ -963,7 +1008,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
 
                             <DialogFooter>
                                 <Button type="submit" :disabled="processing || !overrideForm.role_id" size="sm">
-                                    Save Override
+                                    {{ t('settings.channels.overrides.save') }}
                                 </Button>
                             </DialogFooter>
                         </form>

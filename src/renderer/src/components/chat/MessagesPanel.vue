@@ -2,6 +2,7 @@
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
@@ -94,6 +95,7 @@ const router = useRouter();
 const route = useRoute();
 const threadStore = useThreadStore();
 const currentUser = computed(() => authStore.user);
+const { t } = useI18n();
 
 const channelId = computed(() => props.channel?.id);
 const channelIdNum = computed(() => (props.channel?.id != null ? Number(props.channel.id) : undefined));
@@ -380,7 +382,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     let messageContent = content;
 
     if (!e2eeStore.isReady) {
-        sendError.value = 'Encryption is not set up. Please complete E2EE setup before sending messages.';
+        sendError.value = t('chat.messages.encryptionNotSetUp');
         return;
     }
 
@@ -502,7 +504,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             });
         } catch (err) {
             console.error('Failed to upload attachment:', err);
-            sendError.value = `Failed to upload ${staged.file.name}. Please try again.`;
+            sendError.value = t('chat.messages.failedToUpload', { fileName: staged.file.name });
             uploadingFiles.value = [];
             return;
         }
@@ -536,7 +538,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             );
         }
     } catch {
-        sendError.value = 'Failed to encrypt message. Please try again.';
+        sendError.value = t('chat.messages.failedToEncrypt');
         return;
     }
 
@@ -649,7 +651,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const retryAfter = parseInt(axiosErr.response.headers?.['retry-after'] ?? '60', 10);
             startRateLimitCooldown(retryAfter);
         } else {
-            sendError.value = 'Failed to send message. Please try again.';
+            sendError.value = t('chat.messages.failedToSend');
         }
     }
 };
@@ -793,7 +795,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 <MessageSquare v-else :size="20" class="text-muted-foreground mr-2" />
                 <div class="flex-1">
                     <h2 class="flex items-center gap-1.5 font-semibold">
-                        {{ channel?.name || 'Select a channel' }}
+                        {{ channel?.name || t('chat.messages.selectChannel') }}
                     </h2>
                     <p v-if="channel?.topic" class="text-muted-foreground text-xs">
                         {{ channel.topic }}
@@ -805,7 +807,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                         <button
                             class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
                             :class="{ 'bg-muted text-foreground': showPinnedMessages }"
-                            title="Pinned messages"
+                            :title="t('chat.messages.pinnedMessagesTooltip')"
                             @click="togglePinnedPanel"
                         >
                             <Pin :size="18" />
@@ -829,7 +831,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                         v-if="e2eeStore.isReady"
                         class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
                         :class="{ 'bg-muted text-foreground': showSearch }"
-                        title="Search messages"
+                        :title="t('chat.messages.searchMessagesTooltip')"
                         @click="showSearch = !showSearch"
                     >
                         <Search :size="18" />
@@ -838,7 +840,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     <button
                         v-if="!isDm"
                         class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                        :title="usersCollapsed ? 'Show members' : 'Hide members'"
+                        :title="usersCollapsed ? t('chat.messages.showMembers') : t('chat.messages.hideMembers')"
                         @click="emit('toggleUsersCollapsed')"
                     >
                         <PanelRightOpen v-if="usersCollapsed" :size="16" />
@@ -861,9 +863,13 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                                 <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
                                 <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />
                                 <p class="text-lg font-semibold">
-                                    {{ isDm ? `Conversation with ${channel?.name}` : `Welcome to #${channel?.name}` }}
+                                    {{
+                                        isDm
+                                            ? t('chat.messages.conversationWith', { name: channel?.name ?? '' })
+                                            : t('chat.messages.welcomeChannel', { channel: channel?.name ?? '' })
+                                    }}
                                 </p>
-                                <p class="text-sm">This is the start of your conversation.</p>
+                                <p class="text-sm">{{ t('chat.messages.conversationStart') }}</p>
                             </div>
                         </div>
 
@@ -916,7 +922,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
             >
                 <span class="flex-1">{{ sendError }}</span>
                 <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="sendError = null">
-                    Dismiss
+                    {{ t('chat.common.dismiss') }}
                 </button>
             </div>
 
@@ -932,7 +938,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 @cancel-reply="replyingToMessage = null"
             />
             <div v-else class="border-border bg-muted/50 text-muted-foreground border-t px-4 py-3 text-center text-sm">
-                You do not have permission to send messages in this channel.
+                {{ t('chat.messages.noPermissionToSend') }}
             </div>
 
             <SearchMessages
@@ -957,14 +963,18 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
         <Dialog v-model:open="showDeleteDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Delete Message</DialogTitle>
+                    <DialogTitle>{{ t('chat.messages.deleteDialogTitle') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete this message? This cannot be undone.
+                        {{ t('chat.messages.deleteDialogDescription') }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
-                    <Button variant="destructive" @click="confirmDeleteMessage">Delete</Button>
+                    <Button variant="outline" @click="showDeleteDialog = false">{{
+                        t('chat.messages.cancel')
+                    }}</Button>
+                    <Button variant="destructive" @click="confirmDeleteMessage">{{
+                        t('chat.messages.deleteConfirm')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronRight } from 'lucide-vue-next';
 import { computed, reactive, shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import UserProfilePanel from './UserProfilePanel.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +16,7 @@ const authStore = useAuthStore();
 const avatarStore = useAvatarStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const selectedUser = shallowRef<OnlineUser | null>(null);
 const showUserProfile = shallowRef(false);
@@ -87,28 +89,28 @@ const statusSections = computed(() => {
     if (usersByStatus.value.online.length > 0) {
         sections.push({
             key: 'online',
-            label: `Online — ${usersByStatus.value.online.length}`,
+            label: t('chat.onlineUsers.online', { count: usersByStatus.value.online.length }),
             users: usersByStatus.value.online,
         });
     }
     if (usersByStatus.value.idle.length > 0) {
         sections.push({
             key: 'idle',
-            label: `Idle — ${usersByStatus.value.idle.length}`,
+            label: t('chat.onlineUsers.idle', { count: usersByStatus.value.idle.length }),
             users: usersByStatus.value.idle,
         });
     }
     if (usersByStatus.value.dnd.length > 0) {
         sections.push({
             key: 'dnd',
-            label: `Do Not Disturb — ${usersByStatus.value.dnd.length}`,
+            label: t('chat.onlineUsers.dnd', { count: usersByStatus.value.dnd.length }),
             users: usersByStatus.value.dnd,
         });
     }
     if (usersByStatus.value.offline.length > 0) {
         sections.push({
             key: 'offline',
-            label: `Offline — ${usersByStatus.value.offline.length}`,
+            label: t('chat.onlineUsers.offline', { count: usersByStatus.value.offline.length }),
             users: usersByStatus.value.offline,
             opacity: 'opacity-60 hover:opacity-100',
         });

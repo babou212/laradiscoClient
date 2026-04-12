@@ -3,6 +3,7 @@
 <script setup lang="ts">
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
+import { format } from 'date-fns';
 import { Ban, CalendarIcon, ChevronLeft, ChevronRight, Lock, Search, ShieldAlert, Unlock } from 'lucide-vue-next';
 import {
     DatePickerAnchor,
@@ -23,6 +24,7 @@ import {
     DatePickerTrigger,
 } from 'reka-ui';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getApiErrorMessage } from '@/api/errors';
 import { banUser, unbanUser, jailUser, unjailUser, getSettingsMembers } from '@/api/settings';
 import type { BanData } from '@/api/settings';
@@ -38,9 +40,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { currentDateFnsLocale } from '@/i18n';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsBansQuery } from '@/queries/settings/moderation';
 
+const { t } = useI18n();
 const queryCache = useQueryCache();
 
 // ─── Bans ──────────────────────────────────────────────────────────────────
@@ -183,13 +187,7 @@ async function confirmJail() {
 }
 
 function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return format(new Date(dateStr), 'PP p', { locale: currentDateFnsLocale.value });
 }
 </script>
 
@@ -198,9 +196,9 @@ function formatDate(dateStr: string): string {
         <!-- Active Bans -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Active Bans</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.moderation.bans.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    View and manage banned users. Bans prevent users from accessing the server.
+                    {{ t('settings.moderation.bans.description') }}
                 </p>
             </div>
 
@@ -212,7 +210,9 @@ function formatDate(dateStr: string): string {
                     {{ bansErrorMsg }}
                 </div>
 
-                <div v-if="bansLoading" class="text-muted-foreground text-sm">Loading...</div>
+                <div v-if="bansLoading" class="text-muted-foreground text-sm">
+                    {{ t('settings.moderation.bans.loading') }}
+                </div>
 
                 <div
                     v-else-if="activeBans.length === 0"
@@ -221,8 +221,10 @@ function formatDate(dateStr: string): string {
                     <div class="border-border bg-muted mb-3 rounded-full border p-3">
                         <ShieldAlert class="text-muted-foreground h-6 w-6" />
                     </div>
-                    <p class="text-sm font-medium">No active bans</p>
-                    <p class="text-muted-foreground mt-1 text-sm">All users have access to the server.</p>
+                    <p class="text-sm font-medium">{{ t('settings.moderation.bans.emptyTitle') }}</p>
+                    <p class="text-muted-foreground mt-1 text-sm">
+                        {{ t('settings.moderation.bans.emptyDescription') }}
+                    </p>
                 </div>
 
                 <div v-else class="space-y-2">
@@ -235,20 +237,28 @@ function formatDate(dateStr: string): string {
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-medium">{{ ban.user.name }}</span>
                                 <span class="text-muted-foreground text-xs">@{{ ban.user.username }}</span>
-                                <Badge variant="destructive" class="text-xs">Banned</Badge>
+                                <Badge variant="destructive" class="text-xs">{{
+                                    t('settings.moderation.bans.bannedBadge')
+                                }}</Badge>
                             </div>
                             <div class="text-muted-foreground mt-1 text-xs">
-                                <span v-if="ban.reason">Reason: {{ ban.reason }}</span>
-                                <span v-else>No reason provided</span>
+                                <span v-if="ban.reason">{{
+                                    t('settings.moderation.bans.reasonLabel', { reason: ban.reason })
+                                }}</span>
+                                <span v-else>{{ t('settings.moderation.bans.noReason') }}</span>
                                 <span class="mx-1">&middot;</span>
-                                <span>By {{ ban.banned_by_user.username }}</span>
+                                <span>{{
+                                    t('settings.moderation.bans.byUser', { user: ban.banned_by_user.username })
+                                }}</span>
                                 <span v-if="ban.expires_at" class="mx-1">&middot;</span>
-                                <span v-if="ban.expires_at">Expires: {{ formatDate(ban.expires_at) }}</span>
+                                <span v-if="ban.expires_at">{{
+                                    t('settings.moderation.bans.expires', { date: formatDate(ban.expires_at) })
+                                }}</span>
                             </div>
                         </div>
                         <Button variant="outline" size="sm" :disabled="unbanning" @click="handleUnban(ban)">
                             <Unlock class="mr-1.5 h-3.5 w-3.5" />
-                            Unban
+                            {{ t('settings.moderation.bans.unban') }}
                         </Button>
                     </div>
                 </div>
@@ -258,9 +268,9 @@ function formatDate(dateStr: string): string {
         <!-- Member Actions -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Member Actions</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.moderation.actions.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    Ban or jail members. Jailed users have restricted permissions and can only view channels.
+                    {{ t('settings.moderation.actions.description') }}
                 </p>
             </div>
 
@@ -274,11 +284,15 @@ function formatDate(dateStr: string): string {
 
                 <div class="relative mb-4">
                     <Search class="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                    <Input v-model="memberSearch" placeholder="Search members..." class="pl-9" />
+                    <Input
+                        v-model="memberSearch"
+                        :placeholder="t('settings.moderation.actions.searchPlaceholder')"
+                        class="pl-9"
+                    />
                 </div>
 
                 <div v-if="filteredMembers.length === 0" class="text-muted-foreground py-4 text-center text-sm">
-                    No members found.
+                    {{ t('settings.moderation.actions.empty') }}
                 </div>
 
                 <div v-else class="space-y-2">
@@ -302,11 +316,11 @@ function formatDate(dateStr: string): string {
                                 @click="openJailDialog(member)"
                             >
                                 <Lock class="mr-1.5 h-3.5 w-3.5" />
-                                Jail
+                                {{ t('settings.moderation.actions.jail') }}
                             </Button>
                             <Button variant="destructive" size="sm" :disabled="banning" @click="openBanDialog(member)">
                                 <Ban class="mr-1.5 h-3.5 w-3.5" />
-                                Ban
+                                {{ t('settings.moderation.actions.ban') }}
                             </Button>
                         </div>
                     </div>
@@ -318,10 +332,13 @@ function formatDate(dateStr: string): string {
         <Dialog v-model:open="showBanDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Ban Member</DialogTitle>
+                    <DialogTitle>{{ t('settings.moderation.banDialog.title') }}</DialogTitle>
                     <DialogDescription>
-                        Ban <strong>{{ selectedMember?.display_name }}</strong> from the server. They will not be able
-                        to access any channels.
+                        {{
+                            t('settings.moderation.banDialog.description', {
+                                name: selectedMember?.display_name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -334,11 +351,15 @@ function formatDate(dateStr: string): string {
 
                 <div class="space-y-4">
                     <div class="space-y-2">
-                        <Label for="ban-reason">Reason (optional)</Label>
-                        <Input id="ban-reason" v-model="banReason" placeholder="Why is this user being banned?" />
+                        <Label for="ban-reason">{{ t('settings.moderation.banDialog.reason') }}</Label>
+                        <Input
+                            id="ban-reason"
+                            v-model="banReason"
+                            :placeholder="t('settings.moderation.banDialog.reasonPlaceholder')"
+                        />
                     </div>
                     <div class="space-y-2">
-                        <Label>Expires at (optional)</Label>
+                        <Label>{{ t('settings.moderation.banDialog.expires') }}</Label>
                         <DatePickerRoot v-model="banExpiry" :min-value="minDate">
                             <DatePickerAnchor>
                                 <DatePickerTrigger
@@ -346,7 +367,9 @@ function formatDate(dateStr: string): string {
                                 >
                                     <CalendarIcon class="size-4 opacity-50" />
                                     <span v-if="banExpiry">{{ banExpiry.toString() }}</span>
-                                    <span v-else class="text-muted-foreground">Pick a date</span>
+                                    <span v-else class="text-muted-foreground">{{
+                                        t('settings.moderation.banDialog.pickDate')
+                                    }}</span>
                                 </DatePickerTrigger>
 
                                 <DatePickerContent
@@ -409,13 +432,19 @@ function formatDate(dateStr: string): string {
                                 </DatePickerContent>
                             </DatePickerAnchor>
                         </DatePickerRoot>
-                        <p class="text-muted-foreground text-xs">Leave empty for a permanent ban.</p>
+                        <p class="text-muted-foreground text-xs">
+                            {{ t('settings.moderation.banDialog.permanentHint') }}
+                        </p>
                     </div>
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="showBanDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="banning" @click="confirmBan">Ban User</Button>
+                    <Button variant="outline" @click="showBanDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="banning" @click="confirmBan">{{
+                        t('settings.moderation.banDialog.submit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -424,10 +453,13 @@ function formatDate(dateStr: string): string {
         <Dialog v-model:open="showJailDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Jail Member</DialogTitle>
+                    <DialogTitle>{{ t('settings.moderation.jailDialog.title') }}</DialogTitle>
                     <DialogDescription>
-                        Jail <strong>{{ jailTarget?.display_name }}</strong
-                        >? This will strip all their roles and restrict them to read-only access.
+                        {{
+                            t('settings.moderation.jailDialog.description', {
+                                name: jailTarget?.display_name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -439,8 +471,12 @@ function formatDate(dateStr: string): string {
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="showJailDialog = false">Cancel</Button>
-                    <Button variant="destructive" :disabled="jailing" @click="confirmJail">Jail User</Button>
+                    <Button variant="outline" @click="showJailDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="jailing" @click="confirmJail">{{
+                        t('settings.moderation.jailDialog.submit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

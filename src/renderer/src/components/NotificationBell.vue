@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { formatMessageDate } from '@/lib/utils';
 import { useNotificationsStore, type AppNotification } from '@/stores/notifications';
 
+const { t } = useI18n();
 const router = useRouter();
 const notificationStore = useNotificationsStore();
 const showDropdown = ref(false);
@@ -24,7 +26,7 @@ const getMentionLabel = (notification: AppNotification): string => {
 const getDisplayContent = (notification: AppNotification): string => {
     const { data } = notification;
     if (data.decrypted_content) return data.decrypted_content;
-    return '[Encrypted message]';
+    return t('chat.common.encryptedMessage');
 };
 
 const handleNotificationClick = async (notification: AppNotification) => {
@@ -60,7 +62,7 @@ onUnmounted(() => {
         <button
             data-notification-bell
             class="text-muted-foreground hover:bg-accent hover:text-foreground relative rounded p-1.5 transition-colors"
-            title="Notifications"
+            :title="t('notificationBell.title')"
             @click="showDropdown = !showDropdown"
         >
             <Bell :size="20" />
@@ -78,14 +80,14 @@ onUnmounted(() => {
             class="border-border bg-popover absolute top-full right-0 z-50 mt-2 w-80 overflow-hidden rounded-lg border shadow-lg"
         >
             <div class="border-border flex items-center justify-between border-b px-3 py-2">
-                <h3 class="text-sm font-semibold">Notifications</h3>
+                <h3 class="text-sm font-semibold">{{ t('notificationBell.title') }}</h3>
                 <button
                     v-if="notificationStore.unreadCount > 0"
                     class="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors"
                     @click="notificationStore.markAllAsRead()"
                 >
                     <CheckCheck :size="14" />
-                    Mark all read
+                    {{ t('notificationBell.markAllRead') }}
                 </button>
             </div>
 
@@ -95,7 +97,7 @@ onUnmounted(() => {
                     class="text-muted-foreground flex flex-col items-center justify-center py-8"
                 >
                     <Bell :size="32" class="mb-2 opacity-40" />
-                    <p class="text-sm">No new notifications</p>
+                    <p class="text-sm">{{ t('notificationBell.empty') }}</p>
                 </div>
 
                 <button
@@ -116,13 +118,21 @@ onUnmounted(() => {
                                 <span class="text-primary font-semibold">
                                     {{ notification.data.sender_username }}
                                 </span>
-                                <span class="text-muted-foreground"> sent a message </span>
+                                <span class="text-muted-foreground">
+                                    {{ ' ' + t('notificationBell.sentMessage') + ' ' }}
+                                </span>
                             </template>
                             <template v-else>
                                 <span class="text-primary font-semibold">
                                     {{ getMentionLabel(notification) }}
                                 </span>
-                                <span class="text-muted-foreground"> in #{{ notification.data.channel_name }} </span>
+                                <span class="text-muted-foreground">
+                                    {{
+                                        ' ' +
+                                        t('notificationBell.inChannel', { channel: notification.data.channel_name }) +
+                                        ' '
+                                    }}
+                                </span>
                             </template>
                         </div>
                         <p class="text-foreground mt-0.5 truncate text-sm">
@@ -138,7 +148,7 @@ onUnmounted(() => {
                         role="button"
                         tabindex="0"
                         class="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
-                        title="Mark as read"
+                        :title="t('notificationBell.markAsRead')"
                         @click.stop="notificationStore.markAsRead(notification.id)"
                         @keydown.enter.stop="notificationStore.markAsRead(notification.id)"
                     >

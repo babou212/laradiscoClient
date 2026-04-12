@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceStore } from '@/stores/voice';
 
+const { t } = useI18n();
 const voiceStore = useVoiceStore();
 
 const isRecordingKey = ref(false);
@@ -127,18 +129,18 @@ async function onKeyDown(e: KeyboardEvent) {
 
     if (PURE_MODIFIER_CODES.has(e.code)) return;
     if (UNSUPPORTED_CODES.has(e.code)) {
-        recordError.value = `"${e.code}" cannot be used as a global shortcut.`;
+        recordError.value = t('settings.voice.pushToTalk.errors.unsupportedGlobal', { key: e.code });
         return;
     }
 
     const displayName = keyEventToDisplayName(e);
     if (!displayName) {
-        recordError.value = 'That key is not supported.';
+        recordError.value = t('settings.voice.pushToTalk.errors.keyNotSupported');
         return;
     }
 
     if (!capturedKeyPromise) {
-        recordError.value = 'Key capture not ready. Please try again.';
+        recordError.value = t('settings.voice.pushToTalk.errors.captureNotReady');
         return;
     }
 
@@ -153,7 +155,7 @@ async function onKeyDown(e: KeyboardEvent) {
         });
         stopRecording();
     } catch {
-        recordError.value = 'Failed to capture key. Please try again.';
+        recordError.value = t('settings.voice.pushToTalk.errors.captureFailed');
     }
 }
 
@@ -295,37 +297,40 @@ function formatAccelerator(accel: string): string {
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Microphone</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Select which microphone to use for voice channels</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.voice.microphone.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.voice.microphone.description') }}</p>
             </div>
             <div class="p-6">
-                <label class="mb-2 block text-sm font-medium"> Input Device </label>
+                <label class="mb-2 block text-sm font-medium">{{ t('settings.voice.microphone.input') }}</label>
                 <Select
                     :model-value="voiceStore.selectedMicDeviceId"
                     @update:model-value="(val) => typeof val === 'string' && voiceStore.setMicDevice(val)"
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="System Default" />
+                        <SelectValue :placeholder="t('settings.voice.microphone.systemDefault')" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="default">System Default</SelectItem>
+                        <SelectItem value="default">{{ t('settings.voice.microphone.systemDefault') }}</SelectItem>
                         <SelectItem v-for="mic in voiceStore.availableMics" :key="mic.deviceId" :value="mic.deviceId">
-                            {{ mic.label || `Microphone (${mic.deviceId.slice(0, 8)})` }}
+                            {{
+                                mic.label ||
+                                t('settings.voice.microphone.micFallback', { id: mic.deviceId.slice(0, 8) })
+                            }}
                         </SelectItem>
                     </SelectContent>
                 </Select>
 
                 <Button variant="outline" size="sm" class="mt-3" @click="voiceStore.refreshAvailableMics()">
-                    Refresh Devices
+                    {{ t('settings.voice.microphone.refresh') }}
                 </Button>
             </div>
         </div>
 
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Push to Talk</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.voice.pushToTalk.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    Hold a key to unmute your microphone. Works across all windows and apps.
+                    {{ t('settings.voice.pushToTalk.description') }}
                 </p>
             </div>
             <div class="space-y-4 p-6">
@@ -336,11 +341,11 @@ function formatAccelerator(accel: string): string {
                         :checked="voiceStore.pttEnabled"
                         @change="onPttToggle"
                     />
-                    <span class="text-sm font-medium">Enable Push to Talk</span>
+                    <span class="text-sm font-medium">{{ t('settings.voice.pushToTalk.enable') }}</span>
                 </label>
 
                 <div v-if="voiceStore.pttEnabled">
-                    <label class="mb-2 block text-sm font-medium">Keybind</label>
+                    <label class="mb-2 block text-sm font-medium">{{ t('settings.voice.pushToTalk.keybind') }}</label>
 
                     <div class="flex items-center gap-3">
                         <div
@@ -352,7 +357,9 @@ function formatAccelerator(accel: string): string {
                             "
                         >
                             <template v-if="isRecordingKey">
-                                <span class="animate-pulse text-yellow-500">Press any key or combo…</span>
+                                <span class="animate-pulse text-yellow-500">
+                                    {{ t('settings.voice.pushToTalk.pressAnyKey') }}
+                                </span>
                             </template>
                             <template v-else-if="voiceStore.pttKey">
                                 <kbd class="bg-muted rounded px-2 py-0.5 font-mono text-xs">{{
@@ -360,15 +367,19 @@ function formatAccelerator(accel: string): string {
                                 }}</kbd>
                             </template>
                             <template v-else>
-                                <span class="text-muted-foreground">Not set</span>
+                                <span class="text-muted-foreground">{{ t('settings.voice.pushToTalk.notSet') }}</span>
                             </template>
                         </div>
 
                         <Button v-if="!isRecordingKey" variant="outline" size="sm" @click="startRecordingKey">
-                            {{ voiceStore.pttKey ? 'Change Key' : 'Set Key' }}
+                            {{
+                                voiceStore.pttKey
+                                    ? t('settings.voice.pushToTalk.changeKey')
+                                    : t('settings.voice.pushToTalk.setKey')
+                            }}
                         </Button>
                         <Button v-if="isRecordingKey" variant="outline" size="sm" @click="cancelRecordingKey">
-                            Cancel
+                            {{ t('settings.voice.pushToTalk.cancel') }}
                         </Button>
                         <Button
                             v-if="voiceStore.pttKey && !isRecordingKey"
@@ -377,7 +388,7 @@ function formatAccelerator(accel: string): string {
                             class="text-destructive"
                             @click="clearPttKey"
                         >
-                            Clear
+                            {{ t('settings.voice.pushToTalk.clear') }}
                         </Button>
                     </div>
 
@@ -386,8 +397,7 @@ function formatAccelerator(accel: string): string {
                     </p>
 
                     <p class="text-muted-foreground mt-2 text-xs">
-                        Press any key or key combination (e.g. F5, Space, Alt + Z, Ctrl + Shift + M). Hold the key to
-                        talk — release to mute.
+                        {{ t('settings.voice.pushToTalk.hint') }}
                     </p>
 
                     <label class="mt-4 flex items-center gap-3">
@@ -397,22 +407,22 @@ function formatAccelerator(accel: string): string {
                             :checked="voiceStore.pttSoundEnabled"
                             @change="onPttSoundToggle"
                         />
-                        <span class="text-sm font-medium">Play sound on push-to-talk</span>
+                        <span class="text-sm font-medium">{{ t('settings.voice.pushToTalk.playSound') }}</span>
                     </label>
                 </div>
             </div>
         </div>
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Audio Processing</h2>
-                <p class="text-muted-foreground mt-1 text-sm">Built-in noise suppression and audio enhancements</p>
+                <h2 class="text-lg font-semibold">{{ t('settings.voice.audio.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.voice.audio.description') }}</p>
             </div>
             <div class="space-y-4 p-6">
                 <label class="flex items-center justify-between gap-3">
                     <div>
-                        <span class="text-sm font-medium">Noise Suppression</span>
+                        <span class="text-sm font-medium">{{ t('settings.voice.audio.noiseSuppression') }}</span>
                         <p class="text-muted-foreground text-xs">
-                            Filters out background noise like keyboard clicks, fans, and ambient sounds.
+                            {{ t('settings.voice.audio.noiseSuppressionHint') }}
                         </p>
                     </div>
                     <input
@@ -425,9 +435,9 @@ function formatAccelerator(accel: string): string {
 
                 <label class="flex items-center justify-between gap-3">
                     <div>
-                        <span class="text-sm font-medium">Echo Cancellation</span>
+                        <span class="text-sm font-medium">{{ t('settings.voice.audio.echoCancellation') }}</span>
                         <p class="text-muted-foreground text-xs">
-                            Prevents your speakers' audio from being picked up by your microphone.
+                            {{ t('settings.voice.audio.echoCancellationHint') }}
                         </p>
                     </div>
                     <input
@@ -440,9 +450,9 @@ function formatAccelerator(accel: string): string {
 
                 <label class="flex items-center justify-between gap-3">
                     <div>
-                        <span class="text-sm font-medium">Automatic Gain Control</span>
+                        <span class="text-sm font-medium">{{ t('settings.voice.audio.autoGain') }}</span>
                         <p class="text-muted-foreground text-xs">
-                            Automatically adjusts your microphone volume to maintain a consistent level.
+                            {{ t('settings.voice.audio.autoGainHint') }}
                         </p>
                     </div>
                     <input
@@ -457,17 +467,19 @@ function formatAccelerator(accel: string): string {
 
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Mic Test</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.voice.test.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    Test your microphone and see the input level with your current audio processing settings applied.
+                    {{ t('settings.voice.test.description') }}
                 </p>
             </div>
             <div class="space-y-4 p-6">
                 <div class="flex items-center gap-3">
                     <Button variant="outline" size="sm" @click="startMicTest">
-                        {{ isMicTesting ? 'Stop Test' : 'Test Microphone' }}
+                        {{ isMicTesting ? t('settings.voice.test.stop') : t('settings.voice.test.start') }}
                     </Button>
-                    <span v-if="isMicTesting" class="text-muted-foreground animate-pulse text-xs">Listening...</span>
+                    <span v-if="isMicTesting" class="text-muted-foreground animate-pulse text-xs">
+                        {{ t('settings.voice.test.listening') }}
+                    </span>
                 </div>
 
                 <div v-if="isMicTesting" class="space-y-2">
@@ -479,8 +491,7 @@ function formatAccelerator(accel: string): string {
                         />
                     </div>
                     <p class="text-muted-foreground text-xs">
-                        Speak into your microphone — you'll hear yourself and see the input level. Use headphones to
-                        avoid feedback.
+                        {{ t('settings.voice.test.hint') }}
                     </p>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Download, Film, Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { Slider } from '@/components/ui/slider';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
@@ -9,6 +10,8 @@ import type { EncryptedAttachmentMeta } from '@/types/chat';
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
 }>();
+
+const { t } = useI18n();
 
 const videoRef = useTemplateRef<HTMLVideoElement>('videoRef');
 const blobUrl = shallowRef<string | null>(null);
@@ -361,11 +364,11 @@ onBeforeUnmount(cleanup);
             </div>
             <div class="min-w-0 flex-1">
                 <div class="text-foreground truncate text-sm font-medium">{{ attachment.file_name }}</div>
-                <div class="text-destructive text-xs">Failed to load video</div>
+                <div class="text-destructive text-xs">{{ t('chat.files.failedToLoadVideo') }}</div>
             </div>
             <button
                 class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                title="Download"
+                :title="t('chat.files.download')"
                 @click="downloadFile"
             >
                 <Download :size="16" />
@@ -514,7 +517,7 @@ onBeforeUnmount(cleanup);
 
                     <button
                         class="flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
-                        title="Download"
+                        :title="t('chat.files.download')"
                         @click.stop="downloadFile"
                     >
                         <Download :size="16" />

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, TicketIcon } from 'lucide-vue-next';
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -10,28 +11,34 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
 
-const inviteSchema = z.object({
-    inviteToken: z.string().min(1, 'Invite code is required.'),
-});
+const { t } = useI18n();
 
-const registerSchema = z
-    .object({
-        name: z.string().min(1, 'Display name is required.'),
-        username: z
-            .string()
-            .min(1, 'Username is required.')
-            .regex(/^[a-z0-9_.-]+$/i, 'Username may only contain letters, numbers, underscores, dots, and hyphens.'),
-        email: z.string().min(1, 'Email is required.').email('Please enter a valid email address.'),
-        password: z.string().min(8, 'Password must be at least 8 characters.'),
-        passwordConfirmation: z.string().min(1, 'Please confirm your password.'),
-    })
-    .refine((d) => d.password === d.passwordConfirmation, {
-        message: 'Passwords do not match.',
-        path: ['passwordConfirmation'],
-    });
+const inviteSchema = computed(() =>
+    z.object({
+        inviteToken: z.string().min(1, t('validation.inviteRequired')),
+    }),
+);
 
-type InviteFieldErrors = Partial<Record<keyof z.infer<typeof inviteSchema>, string>>;
-type RegisterFieldErrors = Partial<Record<keyof z.infer<typeof registerSchema>, string>>;
+const registerSchema = computed(() =>
+    z
+        .object({
+            name: z.string().min(1, t('validation.displayNameRequired')),
+            username: z
+                .string()
+                .min(1, t('validation.usernameRequired'))
+                .regex(/^[a-z0-9_.-]+$/i, t('validation.usernameInvalidChars')),
+            email: z.string().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
+            password: z.string().min(8, t('validation.passwordMin8')),
+            passwordConfirmation: z.string().min(1, t('validation.passwordConfirmRequired')),
+        })
+        .refine((d) => d.password === d.passwordConfirmation, {
+            message: t('validation.passwordsMatch'),
+            path: ['passwordConfirmation'],
+        }),
+);
+
+type InviteFieldErrors = Partial<Record<keyof z.infer<typeof inviteSchema.value>, string>>;
+type RegisterFieldErrors = Partial<Record<keyof z.infer<typeof registerSchema.value>, string>>;
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -52,7 +59,7 @@ const error = ref<string | null>(null);
 const inviteFieldErrors = ref<InviteFieldErrors>({});
 const registerFieldErrors = ref<RegisterFieldErrors>({});
 
-const serverName = computed(() => serverStore.activeServer?.name ?? 'Server');
+const serverName = computed(() => serverStore.activeServer?.name ?? t('auth.serverFallback'));
 const serverHost = computed(() => serverStore.activeServer?.host ?? '');
 
 const canSubmitInvite = computed(() => inviteToken.value.trim().length > 0 && !isValidating.value);
@@ -77,7 +84,7 @@ async function handleValidateInvite(): Promise<void> {
     inviteFieldErrors.value = {};
     error.value = null;
 
-    const result = inviteSchema.safeParse({ inviteToken: inviteToken.value.trim() });
+    const result = inviteSchema.value.safeParse({ inviteToken: inviteToken.value.trim() });
     if (!result.success) {
         result.error.issues.forEach((e: z.ZodIssue) => {
             const field = e.path[0] as keyof InviteFieldErrors;
@@ -99,10 +106,10 @@ async function handleValidateInvite(): Promise<void> {
         if (validateResult.success) {
             step.value = 'form';
         } else {
-            error.value = validateResult.error ?? 'Invalid invite link';
+            error.value = validateResult.error ?? t('auth.register.invalidInvite');
         }
     } catch {
-        error.value = 'Unable to reach the server. Please try again later.';
+        error.value = t('auth.register.unableToReach');
     } finally {
         isValidating.value = false;
     }
@@ -113,7 +120,7 @@ async function handleRegister(): Promise<void> {
     authStore.clearError();
     error.value = null;
 
-    const result = registerSchema.safeParse({
+    const result = registerSchema.value.safeParse({
         name: name.value.trim(),
         username: username.value.trim(),
         email: email.value.trim(),
@@ -157,8 +164,12 @@ function goToLogin(): void {
 
 <template>
     <AuthLayout
-        :title="step === 'invite' ? 'Join Server' : 'Create Account'"
-        :description="step === 'invite' ? 'Enter your invite code to get started' : `Sign up for ${serverName}`"
+        :title="step === 'invite' ? t('auth.register.joinTitle') : t('auth.register.createTitle')"
+        :description="
+            step === 'invite'
+                ? t('auth.register.inviteDescription')
+                : t('auth.register.signupDescription', { server: serverName })
+        "
     >
         <p v-if="step === 'form'" class="text-muted-foreground/60 -mt-6 text-center text-xs">
             {{ serverHost }}
@@ -166,14 +177,14 @@ function goToLogin(): void {
 
         <form v-if="step === 'invite'" @submit.prevent="handleValidateInvite" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="invite_token">Invite Code</Label>
+                <Label for="invite_token">{{ t('auth.register.inviteCodeLabel') }}</Label>
                 <div class="relative">
                     <TicketIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
                         id="invite_token"
                         v-model="inviteToken"
                         type="text"
-                        placeholder="Paste your invite code"
+                        :placeholder="t('auth.register.invitePlaceholder')"
                         autocomplete="off"
                         class="pl-9"
                         :class="{ 'border-destructive': inviteFieldErrors.inviteToken }"
@@ -184,7 +195,7 @@ function goToLogin(): void {
                 <p v-if="inviteFieldErrors.inviteToken" class="text-destructive text-xs">
                     {{ inviteFieldErrors.inviteToken }}
                 </p>
-                <p v-else class="text-muted-foreground text-xs">Ask a server admin for an invite code.</p>
+                <p v-else class="text-muted-foreground text-xs">{{ t('auth.register.askAdmin') }}</p>
             </div>
 
             <div
@@ -197,24 +208,24 @@ function goToLogin(): void {
             <div class="flex flex-col gap-3 pt-1">
                 <Button type="submit" :disabled="!canSubmitInvite" class="w-full">
                     <Loader2Icon v-if="isValidating" class="animate-spin" />
-                    <span v-if="isValidating">Validating...</span>
-                    <span v-else>Continue</span>
+                    <span v-if="isValidating">{{ t('auth.register.validating') }}</span>
+                    <span v-else>{{ t('auth.register.continue') }}</span>
                 </Button>
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goToLogin">
                     <ArrowLeftIcon class="size-3" />
-                    Already have an account? Sign in
+                    {{ t('auth.register.alreadyHaveAccount') }}
                 </Button>
             </div>
         </form>
 
         <form v-else @submit.prevent="handleRegister" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="name">Display Name</Label>
+                <Label for="name">{{ t('auth.register.displayName') }}</Label>
                 <Input
                     id="name"
                     v-model="name"
                     type="text"
-                    placeholder="Your Name"
+                    :placeholder="t('auth.register.displayNamePlaceholder')"
                     autocomplete="name"
                     :disabled="authStore.isLoggingIn"
                     :class="{ 'border-destructive': registerFieldErrors.name }"
@@ -224,12 +235,12 @@ function goToLogin(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="username">Username</Label>
+                <Label for="username">{{ t('auth.register.username') }}</Label>
                 <Input
                     id="username"
                     v-model="username"
                     type="text"
-                    placeholder="yourname"
+                    :placeholder="t('auth.register.usernamePlaceholder')"
                     autocomplete="username"
                     :disabled="authStore.isLoggingIn"
                     :class="{ 'border-destructive': registerFieldErrors.username }"
@@ -240,12 +251,12 @@ function goToLogin(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="email">Email</Label>
+                <Label for="email">{{ t('auth.register.email') }}</Label>
                 <Input
                     id="email"
                     v-model="email"
                     type="email"
-                    placeholder="you@example.com"
+                    :placeholder="t('auth.register.emailPlaceholder')"
                     autocomplete="email"
                     :disabled="authStore.isLoggingIn"
                     :class="{ 'border-destructive': registerFieldErrors.email }"
@@ -254,13 +265,13 @@ function goToLogin(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="password">Password</Label>
+                <Label for="password">{{ t('auth.register.password') }}</Label>
                 <div class="relative">
                     <Input
                         id="password"
                         v-model="password"
                         :type="showPassword ? 'text' : 'password'"
-                        placeholder="••••••••"
+                        :placeholder="t('auth.register.passwordPlaceholder')"
                         autocomplete="new-password"
                         :disabled="authStore.isLoggingIn"
                         class="pr-10"
@@ -282,12 +293,12 @@ function goToLogin(): void {
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm Password</Label>
+                <Label for="password_confirmation">{{ t('auth.register.confirmPassword') }}</Label>
                 <Input
                     id="password_confirmation"
                     v-model="passwordConfirmation"
                     :type="showPassword ? 'text' : 'password'"
-                    placeholder="••••••••"
+                    :placeholder="t('auth.register.passwordPlaceholder')"
                     autocomplete="new-password"
                     :disabled="authStore.isLoggingIn"
                     :class="{ 'border-destructive': registerFieldErrors.passwordConfirmation }"
@@ -307,12 +318,12 @@ function goToLogin(): void {
             <div class="flex flex-col gap-3 pt-1">
                 <Button type="submit" :disabled="!canSubmitForm" class="w-full">
                     <Loader2Icon v-if="authStore.isLoggingIn" class="animate-spin" />
-                    <span v-if="authStore.isLoggingIn">Creating account...</span>
-                    <span v-else>Create Account</span>
+                    <span v-if="authStore.isLoggingIn">{{ t('auth.register.creatingAccount') }}</span>
+                    <span v-else>{{ t('auth.register.createAccount') }}</span>
                 </Button>
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goBackToInvite">
                     <ArrowLeftIcon class="size-3" />
-                    Use a different invite code
+                    {{ t('auth.register.useDifferentInvite') }}
                 </Button>
             </div>
         </form>

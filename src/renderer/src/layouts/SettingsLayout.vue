@@ -1,30 +1,33 @@
 <script setup lang="ts">
 import { ArrowLeft } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth';
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
 interface SettingsNavItem {
-    title: string;
+    titleKey: string;
     routeName: string;
 }
 
 const sidebarNavItems: SettingsNavItem[] = [
-    { title: 'Profile', routeName: 'settings-profile' },
-    { title: 'Password', routeName: 'settings-password' },
-    { title: 'Two-Factor Auth', routeName: 'settings-two-factor' },
-    { title: 'Security', routeName: 'settings-security' },
-    { title: 'Appearance', routeName: 'settings-appearance' },
-    { title: 'Voice', routeName: 'settings-voice' },
-    { title: 'Screen Share', routeName: 'settings-screen-share' },
-    { title: 'Notifications', routeName: 'settings-notifications' },
-    { title: 'About', routeName: 'settings-about' },
+    { titleKey: 'settings.nav.profile', routeName: 'settings-profile' },
+    { titleKey: 'settings.nav.password', routeName: 'settings-password' },
+    { titleKey: 'settings.nav.twoFactor', routeName: 'settings-two-factor' },
+    { titleKey: 'settings.nav.security', routeName: 'settings-security' },
+    { titleKey: 'settings.nav.appearance', routeName: 'settings-appearance' },
+    { titleKey: 'settings.nav.language', routeName: 'settings-language' },
+    { titleKey: 'settings.nav.voice', routeName: 'settings-voice' },
+    { titleKey: 'settings.nav.screenShare', routeName: 'settings-screen-share' },
+    { titleKey: 'settings.nav.notifications', routeName: 'settings-notifications' },
+    { titleKey: 'settings.nav.about', routeName: 'settings-about' },
 ];
 
 const permissions = computed(() => authStore.user?.permissions);
@@ -35,20 +38,20 @@ const adminNavItems = computed<SettingsNavItem[]>(() => {
     if (!perms) return items;
 
     if (perms.canInviteMembers || perms.isAdministrator) {
-        items.push({ title: 'Invite Links', routeName: 'settings-invite-links' });
+        items.push({ titleKey: 'settings.nav.inviteLinks', routeName: 'settings-invite-links' });
     }
     if (perms.canManageRoles || perms.isAdministrator) {
-        items.push({ title: 'Roles', routeName: 'settings-roles' });
-        items.push({ title: 'Members', routeName: 'settings-members' });
+        items.push({ titleKey: 'settings.nav.roles', routeName: 'settings-roles' });
+        items.push({ titleKey: 'settings.nav.members', routeName: 'settings-members' });
     }
     if (perms.canManageChannels || perms.isAdministrator) {
-        items.push({ title: 'Channels', routeName: 'settings-channels' });
+        items.push({ titleKey: 'settings.nav.channels', routeName: 'settings-channels' });
     }
     if (perms.canBanMembers || perms.canKickMembers || perms.isAdministrator) {
-        items.push({ title: 'Moderation', routeName: 'settings-moderation' });
+        items.push({ titleKey: 'settings.nav.moderation', routeName: 'settings-moderation' });
     }
     if (perms.canViewAuditLog || perms.isAdministrator) {
-        items.push({ title: 'Audit Log', routeName: 'settings-audit-log' });
+        items.push({ titleKey: 'settings.nav.auditLog', routeName: 'settings-audit-log' });
     }
     return items;
 });
@@ -64,19 +67,19 @@ function isActive(routeName: string): boolean {
             <div class="mb-6">
                 <Button variant="ghost" size="sm" class="-ml-2" @click="router.push({ name: 'home' })">
                     <ArrowLeft class="mr-2 h-4 w-4" />
-                    Back
+                    {{ t('settings.back') }}
                 </Button>
             </div>
 
             <div class="mb-8">
-                <h1 class="text-3xl font-bold tracking-tight">Settings</h1>
-                <p class="text-muted-foreground mt-2">Manage your profile and account settings</p>
+                <h1 class="text-3xl font-bold tracking-tight">{{ t('settings.header') }}</h1>
+                <p class="text-muted-foreground mt-2">{{ t('settings.subheader') }}</p>
             </div>
 
             <div class="flex flex-col gap-8 lg:flex-row lg:gap-12">
                 <aside class="w-full shrink-0 lg:w-56">
                     <div class="bg-card rounded-lg border p-1">
-                        <nav class="flex flex-col space-y-0.5" aria-label="Settings">
+                        <nav class="flex flex-col space-y-0.5" :aria-label="t('settings.navAriaLabel')">
                             <Button
                                 v-for="item in sidebarNavItems"
                                 :key="item.routeName"
@@ -89,16 +92,16 @@ function isActive(routeName: string): boolean {
                                 ]"
                                 @click="router.push({ name: item.routeName })"
                             >
-                                {{ item.title }}
+                                {{ t(item.titleKey) }}
                             </Button>
                         </nav>
 
                         <template v-if="adminNavItems.length > 0">
                             <Separator class="my-1" />
                             <p class="text-muted-foreground px-3 py-1.5 text-xs font-medium tracking-wider uppercase">
-                                Server
+                                {{ t('settings.nav.server') }}
                             </p>
-                            <nav class="flex flex-col space-y-0.5" aria-label="Server Settings">
+                            <nav class="flex flex-col space-y-0.5" :aria-label="t('settings.nav.server')">
                                 <Button
                                     v-for="item in adminNavItems"
                                     :key="item.routeName"
@@ -111,7 +114,7 @@ function isActive(routeName: string): boolean {
                                     ]"
                                     @click="router.push({ name: item.routeName })"
                                 >
-                                    {{ item.title }}
+                                    {{ t(item.titleKey) }}
                                 </Button>
                             </nav>
                         </template>

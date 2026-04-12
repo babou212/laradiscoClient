@@ -89,6 +89,11 @@ const router = createRouter({
                     component: () => import('@/views/settings/NotificationSettingsView.vue'),
                 },
                 {
+                    path: 'language',
+                    name: 'settings-language',
+                    component: () => import('@/views/settings/LanguageSettingsView.vue'),
+                },
+                {
                     path: 'voice',
                     name: 'settings-voice',
                     component: () => import('@/views/settings/VoiceSettingsView.vue'),

@@ -1,34 +1,54 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceStore } from '@/stores/voice';
 import { type ScreenShareQualityPreset } from '@/stores/voice';
 
+const { t } = useI18n();
 const voiceStore = useVoiceStore();
 
 onMounted(async () => {
     await voiceStore.loadSettings();
 });
 
-const screenShareQualityOptions: { value: ScreenShareQualityPreset; label: string; description: string }[] = [
-    { value: 'low', label: '720p / 30 FPS', description: 'Lower bandwidth usage' },
-    { value: 'medium', label: '1080p / 30 FPS', description: 'Balanced quality' },
-    { value: 'high', label: '1080p / 60 FPS', description: 'Smooth high quality' },
-    { value: 'source', label: 'Source / 60 FPS', description: 'Native resolution, highest quality' },
-];
+const screenShareQualityOptions = computed<
+    { value: ScreenShareQualityPreset; label: string; description: string }[]
+>(() => [
+    {
+        value: 'low',
+        label: t('settings.screenShare.presets.low'),
+        description: t('settings.screenShare.presets.lowDescription'),
+    },
+    {
+        value: 'medium',
+        label: t('settings.screenShare.presets.medium'),
+        description: t('settings.screenShare.presets.mediumDescription'),
+    },
+    {
+        value: 'high',
+        label: t('settings.screenShare.presets.high'),
+        description: t('settings.screenShare.presets.highDescription'),
+    },
+    {
+        value: 'source',
+        label: t('settings.screenShare.presets.source'),
+        description: t('settings.screenShare.presets.sourceDescription'),
+    },
+]);
 </script>
 
 <template>
     <div class="space-y-6">
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">Screen Share Quality</h2>
+                <h2 class="text-lg font-semibold">{{ t('settings.screenShare.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
-                    Choose the quality preset for when you share your screen.
+                    {{ t('settings.screenShare.description') }}
                 </p>
             </div>
             <div class="p-6">
-                <label class="mb-2 block text-sm font-medium"> Quality Preset </label>
+                <label class="mb-2 block text-sm font-medium">{{ t('settings.screenShare.label') }}</label>
                 <Select
                     :model-value="voiceStore.screenShareQuality"
                     @update:model-value="
@@ -37,7 +57,7 @@ const screenShareQualityOptions: { value: ScreenShareQualityPreset; label: strin
                     "
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select quality..." />
+                        <SelectValue :placeholder="t('settings.screenShare.placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem

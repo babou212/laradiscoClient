@@ -1,6 +1,6 @@
 {
     "name": "@babou212/laradisco-client",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "description": "LaraDisco Desktop Client",
     "author": "Dylan Cree",
     "private": false,
@@ -92,6 +92,7 @@
         "uiohook-napi": "^1.5.5",
         "vue": "^3.5.32",
         "vue-advanced-cropper": "^2.8.9",
+        "vue-i18n": "^11.3.2",
         "vue-input-otp": "^0.3.2",
         "vue-router": "^4.6.4",
         "vue3-emoji-picker": "^1.1.8",

@@ -1,6 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { getTwoFactorQrCode, getTwoFactorSecretKey, getTwoFactorRecoveryCodes } from '@/api/two-factor';
+import { t } from '@/i18n';
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: Ref<string | null>;
@@ -30,7 +31,7 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
             const data = await getTwoFactorQrCode();
             qrCodeSvg.value = data.svg;
         } catch {
-            errors.value.push('Failed to fetch QR code');
+            errors.value.push(t('settings.twoFactor.setup.failedToFetchQr'));
             qrCodeSvg.value = null;
         }
     };
@@ -40,7 +41,7 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
             const data = await getTwoFactorSecretKey();
             manualSetupKey.value = data.secretKey;
         } catch {
-            errors.value.push('Failed to fetch a setup key');
+            errors.value.push(t('settings.twoFactor.setup.failedToFetchKey'));
             manualSetupKey.value = null;
         }
     };
@@ -66,7 +67,7 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
             clearErrors();
             recoveryCodesList.value = await getTwoFactorRecoveryCodes();
         } catch {
-            errors.value.push('Failed to fetch recovery codes');
+            errors.value.push(t('settings.twoFactor.recovery.failedToFetch'));
             recoveryCodesList.value = [];
         }
     };

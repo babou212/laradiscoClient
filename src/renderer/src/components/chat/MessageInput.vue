@@ -2,6 +2,7 @@
 import { useEventListener } from '@vueuse/core';
 import { CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
 import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import EmojiPicker from './EmojiPicker.vue';
 import GifPicker from './GifPicker.vue';
 import MentionDropdown from './MentionDropdown.vue';
@@ -17,6 +18,8 @@ import type { StagedFile, UploadingFile } from '@/lib/message-schemas';
 import type { MessageData } from '@/types/chat';
 
 export type { StagedFile, UploadingFile };
+
+const { t } = useI18n();
 
 interface Props {
     channelName?: string;
@@ -51,7 +54,7 @@ const props = defineProps<Props>();
 
 const replyPreviewContent = computed(() => {
     if (!props.replyingTo) return '';
-    return props.replyingTo.decrypted_content ?? '[Encrypted message]';
+    return props.replyingTo.decrypted_content ?? t('chat.common.encryptedMessage');
 });
 
 const charCount = computed(() => messageInput.value.length);
@@ -204,7 +207,7 @@ function addFiles(files: FileList | File[]) {
         fileSizeError.value =
             rejected.length === 1
                 ? rejected[0]
-                : `${rejected.length} files exceed the 100 MB limit: ${rejected.join(', ')}`;
+                : t('chat.composer.fileTooLarge', { count: rejected.length, files: rejected.join(', ') });
         clearTimeout(fileSizeErrorTimer);
         fileSizeErrorTimer = setTimeout(() => {
             fileSizeError.value = null;
@@ -273,7 +276,7 @@ useEventListener(document, 'click', handleClickOutside);
         >
             <span class="flex-1">{{ fileSizeError }}</span>
             <button class="hover:bg-destructive/20 shrink-0 rounded px-2 py-0.5 text-xs" @click="fileSizeError = null">
-                Dismiss
+                {{ t('chat.common.dismiss') }}
             </button>
         </div>
 
@@ -283,7 +286,9 @@ useEventListener(document, 'click', handleClickOutside);
         >
             <CornerDownRight :size="16" class="text-muted-foreground mt-1 shrink-0" />
             <div class="min-w-0 flex-1">
-                <div class="text-primary text-xs font-medium">Replying to {{ replyingTo.user.username }}</div>
+                <div class="text-primary text-xs font-medium">
+                    {{ t('chat.composer.replyingTo', { user: replyingTo.user.username }) }}
+                </div>
                 <div class="text-muted-foreground truncate text-xs">
                     {{ replyPreviewContent.substring(0, 100) }}{{ replyPreviewContent.length > 100 ? '...' : '' }}
                 </div>
@@ -362,11 +367,11 @@ useEventListener(document, 'click', handleClickOutside);
                                 <span class="text-muted-foreground shrink-0 text-[10px]">
                                     {{
                                         uf.status === 'preparing'
-                                            ? 'Preparing…'
+                                            ? t('chat.composer.preparing')
                                             : uf.status === 'encrypting'
-                                              ? 'Encrypting…'
+                                              ? t('chat.composer.encrypting')
                                               : uf.status === 'finishing'
-                                                ? 'Finishing…'
+                                                ? t('chat.composer.finishing')
                                                 : `${uf.progress}%`
                                     }}
                                 </span>
@@ -417,7 +422,7 @@ useEventListener(document, 'click', handleClickOutside);
                     <button
                         v-if="canAttachFiles !== false"
                         type="button"
-                        title="Attach file"
+                        :title="t('chat.composer.attachFile')"
                         class="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded p-1.5 transition-colors"
                         @click="triggerFileInput"
                     >
@@ -433,8 +438,11 @@ useEventListener(document, 'click', handleClickOutside);
                             :class="{ 'cursor-not-allowed opacity-50': props.disabled }"
                             :placeholder="
                                 props.disabled
-                                    ? 'Sending too fast — please wait…'
-                                    : props.placeholder || `Message #${channelName || 'channel'}`
+                                    ? t('chat.composer.placeholderDisabled')
+                                    : props.placeholder ||
+                                      (channelName
+                                          ? t('chat.composer.placeholderChannel', { channel: channelName })
+                                          : t('chat.composer.placeholderDefault'))
                             "
                             :disabled="props.disabled"
                             @keydown="handleKeydown"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreVertical } from 'lucide-vue-next';
 import { computed, ref, shallowRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
@@ -36,6 +37,7 @@ const authStore = useAuthStore();
 const avatarStore = useAvatarStore();
 const presenceStore = usePresenceStore();
 const userNamesStore = useUserNamesStore();
+const { t } = useI18n();
 
 const user = computed(() => authStore.user);
 
@@ -100,23 +102,23 @@ const logout = async () => {
     router.push({ name: 'login' });
 };
 
-const statusOptions = [
+const statusOptions = computed(() => [
     {
         value: 'online' as UserStatusType,
-        label: 'Online',
+        label: t('chat.channelSidebar.statusOnline'),
         color: 'bg-green-500',
     },
     {
         value: 'dnd' as UserStatusType,
-        label: 'Do Not Disturb',
+        label: t('chat.channelSidebar.statusDnd'),
         color: 'bg-red-500',
     },
     {
         value: 'offline' as UserStatusType,
-        label: 'Invisible',
+        label: t('chat.channelSidebar.statusInvisible'),
         color: 'bg-gray-500',
     },
-];
+]);
 </script>
 
 <template>
@@ -129,7 +131,7 @@ const statusOptions = [
                     @click="$emit('switchToDms')"
                 >
                     <MessageSquare :size="16" />
-                    Direct Messages
+                    {{ t('chat.channelSidebar.directMessages') }}
                 </button>
             </div>
 
@@ -211,7 +213,7 @@ const statusOptions = [
                     @click="router.push({ name: 'settings-profile' })"
                 >
                     <Settings :size="16" />
-                    <span>Settings</span>
+                    <span>{{ t('chat.channelSidebar.settings') }}</span>
                 </button>
 
                 <button
@@ -220,7 +222,7 @@ const statusOptions = [
                     @click="logout"
                 >
                     <LogOut :size="16" />
-                    <span>Logout</span>
+                    <span>{{ t('chat.channelSidebar.logout') }}</span>
                 </button>
             </div>
 

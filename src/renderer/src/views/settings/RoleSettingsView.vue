@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Pencil, Plus, Shield, Trash2, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { extractValidationErrors, getApiErrorMessage } from '@/api/errors';
 import { createRole, updateRole, deleteRole } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { rolesQuery } from '@/queries/settings/roles';
+
+const { t } = useI18n();
 
 type Permission = { value: string; label: string };
 type Role = {
@@ -92,17 +95,17 @@ const editForm = ref({
 const createErrors = ref<Record<string, string>>({});
 const editErrors = ref<Record<string, string>>({});
 
-const permissionCategories = [
+const permissionCategories = computed<{ label: string; permissions: string[] }[]>(() => [
     {
-        label: 'General Server',
+        label: t('settings.roles.form.categories.general'),
         permissions: ['manage_channels', 'manage_roles', 'manage_server', 'view_audit_log', 'manage_emojis'],
     },
     {
-        label: 'Membership',
+        label: t('settings.roles.form.categories.membership'),
         permissions: ['kick_members', 'ban_members', 'invite_members', 'change_nickname', 'manage_nicknames'],
     },
     {
-        label: 'Text Channels',
+        label: t('settings.roles.form.categories.text'),
         permissions: [
             'view_channels',
             'send_messages',
@@ -119,11 +122,11 @@ const permissionCategories = [
         ],
     },
     {
-        label: 'Voice Channels',
+        label: t('settings.roles.form.categories.voice'),
         permissions: ['connect', 'speak', 'video', 'mute_members', 'deafen_members', 'move_members'],
     },
-    { label: 'Admin', permissions: ['administrator'] },
-];
+    { label: t('settings.roles.form.categories.admin'), permissions: ['administrator'] },
+]);
 
 function getPermissionLabel(value: string): string {
     return permissions.value.find((p) => p.value === value)?.label ?? value;
@@ -238,14 +241,14 @@ async function confirmDelete() {
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
-                    <h2 class="text-lg font-semibold">Roles</h2>
+                    <h2 class="text-lg font-semibold">{{ t('settings.roles.title') }}</h2>
                     <p class="text-muted-foreground mt-1 text-sm">
-                        Manage server roles and their permissions. Higher position roles outrank lower ones.
+                        {{ t('settings.roles.description') }}
                     </p>
                 </div>
                 <Button @click="openCreateDialog" size="sm">
                     <Plus class="mr-1.5 h-4 w-4" />
-                    Create Role
+                    {{ t('settings.roles.createRole') }}
                 </Button>
             </div>
 
@@ -258,7 +261,7 @@ async function confirmDelete() {
                     {{ apiError }}
                 </div>
 
-                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">{{ t('settings.roles.loading') }}</div>
 
                 <div
                     v-else-if="roles.length === 0 && !apiError"
@@ -267,8 +270,8 @@ async function confirmDelete() {
                     <div class="border-border bg-muted mb-3 rounded-full border p-3">
                         <Shield class="text-muted-foreground h-6 w-6" />
                     </div>
-                    <p class="text-sm font-medium">No roles yet</p>
-                    <p class="text-muted-foreground mt-1 text-sm">Create a role to manage permissions.</p>
+                    <p class="text-sm font-medium">{{ t('settings.roles.emptyTitle') }}</p>
+                    <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.roles.emptyDescription') }}</p>
                 </div>
 
                 <div v-else class="space-y-3">
@@ -281,18 +284,24 @@ async function confirmDelete() {
                             <div class="flex items-center gap-3">
                                 <div class="h-4 w-4 shrink-0 rounded-full" :style="{ backgroundColor: role.color }" />
                                 <span class="font-medium">{{ role.name }}</span>
-                                <Badge v-if="role.is_default" variant="secondary">Default</Badge>
-                                <Badge v-if="getRolePermissions(role).includes('administrator')" variant="destructive"
-                                    >Admin</Badge
+                                <Badge v-if="role.is_default" variant="secondary">{{
+                                    t('settings.roles.defaultBadge')
+                                }}</Badge>
+                                <Badge
+                                    v-if="getRolePermissions(role).includes('administrator')"
+                                    variant="destructive"
+                                    >{{ t('settings.roles.adminBadge') }}</Badge
                                 >
                             </div>
                             <div class="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
                                 <span class="flex items-center gap-1">
                                     <Users class="h-3 w-3" />
-                                    {{ role.users_count }} {{ role.users_count === 1 ? 'member' : 'members' }}
+                                    {{ t('settings.roles.memberCount', { n: role.users_count }, role.users_count) }}
                                 </span>
-                                <span>Position: {{ role.position }}</span>
-                                <span>{{ getRolePermissions(role).length }} permissions</span>
+                                <span>{{ t('settings.roles.position', { n: role.position }) }}</span>
+                                <span>{{
+                                    t('settings.roles.permissionsCount', { n: getRolePermissions(role).length })
+                                }}</span>
                             </div>
                         </div>
 
@@ -319,14 +328,18 @@ async function confirmDelete() {
         <Dialog v-model:open="showCreateDialog">
             <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Create Role</DialogTitle>
-                    <DialogDescription>Create a new role with specific permissions.</DialogDescription>
+                    <DialogTitle>{{ t('settings.roles.create.title') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.roles.create.description') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitCreate" class="space-y-5">
                     <div class="grid gap-2">
-                        <Label for="create-name">Name</Label>
-                        <Input id="create-name" v-model="createForm.name" placeholder="Role name" />
+                        <Label for="create-name">{{ t('settings.roles.form.name') }}</Label>
+                        <Input
+                            id="create-name"
+                            v-model="createForm.name"
+                            :placeholder="t('settings.roles.form.namePlaceholder')"
+                        />
                         <p v-if="createErrors.name" class="text-destructive text-sm">{{ createErrors.name }}</p>
                     </div>
 
@@ -339,7 +352,7 @@ async function confirmDelete() {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="grid gap-2">
-                            <Label for="create-color">Color</Label>
+                            <Label for="create-color">{{ t('settings.roles.form.color') }}</Label>
                             <div class="flex items-center gap-2">
                                 <input
                                     id="create-color"
@@ -351,7 +364,7 @@ async function confirmDelete() {
                             </div>
                         </div>
                         <div class="grid gap-2">
-                            <Label for="create-position">Position</Label>
+                            <Label for="create-position">{{ t('settings.roles.form.position') }}</Label>
                             <Input id="create-position" type="number" v-model.number="createForm.position" min="-1" />
                         </div>
                     </div>
@@ -363,7 +376,9 @@ async function confirmDelete() {
                                 :model-value="createForm.is_hoisted"
                                 @update:model-value="createForm.is_hoisted = !!$event"
                             />
-                            <Label for="create-hoisted" class="text-sm">Display separately</Label>
+                            <Label for="create-hoisted" class="text-sm">{{
+                                t('settings.roles.form.displaySeparately')
+                            }}</Label>
                         </div>
                         <div class="flex items-center gap-2">
                             <Checkbox
@@ -371,14 +386,16 @@ async function confirmDelete() {
                                 :model-value="createForm.is_mentionable"
                                 @update:model-value="createForm.is_mentionable = !!$event"
                             />
-                            <Label for="create-mentionable" class="text-sm">Mentionable</Label>
+                            <Label for="create-mentionable" class="text-sm">{{
+                                t('settings.roles.form.mentionable')
+                            }}</Label>
                         </div>
                     </div>
 
                     <Separator />
 
                     <div>
-                        <h3 class="mb-3 text-sm font-semibold">Permissions</h3>
+                        <h3 class="mb-3 text-sm font-semibold">{{ t('settings.roles.form.permissions') }}</h3>
                         <div class="space-y-4">
                             <div v-for="category in permissionCategories" :key="category.label">
                                 <p class="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
@@ -405,8 +422,10 @@ async function confirmDelete() {
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showCreateDialog = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Create Role</Button>
+                        <Button type="button" variant="outline" @click="showCreateDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{ t('settings.roles.create.submit') }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -416,14 +435,18 @@ async function confirmDelete() {
         <Dialog v-model:open="showEditDialog">
             <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Edit Role</DialogTitle>
-                    <DialogDescription>Modify role settings and permissions.</DialogDescription>
+                    <DialogTitle>{{ t('settings.roles.edit.title') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.roles.edit.description') }}</DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitEdit" class="space-y-5">
                     <div class="grid gap-2">
-                        <Label for="edit-name">Name</Label>
-                        <Input id="edit-name" v-model="editForm.name" placeholder="Role name" />
+                        <Label for="edit-name">{{ t('settings.roles.form.name') }}</Label>
+                        <Input
+                            id="edit-name"
+                            v-model="editForm.name"
+                            :placeholder="t('settings.roles.form.namePlaceholder')"
+                        />
                         <p v-if="editErrors.name" class="text-destructive text-sm">{{ editErrors.name }}</p>
                     </div>
 
@@ -436,7 +459,7 @@ async function confirmDelete() {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="grid gap-2">
-                            <Label for="edit-color">Color</Label>
+                            <Label for="edit-color">{{ t('settings.roles.form.color') }}</Label>
                             <div class="flex items-center gap-2">
                                 <input
                                     id="edit-color"
@@ -448,7 +471,7 @@ async function confirmDelete() {
                             </div>
                         </div>
                         <div class="grid gap-2">
-                            <Label for="edit-position">Position</Label>
+                            <Label for="edit-position">{{ t('settings.roles.form.position') }}</Label>
                             <Input id="edit-position" type="number" v-model.number="editForm.position" min="-1" />
                         </div>
                     </div>
@@ -460,7 +483,9 @@ async function confirmDelete() {
                                 :model-value="editForm.is_hoisted"
                                 @update:model-value="editForm.is_hoisted = !!$event"
                             />
-                            <Label for="edit-hoisted" class="text-sm">Display separately</Label>
+                            <Label for="edit-hoisted" class="text-sm">{{
+                                t('settings.roles.form.displaySeparately')
+                            }}</Label>
                         </div>
                         <div class="flex items-center gap-2">
                             <Checkbox
@@ -468,14 +493,16 @@ async function confirmDelete() {
                                 :model-value="editForm.is_mentionable"
                                 @update:model-value="editForm.is_mentionable = !!$event"
                             />
-                            <Label for="edit-mentionable" class="text-sm">Mentionable</Label>
+                            <Label for="edit-mentionable" class="text-sm">{{
+                                t('settings.roles.form.mentionable')
+                            }}</Label>
                         </div>
                     </div>
 
                     <Separator />
 
                     <div>
-                        <h3 class="mb-3 text-sm font-semibold">Permissions</h3>
+                        <h3 class="mb-3 text-sm font-semibold">{{ t('settings.roles.form.permissions') }}</h3>
                         <div class="space-y-4">
                             <div v-for="category in permissionCategories" :key="category.label">
                                 <p class="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
@@ -502,8 +529,10 @@ async function confirmDelete() {
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showEditDialog = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Save Changes</Button>
+                        <Button type="button" variant="outline" @click="showEditDialog = false">{{
+                            t('settings.common.cancel')
+                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{ t('settings.roles.edit.submit') }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -513,15 +542,18 @@ async function confirmDelete() {
         <Dialog v-model:open="showDeleteDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Delete Role</DialogTitle>
+                    <DialogTitle>{{ t('settings.roles.delete.title') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete the role <strong>{{ deletingRole?.name }}</strong
-                        >? All users with this role will lose its permissions. This action cannot be undone.
+                        {{ t('settings.roles.delete.description', { name: deletingRole?.name ?? '' }) }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteDialog = false">Cancel</Button>
-                    <Button variant="destructive" @click="confirmDelete" :disabled="processing">Delete Role</Button>
+                    <Button variant="outline" @click="showDeleteDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" @click="confirmDelete" :disabled="processing">{{
+                        t('settings.roles.delete.submit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

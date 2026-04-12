@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { AtSign, Bell, MessageSquare, X } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useNotificationsStore, type ToastNotification } from '@/stores/notifications';
 
+const { t } = useI18n();
 const router = useRouter();
 const notificationStore = useNotificationsStore();
 
@@ -25,7 +27,7 @@ const getMentionLabel = (notification: ToastNotification): string => {
 const getDisplayContent = (notification: ToastNotification): string => {
     const { data } = notification;
     if (data.decrypted_content) return data.decrypted_content;
-    return '[Encrypted message]';
+    return t('notifications.encryptedMessage');
 };
 
 const getDisplayPreview = (notification: ToastNotification): string => {
@@ -76,13 +78,15 @@ const handleClick = (notification: ToastNotification) => {
                                 <span class="text-primary">
                                     {{ toast.data.sender_username }}
                                 </span>
-                                <span class="text-muted-foreground"> sent a message </span>
+                                <span class="text-muted-foreground"> {{ t('notifications.sentMessage') }} </span>
                             </template>
                             <template v-else>
                                 <span class="text-primary">
                                     {{ getMentionLabel(toast) }}
                                 </span>
-                                <span class="text-muted-foreground"> in #{{ toast.data.channel_name }} </span>
+                                <span class="text-muted-foreground">
+                                    {{ t('notifications.inChannelPrefix', { channel: toast.data.channel_name }) }}
+                                </span>
                             </template>
                         </div>
                         <div class="mt-0.5 flex items-baseline gap-1.5 text-sm">

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ExternalLink, Play } from 'lucide-vue-next';
 import { shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps<{
     videoId: string;
@@ -53,7 +56,7 @@ const openExternal = () => {
             @click="openExternal"
         >
             <ExternalLink :size="12" />
-            <span>Open in browser</span>
+            <span>{{ t('chat.linkPreview.openInBrowser') }}</span>
         </button>
     </div>
 </template>

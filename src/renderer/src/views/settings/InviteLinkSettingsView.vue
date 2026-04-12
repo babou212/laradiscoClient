@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { useClipboard } from '@vueuse/core';
+import { format } from 'date-fns';
 import { Check, Copy, Link2, Plus, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { createInviteLink, deleteInviteLink } from '@/api/settings';
 import { findIncluded } from '@/api/types';
 import type { UserResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { currentDateFnsLocale } from '@/i18n';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { inviteLinksQuery } from '@/queries/settings/invite-links';
+
+const { t } = useI18n();
 
 type InviteLink = {
     id: string;
@@ -86,7 +91,7 @@ function copyToken(token: string) {
 }
 
 function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleString();
+    return format(new Date(dateString), 'PPp', { locale: currentDateFnsLocale.value });
 }
 
 function isExpired(expiresAt: string): boolean {
@@ -105,19 +110,21 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 flex items-center justify-between border-b px-6 py-4">
                 <div>
-                    <h2 class="text-lg font-semibold">Invite Links</h2>
+                    <h2 class="text-lg font-semibold">{{ t('settings.inviteLinks.title') }}</h2>
                     <p class="text-muted-foreground mt-1 text-sm">
-                        Generate single-use invite links for new members. Links expire after 1 hour.
+                        {{ t('settings.inviteLinks.description') }}
                     </p>
                 </div>
                 <Button @click="generateLink" size="sm">
                     <Plus class="mr-1.5 h-4 w-4" />
-                    Generate
+                    {{ t('settings.inviteLinks.generate') }}
                 </Button>
             </div>
 
             <div class="p-6">
-                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">
+                    {{ t('settings.inviteLinks.loading') }}
+                </div>
 
                 <div
                     v-else-if="inviteLinks.length === 0"
@@ -126,8 +133,10 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                     <div class="border-border bg-muted mb-3 rounded-full border p-3">
                         <Link2 class="text-muted-foreground h-6 w-6" />
                     </div>
-                    <p class="text-sm font-medium">No invite links yet</p>
-                    <p class="text-muted-foreground mt-1 text-sm">Generate a link to invite someone to register.</p>
+                    <p class="text-sm font-medium">{{ t('settings.inviteLinks.emptyTitle') }}</p>
+                    <p class="text-muted-foreground mt-1 text-sm">
+                        {{ t('settings.inviteLinks.emptyDescription') }}
+                    </p>
                 </div>
 
                 <div v-else class="space-y-3">
@@ -148,13 +157,22 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                 </code>
                             </div>
                             <div class="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                                <span>Created {{ formatDate(link.created_at) }}</span>
+                                <span>{{
+                                    t('settings.inviteLinks.created', { date: formatDate(link.created_at) })
+                                }}</span>
                                 <span>&middot;</span>
-                                <span>Expires {{ link.expires_at ? formatDate(link.expires_at) : 'Never' }}</span>
+                                <span>{{
+                                    t('settings.inviteLinks.expires', {
+                                        date: link.expires_at
+                                            ? formatDate(link.expires_at)
+                                            : t('settings.inviteLinks.expiresNever'),
+                                    })
+                                }}</span>
                                 <template v-if="link.used_by_user">
                                     <span>&middot;</span>
                                     <span
-                                        >Used by <strong>{{ link.used_by_user.name }}</strong></span
+                                        >{{ t('settings.inviteLinks.usedBy') }}
+                                        <strong>{{ link.used_by_user.name }}</strong></span
                                     >
                                 </template>
                             </div>
@@ -172,10 +190,10 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                             >
                                 {{
                                     getStatus(link) === 'active'
-                                        ? 'Active'
+                                        ? t('settings.inviteLinks.statusActive')
                                         : getStatus(link) === 'used'
-                                          ? 'Used'
-                                          : 'Expired'
+                                          ? t('settings.inviteLinks.statusUsed')
+                                          : t('settings.inviteLinks.statusExpired')
                                 }}
                             </Badge>
 

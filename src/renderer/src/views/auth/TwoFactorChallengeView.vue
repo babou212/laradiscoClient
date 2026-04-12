@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeftIcon, KeyIcon } from 'lucide-vue-next';
 import { ref, computed, onMounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 
+const { t } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -61,12 +63,8 @@ function goBack(): void {
 
 <template>
     <AuthLayout
-        :title="useRecoveryCode ? 'Recovery Code' : 'Two-Factor Authentication'"
-        :description="
-            useRecoveryCode
-                ? 'Enter one of your emergency recovery codes to verify your identity.'
-                : 'Enter the 6-digit code from your authenticator app to continue.'
-        "
+        :title="useRecoveryCode ? t('auth.twoFactor.recoveryTitle') : t('auth.twoFactor.title')"
+        :description="useRecoveryCode ? t('auth.twoFactor.recoveryDescription') : t('auth.twoFactor.description')"
     >
         <form @submit.prevent="handleSubmit" class="space-y-5">
             <div v-if="!useRecoveryCode" class="grid gap-2">
@@ -81,7 +79,7 @@ function goBack(): void {
             </div>
 
             <div v-else class="grid gap-2">
-                <Label for="recovery_code">Recovery Code</Label>
+                <Label for="recovery_code">{{ t('auth.twoFactor.recoveryCode') }}</Label>
                 <div class="relative">
                     <KeyIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                     <Input
@@ -90,7 +88,7 @@ function goBack(): void {
                         v-model="recoveryCode"
                         type="text"
                         autocomplete="off"
-                        placeholder="xxxxx-xxxxx"
+                        :placeholder="t('auth.twoFactor.recoveryPlaceholder')"
                         class="pl-9 font-mono"
                         :disabled="authStore.isLoggingIn"
                     />
@@ -106,12 +104,12 @@ function goBack(): void {
 
             <div class="flex flex-col gap-3 pt-1">
                 <Button type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="toggleMode">
-                    {{ useRecoveryCode ? 'Use authentication code instead' : 'Use a recovery code instead' }}
+                    {{ useRecoveryCode ? t('auth.twoFactor.useAuthInstead') : t('auth.twoFactor.useRecoveryInstead') }}
                 </Button>
 
                 <Button type="button" variant="link" class="text-muted-foreground" @click="goBack">
                     <ArrowLeftIcon class="size-3" />
-                    Back to login
+                    {{ t('auth.twoFactor.backToLogin') }}
                 </Button>
             </div>
         </form>

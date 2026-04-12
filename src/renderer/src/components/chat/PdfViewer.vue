@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Download, FileText, Loader2, X } from 'lucide-vue-next';
 import { onBeforeUnmount, shallowRef, watchEffect } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { EncryptedAttachmentMeta } from '@/types/chat';
@@ -8,6 +9,8 @@ import type { EncryptedAttachmentMeta } from '@/types/chat';
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
 }>();
+
+const { t } = useI18n();
 
 const blobUrl = shallowRef<string | null>(null);
 const isLoading = shallowRef(false);
@@ -111,14 +114,14 @@ function formatFileSize(bytes: number): string {
                             <div class="flex gap-1">
                                 <button
                                     class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                    title="Download"
+                                    :title="t('chat.files.download')"
                                     @click.stop="downloadFile"
                                 >
                                     <Download :size="16" />
                                 </button>
                                 <button
                                     class="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                                    title="Close"
+                                    :title="t('chat.files.close')"
                                     @click.stop="lightboxOpen = false"
                                 >
                                     <X :size="16" />

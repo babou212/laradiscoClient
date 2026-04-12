@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import { Search, Shield, UsersRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getApiErrorMessage } from '@/api/errors';
 import { updateMemberRole, removeMemberRole } from '@/api/settings';
 import { findIncluded, relationshipIds } from '@/api/types';
@@ -22,6 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsMembersQuery } from '@/queries/settings/members';
+
+const { t } = useI18n();
 
 type Role = {
     id: string;
@@ -175,9 +178,9 @@ function isDefaultRole(role: MemberRole): boolean {
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <div>
-                    <h2 class="text-lg font-semibold">Members</h2>
+                    <h2 class="text-lg font-semibold">{{ t('settings.members.title') }}</h2>
                     <p class="text-muted-foreground mt-1 text-sm">
-                        Manage member roles. Assign or remove roles to control permissions.
+                        {{ t('settings.members.description') }}
                     </p>
                 </div>
             </div>
@@ -190,12 +193,18 @@ function isDefaultRole(role: MemberRole): boolean {
                     {{ apiError }}
                 </div>
 
-                <div v-if="isLoading" class="text-muted-foreground text-sm">Loading...</div>
+                <div v-if="isLoading" class="text-muted-foreground text-sm">
+                    {{ t('settings.members.loading') }}
+                </div>
 
                 <template v-else>
                     <div class="relative mb-4">
                         <Search class="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                        <Input v-model="searchQuery" placeholder="Search members..." class="pl-9" />
+                        <Input
+                            v-model="searchQuery"
+                            :placeholder="t('settings.members.searchPlaceholder')"
+                            class="pl-9"
+                        />
                     </div>
 
                     <div
@@ -205,9 +214,11 @@ function isDefaultRole(role: MemberRole): boolean {
                         <div class="border-border bg-muted mb-3 rounded-full border p-3">
                             <UsersRound class="text-muted-foreground h-6 w-6" />
                         </div>
-                        <p class="text-sm font-medium">No members found</p>
+                        <p class="text-sm font-medium">{{ t('settings.members.emptyTitle') }}</p>
                         <p class="text-muted-foreground mt-1 text-sm">
-                            {{ searchQuery ? 'Try a different search term.' : 'No members registered yet.' }}
+                            {{
+                                searchQuery ? t('settings.members.emptyTrySearch') : t('settings.members.emptyNone')
+                            }}
                         </p>
                     </div>
 
@@ -254,7 +265,7 @@ function isDefaultRole(role: MemberRole): boolean {
 
                             <Button variant="outline" size="sm" @click="openAssignRoleDialog(member)">
                                 <Shield class="mr-1.5 h-3.5 w-3.5" />
-                                Add Role
+                                {{ t('settings.members.addRole') }}
                             </Button>
                         </div>
                     </div>
@@ -265,10 +276,13 @@ function isDefaultRole(role: MemberRole): boolean {
         <Dialog v-model:open="showRoleDialog">
             <DialogContent class="sm:max-w-sm">
                 <DialogHeader>
-                    <DialogTitle>Assign Role</DialogTitle>
+                    <DialogTitle>{{ t('settings.members.assign.title') }}</DialogTitle>
                     <DialogDescription>
-                        Select a role to assign to <strong>{{ selectedMember?.display_name }}</strong
-                        >.
+                        {{
+                            t('settings.members.assign.description', {
+                                name: selectedMember?.display_name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -284,7 +298,7 @@ function isDefaultRole(role: MemberRole): boolean {
                         v-if="selectedMember && getAvailableRoles(selectedMember).length === 0"
                         class="text-muted-foreground py-4 text-center text-sm"
                     >
-                        This member already has all available roles.
+                        {{ t('settings.members.assign.allAssigned') }}
                     </div>
                     <Select
                         v-else
@@ -292,7 +306,7 @@ function isDefaultRole(role: MemberRole): boolean {
                         @update:model-value="(val) => typeof val === 'string' && doAssignRoleAction(val)"
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Select a role..." />
+                            <SelectValue :placeholder="t('settings.members.assign.placeholder')" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem
@@ -317,11 +331,14 @@ function isDefaultRole(role: MemberRole): boolean {
         <Dialog v-model:open="showRemoveRoleDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Remove Role</DialogTitle>
+                    <DialogTitle>{{ t('settings.members.remove.title') }}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to remove the role <strong>{{ removingRole?.name }}</strong> from
-                        <strong>{{ selectedMember?.display_name }}</strong
-                        >?
+                        {{
+                            t('settings.members.remove.description', {
+                                role: removingRole?.name ?? '',
+                                name: selectedMember?.display_name ?? '',
+                            })
+                        }}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -333,8 +350,12 @@ function isDefaultRole(role: MemberRole): boolean {
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="showRemoveRoleDialog = false">Cancel</Button>
-                    <Button variant="destructive" @click="confirmRemoveRole" :disabled="processing">Remove Role</Button>
+                    <Button variant="outline" @click="showRemoveRoleDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" @click="confirmRemoveRole" :disabled="processing">{{
+                        t('settings.members.remove.submit')
+                    }}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

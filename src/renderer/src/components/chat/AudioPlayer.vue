@@ -2,6 +2,7 @@
 import { Howl } from 'howler';
 import { Download, Loader2, Music, Pause, Play, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { Slider } from '@/components/ui/slider';
 import { decryptAttachment } from '@/lib/decrypt-attachment';
@@ -10,6 +11,8 @@ import type { EncryptedAttachmentMeta } from '@/types/chat';
 const props = defineProps<{
     attachment: EncryptedAttachmentMeta;
 }>();
+
+const { t } = useI18n();
 
 const howl = shallowRef<Howl | null>(null);
 const blobUrl = shallowRef<string | null>(null);
@@ -248,11 +251,11 @@ onBeforeUnmount(cleanup);
             </div>
             <div class="min-w-0 flex-1">
                 <div class="text-foreground truncate text-sm font-medium">{{ attachment.file_name }}</div>
-                <div class="text-destructive text-xs">Failed to load audio</div>
+                <div class="text-destructive text-xs">{{ t('chat.files.failedToLoadAudio') }}</div>
             </div>
             <button
                 class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                title="Download"
+                :title="t('chat.files.download')"
                 @click="downloadFile"
             >
                 <Download :size="16" />
@@ -276,7 +279,7 @@ onBeforeUnmount(cleanup);
                 </div>
                 <button
                     class="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                    title="Download"
+                    :title="t('chat.files.download')"
                     @click="downloadFile"
                 >
                     <Download :size="14" />

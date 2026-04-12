@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Minus, Square, X } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const isMaximized = ref(false);
 const isMac = ref(false);
@@ -37,20 +40,20 @@ function close(): void {
         :class="{ 'pl-[70px]': isMac }"
     >
         <div class="title-bar-drag flex min-w-0 flex-1 items-center gap-2 px-3">
-            <span class="text-sidebar-foreground/60 truncate text-xs font-medium"> LaraDisco </span>
+            <span class="text-sidebar-foreground/60 truncate text-xs font-medium">{{ t('titleBar.appName') }}</span>
         </div>
 
         <div v-if="!isMac" class="flex items-center">
             <button
                 class="title-bar-button text-foreground/70 hover:bg-accent hover:text-foreground flex h-9 w-11 items-center justify-center transition-colors focus:outline-none"
-                aria-label="Minimize"
+                :aria-label="t('titleBar.minimize')"
                 @click="minimize"
             >
                 <Minus class="size-4" :stroke-width="1.5" />
             </button>
             <button
                 class="title-bar-button text-foreground/70 hover:bg-accent hover:text-foreground flex h-9 w-11 items-center justify-center transition-colors focus:outline-none"
-                aria-label="Maximize"
+                :aria-label="t('titleBar.maximize')"
                 @click="maximize"
             >
                 <Square v-if="!isMaximized" class="size-3" :stroke-width="1.5" />
@@ -61,7 +64,7 @@ function close(): void {
             </button>
             <button
                 class="title-bar-button text-foreground/70 hover:bg-destructive flex h-9 w-11 items-center justify-center transition-colors hover:text-white focus:outline-none"
-                aria-label="Close"
+                :aria-label="t('titleBar.close')"
                 @click="close"
             >
                 <X class="size-4" :stroke-width="1.5" />
