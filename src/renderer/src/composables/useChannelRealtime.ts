@@ -308,7 +308,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
     // Rejoin channel when the channel id changes
     watch(
         channelId,
-        (newId, oldId) => {
+        (newId) => {
             if (newId) {
                 joinChannel(newId, isDm.value);
                 showPinnedMessages.value = false;

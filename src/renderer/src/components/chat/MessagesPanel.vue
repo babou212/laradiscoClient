@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
+import { VList } from 'virtua/vue';
+import type { VListHandle } from 'virtua/vue';
 import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { VList } from 'virtua/vue';
-import type { VListHandle } from 'virtua/vue';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
 import NewMessagePill from './NewMessagePill.vue';
@@ -908,9 +908,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     v-if="isLoadingOlder"
                     class="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-2"
                 >
-                    <div
-                        class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
-                    ></div>
+                    <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"></div>
                 </div>
 
                 <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
@@ -987,5 +985,4 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
     </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

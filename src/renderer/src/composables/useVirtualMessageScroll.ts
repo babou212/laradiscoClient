@@ -176,9 +176,7 @@ export function useVirtualMessageScroll(options: UseVirtualMessageScrollOptions)
         vlistRef.value?.scrollToIndex(msgIdx, { align: 'center', smooth: true });
 
         setTimeout(() => {
-            const el = document.querySelector<HTMLElement>(
-                `[data-message-id="${messageId}"]`,
-            );
+            const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
             if (el) {
                 el.classList.add('message-highlight');
                 setTimeout(() => el.classList.remove('message-highlight'), 2000);
