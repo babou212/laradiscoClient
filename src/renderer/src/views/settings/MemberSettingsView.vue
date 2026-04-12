@@ -216,9 +216,7 @@ function isDefaultRole(role: MemberRole): boolean {
                         </div>
                         <p class="text-sm font-medium">{{ t('settings.members.emptyTitle') }}</p>
                         <p class="text-muted-foreground mt-1 text-sm">
-                            {{
-                                searchQuery ? t('settings.members.emptyTrySearch') : t('settings.members.emptyNone')
-                            }}
+                            {{ searchQuery ? t('settings.members.emptyTrySearch') : t('settings.members.emptyNone') }}
                         </p>
                     </div>
 

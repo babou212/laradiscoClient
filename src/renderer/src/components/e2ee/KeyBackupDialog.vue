@@ -131,9 +131,7 @@ function handleSubmit() {
                         v-model="pin"
                         type="password"
                         :placeholder="
-                            restoreMode
-                                ? t('e2ee.backup.pinPlaceholderRestore')
-                                : t('e2ee.backup.pinPlaceholderCreate')
+                            restoreMode ? t('e2ee.backup.pinPlaceholderRestore') : t('e2ee.backup.pinPlaceholderCreate')
                         "
                         class="mt-1.5"
                         @keydown.enter="handleSubmit"
@@ -161,7 +159,9 @@ function handleSubmit() {
                 </p>
 
                 <div v-if="!restoreMode" class="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
-                    <p><strong>{{ t('e2ee.backup.importantLabel') }}</strong></p>
+                    <p>
+                        <strong>{{ t('e2ee.backup.importantLabel') }}</strong>
+                    </p>
                     <ul class="mt-1 list-inside list-disc space-y-1">
                         <li>{{ t('e2ee.backup.warningPinOnly') }}</li>
                         <li>{{ t('e2ee.backup.warningNeverSent') }}</li>

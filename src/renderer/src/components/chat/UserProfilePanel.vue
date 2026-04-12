@@ -206,9 +206,7 @@ const panelStyle = computed<CSSProperties | undefined>(() => {
                     </p>
                     <div class="mt-2 flex items-center gap-1.5">
                         <div class="size-2 rounded-full" :class="statusColors[user.status || 'offline']"></div>
-                        <span class="text-muted-foreground text-xs">{{
-                            statusLabels[user.status || 'offline']
-                        }}</span>
+                        <span class="text-muted-foreground text-xs">{{ statusLabels[user.status || 'offline'] }}</span>
                     </div>
                 </div>
 

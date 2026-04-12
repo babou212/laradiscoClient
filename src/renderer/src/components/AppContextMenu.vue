@@ -575,9 +575,7 @@ function usernameDm() {
                 <ContextMenuItem @select="linkOpen">
                     <ExternalLink /> {{ t('appContextMenu.openLink') }}
                 </ContextMenuItem>
-                <ContextMenuItem @select="linkCopy">
-                    <Link2 /> {{ t('appContextMenu.copyLink') }}
-                </ContextMenuItem>
+                <ContextMenuItem @select="linkCopy"> <Link2 /> {{ t('appContextMenu.copyLink') }} </ContextMenuItem>
             </template>
 
             <template v-else-if="genericCtx?.hasSelection">

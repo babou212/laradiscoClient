@@ -969,9 +969,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="outline" @click="showDeleteDialog = false">{{
-                        t('chat.messages.cancel')
-                    }}</Button>
+                    <Button variant="outline" @click="showDeleteDialog = false">{{ t('chat.messages.cancel') }}</Button>
                     <Button variant="destructive" @click="confirmDeleteMessage">{{
                         t('chat.messages.deleteConfirm')
                     }}</Button>

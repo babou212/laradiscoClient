@@ -666,18 +666,14 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                             :model-value="channelForm.is_private"
                             @update:model-value="channelForm.is_private = !!$event"
                         />
-                        <Label for="ch-private" class="text-sm">{{
-                            t('settings.channels.create.privateLabel')
-                        }}</Label>
+                        <Label for="ch-private" class="text-sm">{{ t('settings.channels.create.privateLabel') }}</Label>
                     </div>
 
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showCreateChannelDialog = false">{{
                             t('settings.common.cancel')
                         }}</Button>
-                        <Button type="submit" :disabled="processing">{{
-                            t('settings.channels.create.submit')
-                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{ t('settings.channels.create.submit') }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -831,9 +827,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         <Button type="button" variant="outline" @click="showEditCategoryDialog = false">{{
                             t('settings.common.cancel')
                         }}</Button>
-                        <Button type="submit" :disabled="processing">{{
-                            t('settings.channels.category.save')
-                        }}</Button>
+                        <Button type="submit" :disabled="processing">{{ t('settings.channels.category.save') }}</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -867,9 +861,7 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                 <DialogHeader>
                     <DialogTitle>{{ t('settings.channels.overrides.title') }}</DialogTitle>
                     <DialogDescription>
-                        {{
-                            t('settings.channels.overrides.description', { name: overridesChannel?.name ?? '' })
-                        }}
+                        {{ t('settings.channels.overrides.description', { name: overridesChannel?.name ?? '' }) }}
                     </DialogDescription>
                 </DialogHeader>
 

@@ -439,9 +439,7 @@ function formatDate(dateStr: string): string {
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="showBanDialog = false">{{
-                        t('settings.common.cancel')
-                    }}</Button>
+                    <Button variant="outline" @click="showBanDialog = false">{{ t('settings.common.cancel') }}</Button>
                     <Button variant="destructive" :disabled="banning" @click="confirmBan">{{
                         t('settings.moderation.banDialog.submit')
                     }}</Button>
@@ -471,9 +469,7 @@ function formatDate(dateStr: string): string {
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="showJailDialog = false">{{
-                        t('settings.common.cancel')
-                    }}</Button>
+                    <Button variant="outline" @click="showJailDialog = false">{{ t('settings.common.cancel') }}</Button>
                     <Button variant="destructive" :disabled="jailing" @click="confirmJail">{{
                         t('settings.moderation.jailDialog.submit')
                     }}</Button>

@@ -12,30 +12,30 @@ onMounted(async () => {
     await voiceStore.loadSettings();
 });
 
-const screenShareQualityOptions = computed<
-    { value: ScreenShareQualityPreset; label: string; description: string }[]
->(() => [
-    {
-        value: 'low',
-        label: t('settings.screenShare.presets.low'),
-        description: t('settings.screenShare.presets.lowDescription'),
-    },
-    {
-        value: 'medium',
-        label: t('settings.screenShare.presets.medium'),
-        description: t('settings.screenShare.presets.mediumDescription'),
-    },
-    {
-        value: 'high',
-        label: t('settings.screenShare.presets.high'),
-        description: t('settings.screenShare.presets.highDescription'),
-    },
-    {
-        value: 'source',
-        label: t('settings.screenShare.presets.source'),
-        description: t('settings.screenShare.presets.sourceDescription'),
-    },
-]);
+const screenShareQualityOptions = computed<{ value: ScreenShareQualityPreset; label: string; description: string }[]>(
+    () => [
+        {
+            value: 'low',
+            label: t('settings.screenShare.presets.low'),
+            description: t('settings.screenShare.presets.lowDescription'),
+        },
+        {
+            value: 'medium',
+            label: t('settings.screenShare.presets.medium'),
+            description: t('settings.screenShare.presets.mediumDescription'),
+        },
+        {
+            value: 'high',
+            label: t('settings.screenShare.presets.high'),
+            description: t('settings.screenShare.presets.highDescription'),
+        },
+        {
+            value: 'source',
+            label: t('settings.screenShare.presets.source'),
+            description: t('settings.screenShare.presets.sourceDescription'),
+        },
+    ],
+);
 </script>
 
 <template>
