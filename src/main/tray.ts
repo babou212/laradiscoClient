@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
-import type { BrowserWindow} from 'electron';
+import type { BrowserWindow } from 'electron';
 import { app, ipcMain, Menu, nativeImage, Tray } from 'electron';
 
 let tray: Tray | null = null;
