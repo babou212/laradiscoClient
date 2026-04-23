@@ -1,0 +1,336 @@
+/*
+|--------------------------------------------------------------------------
+| Application Themes
+|--------------------------------------------------------------------------
+|
+| Each theme is a complete visual identity — some are light, some are dark.
+| The active theme is set via data-theme attribute on the <html> element.
+| Dark-category themes also get the .dark class for Tailwind compatibility.
+| The "default" and "default-dark" themes use the :root / .dark selectors
+| in app.css so no data-theme attribute is needed for those.
+|
+*/
+
+/* =======================================================================
+ * LIGHT THEMES
+ * =======================================================================
+ *
+ * The "default" light theme uses the :root selector in app.css and does
+ * not need a data-theme rule here.
+ */
+
+/* =======================================================================
+ * DARK THEMES
+ * ======================================================================= */
+
+/* -----------------------------------------------------------------------
+ * Dracula — Rich purples and pinks, signature dark editor look
+ * ----------------------------------------------------------------------- */
+html[data-theme='dracula'] {
+    --background: hsl(231 15% 14%);
+    --foreground: hsl(60 30% 95%);
+    --card: hsl(231 15% 16%);
+    --card-foreground: hsl(60 30% 95%);
+    --popover: hsl(231 15% 16%);
+    --popover-foreground: hsl(60 30% 95%);
+    --primary: hsl(265 89% 68%);
+    --primary-foreground: hsl(231 15% 10%);
+    --secondary: hsl(231 15% 22%);
+    --secondary-foreground: hsl(60 30% 95%);
+    --muted: hsl(231 15% 20%);
+    --muted-foreground: hsl(231 10% 58%);
+    --accent: hsl(231 15% 22%);
+    --accent-foreground: hsl(60 30% 95%);
+    --destructive: hsl(0 100% 67%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(231 15% 24%);
+    --input: hsl(231 15% 24%);
+    --ring: hsl(265 89% 68%);
+    --chart-1: hsl(265 89% 68%);
+    --chart-2: hsl(326 100% 74%);
+    --chart-3: hsl(135 94% 65%);
+    --chart-4: hsl(191 97% 67%);
+    --chart-5: hsl(65 92% 67%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(231 15% 11%);
+    --sidebar-foreground: hsl(60 30% 90%);
+    --sidebar-primary: hsl(265 89% 68%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(231 15% 18%);
+    --sidebar-accent-foreground: hsl(60 30% 90%);
+    --sidebar-border: hsl(231 15% 20%);
+    --sidebar-ring: hsl(265 89% 68%);
+}
+
+/* -----------------------------------------------------------------------
+ * Nord Dark — Cool arctic blues on a dark canvas
+ * ----------------------------------------------------------------------- */
+html[data-theme='nord-dark'] {
+    --background: hsl(220 16% 12%);
+    --foreground: hsl(220 16% 90%);
+    --card: hsl(220 16% 14%);
+    --card-foreground: hsl(220 16% 90%);
+    --popover: hsl(220 16% 14%);
+    --popover-foreground: hsl(220 16% 90%);
+    --primary: hsl(213 32% 60%);
+    --primary-foreground: hsl(220 16% 8%);
+    --secondary: hsl(220 16% 20%);
+    --secondary-foreground: hsl(220 16% 90%);
+    --muted: hsl(220 16% 18%);
+    --muted-foreground: hsl(220 12% 60%);
+    --accent: hsl(220 16% 20%);
+    --accent-foreground: hsl(220 16% 90%);
+    --destructive: hsl(354 42% 56%);
+    --destructive-foreground: hsl(220 16% 100%);
+    --border: hsl(220 16% 22%);
+    --input: hsl(220 16% 22%);
+    --ring: hsl(213 32% 60%);
+    --chart-1: hsl(213 32% 60%);
+    --chart-2: hsl(179 25% 56%);
+    --chart-3: hsl(92 28% 60%);
+    --chart-4: hsl(354 42% 60%);
+    --chart-5: hsl(40 71% 68%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(220 16% 10%);
+    --sidebar-foreground: hsl(220 16% 85%);
+    --sidebar-primary: hsl(213 32% 60%);
+    --sidebar-primary-foreground: hsl(220 16% 100%);
+    --sidebar-accent: hsl(220 16% 16%);
+    --sidebar-accent-foreground: hsl(220 16% 85%);
+    --sidebar-border: hsl(220 16% 18%);
+    --sidebar-ring: hsl(213 32% 60%);
+}
+
+/* -----------------------------------------------------------------------
+ * Midnight — Deep navy blue for late-night focus
+ * ----------------------------------------------------------------------- */
+html[data-theme='midnight'] {
+    --background: hsl(230 25% 9%);
+    --foreground: hsl(220 15% 90%);
+    --card: hsl(230 25% 11%);
+    --card-foreground: hsl(220 15% 90%);
+    --popover: hsl(230 25% 11%);
+    --popover-foreground: hsl(220 15% 90%);
+    --primary: hsl(217 92% 60%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(230 20% 18%);
+    --secondary-foreground: hsl(220 15% 90%);
+    --muted: hsl(230 20% 16%);
+    --muted-foreground: hsl(220 10% 55%);
+    --accent: hsl(230 20% 18%);
+    --accent-foreground: hsl(220 15% 90%);
+    --destructive: hsl(0 72% 51%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(230 20% 20%);
+    --input: hsl(230 20% 20%);
+    --ring: hsl(217 92% 60%);
+    --chart-1: hsl(217 92% 60%);
+    --chart-2: hsl(190 80% 50%);
+    --chart-3: hsl(250 70% 60%);
+    --chart-4: hsl(160 65% 45%);
+    --chart-5: hsl(280 60% 58%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(230 25% 7%);
+    --sidebar-foreground: hsl(220 15% 85%);
+    --sidebar-primary: hsl(217 92% 60%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(230 20% 14%);
+    --sidebar-accent-foreground: hsl(220 15% 85%);
+    --sidebar-border: hsl(230 20% 16%);
+    --sidebar-ring: hsl(217 92% 60%);
+}
+
+/* -----------------------------------------------------------------------
+ * Cyberpunk — Neon pink & cyan on a dark backdrop
+ * ----------------------------------------------------------------------- */
+html[data-theme='cyberpunk'] {
+    --background: hsl(260 20% 8%);
+    --foreground: hsl(180 100% 90%);
+    --card: hsl(260 20% 10%);
+    --card-foreground: hsl(180 100% 90%);
+    --popover: hsl(260 20% 10%);
+    --popover-foreground: hsl(180 100% 90%);
+    --primary: hsl(330 100% 60%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(260 18% 18%);
+    --secondary-foreground: hsl(180 100% 90%);
+    --muted: hsl(260 18% 15%);
+    --muted-foreground: hsl(260 12% 55%);
+    --accent: hsl(185 100% 45%);
+    --accent-foreground: hsl(260 20% 8%);
+    --destructive: hsl(0 90% 55%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(260 18% 20%);
+    --input: hsl(260 18% 20%);
+    --ring: hsl(330 100% 60%);
+    --chart-1: hsl(330 100% 60%);
+    --chart-2: hsl(185 100% 50%);
+    --chart-3: hsl(270 80% 65%);
+    --chart-4: hsl(55 100% 55%);
+    --chart-5: hsl(140 80% 50%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(260 20% 6%);
+    --sidebar-foreground: hsl(180 60% 80%);
+    --sidebar-primary: hsl(330 100% 60%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(260 18% 14%);
+    --sidebar-accent-foreground: hsl(180 60% 80%);
+    --sidebar-border: hsl(260 18% 16%);
+    --sidebar-ring: hsl(330 100% 60%);
+}
+
+/* -----------------------------------------------------------------------
+ * Monokai — Classic dark editor feel with vibrant accents
+ * ----------------------------------------------------------------------- */
+html[data-theme='monokai'] {
+    --background: hsl(70 8% 12%);
+    --foreground: hsl(60 17% 88%);
+    --card: hsl(70 8% 14%);
+    --card-foreground: hsl(60 17% 88%);
+    --popover: hsl(70 8% 14%);
+    --popover-foreground: hsl(60 17% 88%);
+    --primary: hsl(80 76% 53%);
+    --primary-foreground: hsl(70 8% 10%);
+    --secondary: hsl(70 8% 20%);
+    --secondary-foreground: hsl(60 17% 88%);
+    --muted: hsl(70 8% 18%);
+    --muted-foreground: hsl(60 10% 52%);
+    --accent: hsl(70 8% 20%);
+    --accent-foreground: hsl(60 17% 88%);
+    --destructive: hsl(338 95% 56%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(70 8% 22%);
+    --input: hsl(70 8% 22%);
+    --ring: hsl(80 76% 53%);
+    --chart-1: hsl(80 76% 53%);
+    --chart-2: hsl(338 95% 56%);
+    --chart-3: hsl(190 81% 57%);
+    --chart-4: hsl(54 70% 60%);
+    --chart-5: hsl(261 85% 68%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(70 8% 10%);
+    --sidebar-foreground: hsl(60 17% 83%);
+    --sidebar-primary: hsl(80 76% 53%);
+    --sidebar-primary-foreground: hsl(70 8% 10%);
+    --sidebar-accent: hsl(70 8% 16%);
+    --sidebar-accent-foreground: hsl(60 17% 83%);
+    --sidebar-border: hsl(70 8% 18%);
+    --sidebar-ring: hsl(80 76% 53%);
+}
+
+/* -----------------------------------------------------------------------
+ * Emerald — Dark with rich green accents
+ * ----------------------------------------------------------------------- */
+html[data-theme='emerald'] {
+    --background: hsl(160 20% 7%);
+    --foreground: hsl(150 15% 90%);
+    --card: hsl(160 20% 9%);
+    --card-foreground: hsl(150 15% 90%);
+    --popover: hsl(160 20% 9%);
+    --popover-foreground: hsl(150 15% 90%);
+    --primary: hsl(160 84% 39%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(160 16% 16%);
+    --secondary-foreground: hsl(150 15% 90%);
+    --muted: hsl(160 14% 14%);
+    --muted-foreground: hsl(150 8% 52%);
+    --accent: hsl(160 16% 16%);
+    --accent-foreground: hsl(150 15% 90%);
+    --destructive: hsl(0 84% 60%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(160 14% 18%);
+    --input: hsl(160 14% 18%);
+    --ring: hsl(160 84% 39%);
+    --chart-1: hsl(160 84% 39%);
+    --chart-2: hsl(120 50% 45%);
+    --chart-3: hsl(180 60% 45%);
+    --chart-4: hsl(90 55% 50%);
+    --chart-5: hsl(200 55% 50%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(160 20% 5%);
+    --sidebar-foreground: hsl(150 15% 85%);
+    --sidebar-primary: hsl(160 84% 39%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(160 14% 12%);
+    --sidebar-accent-foreground: hsl(150 15% 85%);
+    --sidebar-border: hsl(160 14% 14%);
+    --sidebar-ring: hsl(160 84% 39%);
+}
+
+/* -----------------------------------------------------------------------
+ * Solarized Dark — Classic dark blue-green tones
+ * ----------------------------------------------------------------------- */
+html[data-theme='solarized-dark'] {
+    --background: hsl(192 100% 8%);
+    --foreground: hsl(44 87% 80%);
+    --card: hsl(192 95% 10%);
+    --card-foreground: hsl(44 87% 80%);
+    --popover: hsl(192 95% 10%);
+    --popover-foreground: hsl(44 87% 80%);
+    --primary: hsl(18 89% 50%);
+    --primary-foreground: hsl(192 100% 8%);
+    --secondary: hsl(192 50% 16%);
+    --secondary-foreground: hsl(44 87% 80%);
+    --muted: hsl(192 50% 14%);
+    --muted-foreground: hsl(195 23% 50%);
+    --accent: hsl(192 50% 16%);
+    --accent-foreground: hsl(44 87% 80%);
+    --destructive: hsl(1 71% 52%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(192 50% 18%);
+    --input: hsl(192 50% 18%);
+    --ring: hsl(18 89% 50%);
+    --chart-1: hsl(18 89% 50%);
+    --chart-2: hsl(175 74% 42%);
+    --chart-3: hsl(205 69% 55%);
+    --chart-4: hsl(331 64% 52%);
+    --chart-5: hsl(45 100% 40%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(192 100% 6%);
+    --sidebar-foreground: hsl(44 60% 72%);
+    --sidebar-primary: hsl(18 89% 50%);
+    --sidebar-primary-foreground: hsl(192 100% 8%);
+    --sidebar-accent: hsl(192 50% 12%);
+    --sidebar-accent-foreground: hsl(44 60% 72%);
+    --sidebar-border: hsl(192 50% 14%);
+    --sidebar-ring: hsl(18 89% 50%);
+}
+
+/* -----------------------------------------------------------------------
+ * Crimson — Deep dark reds for an intense feel
+ * ----------------------------------------------------------------------- */
+html[data-theme='crimson'] {
+    --background: hsl(0 20% 7%);
+    --foreground: hsl(0 10% 90%);
+    --card: hsl(0 20% 9%);
+    --card-foreground: hsl(0 10% 90%);
+    --popover: hsl(0 20% 9%);
+    --popover-foreground: hsl(0 10% 90%);
+    --primary: hsl(348 83% 47%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(0 15% 16%);
+    --secondary-foreground: hsl(0 10% 90%);
+    --muted: hsl(0 12% 14%);
+    --muted-foreground: hsl(0 8% 52%);
+    --accent: hsl(0 15% 16%);
+    --accent-foreground: hsl(0 10% 90%);
+    --destructive: hsl(0 84% 60%);
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(0 15% 18%);
+    --input: hsl(0 15% 18%);
+    --ring: hsl(348 83% 47%);
+    --chart-1: hsl(348 83% 47%);
+    --chart-2: hsl(20 80% 55%);
+    --chart-3: hsl(330 70% 55%);
+    --chart-4: hsl(0 60% 60%);
+    --chart-5: hsl(280 55% 55%);
+    --radius: 0.5rem;
+    --sidebar-background: hsl(0 20% 5%);
+    --sidebar-foreground: hsl(0 10% 85%);
+    --sidebar-primary: hsl(348 83% 47%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(0 15% 12%);
+    --sidebar-accent-foreground: hsl(0 10% 85%);
+    --sidebar-border: hsl(0 12% 14%);
+    --sidebar-ring: hsl(348 83% 47%);
+}

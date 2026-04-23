@@ -1,0 +1,8 @@
+*
+!.gitignore
+!README.md
+!package.json
+!openmls_wasm.js
+!openmls_wasm.d.ts
+!openmls_wasm_bg.wasm
+!openmls_wasm_bg.wasm.d.ts

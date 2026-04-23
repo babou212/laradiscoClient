@@ -1,0 +1,424 @@
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { electronApp, is, optimizer } from '@electron-toolkit/utils';
+import * as Sentry from '@sentry/electron/main';
+import {
+    app,
+    BrowserWindow,
+    clipboard,
+    desktopCapturer,
+    ipcMain,
+    Menu,
+    net,
+    powerMonitor,
+    protocol,
+    session,
+    shell,
+} from 'electron';
+import { version } from '../../package.json';
+
+Menu.setApplicationMenu(null);
+
+Sentry.init({
+    dsn: 'https://71284c322a0e09fa3e93f93919f11f53@o4511215356805120.ingest.de.sentry.io/4511215360475216',
+    release: `com.laradisco.client@${version}`,
+    environment: is.dev ? 'development' : 'production',
+    enabled: !is.dev,
+    tracesSampleRate: 0.1,
+    beforeSend(event) {
+        if (event.breadcrumbs) {
+            for (const crumb of event.breadcrumbs) {
+                if (crumb.data?.headers?.Authorization) {
+                    crumb.data.headers.Authorization = '[FILTERED]';
+                }
+            }
+        }
+        return event;
+    },
+});
+
+if (process.env.USER_DATA_DIR) {
+    app.setPath('userData', process.env.USER_DATA_DIR);
+}
+
+app.commandLine.appendSwitch(
+    'enable-features',
+    [
+        'VaapiVideoDecodeLinuxGL',
+        'VaapiVideoDecoder',
+        'PlatformHEVCDecoderSupport',
+        'VideoToolboxVideoDecoder',
+        'WaylandWindowDecorations',
+    ].join(','),
+);
+app.commandLine.appendSwitch('disable-features', 'Vulkan,UseSkiaGraphite,VulkanFromANGLE');
+app.commandLine.appendSwitch('use-gl', 'angle');
+app.commandLine.appendSwitch('use-angle', 'gl');
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+
+const widevinePath = join(
+    process.resourcesPath ? dirname(process.resourcesPath) : dirname(process.execPath),
+    'WidevineCdm',
+);
+const widevineManifest = join(widevinePath, 'manifest.json');
+if (existsSync(widevineManifest)) {
+    const { version } = JSON.parse(readFileSync(widevineManifest, 'utf8'));
+    app.commandLine.appendSwitch('widevine-cdm-path', join(widevinePath, '_platform_specific', 'linux_x64'));
+    app.commandLine.appendSwitch('widevine-cdm-version', version);
+}
+
+protocol.registerSchemesAsPrivileged([
+    // bypassCSP is required so decrypted-in-memory video can be streamed back
+    // to <video> elements without tripping media-src; the scheme is handled
+    // entirely in main from an attachment-id keyed cache, so no external URL
+    // is fetchable via it.
+    { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },
+    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
+import { registerIpcHandlers, getVideoCache } from './ipc';
+import { cleanupPushToTalk } from './ptt';
+import { getIsQuitting, initTray, setIsQuitting } from './tray';
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.exit(0);
+}
+
+let mainWindow: BrowserWindow | null = null;
+
+function isTrustedFrame(url: string): boolean {
+    const devUrl = process.env['ELECTRON_RENDERER_URL'];
+    return (
+        url.startsWith('app://renderer') ||
+        url.startsWith('http://localhost') ||
+        url.startsWith('http://127.0.0.1') ||
+        (!!devUrl && url.startsWith(devUrl))
+    );
+}
+
+function registerWindowIpcHandlers(): void {
+    ipcMain.on('window:minimize', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) return;
+        mainWindow?.minimize();
+    });
+    ipcMain.on('window:maximize', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) return;
+        if (!mainWindow) return;
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    });
+    ipcMain.on('window:close', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) return;
+        mainWindow?.close();
+    });
+    ipcMain.handle('window:isMaximized', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) throw new Error('untrusted sender');
+        return mainWindow?.isMaximized() ?? false;
+    });
+}
+
+function registerClipboardIpcHandlers(): void {
+    ipcMain.handle('clipboard:readText', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) throw new Error('untrusted sender');
+        return clipboard.readText();
+    });
+    ipcMain.on('clipboard:writeText', (event, text: string) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) return;
+        clipboard.writeText(text);
+    });
+}
+
+function createWindow(): void {
+    const isMac = process.platform === 'darwin';
+
+    const win = new BrowserWindow({
+        width: 1280,
+        height: 800,
+        minWidth: 960,
+        minHeight: 600,
+        show: false,
+        autoHideMenuBar: true,
+        backgroundColor: '#1a1a1a',
+
+        ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: false }),
+        webPreferences: {
+            preload: join(__dirname, '../preload/index.js'),
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+            backgroundThrottling: true,
+        },
+    });
+
+    mainWindow = win;
+
+    win.on('maximize', () => {
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('window:maximized-change', true);
+        }
+    });
+    win.on('unmaximize', () => {
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('window:maximized-change', false);
+        }
+    });
+
+    win.on('ready-to-show', () => {
+        win.show();
+    });
+
+    win.on('close', (event) => {
+        if (!getIsQuitting()) {
+            event.preventDefault();
+            win.hide();
+            return;
+        }
+        if (!win.webContents.isDestroyed()) {
+            win.webContents.send('app:before-quit');
+        }
+    });
+
+    win.on('closed', () => {
+        if (mainWindow === win) {
+            mainWindow = null;
+        }
+    });
+
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+        win.loadURL(process.env['ELECTRON_RENDERER_URL']);
+    } else {
+        win.loadURL('app://renderer/index.html');
+    }
+}
+
+app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+        if (win.isMinimized()) win.restore();
+        win.focus();
+    }
+});
+
+app.whenReady().then(() => {
+    registerIpcHandlers();
+    registerWindowIpcHandlers();
+    registerClipboardIpcHandlers();
+
+    session.defaultSession.protocol.handle('app-video', (request) => {
+        const attachmentId = new URL(request.url).hostname;
+        const entry = getVideoCache(attachmentId);
+        if (!entry) {
+            return new Response(null, { status: 404 });
+        }
+
+        const rangeHeader = request.headers.get('Range');
+        if (rangeHeader) {
+            const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+            if (match) {
+                const start = parseInt(match[1], 10);
+                const end = match[2] ? parseInt(match[2], 10) : entry.data.length - 1;
+                const chunk = entry.data.subarray(start, end + 1);
+                return new Response(new Uint8Array(chunk), {
+                    status: 206,
+                    headers: {
+                        'Content-Type': entry.mimeType,
+                        'Content-Range': `bytes ${start}-${end}/${entry.data.length}`,
+                        'Accept-Ranges': 'bytes',
+                        'Content-Length': String(chunk.length),
+                    },
+                });
+            }
+        }
+
+        return new Response(new Uint8Array(entry.data), {
+            status: 200,
+            headers: {
+                'Content-Type': entry.mimeType,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': String(entry.data.length),
+            },
+        });
+    });
+
+    session.defaultSession.protocol.handle('app', (request) => {
+        const url = new URL(request.url);
+        let filePath = url.pathname;
+        if (filePath === '/' || filePath === '') filePath = '/index.html';
+        const fullPath = join(__dirname, '../renderer', filePath);
+        return net.fetch(`file://${fullPath}`);
+    });
+
+    electronApp.setAppUserModelId('com.laradisco.client');
+
+    const defaultUserAgent = session.defaultSession.getUserAgent();
+    const cleanUserAgent = defaultUserAgent.replace(/\s*Electron\/[\w.]+/gi, '').replace(/\s*laradisco[^\s]*/gi, '');
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+        {
+            urls: [
+                'https://*.youtube.com/*',
+                'https://*.youtube-nocookie.com/*',
+                'https://*.googlevideo.com/*',
+                'https://*.google.com/*',
+            ],
+        },
+        (details, callback) => {
+            details.requestHeaders['User-Agent'] = cleanUserAgent;
+            if (
+                !details.requestHeaders['Referer'] ||
+                details.requestHeaders['Referer'].startsWith('app://') ||
+                details.requestHeaders['Referer'].startsWith('file://') ||
+                details.requestHeaders['Referer'].startsWith('http://localhost')
+            ) {
+                details.requestHeaders['Referer'] = 'https://www.youtube-nocookie.com/';
+                details.requestHeaders['Origin'] = 'https://www.youtube-nocookie.com';
+            }
+            callback({ requestHeaders: details.requestHeaders });
+        },
+    );
+
+    const csp = [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "connect-src 'self' http: https: ws: wss:",
+        "img-src 'self' data: http: https: blob:",
+        "font-src 'self' data:",
+        "media-src 'self' blob: data: https: app-video:",
+        'frame-src blob: https://www.youtube.com https://www.youtube-nocookie.com',
+        "worker-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ].join('; ');
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const url = new URL(details.url);
+        const isAppPage =
+            url.protocol === 'app:' ||
+            url.protocol === 'file:' ||
+            url.hostname === 'localhost' ||
+            url.hostname === '127.0.0.1';
+
+        if (isAppPage) {
+            callback({
+                responseHeaders: {
+                    ...details.responseHeaders,
+                    'Content-Security-Policy': [csp],
+                    'X-Content-Type-Options': ['nosniff'],
+                    'X-Frame-Options': ['DENY'],
+                    'Referrer-Policy': ['strict-origin-when-cross-origin'],
+                    'Permissions-Policy': ['microphone=self, camera=(), geolocation=(), payment=(), usb=(), serial=()'],
+                },
+            });
+        } else {
+            callback({ responseHeaders: details.responseHeaders });
+        }
+    });
+
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+        const allowed = ['media', 'mediaKeySystem', 'display-capture'];
+        callback(allowed.includes(permission));
+    });
+
+    session.defaultSession.setDisplayMediaRequestHandler(
+        async (_request, callback) => {
+            const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
+            if (sources.length > 0) {
+                callback({ video: sources[0] });
+            } else {
+                callback(null as unknown as Electron.Streams);
+            }
+        },
+        { useSystemPicker: true },
+    );
+
+    app.on('web-contents-created', (_event, contents) => {
+        contents.on('will-navigate', (event, url) => {
+            const appOrigins = ['app://renderer', 'http://localhost', process.env['ELECTRON_RENDERER_URL'] ?? ''];
+            const isAllowed = appOrigins.some((o) => o && url.startsWith(o));
+            if (!isAllowed && !url.startsWith('file://')) {
+                event.preventDefault();
+                shell.openExternal(url);
+            }
+        });
+
+        contents.on('will-attach-webview', (event) => {
+            event.preventDefault();
+        });
+
+        contents.setWindowOpenHandler(({ url }) => {
+            shell.openExternal(url);
+            return { action: 'deny' };
+        });
+    });
+
+    app.on('browser-window-created', (_, window) => {
+        optimizer.watchWindowShortcuts(window);
+    });
+
+    createWindow();
+
+    if (mainWindow) {
+        initTray(mainWindow);
+    }
+
+    setImmediate(async () => {
+        const [{ initDatabase }, mls, { initPushToTalk }, { initAutoUpdater }] = await Promise.all([
+            import('./database'),
+            import('./mls'),
+            import('./ptt'),
+            import('./updater'),
+        ]);
+        initDatabase();
+        mls.initMls();
+        initPushToTalk();
+        initAutoUpdater();
+    });
+
+    const pauseOnHidden = (win: BrowserWindow): void => {
+        const notify = (visible: boolean): void => {
+            if (!win.webContents.isDestroyed()) {
+                win.webContents.send('app:visibility-change', visible);
+            }
+        };
+        win.on('hide', () => notify(false));
+        win.on('show', () => notify(true));
+        win.on('minimize', () => notify(false));
+        win.on('restore', () => notify(true));
+    };
+    if (mainWindow) pauseOnHidden(mainWindow);
+
+    powerMonitor.on('suspend', () => {
+        BrowserWindow.getAllWindows().forEach((w) => {
+            if (!w.webContents.isDestroyed()) w.webContents.send('app:visibility-change', false);
+        });
+    });
+    powerMonitor.on('resume', () => {
+        BrowserWindow.getAllWindows().forEach((w) => {
+            if (!w.webContents.isDestroyed()) w.webContents.send('app:visibility-change', true);
+        });
+    });
+
+    app.on('activate', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+        } else {
+            createWindow();
+        }
+    });
+});
+
+app.on('window-all-closed', () => {
+    // Tray keeps the app alive — don't quit when windows close
+});
+
+app.on('before-quit', () => {
+    setIsQuitting(true);
+    cleanupPushToTalk();
+});

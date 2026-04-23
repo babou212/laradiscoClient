@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "outDir": "out",
+        "paths": {
+            "@main/*": ["./src/main/*"]
+        }
+    },
+    "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "electron.vite.config.ts", "drizzle.config.ts"]
+}

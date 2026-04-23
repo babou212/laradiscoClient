@@ -1,0 +1,986 @@
+{
+    "common": {
+        "loading": "Indlæser",
+        "loadingEllipsis": "Indlæser...",
+        "save": "Gem",
+        "cancel": "Annullér",
+        "continue": "Fortsæt",
+        "back": "Tilbage",
+        "sending": "Sender...",
+        "saveSuccess": "Gemt",
+        "retry": "Prøv igen",
+        "close": "Luk"
+    },
+    "validation": {
+        "emailRequired": "E-mail er påkrævet",
+        "emailInvalid": "Indtast en gyldig e-mailadresse.",
+        "passwordRequired": "Adgangskode er påkrævet",
+        "passwordMin8": "Adgangskoden skal være mindst 8 tegn.",
+        "passwordConfirmRequired": "Bekræft din adgangskode.",
+        "passwordsMatch": "Adgangskoderne er ikke ens.",
+        "displayNameRequired": "Visningsnavn er påkrævet.",
+        "usernameRequired": "Brugernavn er påkrævet.",
+        "usernameInvalidChars": "Brugernavn må kun indeholde bogstaver, tal, understregninger, punktummer og bindestreger.",
+        "inviteRequired": "Invitationskode er påkrævet.",
+        "codeLength6": "Nulstillingskoden skal være 6 cifre.",
+        "codeNumeric": "Nulstillingskoden skal være numerisk."
+    },
+    "auth": {
+        "serverFallback": "Server",
+        "login": {
+            "title": "Velkommen tilbage",
+            "descriptionPrefix": "Log ind på {server}",
+            "email": "E-mail",
+            "password": "Adgangskode",
+            "emailPlaceholder": "dig{'@'}eksempel.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "Log ind",
+            "signingIn": "Logger ind...",
+            "forgotPassword": "Glemt adgangskode?",
+            "noAccount": "Har du ikke en konto? Tilmeld dig",
+            "changeServer": "Skift server"
+        },
+        "register": {
+            "joinTitle": "Tilslut server",
+            "createTitle": "Opret konto",
+            "inviteDescription": "Indtast din invitationskode for at komme i gang",
+            "signupDescription": "Tilmeld dig {server}",
+            "inviteCodeLabel": "Invitationskode",
+            "invitePlaceholder": "Indsæt din invitationskode",
+            "askAdmin": "Bed en serveradministrator om en invitationskode.",
+            "continue": "Fortsæt",
+            "validating": "Validerer...",
+            "alreadyHaveAccount": "Har du allerede en konto? Log ind",
+            "displayName": "Visningsnavn",
+            "displayNamePlaceholder": "Dit navn",
+            "username": "Brugernavn",
+            "usernamePlaceholder": "ditnavn",
+            "email": "E-mail",
+            "emailPlaceholder": "dig{'@'}eksempel.com",
+            "password": "Adgangskode",
+            "confirmPassword": "Bekræft adgangskode",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "Opret konto",
+            "creatingAccount": "Opretter konto...",
+            "useDifferentInvite": "Brug en anden invitationskode",
+            "invalidInvite": "Ugyldigt invitationslink",
+            "unableToReach": "Kunne ikke nå serveren. Prøv igen senere."
+        },
+        "forgot": {
+            "resetTitle": "Nulstil adgangskode",
+            "doneTitle": "Adgangskode nulstillet",
+            "emailDescription": "Indtast din e-mailadresse, så sender vi dig en 6-cifret nulstillingskode.",
+            "codeDescription": "Indtast koden sendt til {email} og vælg en ny adgangskode.",
+            "successHeading": "Din adgangskode er nulstillet.",
+            "successSub": "Du kan nu logge ind med din nye adgangskode.",
+            "email": "E-mail",
+            "emailPlaceholder": "dig{'@'}eksempel.com",
+            "resetCode": "Nulstillingskode",
+            "codePlaceholder": "000000",
+            "newPassword": "Ny adgangskode",
+            "confirmPassword": "Bekræft adgangskode",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "Send nulstillingskode",
+            "sending": "Sender...",
+            "resetPassword": "Nulstil adgangskode",
+            "resetting": "Nulstiller...",
+            "tryAgain": "Modtog du ikke en kode? Prøv igen",
+            "backToLogin": "Tilbage til login",
+            "tooManyRequests": "For mange anmodninger. Vent et øjeblik og prøv igen.",
+            "unableToReach": "Kunne ikke nå serveren. Prøv igen senere.",
+            "invalidInput": "Ugyldigt input."
+        },
+        "twoFactor": {
+            "title": "To-faktor-godkendelse",
+            "recoveryTitle": "Gendannelseskode",
+            "description": "Indtast den 6-cifrede kode fra din autentificeringsapp for at fortsætte.",
+            "recoveryDescription": "Indtast en af dine gendannelseskoder for at bekræfte din identitet.",
+            "recoveryCode": "Gendannelseskode",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "Brug en gendannelseskode i stedet",
+            "useAuthInstead": "Brug autentificeringskode i stedet",
+            "backToLogin": "Tilbage til login"
+        }
+    },
+    "settings": {
+        "header": "Indstillinger",
+        "subheader": "Administrér din profil og kontoindstillinger",
+        "back": "Tilbage",
+        "navAriaLabel": "Indstillinger",
+        "appearance": {
+            "title": "Tema",
+            "description": "Vælg et tema for at ændre udseendet af applikationen"
+        },
+        "password": {
+            "title": "Opdatér adgangskode",
+            "description": "Sørg for at din konto bruger en lang, tilfældig adgangskode for at forblive sikker",
+            "currentPassword": "Nuværende adgangskode",
+            "newPassword": "Ny adgangskode",
+            "confirmPassword": "Bekræft adgangskode",
+            "currentPlaceholder": "Nuværende adgangskode",
+            "newPlaceholder": "Ny adgangskode",
+            "confirmPlaceholder": "Bekræft adgangskode",
+            "save": "Gem adgangskode"
+        },
+        "notifications": {
+            "title": "Notifikationer",
+            "description": "Styr hvordan og hvornår du modtager notifikationer",
+            "typesHeading": "Notifikationstyper",
+            "deliveryHeading": "Leveringsmetoder",
+            "mentionLabel": "Omtale-notifikationer",
+            "mentionDescription": "Få besked når nogen nævner dig med {'@'}brugernavn, {'@'}everyone eller {'@'}here",
+            "dmLabel": "Notifikationer for direkte beskeder",
+            "dmDescription": "Få besked når nogen sender dig en direkte besked",
+            "toastLabel": "Pop-op i appen",
+            "toastDescription": "Vis toast-notifikationer i hjørnet af skærmen",
+            "browserLabel": "Skrivebordsnotifikationer",
+            "browserDescription": "Vis skrivebordsnotifikationer når appen er i baggrunden",
+            "save": "Gem indstillinger"
+        },
+        "language": {
+            "title": "Sprog",
+            "description": "Vælg sproget der bruges i hele applikationen",
+            "label": "Visningssprog",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文",
+                "da": "Dansk"
+            }
+        },
+        "nav": {
+            "profile": "Profil",
+            "password": "Adgangskode",
+            "twoFactor": "To-faktor-godkendelse",
+            "security": "Sikkerhed",
+            "appearance": "Udseende",
+            "voice": "Stemme",
+            "screenShare": "Skærmdeling",
+            "notifications": "Notifikationer",
+            "language": "Sprog",
+            "about": "Om",
+            "server": "Server",
+            "inviteLinks": "Invitationslinks",
+            "roles": "Roller",
+            "members": "Medlemmer",
+            "channels": "Kanaler",
+            "moderation": "Moderation",
+            "auditLog": "Revisionslog"
+        },
+        "common": {
+            "cancel": "Annullér",
+            "save": "Gem",
+            "saveChanges": "Gem ændringer",
+            "delete": "Slet",
+            "loading": "Indlæser...",
+            "unknown": "Ukendt",
+            "none": "Ingen",
+            "processing": "Behandler..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "Avatar",
+                "description": "Dit profilbillede synligt for andre brugere",
+                "change": "Skift avatar",
+                "upload": "Upload avatar",
+                "remove": "Fjern avatar"
+            },
+            "info": {
+                "title": "Profiloplysninger",
+                "description": "Opdatér dit navn og din e-mailadresse",
+                "name": "Navn",
+                "namePlaceholder": "Fulde navn",
+                "email": "E-mailadresse",
+                "emailPlaceholder": "E-mailadresse",
+                "save": "Gem ændringer",
+                "saved": "Gemt"
+            },
+            "danger": {
+                "title": "Farezone",
+                "description": "Slet din konto og alle tilhørende data permanent",
+                "warningTitle": "Denne handling kan ikke fortrydes",
+                "warningBody": "Når du sletter din konto, fjernes alle dine data permanent.",
+                "deleteAccount": "Slet konto",
+                "confirmTitle": "Er du sikker på du vil slette din konto?",
+                "confirmBody": "Når din konto slettes, slettes alle ressourcer og data også permanent. Indtast din adgangskode for at bekræfte.",
+                "passwordLabel": "Adgangskode",
+                "passwordPlaceholder": "Adgangskode"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "Mikrofon",
+                "description": "Vælg hvilken mikrofon der skal bruges til stemmekanaler",
+                "input": "Inputenhed",
+                "systemDefault": "Systemstandard",
+                "refresh": "Opdatér enheder",
+                "micFallback": "Mikrofon ({id})"
+            },
+            "pushToTalk": {
+                "title": "Tryk-for-at-tale",
+                "description": "Hold en tast nede for at slå mikrofonen til. Virker på tværs af alle vinduer og apps.",
+                "enable": "Aktivér tryk-for-at-tale",
+                "keybind": "Tastebinding",
+                "pressAnyKey": "Tryk på en tast eller kombination…",
+                "notSet": "Ikke indstillet",
+                "setKey": "Indstil tast",
+                "changeKey": "Skift tast",
+                "cancel": "Annullér",
+                "clear": "Ryd",
+                "hint": "Tryk på en tast eller tastekombination (f.eks. F5, Mellemrum, Alt + Z, Ctrl + Shift + M). Hold tasten nede for at tale — slip for at slå fra.",
+                "playSound": "Afspil lyd ved tryk-for-at-tale",
+                "errors": {
+                    "unsupportedGlobal": "\"{key}\" kan ikke bruges som global genvej.",
+                    "keyNotSupported": "Den tast understøttes ikke.",
+                    "captureNotReady": "Tasteopfangst ikke klar. Prøv igen.",
+                    "captureFailed": "Kunne ikke opfange tast. Prøv igen."
+                }
+            },
+            "audio": {
+                "title": "Lydbehandling",
+                "description": "Indbygget støjreduktion og lydforbedringer",
+                "noiseSuppression": "Støjreduktion",
+                "noiseSuppressionHint": "Filtrerer baggrundsstøj som tastaturklik, blæsere og omgivende lyde fra.",
+                "echoCancellation": "Ekko-annullering",
+                "echoCancellationHint": "Forhindrer at lyden fra dine højttalere fanges af din mikrofon.",
+                "autoGain": "Automatisk forstærkning",
+                "autoGainHint": "Justerer automatisk din mikrofonlydstyrke for at opretholde et ensartet niveau."
+            },
+            "test": {
+                "title": "Mikrofontest",
+                "description": "Test din mikrofon og se inputniveauet med dine nuværende lydbehandlingsindstillinger anvendt.",
+                "start": "Test mikrofon",
+                "stop": "Stop test",
+                "listening": "Lytter...",
+                "hint": "Tal ind i din mikrofon — du vil høre dig selv og se inputniveauet. Brug hovedtelefoner for at undgå feedback."
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "Kryptering",
+                "description": "Administrér dine end-to-end-krypteringsindstillinger",
+                "active": "Kryptering aktiv",
+                "notSetUp": "Kryptering ikke konfigureret",
+                "activeDescription": "Dine beskeder er end-to-end-krypterede.",
+                "notSetUpDescription": "Konfigurér kryptering for at sikre dine beskeder."
+            },
+            "keyBackup": {
+                "title": "Nøglesikkerhedskopi",
+                "description": "Sikkerhedskopiér dine nøgler for at bruge kryptering på flere enheder",
+                "exists": "Sikkerhedskopi findes",
+                "none": "Ingen sikkerhedskopi",
+                "existsDescription": "Dine nøgler er sikkerhedskopierede og kan gendannes på nye enheder.",
+                "noneDescription": "Opret en sikkerhedskopi for at bruge kryptering på andre enheder.",
+                "update": "Opdatér sikkerhedskopi",
+                "create": "Opret sikkerhedskopi"
+            },
+            "devices": {
+                "title": "Enheder",
+                "description": "Administrér enheder tilknyttet din krypteringsidentitet",
+                "empty": "Ingen enheder fundet.",
+                "thisDevice": "Denne enhed",
+                "added": "Tilføjet {date}"
+            },
+            "auditLog": {
+                "title": "Revisionslog",
+                "description": "Nøgletransparenslog — kryptografisk optegnelse af alle krypteringshændelser",
+                "load": "Indlæs revisionslog",
+                "deviceLabel": "Enhed:",
+                "hashLabel": "Hash:",
+                "events": {
+                    "identity_created": "Identitet oprettet",
+                    "device_registered": "Enhed registreret",
+                    "device_revoked": "Enhed tilbagekaldt",
+                    "backup_created": "Nøglesikkerhedskopi oprettet",
+                    "backup_restored": "Nøglesikkerhedskopi gendannet",
+                    "key_package_uploaded": "Nøglepakker uploadet",
+                    "signed_prekey_rotated": "Signeret prænøgle roteret"
+                }
+            },
+            "danger": {
+                "title": "Farezone",
+                "resetTitle": "Nulstil kryptering",
+                "resetDescription": "Slet alle lokale krypteringsnøgler. Du skal opsætte kryptering igen.",
+                "reset": "Nulstil"
+            },
+            "dialogs": {
+                "revokeTitle": "Tilbagekald enhed",
+                "revokeDescription": "Er du sikker på du vil tilbagekalde {name}? Denne enhed vil ikke længere kunne dekryptere nye beskeder.",
+                "revoke": "Tilbagekald",
+                "renameTitle": "Omdøb enhed",
+                "renameDescription": "Indtast et nyt navn til denne enhed.",
+                "renamePlaceholder": "Enhedsnavn",
+                "rename": "Omdøb",
+                "wipeTitle": "Nulstil kryptering",
+                "wipeDescription": "Dette sletter alle krypteringsnøgler permanent fra denne enhed. Du mister muligheden for at dekryptere eksisterende beskeder, medmindre du har en nøglesikkerhedskopi. Denne handling kan ikke fortrydes.",
+                "wipeConfirm": "Slet alle nøgler",
+                "never": "Aldrig"
+            }
+        },
+        "twoFactor": {
+            "title": "To-faktor-godkendelse",
+            "description": "Tilføj et ekstra lag af sikkerhed til din konto",
+            "disabledBadge": "Deaktiveret",
+            "enabledBadge": "Aktiveret",
+            "disabledBody": "Når du aktiverer to-faktor-godkendelse, bliver du bedt om en sikker pinkode under login. Pinkoden kan hentes fra en TOTP-understøttet app på din telefon.",
+            "enabledBody": "Med to-faktor-godkendelse aktiveret bliver du bedt om en sikker, tilfældig pinkode under login, som du kan hente fra den TOTP-understøttede app på din telefon.",
+            "continueSetup": "Fortsæt opsætning",
+            "enable": "Aktivér 2FA",
+            "disable": "Deaktivér 2FA",
+            "recovery": {
+                "title": "2FA-gendannelseskoder",
+                "description": "Gendannelseskoder lader dig få adgang igen, hvis du mister din 2FA-enhed. Opbevar dem i en sikker adgangskodemanager.",
+                "hide": "Skjul gendannelseskoder",
+                "view": "Vis gendannelseskoder",
+                "regenerate": "Generér koder igen",
+                "hintPrefix": "Hver gendannelseskode kan bruges én gang. Hvis du har brug for flere, klik",
+                "hintRegen": "Generér koder igen",
+                "hintSuffix": "ovenfor.",
+                "failedToFetch": "Kunne ikke hente gendannelseskoder"
+            },
+            "setup": {
+                "scanTitle": "Aktivér to-faktor-godkendelse",
+                "scanDescription": "Scan QR-koden eller indtast opsætningsnøglen i din autentificeringsapp",
+                "verifyTitle": "Verificér autentificeringskode",
+                "verifyDescription": "Indtast den 6-cifrede kode fra din autentificeringsapp",
+                "continue": "Fortsæt",
+                "orManual": "eller indtast koden manuelt",
+                "back": "Tilbage",
+                "confirm": "Bekræft",
+                "invalidCode": "Ugyldig kode",
+                "failedToFetchQr": "Kunne ikke hente QR-kode",
+                "failedToFetchKey": "Kunne ikke hente en opsætningsnøgle"
+            }
+        },
+        "screenShare": {
+            "title": "Skærmdelingskvalitet",
+            "description": "Vælg kvalitetsforudindstillingen for når du deler din skærm.",
+            "label": "Kvalitetsforudindstilling",
+            "placeholder": "Vælg kvalitet...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "Lavere båndbreddeforbrug",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "Balanceret kvalitet",
+                "high": "1080p / 60 FPS",
+                "highDescription": "Glat høj kvalitet",
+                "source": "Kilde / 60 FPS",
+                "sourceDescription": "Native opløsning, højeste kvalitet"
+            }
+        },
+        "channels": {
+            "title": "Kanaler",
+            "description": "Administrér kategorier, kanaler og kanalspecifikke tilladelser.",
+            "newCategory": "Ny kategori",
+            "newChannel": "Ny kanal",
+            "loading": "Indlæser kanaler...",
+            "emptyTitle": "Ingen kanaler endnu",
+            "emptyDescription": "Opret en kategori og tilføj kanaler for at komme i gang.",
+            "emptyCategory": "Ingen kanaler i denne kategori.",
+            "privateBadge": "Privat",
+            "unknown": "Ukendt",
+            "roleLabel": "Rolle",
+            "userLabel": "Bruger",
+            "create": {
+                "title": "Opret kanal",
+                "description": "Tilføj en ny kanal til serveren.",
+                "name": "Navn",
+                "namePlaceholder": "kanal-navn",
+                "type": "Type",
+                "typePlaceholder": "Vælg type...",
+                "typeText": "Tekst",
+                "typeVoice": "Stemme",
+                "topic": "Emne",
+                "topicPlaceholder": "Hvad handler denne kanal om?",
+                "category": "Kategori",
+                "categoryNone": "Ingen",
+                "privateLabel": "Privat kanal (kræver eksplicit rolle/bruger-adgang)",
+                "submit": "Opret kanal"
+            },
+            "edit": {
+                "title": "Redigér kanal",
+                "description": "Opdatér kanalindstillinger.",
+                "name": "Navn",
+                "topic": "Emne",
+                "category": "Kategori",
+                "slowmode": "Langsom tilstand (sekunder)",
+                "privateLabel": "Privat kanal",
+                "submit": "Gem ændringer"
+            },
+            "delete": {
+                "title": "Slet kanal",
+                "description": "Er du sikker på du vil slette {name}? Alle beskeder i denne kanal går tabt. Dette kan ikke fortrydes.",
+                "submit": "Slet kanal"
+            },
+            "category": {
+                "createTitle": "Opret kategori",
+                "createDescription": "Tilføj en ny kategori for at organisere kanaler.",
+                "name": "Navn",
+                "namePlaceholder": "Kategorinavn",
+                "create": "Opret",
+                "editTitle": "Redigér kategori",
+                "editDescription": "Opdatér kategorinavnet.",
+                "save": "Gem",
+                "deleteTitle": "Slet kategori",
+                "deleteDescription": "Er du sikker på du vil slette {name}? Alle kanaler i denne kategori vil også blive slettet. Dette kan ikke fortrydes.",
+                "deleteSubmit": "Slet kategori"
+            },
+            "overrides": {
+                "title": "Tilladelsesoverstyringer",
+                "description": "Administrér tilladelsesoverstyringer for #{name}. Overstyringer tillader eller nægter specifikke tilladelser for roller på denne kanal.",
+                "loading": "Indlæser...",
+                "current": "Nuværende overstyringer",
+                "add": "Tilføj overstyring",
+                "role": "Rolle",
+                "rolePlaceholder": "Vælg en rolle...",
+                "permissions": "Tilladelser",
+                "allow": "Tillad",
+                "deny": "Nægt",
+                "save": "Gem overstyring"
+            }
+        },
+        "members": {
+            "title": "Medlemmer",
+            "description": "Administrér medlemsroller. Tildel eller fjern roller for at styre tilladelser.",
+            "searchPlaceholder": "Søg medlemmer...",
+            "loading": "Indlæser...",
+            "emptyTitle": "Ingen medlemmer fundet",
+            "emptyTrySearch": "Prøv et andet søgeord.",
+            "emptyNone": "Ingen medlemmer registreret endnu.",
+            "addRole": "Tilføj rolle",
+            "assign": {
+                "title": "Tildel rolle",
+                "description": "Vælg en rolle at tildele {name}.",
+                "placeholder": "Vælg en rolle...",
+                "allAssigned": "Dette medlem har allerede alle tilgængelige roller."
+            },
+            "remove": {
+                "title": "Fjern rolle",
+                "description": "Er du sikker på du vil fjerne rollen {role} fra {name}?",
+                "submit": "Fjern rolle"
+            }
+        },
+        "roles": {
+            "title": "Roller",
+            "description": "Administrér serverroller og deres tilladelser. Højere positioner overgår lavere.",
+            "createRole": "Opret rolle",
+            "loading": "Indlæser...",
+            "emptyTitle": "Ingen roller endnu",
+            "emptyDescription": "Opret en rolle for at administrere tilladelser.",
+            "defaultBadge": "Standard",
+            "adminBadge": "Admin",
+            "memberCount": "{n} medlem | {n} medlemmer",
+            "position": "Position: {n}",
+            "permissionsCount": "{n} tilladelser",
+            "form": {
+                "name": "Navn",
+                "namePlaceholder": "Rollenavn",
+                "color": "Farve",
+                "position": "Position",
+                "displaySeparately": "Vis separat",
+                "mentionable": "Kan nævnes",
+                "permissions": "Tilladelser",
+                "categories": {
+                    "general": "Generel server",
+                    "membership": "Medlemskab",
+                    "text": "Tekstkanaler",
+                    "voice": "Stemmekanaler",
+                    "admin": "Admin"
+                }
+            },
+            "create": {
+                "title": "Opret rolle",
+                "description": "Opret en ny rolle med specifikke tilladelser.",
+                "submit": "Opret rolle"
+            },
+            "edit": {
+                "title": "Redigér rolle",
+                "description": "Ændr rolleindstillinger og tilladelser.",
+                "submit": "Gem ændringer"
+            },
+            "delete": {
+                "title": "Slet rolle",
+                "description": "Er du sikker på du vil slette rollen {name}? Alle brugere med denne rolle mister dens tilladelser. Denne handling kan ikke fortrydes.",
+                "submit": "Slet rolle"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "Aktive bandlysninger",
+                "description": "Vis og administrér bandlyste brugere. Bandlysninger forhindrer brugere i at få adgang til serveren.",
+                "loading": "Indlæser...",
+                "emptyTitle": "Ingen aktive bandlysninger",
+                "emptyDescription": "Alle brugere har adgang til serveren.",
+                "bannedBadge": "Bandlyst",
+                "reasonLabel": "Årsag: {reason}",
+                "noReason": "Ingen årsag angivet",
+                "byUser": "Af {user}",
+                "expires": "Udløber: {date}",
+                "unban": "Ophæv bandlysning"
+            },
+            "actions": {
+                "title": "Medlemshandlinger",
+                "description": "Bandlys eller fængsl medlemmer. Fængslede brugere har begrænsede tilladelser og kan kun se kanaler.",
+                "searchPlaceholder": "Søg medlemmer...",
+                "empty": "Ingen medlemmer fundet.",
+                "jail": "Fængsl",
+                "ban": "Bandlys"
+            },
+            "banDialog": {
+                "title": "Bandlys medlem",
+                "description": "Bandlys {name} fra serveren. De vil ikke kunne tilgå nogen kanaler.",
+                "reason": "Årsag (valgfrit)",
+                "reasonPlaceholder": "Hvorfor bliver denne bruger bandlyst?",
+                "expires": "Udløber den (valgfrit)",
+                "pickDate": "Vælg en dato",
+                "permanentHint": "Lad være tom for permanent bandlysning.",
+                "submit": "Bandlys bruger"
+            },
+            "jailDialog": {
+                "title": "Fængsl medlem",
+                "description": "Fængsl {name}? Dette fjerner alle deres roller og begrænser dem til skrivebeskyttet adgang.",
+                "submit": "Fængsl bruger"
+            }
+        },
+        "auditLog": {
+            "title": "Revisionslog",
+            "description": "En optegnelse af alle moderations- og administrationshandlinger på serveren.",
+            "filterPlaceholder": "Filtrér efter handling",
+            "loading": "Indlæser...",
+            "emptyTitle": "Ingen poster i revisionsloggen",
+            "emptyDescription": "Moderationshandlinger vil dukke op her.",
+            "unknownActor": "Ukendt",
+            "previous": "Forrige",
+            "next": "Næste",
+            "page": "Side {n}",
+            "relative": {
+                "justNow": "Lige nu",
+                "minutesAgo": "{n}m siden",
+                "hoursAgo": "{n}t siden",
+                "daysAgo": "{n}d siden"
+            },
+            "actions": {
+                "ban": "Bandlyst",
+                "unban": "Bandlysning ophævet",
+                "jail": "Fængslet",
+                "unjail": "Løsladt",
+                "message_delete": "Slettede besked",
+                "thread_message_delete": "Slettede trådsvar",
+                "role_assign": "Tildelte rolle",
+                "role_remove": "Fjernede rolle",
+                "role_create": "Oprettede rolle",
+                "role_update": "Opdaterede rolle",
+                "role_delete": "Slettede rolle",
+                "channel_create": "Oprettede kanal",
+                "channel_update": "Opdaterede kanal",
+                "channel_delete": "Slettede kanal",
+                "channel_override_update": "Opdaterede kanaloverstyring",
+                "channel_override_delete": "Slettede kanaloverstyring"
+            },
+            "filters": {
+                "all": "Alle handlinger",
+                "ban": "Bandlysninger",
+                "unban": "Ophævede bandlysninger",
+                "jail": "Fængslinger",
+                "unjail": "Løsladelser",
+                "message_delete": "Beskedsletninger",
+                "role_assign": "Rolle tildelt",
+                "role_remove": "Rolle fjernet",
+                "role_create": "Rolle oprettet",
+                "role_update": "Rolle opdateret",
+                "role_delete": "Rolle slettet",
+                "channel_create": "Kanal oprettet",
+                "channel_update": "Kanal opdateret",
+                "channel_delete": "Kanal slettet"
+            },
+            "target": {
+                "unknownUser": "Ukendt bruger",
+                "messageBy": "besked af {'@'}{user}",
+                "messageByInChannel": "besked af {'@'}{user} i #{channel}",
+                "messageGeneric": "besked",
+                "messageInChannel": "besked i #{channel}",
+                "roleOnUser": "{role} på {'@'}{user}",
+                "roleOnly": "{role}",
+                "roleFallback": "rolle",
+                "channelFallback": "kanal",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "Årsag: {reason}",
+                "expires": "Udløber: {date}"
+            }
+        },
+        "about": {
+            "title": "Om",
+            "description": "Information om denne LaraDisco-installation.",
+            "version": "Version",
+            "updates": {
+                "title": "Opdateringer",
+                "description": "LaraDisco tjekker automatisk for opdateringer hver time. Du kan også tjekke manuelt.",
+                "check": "Tjek for opdateringer",
+                "checking": "Tjekker…",
+                "available": "Version {version} er tilgængelig.",
+                "upToDate": "Du kører den nyeste version.",
+                "failed": "Kunne ikke tjekke for opdateringer"
+            }
+        },
+        "inviteLinks": {
+            "title": "Invitationslinks",
+            "description": "Generér engangs-invitationslinks til nye medlemmer. Links udløber efter 1 time.",
+            "generate": "Generér",
+            "loading": "Indlæser...",
+            "emptyTitle": "Ingen invitationslinks endnu",
+            "emptyDescription": "Generér et link for at invitere nogen til at registrere sig.",
+            "created": "Oprettet {date}",
+            "expires": "Udløber {date}",
+            "expiresNever": "Aldrig",
+            "usedBy": "Brugt af",
+            "statusActive": "Aktiv",
+            "statusUsed": "Brugt",
+            "statusExpired": "Udløbet"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "Minimér",
+        "maximize": "Maksimér",
+        "close": "Luk"
+    },
+    "notifications": {
+        "messageFrom": "Besked fra {user}",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "{mention} i #{channel}",
+        "encryptedMessage": "[Krypteret besked]",
+        "sentMessage": "sendte en besked",
+        "inChannelPrefix": "i #{channel}"
+    },
+    "dates": {
+        "todayAt": "I dag kl. {time}",
+        "yesterdayAt": "I går kl. {time}"
+    },
+    "home": {
+        "welcome": "Velkommen til {server}",
+        "selectChannelPrompt": "Vælg en kanal i sidepanelet for at begynde at chatte."
+    },
+    "directMessages": {
+        "title": "Dine direkte beskeder",
+        "emptyPrompt": "Vælg en samtale eller start en ny."
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "Tilslut din server for at komme i gang",
+        "serverAddress": "Serveradresse",
+        "placeholder": "chat.eksempel.com",
+        "connectedTo": "Forbundet til {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "Forbinder...",
+        "testConnection": "Test forbindelse",
+        "continue": "Fortsæt",
+        "savedServers": "Gemte servere",
+        "active": "Aktiv"
+    },
+    "updates": {
+        "available": "Opdatering tilgængelig",
+        "downloadPrompt": "Version {version} er klar til download.",
+        "download": "Download",
+        "later": "Senere",
+        "downloading": "Downloader opdatering",
+        "downloadingProgress": "Version {version} — {percent}",
+        "ready": "Opdatering klar",
+        "restartPrompt": "Genstart LaraDisco for at installere version {version}.",
+        "restartNow": "Genstart nu",
+        "failed": "Opdatering mislykkedes",
+        "downloadFailed": "Download mislykkedes"
+    },
+    "appContextMenu": {
+        "copyText": "Kopiér tekst",
+        "addReaction": "Tilføj reaktion",
+        "reply": "Svar",
+        "replyInThread": "Svar i tråd",
+        "pinMessage": "Fastgør besked",
+        "unpinMessage": "Frigør besked",
+        "editMessage": "Redigér besked",
+        "deleteMessage": "Slet besked",
+        "cut": "Klip",
+        "copy": "Kopiér",
+        "paste": "Indsæt",
+        "pastePlain": "Indsæt som almindelig tekst",
+        "wrapCodeBlock": "Pak ind som kodeblok",
+        "language": "Sprog",
+        "plainText": "Almindelig tekst",
+        "selectAll": "Markér alt",
+        "mention": "Nævn",
+        "viewProfile": "Vis profil",
+        "sendMessage": "Send besked",
+        "copyImage": "Kopiér billede",
+        "copyImageAddress": "Kopiér billedadresse",
+        "saveImageAs": "Gem billede som…",
+        "openLink": "Åbn link",
+        "copyLink": "Kopiér link"
+    },
+    "userMenu": {
+        "settings": "Indstillinger",
+        "logout": "Log ud"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "Afvis",
+            "unknown": "Ukendt",
+            "encryptedMessage": "[Krypteret besked]",
+            "unableToDecrypt": "[Kan ikke dekryptere]",
+            "unableToDecryptInline": "[Kan ikke dekryptere denne besked]"
+        },
+        "messages": {
+            "selectChannel": "Vælg en kanal",
+            "welcomeChannel": "Velkommen til #{channel}",
+            "conversationWith": "Samtale med {name}",
+            "conversationStart": "Dette er starten på din samtale.",
+            "pinned": "fastgjort",
+            "edited": "(redigeret)",
+            "escapeTo": "escape for at",
+            "cancelInline": "annullere",
+            "enterTo": "enter for at",
+            "saveInline": "gemme",
+            "unknownUser": "Ukendt",
+            "deleteDialogTitle": "Slet besked",
+            "deleteDialogDescription": "Er du sikker på du vil slette denne besked? Dette kan ikke fortrydes.",
+            "deleteConfirm": "Slet",
+            "cancel": "Annullér",
+            "noPermissionToSend": "Du har ikke tilladelse til at sende beskeder i denne kanal.",
+            "pinnedMessagesTooltip": "Fastgjorte beskeder",
+            "searchMessagesTooltip": "Søg beskeder",
+            "showMembers": "Vis medlemmer",
+            "hideMembers": "Skjul medlemmer",
+            "encryptionNotSetUp": "Kryptering er ikke konfigureret. Fuldfør E2EE-opsætning før du sender beskeder.",
+            "failedToEncrypt": "Kunne ikke kryptere besked. Prøv igen.",
+            "failedToSend": "Kunne ikke sende besked. Prøv igen.",
+            "failedToUpload": "Kunne ikke uploade {fileName}. Prøv igen.",
+            "fetchingLinkPreview": "Henter linkforhåndsvisning…"
+        },
+        "composer": {
+            "attachFile": "Vedhæft fil",
+            "placeholderChannel": "Besked til #{channel}",
+            "placeholderDefault": "Besked til #channel",
+            "placeholderDisabled": "Sender for hurtigt — vent venligst…",
+            "replyingTo": "Svarer til {user}",
+            "fileTooLarge": "{count} filer overskrider 100 MB-grænsen: {files}",
+            "preparing": "Forbereder…",
+            "encrypting": "Krypterer…",
+            "finishing": "Afslutter…"
+        },
+        "thread": {
+            "title": "Tråd",
+            "followTooltip": "Følg tråd",
+            "unfollowTooltip": "Stop med at følge tråd",
+            "noReplies": "Ingen svar endnu. Start samtalen!",
+            "replyPlaceholder": "Svar i tråden...",
+            "replyCount": "{count} svar | {count} svar",
+            "encryptionNotSetUp": "Kryptering er ikke konfigureret.",
+            "failedToEncrypt": "Kunne ikke kryptere besked.",
+            "failedToSendReply": "Kunne ikke sende svar.",
+            "deleteDialogTitle": "Slet besked",
+            "deleteDialogDescription": "Er du sikker på du vil slette denne besked? Dette kan ikke fortrydes.",
+            "deleteConfirm": "Slet",
+            "cancel": "Annullér"
+        },
+        "messageActions": {
+            "addReaction": "Tilføj reaktion",
+            "reply": "Svar",
+            "replyInThread": "Svar i tråd",
+            "pinMessage": "Fastgør besked",
+            "unpinMessage": "Frigør besked",
+            "editMessage": "Redigér besked",
+            "deleteMessage": "Slet besked"
+        },
+        "pinned": {
+            "title": "Fastgjorte beskeder",
+            "empty": "Ingen fastgjorte beskeder endnu.",
+            "unpinTooltip": "Frigør besked"
+        },
+        "files": {
+            "download": "Download",
+            "close": "Luk",
+            "failedToLoadAudio": "Kunne ikke indlæse lyd",
+            "failedToLoadVideo": "Kunne ikke indlæse video"
+        },
+        "gifs": {
+            "searchPlaceholder": "Søg GIF'er...",
+            "noResults": "Ingen GIF'er fundet",
+            "categories": {
+                "excited": "Begejstret",
+                "happy": "Glad",
+                "sad": "Trist",
+                "love": "Kærlighed",
+                "angry": "Vred",
+                "laugh": "Grin",
+                "dance": "Dans",
+                "thumbsUp": "Tommel op",
+                "facepalm": "Facepalm"
+            }
+        },
+        "search": {
+            "titleInConversation": "Søg i {name}",
+            "closeTooltip": "Luk søgning (Esc)",
+            "closeLabel": "Luk søgning",
+            "placeholder": "Søg beskeder…",
+            "ariaLabel": "Søg beskeder",
+            "searching": "Søger…",
+            "noResults": "Ingen resultater fundet",
+            "resultsCount": "{count} resultat fundet | {count} resultater fundet",
+            "typeToSearch": "Skriv for at søge i beskeder",
+            "offlineNote": "Søgning er fuldt lokal — fungerer offline, forlader aldrig din enhed",
+            "tryDifferent": "Prøv andre søgeord",
+            "loadMore": "Indlæs flere resultater",
+            "unknownUser": "Ukendt"
+        },
+        "onlineUsers": {
+            "online": "Online — {count}",
+            "idle": "Inaktiv — {count}",
+            "dnd": "Forstyr ikke — {count}",
+            "offline": "Offline — {count}"
+        },
+        "typing": {
+            "one": "{user} skriver...",
+            "several": "Flere personer skriver..."
+        },
+        "mentions": {
+            "label": "Omtaler",
+            "searching": "Søger...",
+            "everyoneDescription": "Underret alle medlemmer på denne server",
+            "hereDescription": "Underret online-medlemmer i denne kanal"
+        },
+        "voice": {
+            "connected": "Stemme forbundet",
+            "poorConnection": "Dårlig forbindelse",
+            "connectionLost": "Forbindelse mistet",
+            "disconnect": "Afbryd",
+            "mute": "Slå mikrofon fra",
+            "unmute": "Slå mikrofon til",
+            "deafen": "Slå alt lyd fra",
+            "undeafen": "Slå alt lyd til",
+            "shareScreen": "Del skærm",
+            "stopSharing": "Stop deling",
+            "enableAudio": "Klik for at aktivere lyd"
+        },
+        "dm": {
+            "title": "Direkte beskeder",
+            "newMessageTooltip": "Ny besked",
+            "searchPlaceholder": "Find eller start en samtale",
+            "noUsersFound": "Ingen brugere fundet",
+            "noDmsYet": "Ingen direkte beskeder endnu",
+            "startConversationHint": "Klik på + for at starte en samtale",
+            "backToChannels": "Tilbage til kanaler",
+            "unableToDecrypt": "[Kan ikke dekryptere]"
+        },
+        "userProfile": {
+            "unknownUser": "Ukendt bruger",
+            "memberSince": "Medlem siden",
+            "memberSinceUnknown": "Ukendt",
+            "roles": "Roller",
+            "sendMessage": "Send besked",
+            "status": {
+                "online": "Online",
+                "idle": "Inaktiv",
+                "dnd": "Forstyr ikke",
+                "offline": "Offline"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "Direkte beskeder",
+            "statusOnline": "Online",
+            "statusDnd": "Forstyr ikke",
+            "statusInvisible": "Usynlig",
+            "settings": "Indstillinger",
+            "logout": "Log ud"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "Spring til nutiden",
+            "jumpToBottom": "Spring til bunden",
+            "newMessages": "{count} ny besked | {count} nye beskeder"
+        },
+        "threadPreview": {
+            "replies": "{count} svar | {count} svar",
+            "lastReply": "Sidste svar {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "Åbn i browser"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "Slå lyd til/fra",
+            "expand": "Udvid",
+            "fullscreen": "Fuldskærm",
+            "popOut": "Pop ud",
+            "close": "Luk"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "End-to-end-kryptering",
+            "description": "Sikr dine beskeder, så kun du og de tilsigtede modtagere kan læse dem.",
+            "checking": "Tjekker krypteringsstatus...",
+            "restoreTitle": "Gendan dine nøgler",
+            "restoreDescription": "En nøglesikkerhedskopi blev fundet. Indtast din sikkerhedskopi-PIN for at gendanne din krypteringsidentitet på denne enhed.",
+            "deviceName": "Enhedsnavn",
+            "deviceNamePlaceholder": "f.eks. Min bærbare",
+            "backupPin": "Sikkerhedskopi-PIN",
+            "backupPinPlaceholder": "Indtast din sikkerhedskopi-PIN",
+            "incorrectPin": "Forkert PIN",
+            "restoreContinue": "Gendan & fortsæt",
+            "newIdentity": "Ny identitet",
+            "generating": "Genererer dine krypteringsnøgler...",
+            "allSet": "Du er klar!",
+            "allSetDescription": "End-to-end-kryptering er aktiv. Dine beskeder er nu sikrede."
+        },
+        "backup": {
+            "restoreTitle": "Gendan nøglesikkerhedskopi",
+            "createTitle": "Opret nøglesikkerhedskopi",
+            "restoreDescription": "Indtast den PIN, du brugte da du oprettede din sikkerhedskopi.",
+            "createDescription": "Vælg en PIN til at kryptere din nøglesikkerhedskopi. Du skal bruge denne PIN for at gendanne dine nøgler på en anden enhed.",
+            "keysRestored": "Nøgler gendannet!",
+            "backupCreated": "Sikkerhedskopi oprettet!",
+            "backupPinLabel": "Sikkerhedskopi-PIN",
+            "choosePinLabel": "Vælg en PIN",
+            "pinPlaceholderRestore": "Indtast din sikkerhedskopi-PIN",
+            "pinPlaceholderCreate": "Mindst 6 tegn",
+            "confirmPin": "Bekræft PIN",
+            "confirmPinPlaceholder": "Indtast PIN igen",
+            "pinsDoNotMatch": "PIN-koderne er ikke ens",
+            "backupFailed": "Sikkerhedskopiering mislykkedes",
+            "restoreFailed": "Gendannelse mislykkedes",
+            "importantLabel": "Vigtigt:",
+            "warningPinOnly": "Denne PIN bruges kun til at kryptere din nøglesikkerhedskopi",
+            "warningNeverSent": "Den sendes aldrig til serveren",
+            "warningForgotten": "Hvis du glemmer din PIN, kan du ikke gendanne dine nøgler",
+            "warningStrong": "Sikkerhedskopien bruger stærk kryptering (Argon2id + AES-256-GCM)",
+            "restoreKeys": "Gendan nøgler",
+            "createBackup": "Opret sikkerhedskopi"
+        },
+        "avatarCrop": {
+            "title": "Opdatér avatar",
+            "description": "Beskær og upload et nyt profilbillede",
+            "selectPrompt": "Vælg et billede til brug som avatar",
+            "chooseImage": "Vælg billede",
+            "chooseDifferent": "Vælg et andet billede",
+            "saving": "Gemmer...",
+            "saveAvatar": "Gem avatar"
+        }
+    },
+    "notificationBell": {
+        "title": "Notifikationer",
+        "markAllRead": "Markér alle som læst",
+        "markAsRead": "Markér som læst",
+        "empty": "Ingen nye notifikationer",
+        "sentMessage": "sendte en besked",
+        "inChannel": "i #{channel}"
+    },
+    "sidebar": {
+        "toggleSidebar": "Skift sidepanel"
+    }
+}

@@ -1,0 +1,7 @@
+node_modules
+out
+out2
+dist
+# build output is in dist/ and out/ — keep build/ tracked for electron-builder resources
+*.log
+.DS_Store

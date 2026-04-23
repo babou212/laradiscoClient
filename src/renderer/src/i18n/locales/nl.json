@@ -1,0 +1,987 @@
+{
+    "common": {
+        "loading": "Laden",
+        "loadingEllipsis": "Laden...",
+        "save": "Opslaan",
+        "cancel": "Annuleren",
+        "continue": "Doorgaan",
+        "back": "Terug",
+        "sending": "Verzenden...",
+        "saveSuccess": "Succesvol opgeslagen",
+        "retry": "Opnieuw proberen",
+        "close": "Sluiten"
+    },
+    "validation": {
+        "emailRequired": "E-mail is vereist",
+        "emailInvalid": "Voer een geldig e-mailadres in.",
+        "passwordRequired": "Wachtwoord is vereist",
+        "passwordMin8": "Wachtwoord moet minstens 8 tekens bevatten.",
+        "passwordConfirmRequired": "Bevestig uw wachtwoord.",
+        "passwordsMatch": "Wachtwoorden komen niet overeen.",
+        "displayNameRequired": "Weergavenaam is vereist.",
+        "usernameRequired": "Gebruikersnaam is vereist.",
+        "usernameInvalidChars": "Gebruikersnaam mag alleen letters, cijfers, underscores, punten en koppeltekens bevatten.",
+        "inviteRequired": "Uitnodigingscode is vereist.",
+        "codeLength6": "Resetcode moet 6 cijfers bevatten.",
+        "codeNumeric": "Resetcode moet numeriek zijn."
+    },
+    "auth": {
+        "serverFallback": "Server",
+        "login": {
+            "title": "Welkom terug",
+            "descriptionPrefix": "Aanmelden bij {server}",
+            "email": "E-mail",
+            "password": "Wachtwoord",
+            "emailPlaceholder": "jij{'@'}voorbeeld.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "Aanmelden",
+            "signingIn": "Aanmelden...",
+            "forgotPassword": "Wachtwoord vergeten?",
+            "noAccount": "Geen account? Registreren",
+            "changeServer": "Server wijzigen"
+        },
+        "register": {
+            "joinTitle": "Server toetreden",
+            "createTitle": "Account aanmaken",
+            "inviteDescription": "Voer uw uitnodigingscode in om te beginnen",
+            "signupDescription": "Registreren voor {server}",
+            "inviteCodeLabel": "Uitnodigingscode",
+            "invitePlaceholder": "Plak uw uitnodigingscode",
+            "askAdmin": "Vraag een serverbeheerder om een uitnodigingscode.",
+            "continue": "Doorgaan",
+            "validating": "Valideren...",
+            "alreadyHaveAccount": "Heeft u al een account? Aanmelden",
+            "displayName": "Weergavenaam",
+            "displayNamePlaceholder": "Uw naam",
+            "username": "Gebruikersnaam",
+            "usernamePlaceholder": "uwnaam",
+            "email": "E-mail",
+            "emailPlaceholder": "jij{'@'}voorbeeld.com",
+            "password": "Wachtwoord",
+            "confirmPassword": "Bevestig wachtwoord",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "Account aanmaken",
+            "creatingAccount": "Account aanmaken...",
+            "useDifferentInvite": "Gebruik een andere uitnodigingscode",
+            "invalidInvite": "Ongeldige uitnodigingslink",
+            "unableToReach": "Kan de server niet bereiken. Probeer het later opnieuw."
+        },
+        "forgot": {
+            "resetTitle": "Wachtwoord opnieuw instellen",
+            "doneTitle": "Wachtwoord opnieuw ingesteld",
+            "emailDescription": "Voer uw e-mailadres in en we sturen u een 6-cijferige resetcode.",
+            "codeDescription": "Voer de code in die naar {email} is verzonden en kies een nieuw wachtwoord.",
+            "successHeading": "Uw wachtwoord is succesvol opnieuw ingesteld.",
+            "successSub": "U kunt nu aanmelden met uw nieuwe wachtwoord.",
+            "email": "E-mail",
+            "emailPlaceholder": "jij{'@'}voorbeeld.com",
+            "resetCode": "Resetcode",
+            "codePlaceholder": "000000",
+            "newPassword": "Nieuw wachtwoord",
+            "confirmPassword": "Bevestig wachtwoord",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "Resetcode verzenden",
+            "sending": "Verzenden...",
+            "resetPassword": "Wachtwoord opnieuw instellen",
+            "resetting": "Resetten...",
+            "tryAgain": "Geen code ontvangen? Probeer het opnieuw",
+            "backToLogin": "Terug naar aanmelden",
+            "tooManyRequests": "Te veel verzoeken. Wacht een moment en probeer het opnieuw.",
+            "unableToReach": "Kan de server niet bereiken. Probeer het later opnieuw.",
+            "invalidInput": "Ongeldige invoer."
+        },
+        "twoFactor": {
+            "title": "Tweestapsverificatie",
+            "recoveryTitle": "Herstelcode",
+            "description": "Voer de 6-cijferige code uit uw authenticator-app in om door te gaan.",
+            "recoveryDescription": "Voer een van uw nood-herstelcodes in om uw identiteit te verifiëren.",
+            "recoveryCode": "Herstelcode",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "Gebruik in plaats daarvan een herstelcode",
+            "useAuthInstead": "Gebruik in plaats daarvan een authenticatiecode",
+            "backToLogin": "Terug naar aanmelden"
+        }
+    },
+    "settings": {
+        "header": "Instellingen",
+        "subheader": "Beheer uw profiel- en accountinstellingen",
+        "back": "Terug",
+        "navAriaLabel": "Instellingen",
+        "appearance": {
+            "title": "Thema",
+            "description": "Selecteer een thema om de look en feel van de applicatie te wijzigen"
+        },
+        "password": {
+            "title": "Wachtwoord bijwerken",
+            "description": "Zorg ervoor dat uw account een lang, willekeurig wachtwoord gebruikt om veilig te blijven",
+            "currentPassword": "Huidig wachtwoord",
+            "newPassword": "Nieuw wachtwoord",
+            "confirmPassword": "Bevestig wachtwoord",
+            "currentPlaceholder": "Huidig wachtwoord",
+            "newPlaceholder": "Nieuw wachtwoord",
+            "confirmPlaceholder": "Bevestig wachtwoord",
+            "save": "Wachtwoord opslaan"
+        },
+        "notifications": {
+            "title": "Meldingen",
+            "description": "Bepaal hoe en wanneer u meldingen ontvangt",
+            "typesHeading": "Meldingstypes",
+            "deliveryHeading": "Leveringsmethoden",
+            "mentionLabel": "Vermeldingsmeldingen",
+            "mentionDescription": "Krijg een melding wanneer iemand u vermeldt met {'@'}gebruikersnaam, {'@'}everyone of {'@'}here",
+            "dmLabel": "Meldingen voor directe berichten",
+            "dmDescription": "Krijg een melding wanneer iemand u een direct bericht stuurt",
+            "toastLabel": "Pop-ups in de app",
+            "toastDescription": "Toon toastmeldingen in de hoek van het scherm",
+            "browserLabel": "Bureaubladmeldingen",
+            "browserDescription": "Toon bureaubladmeldingen wanneer de app op de achtergrond draait",
+            "save": "Voorkeuren opslaan"
+        },
+        "language": {
+            "title": "Taal",
+            "description": "Kies de taal die in de hele applicatie wordt gebruikt",
+            "label": "Weergavetaal",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文",
+                "da": "Dansk",
+                "nl": "Nederlands"
+            }
+        },
+        "nav": {
+            "profile": "Profiel",
+            "password": "Wachtwoord",
+            "twoFactor": "Tweestapsverificatie",
+            "security": "Beveiliging",
+            "appearance": "Weergave",
+            "voice": "Spraak",
+            "screenShare": "Scherm delen",
+            "notifications": "Meldingen",
+            "language": "Taal",
+            "about": "Over",
+            "server": "Server",
+            "inviteLinks": "Uitnodigingslinks",
+            "roles": "Rollen",
+            "members": "Leden",
+            "channels": "Kanalen",
+            "moderation": "Moderatie",
+            "auditLog": "Auditlogboek"
+        },
+        "common": {
+            "cancel": "Annuleren",
+            "save": "Opslaan",
+            "saveChanges": "Wijzigingen opslaan",
+            "delete": "Verwijderen",
+            "loading": "Laden...",
+            "unknown": "Onbekend",
+            "none": "Geen",
+            "processing": "Verwerken..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "Avatar",
+                "description": "Uw profielfoto zichtbaar voor andere gebruikers",
+                "change": "Avatar wijzigen",
+                "upload": "Avatar uploaden",
+                "remove": "Avatar verwijderen"
+            },
+            "info": {
+                "title": "Profielinformatie",
+                "description": "Werk uw naam en e-mailadres bij",
+                "name": "Naam",
+                "namePlaceholder": "Volledige naam",
+                "email": "E-mailadres",
+                "emailPlaceholder": "E-mailadres",
+                "save": "Wijzigingen opslaan",
+                "saved": "Succesvol opgeslagen"
+            },
+            "danger": {
+                "title": "Gevarenzone",
+                "description": "Verwijder uw account en alle bijbehorende gegevens permanent",
+                "warningTitle": "Deze actie kan niet ongedaan worden gemaakt",
+                "warningBody": "Zodra u uw account verwijdert, worden al uw gegevens permanent verwijderd.",
+                "deleteAccount": "Account verwijderen",
+                "confirmTitle": "Weet u zeker dat u uw account wilt verwijderen?",
+                "confirmBody": "Zodra uw account is verwijderd, worden al zijn bronnen en gegevens ook permanent verwijderd. Voer uw wachtwoord in om te bevestigen.",
+                "passwordLabel": "Wachtwoord",
+                "passwordPlaceholder": "Wachtwoord"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "Microfoon",
+                "description": "Selecteer welke microfoon u wilt gebruiken voor spraakkanalen",
+                "input": "Invoerapparaat",
+                "systemDefault": "Systeemstandaard",
+                "refresh": "Apparaten vernieuwen",
+                "micFallback": "Microfoon ({id})"
+            },
+            "pushToTalk": {
+                "title": "Push-to-talk",
+                "description": "Houd een toets ingedrukt om uw microfoon aan te zetten. Werkt in alle vensters en apps.",
+                "enable": "Push-to-talk inschakelen",
+                "keybind": "Sneltoets",
+                "pressAnyKey": "Druk op een toets of combinatie…",
+                "notSet": "Niet ingesteld",
+                "setKey": "Toets instellen",
+                "changeKey": "Toets wijzigen",
+                "cancel": "Annuleren",
+                "clear": "Wissen",
+                "hint": "Druk op een toets of toetsencombinatie (bijv. F5, Spatie, Alt + Z, Ctrl + Shift + M). Houd de toets ingedrukt om te praten — laat los om te dempen.",
+                "playSound": "Geluid afspelen bij push-to-talk",
+                "errors": {
+                    "unsupportedGlobal": "\"{key}\" kan niet worden gebruikt als globale sneltoets.",
+                    "keyNotSupported": "Die toets wordt niet ondersteund.",
+                    "captureNotReady": "Toetsopname niet klaar. Probeer het opnieuw.",
+                    "captureFailed": "Toets kon niet worden opgenomen. Probeer het opnieuw."
+                }
+            },
+            "audio": {
+                "title": "Audioverwerking",
+                "description": "Ingebouwde ruisonderdrukking en audioverbeteringen",
+                "noiseSuppression": "Ruisonderdrukking",
+                "noiseSuppressionHint": "Filtert achtergrondgeluiden zoals toetsenbordkliks, ventilatoren en omgevingsgeluiden weg.",
+                "echoCancellation": "Echo-onderdrukking",
+                "echoCancellationHint": "Voorkomt dat het geluid van uw luidsprekers door uw microfoon wordt opgepikt.",
+                "autoGain": "Automatische versterking",
+                "autoGainHint": "Past automatisch het microfoonvolume aan om een consistent niveau te handhaven."
+            },
+            "test": {
+                "title": "Microfoontest",
+                "description": "Test uw microfoon en bekijk het invoerniveau met uw huidige audio-instellingen toegepast.",
+                "start": "Microfoon testen",
+                "stop": "Test stoppen",
+                "listening": "Luisteren...",
+                "hint": "Spreek in uw microfoon — u hoort uzelf en ziet het invoerniveau. Gebruik een koptelefoon om feedback te voorkomen."
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "Versleuteling",
+                "description": "Beheer uw end-to-end-versleutelingsinstellingen",
+                "active": "Versleuteling actief",
+                "notSetUp": "Versleuteling niet ingesteld",
+                "activeDescription": "Uw berichten zijn end-to-end-versleuteld.",
+                "notSetUpDescription": "Stel versleuteling in om uw berichten te beveiligen."
+            },
+            "keyBackup": {
+                "title": "Sleutelback-up",
+                "description": "Maak een back-up van uw sleutels om versleuteling op meerdere apparaten te gebruiken",
+                "exists": "Back-up aanwezig",
+                "none": "Geen back-up",
+                "existsDescription": "Er is een back-up van uw sleutels en deze kunnen worden hersteld op nieuwe apparaten.",
+                "noneDescription": "Maak een back-up om versleuteling op andere apparaten te gebruiken.",
+                "update": "Back-up bijwerken",
+                "create": "Back-up aanmaken"
+            },
+            "devices": {
+                "title": "Apparaten",
+                "description": "Beheer apparaten gekoppeld aan uw versleutelingsidentiteit",
+                "empty": "Geen apparaten gevonden.",
+                "thisDevice": "Dit apparaat",
+                "added": "Toegevoegd op {date}"
+            },
+            "auditLog": {
+                "title": "Auditlogboek",
+                "description": "Sleuteltransparantie-logboek — cryptografisch register van alle versleutelingsgebeurtenissen",
+                "load": "Auditlogboek laden",
+                "deviceLabel": "Apparaat:",
+                "hashLabel": "Hash:",
+                "events": {
+                    "identity_created": "Identiteit aangemaakt",
+                    "device_registered": "Apparaat geregistreerd",
+                    "device_revoked": "Apparaat ingetrokken",
+                    "backup_created": "Sleutelback-up aangemaakt",
+                    "backup_restored": "Sleutelback-up hersteld",
+                    "key_package_uploaded": "Sleutelpakketten geüpload",
+                    "signed_prekey_rotated": "Ondertekende voorsleutel geroteerd"
+                }
+            },
+            "danger": {
+                "title": "Gevarenzone",
+                "resetTitle": "Versleuteling resetten",
+                "resetDescription": "Verwijder alle lokale versleutelingssleutels. U moet versleuteling opnieuw instellen.",
+                "reset": "Resetten"
+            },
+            "dialogs": {
+                "revokeTitle": "Apparaat intrekken",
+                "revokeDescription": "Weet u zeker dat u {name} wilt intrekken? Dit apparaat kan geen nieuwe berichten meer ontsleutelen.",
+                "revoke": "Intrekken",
+                "renameTitle": "Apparaat hernoemen",
+                "renameDescription": "Voer een nieuwe naam in voor dit apparaat.",
+                "renamePlaceholder": "Apparaatnaam",
+                "rename": "Hernoemen",
+                "wipeTitle": "Versleuteling resetten",
+                "wipeDescription": "Hierdoor worden alle versleutelingssleutels permanent van dit apparaat verwijderd. U verliest de mogelijkheid om bestaande berichten te ontsleutelen, tenzij u een sleutelback-up heeft. Deze actie kan niet ongedaan worden gemaakt.",
+                "wipeConfirm": "Alle sleutels verwijderen",
+                "never": "Nooit"
+            }
+        },
+        "twoFactor": {
+            "title": "Tweestapsverificatie",
+            "description": "Voeg een extra beveiligingslaag toe aan uw account",
+            "disabledBadge": "Uitgeschakeld",
+            "enabledBadge": "Ingeschakeld",
+            "disabledBody": "Wanneer u tweestapsverificatie inschakelt, wordt u tijdens het aanmelden gevraagd om een veilige pincode. Deze pincode kan worden opgehaald uit een TOTP-ondersteunde applicatie op uw telefoon.",
+            "enabledBody": "Met tweestapsverificatie ingeschakeld wordt u tijdens het aanmelden gevraagd om een veilige, willekeurige pincode, die u kunt ophalen uit de TOTP-ondersteunde applicatie op uw telefoon.",
+            "continueSetup": "Setup voortzetten",
+            "enable": "2FA inschakelen",
+            "disable": "2FA uitschakelen",
+            "recovery": {
+                "title": "2FA-herstelcodes",
+                "description": "Met herstelcodes kunt u weer toegang krijgen als u uw 2FA-apparaat verliest. Bewaar ze in een veilige wachtwoordmanager.",
+                "hide": "Herstelcodes verbergen",
+                "view": "Herstelcodes weergeven",
+                "regenerate": "Codes opnieuw genereren",
+                "hintPrefix": "Elke herstelcode kan eenmaal worden gebruikt. Als u meer nodig heeft, klik op",
+                "hintRegen": "Codes opnieuw genereren",
+                "hintSuffix": "hierboven.",
+                "failedToFetch": "Herstelcodes konden niet worden opgehaald"
+            },
+            "setup": {
+                "scanTitle": "Tweestapsverificatie inschakelen",
+                "scanDescription": "Scan de QR-code of voer de installatiesleutel in uw authenticator-app in",
+                "verifyTitle": "Authenticatiecode verifiëren",
+                "verifyDescription": "Voer de 6-cijferige code uit uw authenticator-app in",
+                "continue": "Doorgaan",
+                "orManual": "of voer de code handmatig in",
+                "back": "Terug",
+                "confirm": "Bevestigen",
+                "invalidCode": "Ongeldige code",
+                "failedToFetchQr": "QR-code kon niet worden opgehaald",
+                "failedToFetchKey": "Installatiesleutel kon niet worden opgehaald"
+            }
+        },
+        "screenShare": {
+            "title": "Kwaliteit scherm delen",
+            "description": "Kies het kwaliteitsvoorinstelling voor wanneer u uw scherm deelt.",
+            "label": "Kwaliteitsvoorinstelling",
+            "placeholder": "Kwaliteit selecteren...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "Lager bandbreedteverbruik",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "Gebalanceerde kwaliteit",
+                "high": "1080p / 60 FPS",
+                "highDescription": "Vloeiende hoge kwaliteit",
+                "source": "Bron / 60 FPS",
+                "sourceDescription": "Eigen resolutie, hoogste kwaliteit"
+            }
+        },
+        "channels": {
+            "title": "Kanalen",
+            "description": "Beheer categorieën, kanalen en kanaalspecifieke machtigingsoverschrijvingen.",
+            "newCategory": "Nieuwe categorie",
+            "newChannel": "Nieuw kanaal",
+            "loading": "Kanalen laden...",
+            "emptyTitle": "Nog geen kanalen",
+            "emptyDescription": "Maak een categorie aan en voeg kanalen toe om te beginnen.",
+            "emptyCategory": "Geen kanalen in deze categorie.",
+            "privateBadge": "Privé",
+            "unknown": "Onbekend",
+            "roleLabel": "Rol",
+            "userLabel": "Gebruiker",
+            "create": {
+                "title": "Kanaal aanmaken",
+                "description": "Voeg een nieuw kanaal toe aan de server.",
+                "name": "Naam",
+                "namePlaceholder": "kanaal-naam",
+                "type": "Type",
+                "typePlaceholder": "Selecteer type...",
+                "typeText": "Tekst",
+                "typeVoice": "Spraak",
+                "topic": "Onderwerp",
+                "topicPlaceholder": "Waar gaat dit kanaal over?",
+                "category": "Categorie",
+                "categoryNone": "Geen",
+                "privateLabel": "Privékanaal (vereist expliciete rol/gebruikerstoegang)",
+                "submit": "Kanaal aanmaken"
+            },
+            "edit": {
+                "title": "Kanaal bewerken",
+                "description": "Werk kanaalinstellingen bij.",
+                "name": "Naam",
+                "topic": "Onderwerp",
+                "category": "Categorie",
+                "slowmode": "Langzame modus (seconden)",
+                "privateLabel": "Privékanaal",
+                "submit": "Wijzigingen opslaan"
+            },
+            "delete": {
+                "title": "Kanaal verwijderen",
+                "description": "Weet u zeker dat u {name} wilt verwijderen? Alle berichten in dit kanaal gaan verloren. Dit kan niet ongedaan worden gemaakt.",
+                "submit": "Kanaal verwijderen"
+            },
+            "category": {
+                "createTitle": "Categorie aanmaken",
+                "createDescription": "Voeg een nieuwe categorie toe om kanalen te organiseren.",
+                "name": "Naam",
+                "namePlaceholder": "Categorienaam",
+                "create": "Aanmaken",
+                "editTitle": "Categorie bewerken",
+                "editDescription": "Werk de categorienaam bij.",
+                "save": "Opslaan",
+                "deleteTitle": "Categorie verwijderen",
+                "deleteDescription": "Weet u zeker dat u {name} wilt verwijderen? Alle kanalen in deze categorie worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.",
+                "deleteSubmit": "Categorie verwijderen"
+            },
+            "overrides": {
+                "title": "Machtigingsoverschrijvingen",
+                "description": "Beheer machtigingsoverschrijvingen voor #{name}. Overschrijvingen staan specifieke machtigingen toe of weigeren ze voor rollen op dit kanaal.",
+                "loading": "Laden...",
+                "current": "Huidige overschrijvingen",
+                "add": "Overschrijving toevoegen",
+                "role": "Rol",
+                "rolePlaceholder": "Selecteer een rol...",
+                "permissions": "Machtigingen",
+                "allow": "Toestaan",
+                "deny": "Weigeren",
+                "save": "Overschrijving opslaan"
+            }
+        },
+        "members": {
+            "title": "Leden",
+            "description": "Beheer ledenrollen. Wijs rollen toe of verwijder ze om machtigingen te beheren.",
+            "searchPlaceholder": "Zoek leden...",
+            "loading": "Laden...",
+            "emptyTitle": "Geen leden gevonden",
+            "emptyTrySearch": "Probeer een andere zoekterm.",
+            "emptyNone": "Nog geen leden geregistreerd.",
+            "addRole": "Rol toevoegen",
+            "assign": {
+                "title": "Rol toewijzen",
+                "description": "Selecteer een rol om aan {name} toe te wijzen.",
+                "placeholder": "Selecteer een rol...",
+                "allAssigned": "Dit lid heeft al alle beschikbare rollen."
+            },
+            "remove": {
+                "title": "Rol verwijderen",
+                "description": "Weet u zeker dat u de rol {role} van {name} wilt verwijderen?",
+                "submit": "Rol verwijderen"
+            }
+        },
+        "roles": {
+            "title": "Rollen",
+            "description": "Beheer serverrollen en hun machtigingen. Hogere posities hebben voorrang op lagere.",
+            "createRole": "Rol aanmaken",
+            "loading": "Laden...",
+            "emptyTitle": "Nog geen rollen",
+            "emptyDescription": "Maak een rol aan om machtigingen te beheren.",
+            "defaultBadge": "Standaard",
+            "adminBadge": "Beheerder",
+            "memberCount": "{n} lid | {n} leden",
+            "position": "Positie: {n}",
+            "permissionsCount": "{n} machtigingen",
+            "form": {
+                "name": "Naam",
+                "namePlaceholder": "Rolnaam",
+                "color": "Kleur",
+                "position": "Positie",
+                "displaySeparately": "Apart weergeven",
+                "mentionable": "Vermeldbaar",
+                "permissions": "Machtigingen",
+                "categories": {
+                    "general": "Algemene server",
+                    "membership": "Lidmaatschap",
+                    "text": "Tekstkanalen",
+                    "voice": "Spraakkanalen",
+                    "admin": "Beheerder"
+                }
+            },
+            "create": {
+                "title": "Rol aanmaken",
+                "description": "Maak een nieuwe rol aan met specifieke machtigingen.",
+                "submit": "Rol aanmaken"
+            },
+            "edit": {
+                "title": "Rol bewerken",
+                "description": "Wijzig rolinstellingen en machtigingen.",
+                "submit": "Wijzigingen opslaan"
+            },
+            "delete": {
+                "title": "Rol verwijderen",
+                "description": "Weet u zeker dat u de rol {name} wilt verwijderen? Alle gebruikers met deze rol verliezen de bijbehorende machtigingen. Deze actie kan niet ongedaan worden gemaakt.",
+                "submit": "Rol verwijderen"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "Actieve bans",
+                "description": "Bekijk en beheer verbannen gebruikers. Bans verhinderen dat gebruikers toegang krijgen tot de server.",
+                "loading": "Laden...",
+                "emptyTitle": "Geen actieve bans",
+                "emptyDescription": "Alle gebruikers hebben toegang tot de server.",
+                "bannedBadge": "Verbannen",
+                "reasonLabel": "Reden: {reason}",
+                "noReason": "Geen reden opgegeven",
+                "byUser": "Door {user}",
+                "expires": "Verloopt: {date}",
+                "unban": "Ban opheffen"
+            },
+            "actions": {
+                "title": "Ledenacties",
+                "description": "Verban of zet leden in de gevangenis. Gevangen gebruikers hebben beperkte machtigingen en kunnen alleen kanalen bekijken.",
+                "searchPlaceholder": "Zoek leden...",
+                "empty": "Geen leden gevonden.",
+                "jail": "Gevangen",
+                "ban": "Verbannen"
+            },
+            "banDialog": {
+                "title": "Lid verbannen",
+                "description": "Verban {name} van de server. Zij kunnen geen enkel kanaal meer benaderen.",
+                "reason": "Reden (optioneel)",
+                "reasonPlaceholder": "Waarom wordt deze gebruiker verbannen?",
+                "expires": "Verloopt op (optioneel)",
+                "pickDate": "Kies een datum",
+                "permanentHint": "Laat leeg voor een permanente ban.",
+                "submit": "Gebruiker verbannen"
+            },
+            "jailDialog": {
+                "title": "Lid in de gevangenis zetten",
+                "description": "Zet {name} in de gevangenis? Hierdoor worden al hun rollen verwijderd en worden ze beperkt tot alleen-lezen toegang.",
+                "submit": "Gebruiker in de gevangenis zetten"
+            }
+        },
+        "auditLog": {
+            "title": "Auditlogboek",
+            "description": "Een register van alle moderatie- en beheeracties die op de server zijn uitgevoerd.",
+            "filterPlaceholder": "Filter op actie",
+            "loading": "Laden...",
+            "emptyTitle": "Geen auditlogboekvermeldingen",
+            "emptyDescription": "Moderatie-acties verschijnen hier.",
+            "unknownActor": "Onbekend",
+            "previous": "Vorige",
+            "next": "Volgende",
+            "page": "Pagina {n}",
+            "relative": {
+                "justNow": "Zojuist",
+                "minutesAgo": "{n}m geleden",
+                "hoursAgo": "{n}u geleden",
+                "daysAgo": "{n}d geleden"
+            },
+            "actions": {
+                "ban": "Verbannen",
+                "unban": "Ban opgeheven",
+                "jail": "Gevangen",
+                "unjail": "Vrijgelaten",
+                "message_delete": "Bericht verwijderd",
+                "thread_message_delete": "Threadantwoord verwijderd",
+                "role_assign": "Rol toegewezen",
+                "role_remove": "Rol verwijderd",
+                "role_create": "Rol aangemaakt",
+                "role_update": "Rol bijgewerkt",
+                "role_delete": "Rol verwijderd",
+                "channel_create": "Kanaal aangemaakt",
+                "channel_update": "Kanaal bijgewerkt",
+                "channel_delete": "Kanaal verwijderd",
+                "channel_override_update": "Kanaaloverschrijving bijgewerkt",
+                "channel_override_delete": "Kanaaloverschrijving verwijderd"
+            },
+            "filters": {
+                "all": "Alle acties",
+                "ban": "Bans",
+                "unban": "Opgeheven bans",
+                "jail": "Gevangenissen",
+                "unjail": "Vrijlatingen",
+                "message_delete": "Berichtverwijderingen",
+                "role_assign": "Rol toegewezen",
+                "role_remove": "Rol verwijderd",
+                "role_create": "Rol aangemaakt",
+                "role_update": "Rol bijgewerkt",
+                "role_delete": "Rol verwijderd",
+                "channel_create": "Kanaal aangemaakt",
+                "channel_update": "Kanaal bijgewerkt",
+                "channel_delete": "Kanaal verwijderd"
+            },
+            "target": {
+                "unknownUser": "Onbekende gebruiker",
+                "messageBy": "bericht van {'@'}{user}",
+                "messageByInChannel": "bericht van {'@'}{user} in #{channel}",
+                "messageGeneric": "bericht",
+                "messageInChannel": "bericht in #{channel}",
+                "roleOnUser": "{role} op {'@'}{user}",
+                "roleOnly": "{role}",
+                "roleFallback": "rol",
+                "channelFallback": "kanaal",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "Reden: {reason}",
+                "expires": "Verloopt: {date}"
+            }
+        },
+        "about": {
+            "title": "Over",
+            "description": "Informatie over deze LaraDisco-installatie.",
+            "version": "Versie",
+            "updates": {
+                "title": "Updates",
+                "description": "LaraDisco controleert elk uur automatisch op updates. U kunt ook handmatig controleren.",
+                "check": "Controleren op updates",
+                "checking": "Controleren…",
+                "available": "Versie {version} is beschikbaar.",
+                "upToDate": "U gebruikt de nieuwste versie.",
+                "failed": "Controleren op updates is mislukt"
+            }
+        },
+        "inviteLinks": {
+            "title": "Uitnodigingslinks",
+            "description": "Genereer eenmalige uitnodigingslinks voor nieuwe leden. Links verlopen na 1 uur.",
+            "generate": "Genereren",
+            "loading": "Laden...",
+            "emptyTitle": "Nog geen uitnodigingslinks",
+            "emptyDescription": "Genereer een link om iemand uit te nodigen om zich te registreren.",
+            "created": "Aangemaakt op {date}",
+            "expires": "Verloopt op {date}",
+            "expiresNever": "Nooit",
+            "usedBy": "Gebruikt door",
+            "statusActive": "Actief",
+            "statusUsed": "Gebruikt",
+            "statusExpired": "Verlopen"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "Minimaliseren",
+        "maximize": "Maximaliseren",
+        "close": "Sluiten"
+    },
+    "notifications": {
+        "messageFrom": "Bericht van {user}",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "{mention} in #{channel}",
+        "encryptedMessage": "[Versleuteld bericht]",
+        "sentMessage": "heeft een bericht verzonden",
+        "inChannelPrefix": "in #{channel}"
+    },
+    "dates": {
+        "todayAt": "Vandaag om {time}",
+        "yesterdayAt": "Gisteren om {time}"
+    },
+    "home": {
+        "welcome": "Welkom bij {server}",
+        "selectChannelPrompt": "Selecteer een kanaal in de zijbalk om te beginnen met chatten."
+    },
+    "directMessages": {
+        "title": "Uw directe berichten",
+        "emptyPrompt": "Selecteer een gesprek of start een nieuw gesprek."
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "Verbind met uw server om te beginnen",
+        "serverAddress": "Serveradres",
+        "placeholder": "chat.voorbeeld.com",
+        "connectedTo": "Verbonden met {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "Verbinden...",
+        "testConnection": "Verbinding testen",
+        "continue": "Doorgaan",
+        "savedServers": "Opgeslagen servers",
+        "active": "Actief"
+    },
+    "updates": {
+        "available": "Update beschikbaar",
+        "downloadPrompt": "Versie {version} is klaar om te downloaden.",
+        "download": "Downloaden",
+        "later": "Later",
+        "downloading": "Update downloaden",
+        "downloadingProgress": "Versie {version} — {percent}",
+        "ready": "Update klaar",
+        "restartPrompt": "Start LaraDisco opnieuw op om versie {version} te installeren.",
+        "restartNow": "Nu opnieuw opstarten",
+        "failed": "Update mislukt",
+        "downloadFailed": "Downloaden mislukt"
+    },
+    "appContextMenu": {
+        "copyText": "Tekst kopiëren",
+        "addReaction": "Reactie toevoegen",
+        "reply": "Beantwoorden",
+        "replyInThread": "In thread beantwoorden",
+        "pinMessage": "Bericht vastmaken",
+        "unpinMessage": "Bericht losmaken",
+        "editMessage": "Bericht bewerken",
+        "deleteMessage": "Bericht verwijderen",
+        "cut": "Knippen",
+        "copy": "Kopiëren",
+        "paste": "Plakken",
+        "pastePlain": "Als platte tekst plakken",
+        "wrapCodeBlock": "Inpakken als codeblok",
+        "language": "Taal",
+        "plainText": "Platte tekst",
+        "selectAll": "Alles selecteren",
+        "mention": "Vermelden",
+        "viewProfile": "Profiel bekijken",
+        "sendMessage": "Bericht verzenden",
+        "copyImage": "Afbeelding kopiëren",
+        "copyImageAddress": "Afbeeldingsadres kopiëren",
+        "saveImageAs": "Afbeelding opslaan als…",
+        "openLink": "Link openen",
+        "copyLink": "Link kopiëren"
+    },
+    "userMenu": {
+        "settings": "Instellingen",
+        "logout": "Afmelden"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "Sluiten",
+            "unknown": "Onbekend",
+            "encryptedMessage": "[Versleuteld bericht]",
+            "unableToDecrypt": "[Kan niet ontsleutelen]",
+            "unableToDecryptInline": "[Kan dit bericht niet ontsleutelen]"
+        },
+        "messages": {
+            "selectChannel": "Selecteer een kanaal",
+            "welcomeChannel": "Welkom bij #{channel}",
+            "conversationWith": "Gesprek met {name}",
+            "conversationStart": "Dit is het begin van uw gesprek.",
+            "pinned": "vastgemaakt",
+            "edited": "(bewerkt)",
+            "escapeTo": "escape om te",
+            "cancelInline": "annuleren",
+            "enterTo": "enter om te",
+            "saveInline": "opslaan",
+            "unknownUser": "Onbekend",
+            "deleteDialogTitle": "Bericht verwijderen",
+            "deleteDialogDescription": "Weet u zeker dat u dit bericht wilt verwijderen? Dit kan niet ongedaan worden gemaakt.",
+            "deleteConfirm": "Verwijderen",
+            "cancel": "Annuleren",
+            "noPermissionToSend": "U heeft geen toestemming om berichten in dit kanaal te verzenden.",
+            "pinnedMessagesTooltip": "Vastgemaakte berichten",
+            "searchMessagesTooltip": "Berichten zoeken",
+            "showMembers": "Leden tonen",
+            "hideMembers": "Leden verbergen",
+            "encryptionNotSetUp": "Versleuteling is niet ingesteld. Voltooi de E2EE-installatie voordat u berichten verzendt.",
+            "failedToEncrypt": "Bericht kon niet worden versleuteld. Probeer het opnieuw.",
+            "failedToSend": "Bericht kon niet worden verzonden. Probeer het opnieuw.",
+            "failedToUpload": "{fileName} kon niet worden geüpload. Probeer het opnieuw.",
+            "fetchingLinkPreview": "Linkvoorbeeld ophalen…"
+        },
+        "composer": {
+            "attachFile": "Bestand bijvoegen",
+            "placeholderChannel": "Bericht naar #{channel}",
+            "placeholderDefault": "Bericht naar #channel",
+            "placeholderDisabled": "Te snel verzenden — wacht alstublieft…",
+            "replyingTo": "Antwoorden aan {user}",
+            "fileTooLarge": "{count} bestanden overschrijden de limiet van 100 MB: {files}",
+            "preparing": "Voorbereiden…",
+            "encrypting": "Versleutelen…",
+            "finishing": "Afronden…"
+        },
+        "thread": {
+            "title": "Thread",
+            "followTooltip": "Thread volgen",
+            "unfollowTooltip": "Thread niet meer volgen",
+            "noReplies": "Nog geen antwoorden. Begin het gesprek!",
+            "replyPlaceholder": "Antwoorden in thread...",
+            "replyCount": "{count} antwoord | {count} antwoorden",
+            "encryptionNotSetUp": "Versleuteling is niet ingesteld.",
+            "failedToEncrypt": "Bericht kon niet worden versleuteld.",
+            "failedToSendReply": "Antwoord kon niet worden verzonden.",
+            "deleteDialogTitle": "Bericht verwijderen",
+            "deleteDialogDescription": "Weet u zeker dat u dit bericht wilt verwijderen? Dit kan niet ongedaan worden gemaakt.",
+            "deleteConfirm": "Verwijderen",
+            "cancel": "Annuleren"
+        },
+        "messageActions": {
+            "addReaction": "Reactie toevoegen",
+            "reply": "Beantwoorden",
+            "replyInThread": "In thread beantwoorden",
+            "pinMessage": "Bericht vastmaken",
+            "unpinMessage": "Bericht losmaken",
+            "editMessage": "Bericht bewerken",
+            "deleteMessage": "Bericht verwijderen"
+        },
+        "pinned": {
+            "title": "Vastgemaakte berichten",
+            "empty": "Nog geen vastgemaakte berichten.",
+            "unpinTooltip": "Bericht losmaken"
+        },
+        "files": {
+            "download": "Downloaden",
+            "close": "Sluiten",
+            "failedToLoadAudio": "Audio kon niet worden geladen",
+            "failedToLoadVideo": "Video kon niet worden geladen"
+        },
+        "gifs": {
+            "searchPlaceholder": "GIF's zoeken...",
+            "noResults": "Geen GIF's gevonden",
+            "categories": {
+                "excited": "Opgewonden",
+                "happy": "Blij",
+                "sad": "Verdrietig",
+                "love": "Liefde",
+                "angry": "Boos",
+                "laugh": "Lachen",
+                "dance": "Dansen",
+                "thumbsUp": "Duim omhoog",
+                "facepalm": "Facepalm"
+            }
+        },
+        "search": {
+            "titleInConversation": "Zoeken in {name}",
+            "closeTooltip": "Zoeken sluiten (Esc)",
+            "closeLabel": "Zoeken sluiten",
+            "placeholder": "Berichten zoeken…",
+            "ariaLabel": "Berichten zoeken",
+            "searching": "Zoeken…",
+            "noResults": "Geen resultaten gevonden",
+            "resultsCount": "{count} resultaat gevonden | {count} resultaten gevonden",
+            "typeToSearch": "Typ om berichten te zoeken",
+            "offlineNote": "Zoeken is volledig lokaal — werkt offline en verlaat nooit uw apparaat",
+            "tryDifferent": "Probeer andere zoektermen",
+            "loadMore": "Meer resultaten laden",
+            "unknownUser": "Onbekend"
+        },
+        "onlineUsers": {
+            "online": "Online — {count}",
+            "idle": "Inactief — {count}",
+            "dnd": "Niet storen — {count}",
+            "offline": "Offline — {count}"
+        },
+        "typing": {
+            "one": "{user} is aan het typen...",
+            "several": "Meerdere mensen zijn aan het typen..."
+        },
+        "mentions": {
+            "label": "Vermeldingen",
+            "searching": "Zoeken...",
+            "everyoneDescription": "Stel alle leden van deze server op de hoogte",
+            "hereDescription": "Stel online leden in dit kanaal op de hoogte"
+        },
+        "voice": {
+            "connected": "Spraak verbonden",
+            "poorConnection": "Slechte verbinding",
+            "connectionLost": "Verbinding verbroken",
+            "disconnect": "Verbinding verbreken",
+            "mute": "Dempen",
+            "unmute": "Dempen opheffen",
+            "deafen": "Geluid uit",
+            "undeafen": "Geluid aan",
+            "shareScreen": "Scherm delen",
+            "stopSharing": "Stoppen met delen",
+            "enableAudio": "Klik om audio in te schakelen"
+        },
+        "dm": {
+            "title": "Directe berichten",
+            "newMessageTooltip": "Nieuw bericht",
+            "searchPlaceholder": "Vind of start een gesprek",
+            "noUsersFound": "Geen gebruikers gevonden",
+            "noDmsYet": "Nog geen directe berichten",
+            "startConversationHint": "Klik op + om een gesprek te starten",
+            "backToChannels": "Terug naar kanalen",
+            "unableToDecrypt": "[Kan niet ontsleutelen]"
+        },
+        "userProfile": {
+            "unknownUser": "Onbekende gebruiker",
+            "memberSince": "Lid sinds",
+            "memberSinceUnknown": "Onbekend",
+            "roles": "Rollen",
+            "sendMessage": "Bericht verzenden",
+            "status": {
+                "online": "Online",
+                "idle": "Inactief",
+                "dnd": "Niet storen",
+                "offline": "Offline"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "Directe berichten",
+            "statusOnline": "Online",
+            "statusDnd": "Niet storen",
+            "statusInvisible": "Onzichtbaar",
+            "settings": "Instellingen",
+            "logout": "Afmelden"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "Naar het heden springen",
+            "jumpToBottom": "Naar beneden springen",
+            "newMessages": "{count} nieuw bericht | {count} nieuwe berichten"
+        },
+        "threadPreview": {
+            "replies": "{count} antwoord | {count} antwoorden",
+            "lastReply": "Laatste antwoord {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "In browser openen"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "Audio aan/uit",
+            "expand": "Uitvouwen",
+            "fullscreen": "Volledig scherm",
+            "popOut": "Loskoppelen",
+            "close": "Sluiten"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "End-to-end-versleuteling",
+            "description": "Beveilig uw berichten zodat alleen u en de beoogde ontvangers ze kunnen lezen.",
+            "checking": "Versleutelingsstatus controleren...",
+            "restoreTitle": "Herstel uw sleutels",
+            "restoreDescription": "Er is een sleutelback-up gevonden. Voer uw back-up-PIN in om uw versleutelingsidentiteit op dit apparaat te herstellen.",
+            "deviceName": "Apparaatnaam",
+            "deviceNamePlaceholder": "bijv. Mijn laptop",
+            "backupPin": "Back-up-PIN",
+            "backupPinPlaceholder": "Voer uw back-up-PIN in",
+            "incorrectPin": "Onjuiste PIN",
+            "restoreContinue": "Herstellen & doorgaan",
+            "newIdentity": "Nieuwe identiteit",
+            "generating": "Uw versleutelingssleutels genereren...",
+            "allSet": "U bent helemaal klaar!",
+            "allSetDescription": "End-to-end-versleuteling is actief. Uw berichten zijn nu beveiligd."
+        },
+        "backup": {
+            "restoreTitle": "Sleutelback-up herstellen",
+            "createTitle": "Sleutelback-up aanmaken",
+            "restoreDescription": "Voer de PIN in die u heeft gebruikt bij het aanmaken van uw back-up.",
+            "createDescription": "Kies een PIN om uw sleutelback-up te versleutelen. U heeft deze PIN nodig om uw sleutels op een ander apparaat te herstellen.",
+            "keysRestored": "Sleutels succesvol hersteld!",
+            "backupCreated": "Back-up succesvol aangemaakt!",
+            "backupPinLabel": "Back-up-PIN",
+            "choosePinLabel": "Kies een PIN",
+            "pinPlaceholderRestore": "Voer uw back-up-PIN in",
+            "pinPlaceholderCreate": "Minimaal 6 tekens",
+            "confirmPin": "Bevestig PIN",
+            "confirmPinPlaceholder": "Voer PIN opnieuw in",
+            "pinsDoNotMatch": "PIN's komen niet overeen",
+            "backupFailed": "Back-up mislukt",
+            "restoreFailed": "Herstel mislukt",
+            "importantLabel": "Belangrijk:",
+            "warningPinOnly": "Deze PIN wordt alleen gebruikt om uw sleutelback-up te versleutelen",
+            "warningNeverSent": "Deze wordt nooit naar de server verzonden",
+            "warningForgotten": "Als u uw PIN vergeet, kunt u uw sleutels niet herstellen",
+            "warningStrong": "De back-up gebruikt sterke versleuteling (Argon2id + AES-256-GCM)",
+            "restoreKeys": "Sleutels herstellen",
+            "createBackup": "Back-up aanmaken"
+        },
+        "avatarCrop": {
+            "title": "Avatar bijwerken",
+            "description": "Bijsnijden en uploaden van een nieuwe profielfoto",
+            "selectPrompt": "Selecteer een afbeelding om als avatar te gebruiken",
+            "chooseImage": "Afbeelding kiezen",
+            "chooseDifferent": "Andere afbeelding kiezen",
+            "saving": "Opslaan...",
+            "saveAvatar": "Avatar opslaan"
+        }
+    },
+    "notificationBell": {
+        "title": "Meldingen",
+        "markAllRead": "Alles markeren als gelezen",
+        "markAsRead": "Markeren als gelezen",
+        "empty": "Geen nieuwe meldingen",
+        "sentMessage": "heeft een bericht verzonden",
+        "inChannel": "in #{channel}"
+    },
+    "sidebar": {
+        "toggleSidebar": "Zijbalk in-/uitschakelen"
+    }
+}

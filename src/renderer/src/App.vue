@@ -1,0 +1,47 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
+import AppContextMenu from '@/components/AppContextMenu.vue';
+import NotificationToast from '@/components/NotificationToast.vue';
+import TitleBar from '@/components/TitleBar.vue';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import UpdateToast from '@/components/UpdateToast.vue';
+import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
+import { usePresenceStore } from '@/stores/presence';
+import { useVoiceStore } from '@/stores/voice';
+
+const route = useRoute();
+const isSettingsPage = computed(() => route.path.startsWith('/settings'));
+
+const presenceStore = usePresenceStore();
+const voiceStore = useVoiceStore();
+
+const handleBeforeQuit = () => {
+    presenceStore.goOffline();
+    voiceStore.leaveChannel();
+};
+
+onMounted(() => {
+    window.api?.window?.onBeforeQuit(handleBeforeQuit);
+});
+
+onUnmounted(() => {
+    window.api?.window?.removeBeforeQuitListener();
+});
+</script>
+
+<template>
+    <TooltipProvider :delay-duration="0">
+        <AppContextMenu>
+            <TitleBar />
+            <div class="h-[calc(100vh-var(--titlebar-height))] overflow-hidden">
+                <RouterView />
+            </div>
+            <NotificationToast />
+            <UpdateToast />
+            <div v-show="!isSettingsPage">
+                <ScreenShareViewer />
+            </div>
+        </AppContextMenu>
+    </TooltipProvider>
+</template>

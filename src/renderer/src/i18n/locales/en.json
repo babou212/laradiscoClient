@@ -1,0 +1,987 @@
+{
+    "common": {
+        "loading": "Loading",
+        "loadingEllipsis": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "back": "Back",
+        "sending": "Sending...",
+        "saveSuccess": "Saved successfully",
+        "retry": "Retry",
+        "close": "Close"
+    },
+    "validation": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Please enter a valid email address.",
+        "passwordRequired": "Password is required",
+        "passwordMin8": "Password must be at least 8 characters.",
+        "passwordConfirmRequired": "Please confirm your password.",
+        "passwordsMatch": "Passwords do not match.",
+        "displayNameRequired": "Display name is required.",
+        "usernameRequired": "Username is required.",
+        "usernameInvalidChars": "Username may only contain letters, numbers, underscores, dots, and hyphens.",
+        "inviteRequired": "Invite code is required.",
+        "codeLength6": "Reset code must be 6 digits.",
+        "codeNumeric": "Reset code must be numeric."
+    },
+    "auth": {
+        "serverFallback": "Server",
+        "login": {
+            "title": "Welcome Back",
+            "descriptionPrefix": "Sign in to {server}",
+            "email": "Email",
+            "password": "Password",
+            "emailPlaceholder": "you{'@'}example.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "Sign In",
+            "signingIn": "Signing in...",
+            "forgotPassword": "Forgot your password?",
+            "noAccount": "Don't have an account? Sign up",
+            "changeServer": "Change server"
+        },
+        "register": {
+            "joinTitle": "Join Server",
+            "createTitle": "Create Account",
+            "inviteDescription": "Enter your invite code to get started",
+            "signupDescription": "Sign up for {server}",
+            "inviteCodeLabel": "Invite Code",
+            "invitePlaceholder": "Paste your invite code",
+            "askAdmin": "Ask a server admin for an invite code.",
+            "continue": "Continue",
+            "validating": "Validating...",
+            "alreadyHaveAccount": "Already have an account? Sign in",
+            "displayName": "Display Name",
+            "displayNamePlaceholder": "Your Name",
+            "username": "Username",
+            "usernamePlaceholder": "yourname",
+            "email": "Email",
+            "emailPlaceholder": "you{'@'}example.com",
+            "password": "Password",
+            "confirmPassword": "Confirm Password",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "Create Account",
+            "creatingAccount": "Creating account...",
+            "useDifferentInvite": "Use a different invite code",
+            "invalidInvite": "Invalid invite link",
+            "unableToReach": "Unable to reach the server. Please try again later."
+        },
+        "forgot": {
+            "resetTitle": "Reset Password",
+            "doneTitle": "Password Reset",
+            "emailDescription": "Enter your email address and we'll send you a 6-digit reset code.",
+            "codeDescription": "Enter the code sent to {email} and choose a new password.",
+            "successHeading": "Your password has been reset successfully.",
+            "successSub": "You can now sign in with your new password.",
+            "email": "Email",
+            "emailPlaceholder": "you{'@'}example.com",
+            "resetCode": "Reset Code",
+            "codePlaceholder": "000000",
+            "newPassword": "New Password",
+            "confirmPassword": "Confirm Password",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "Send Reset Code",
+            "sending": "Sending...",
+            "resetPassword": "Reset Password",
+            "resetting": "Resetting...",
+            "tryAgain": "Didn't receive a code? Try again",
+            "backToLogin": "Back to login",
+            "tooManyRequests": "Too many requests. Please wait a moment and try again.",
+            "unableToReach": "Unable to reach the server. Please try again later.",
+            "invalidInput": "Invalid input."
+        },
+        "twoFactor": {
+            "title": "Two-Factor Authentication",
+            "recoveryTitle": "Recovery Code",
+            "description": "Enter the 6-digit code from your authenticator app to continue.",
+            "recoveryDescription": "Enter one of your emergency recovery codes to verify your identity.",
+            "recoveryCode": "Recovery Code",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "Use a recovery code instead",
+            "useAuthInstead": "Use authentication code instead",
+            "backToLogin": "Back to login"
+        }
+    },
+    "settings": {
+        "header": "Settings",
+        "subheader": "Manage your profile and account settings",
+        "back": "Back",
+        "navAriaLabel": "Settings",
+        "appearance": {
+            "title": "Theme",
+            "description": "Select a theme to change the look and feel of the application"
+        },
+        "password": {
+            "title": "Update password",
+            "description": "Ensure your account is using a long, random password to stay secure",
+            "currentPassword": "Current password",
+            "newPassword": "New password",
+            "confirmPassword": "Confirm password",
+            "currentPlaceholder": "Current password",
+            "newPlaceholder": "New password",
+            "confirmPlaceholder": "Confirm password",
+            "save": "Save password"
+        },
+        "notifications": {
+            "title": "Notifications",
+            "description": "Control how and when you receive notifications",
+            "typesHeading": "Notification Types",
+            "deliveryHeading": "Delivery Methods",
+            "mentionLabel": "Mention notifications",
+            "mentionDescription": "Get notified when someone mentions you with {'@'}username, {'@'}everyone, or {'@'}here",
+            "dmLabel": "Direct message notifications",
+            "dmDescription": "Get notified when someone sends you a direct message",
+            "toastLabel": "In-app pop-ups",
+            "toastDescription": "Show toast notifications in the corner of the screen",
+            "browserLabel": "Desktop notifications",
+            "browserDescription": "Show desktop notifications when the app is in the background",
+            "save": "Save preferences"
+        },
+        "language": {
+            "title": "Language",
+            "description": "Choose the language used throughout the application",
+            "label": "Display language",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文",
+                "da": "Dansk",
+                "nl": "Nederlands"
+            }
+        },
+        "nav": {
+            "profile": "Profile",
+            "password": "Password",
+            "twoFactor": "Two-Factor Auth",
+            "security": "Security",
+            "appearance": "Appearance",
+            "voice": "Voice",
+            "screenShare": "Screen Share",
+            "notifications": "Notifications",
+            "language": "Language",
+            "about": "About",
+            "server": "Server",
+            "inviteLinks": "Invite Links",
+            "roles": "Roles",
+            "members": "Members",
+            "channels": "Channels",
+            "moderation": "Moderation",
+            "auditLog": "Audit Log"
+        },
+        "common": {
+            "cancel": "Cancel",
+            "save": "Save",
+            "saveChanges": "Save Changes",
+            "delete": "Delete",
+            "loading": "Loading...",
+            "unknown": "Unknown",
+            "none": "None",
+            "processing": "Processing..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "Avatar",
+                "description": "Your profile picture visible to other users",
+                "change": "Change avatar",
+                "upload": "Upload avatar",
+                "remove": "Remove avatar"
+            },
+            "info": {
+                "title": "Profile information",
+                "description": "Update your name and email address",
+                "name": "Name",
+                "namePlaceholder": "Full name",
+                "email": "Email address",
+                "emailPlaceholder": "Email address",
+                "save": "Save changes",
+                "saved": "Saved successfully"
+            },
+            "danger": {
+                "title": "Danger zone",
+                "description": "Permanently delete your account and all of its data",
+                "warningTitle": "This action cannot be undone",
+                "warningBody": "Once you delete your account, all of your data will be permanently removed.",
+                "deleteAccount": "Delete account",
+                "confirmTitle": "Are you sure you want to delete your account?",
+                "confirmBody": "Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password to confirm.",
+                "passwordLabel": "Password",
+                "passwordPlaceholder": "Password"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "Microphone",
+                "description": "Select which microphone to use for voice channels",
+                "input": "Input Device",
+                "systemDefault": "System Default",
+                "refresh": "Refresh Devices",
+                "micFallback": "Microphone ({id})"
+            },
+            "pushToTalk": {
+                "title": "Push to Talk",
+                "description": "Hold a key to unmute your microphone. Works across all windows and apps.",
+                "enable": "Enable Push to Talk",
+                "keybind": "Keybind",
+                "pressAnyKey": "Press any key or combo…",
+                "notSet": "Not set",
+                "setKey": "Set Key",
+                "changeKey": "Change Key",
+                "cancel": "Cancel",
+                "clear": "Clear",
+                "hint": "Press any key or key combination (e.g. F5, Space, Alt + Z, Ctrl + Shift + M). Hold the key to talk — release to mute.",
+                "playSound": "Play sound on push-to-talk",
+                "errors": {
+                    "unsupportedGlobal": "\"{key}\" cannot be used as a global shortcut.",
+                    "keyNotSupported": "That key is not supported.",
+                    "captureNotReady": "Key capture not ready. Please try again.",
+                    "captureFailed": "Failed to capture key. Please try again."
+                }
+            },
+            "audio": {
+                "title": "Audio Processing",
+                "description": "Built-in noise suppression and audio enhancements",
+                "noiseSuppression": "Noise Suppression",
+                "noiseSuppressionHint": "Filters out background noise like keyboard clicks, fans, and ambient sounds.",
+                "echoCancellation": "Echo Cancellation",
+                "echoCancellationHint": "Prevents your speakers' audio from being picked up by your microphone.",
+                "autoGain": "Automatic Gain Control",
+                "autoGainHint": "Automatically adjusts your microphone volume to maintain a consistent level."
+            },
+            "test": {
+                "title": "Mic Test",
+                "description": "Test your microphone and see the input level with your current audio processing settings applied.",
+                "start": "Test Microphone",
+                "stop": "Stop Test",
+                "listening": "Listening...",
+                "hint": "Speak into your microphone — you'll hear yourself and see the input level. Use headphones to avoid feedback."
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "Encryption",
+                "description": "Manage your end-to-end encryption settings",
+                "active": "Encryption Active",
+                "notSetUp": "Encryption Not Set Up",
+                "activeDescription": "Your messages are end-to-end encrypted.",
+                "notSetUpDescription": "Set up encryption to secure your messages."
+            },
+            "keyBackup": {
+                "title": "Key Backup",
+                "description": "Back up your keys to use encryption on multiple devices",
+                "exists": "Backup Exists",
+                "none": "No Backup",
+                "existsDescription": "Your keys are backed up and can be restored on new devices.",
+                "noneDescription": "Create a backup to use encryption on other devices.",
+                "update": "Update Backup",
+                "create": "Create Backup"
+            },
+            "devices": {
+                "title": "Devices",
+                "description": "Manage devices linked to your encryption identity",
+                "empty": "No devices found.",
+                "thisDevice": "This device",
+                "added": "Added {date}"
+            },
+            "auditLog": {
+                "title": "Audit Log",
+                "description": "Key transparency log — cryptographic record of all encryption events",
+                "load": "Load audit log",
+                "deviceLabel": "Device:",
+                "hashLabel": "Hash:",
+                "events": {
+                    "identity_created": "Identity Created",
+                    "device_registered": "Device Registered",
+                    "device_revoked": "Device Revoked",
+                    "backup_created": "Key Backup Created",
+                    "backup_restored": "Key Backup Restored",
+                    "key_package_uploaded": "Key Packages Uploaded",
+                    "signed_prekey_rotated": "Signed Prekey Rotated"
+                }
+            },
+            "danger": {
+                "title": "Danger Zone",
+                "resetTitle": "Reset Encryption",
+                "resetDescription": "Delete all local encryption keys. You will need to set up encryption again.",
+                "reset": "Reset"
+            },
+            "dialogs": {
+                "revokeTitle": "Revoke Device",
+                "revokeDescription": "Are you sure you want to revoke {name}? This device will no longer be able to decrypt new messages.",
+                "revoke": "Revoke",
+                "renameTitle": "Rename Device",
+                "renameDescription": "Enter a new name for this device.",
+                "renamePlaceholder": "Device name",
+                "rename": "Rename",
+                "wipeTitle": "Reset Encryption",
+                "wipeDescription": "This will permanently delete all encryption keys from this device. You will lose the ability to decrypt existing messages unless you have a key backup. This action cannot be undone.",
+                "wipeConfirm": "Delete All Keys",
+                "never": "Never"
+            }
+        },
+        "twoFactor": {
+            "title": "Two-Factor Authentication",
+            "description": "Add an additional layer of security to your account",
+            "disabledBadge": "Disabled",
+            "enabledBadge": "Enabled",
+            "disabledBody": "When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.",
+            "enabledBody": "With two-factor authentication enabled, you will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.",
+            "continueSetup": "Continue Setup",
+            "enable": "Enable 2FA",
+            "disable": "Disable 2FA",
+            "recovery": {
+                "title": "2FA Recovery Codes",
+                "description": "Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.",
+                "hide": "Hide Recovery Codes",
+                "view": "View Recovery Codes",
+                "regenerate": "Regenerate Codes",
+                "hintPrefix": "Each recovery code can be used once. If you need more, click",
+                "hintRegen": "Regenerate Codes",
+                "hintSuffix": "above.",
+                "failedToFetch": "Failed to fetch recovery codes"
+            },
+            "setup": {
+                "scanTitle": "Enable Two-Factor Authentication",
+                "scanDescription": "Scan the QR code or enter the setup key in your authenticator app",
+                "verifyTitle": "Verify Authentication Code",
+                "verifyDescription": "Enter the 6-digit code from your authenticator app",
+                "continue": "Continue",
+                "orManual": "or, enter the code manually",
+                "back": "Back",
+                "confirm": "Confirm",
+                "invalidCode": "Invalid code",
+                "failedToFetchQr": "Failed to fetch QR code",
+                "failedToFetchKey": "Failed to fetch a setup key"
+            }
+        },
+        "screenShare": {
+            "title": "Screen Share Quality",
+            "description": "Choose the quality preset for when you share your screen.",
+            "label": "Quality Preset",
+            "placeholder": "Select quality...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "Lower bandwidth usage",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "Balanced quality",
+                "high": "1080p / 60 FPS",
+                "highDescription": "Smooth high quality",
+                "source": "Source / 60 FPS",
+                "sourceDescription": "Native resolution, highest quality"
+            }
+        },
+        "channels": {
+            "title": "Channels",
+            "description": "Manage categories, channels, and per-channel permission overrides.",
+            "newCategory": "New Category",
+            "newChannel": "New Channel",
+            "loading": "Loading channels...",
+            "emptyTitle": "No channels yet",
+            "emptyDescription": "Create a category and add channels to get started.",
+            "emptyCategory": "No channels in this category.",
+            "privateBadge": "Private",
+            "unknown": "Unknown",
+            "roleLabel": "Role",
+            "userLabel": "User",
+            "create": {
+                "title": "Create Channel",
+                "description": "Add a new channel to the server.",
+                "name": "Name",
+                "namePlaceholder": "channel-name",
+                "type": "Type",
+                "typePlaceholder": "Select type...",
+                "typeText": "Text",
+                "typeVoice": "Voice",
+                "topic": "Topic",
+                "topicPlaceholder": "What's this channel about?",
+                "category": "Category",
+                "categoryNone": "None",
+                "privateLabel": "Private channel (requires explicit role/user access)",
+                "submit": "Create Channel"
+            },
+            "edit": {
+                "title": "Edit Channel",
+                "description": "Update channel settings.",
+                "name": "Name",
+                "topic": "Topic",
+                "category": "Category",
+                "slowmode": "Slowmode (seconds)",
+                "privateLabel": "Private channel",
+                "submit": "Save Changes"
+            },
+            "delete": {
+                "title": "Delete Channel",
+                "description": "Are you sure you want to delete {name}? All messages in this channel will be lost. This cannot be undone.",
+                "submit": "Delete Channel"
+            },
+            "category": {
+                "createTitle": "Create Category",
+                "createDescription": "Add a new category to organize channels.",
+                "name": "Name",
+                "namePlaceholder": "Category name",
+                "create": "Create",
+                "editTitle": "Edit Category",
+                "editDescription": "Update the category name.",
+                "save": "Save",
+                "deleteTitle": "Delete Category",
+                "deleteDescription": "Are you sure you want to delete {name}? All channels in this category will also be deleted. This cannot be undone.",
+                "deleteSubmit": "Delete Category"
+            },
+            "overrides": {
+                "title": "Permission Overrides",
+                "description": "Manage permission overrides for #{name}. Overrides allow or deny specific permissions for roles on this channel.",
+                "loading": "Loading...",
+                "current": "Current Overrides",
+                "add": "Add Override",
+                "role": "Role",
+                "rolePlaceholder": "Select a role...",
+                "permissions": "Permissions",
+                "allow": "Allow",
+                "deny": "Deny",
+                "save": "Save Override"
+            }
+        },
+        "members": {
+            "title": "Members",
+            "description": "Manage member roles. Assign or remove roles to control permissions.",
+            "searchPlaceholder": "Search members...",
+            "loading": "Loading...",
+            "emptyTitle": "No members found",
+            "emptyTrySearch": "Try a different search term.",
+            "emptyNone": "No members registered yet.",
+            "addRole": "Add Role",
+            "assign": {
+                "title": "Assign Role",
+                "description": "Select a role to assign to {name}.",
+                "placeholder": "Select a role...",
+                "allAssigned": "This member already has all available roles."
+            },
+            "remove": {
+                "title": "Remove Role",
+                "description": "Are you sure you want to remove the role {role} from {name}?",
+                "submit": "Remove Role"
+            }
+        },
+        "roles": {
+            "title": "Roles",
+            "description": "Manage server roles and their permissions. Higher position roles outrank lower ones.",
+            "createRole": "Create Role",
+            "loading": "Loading...",
+            "emptyTitle": "No roles yet",
+            "emptyDescription": "Create a role to manage permissions.",
+            "defaultBadge": "Default",
+            "adminBadge": "Admin",
+            "memberCount": "{n} member | {n} members",
+            "position": "Position: {n}",
+            "permissionsCount": "{n} permissions",
+            "form": {
+                "name": "Name",
+                "namePlaceholder": "Role name",
+                "color": "Color",
+                "position": "Position",
+                "displaySeparately": "Display separately",
+                "mentionable": "Mentionable",
+                "permissions": "Permissions",
+                "categories": {
+                    "general": "General Server",
+                    "membership": "Membership",
+                    "text": "Text Channels",
+                    "voice": "Voice Channels",
+                    "admin": "Admin"
+                }
+            },
+            "create": {
+                "title": "Create Role",
+                "description": "Create a new role with specific permissions.",
+                "submit": "Create Role"
+            },
+            "edit": {
+                "title": "Edit Role",
+                "description": "Modify role settings and permissions.",
+                "submit": "Save Changes"
+            },
+            "delete": {
+                "title": "Delete Role",
+                "description": "Are you sure you want to delete the role {name}? All users with this role will lose its permissions. This action cannot be undone.",
+                "submit": "Delete Role"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "Active Bans",
+                "description": "View and manage banned users. Bans prevent users from accessing the server.",
+                "loading": "Loading...",
+                "emptyTitle": "No active bans",
+                "emptyDescription": "All users have access to the server.",
+                "bannedBadge": "Banned",
+                "reasonLabel": "Reason: {reason}",
+                "noReason": "No reason provided",
+                "byUser": "By {user}",
+                "expires": "Expires: {date}",
+                "unban": "Unban"
+            },
+            "actions": {
+                "title": "Member Actions",
+                "description": "Ban or jail members. Jailed users have restricted permissions and can only view channels.",
+                "searchPlaceholder": "Search members...",
+                "empty": "No members found.",
+                "jail": "Jail",
+                "ban": "Ban"
+            },
+            "banDialog": {
+                "title": "Ban Member",
+                "description": "Ban {name} from the server. They will not be able to access any channels.",
+                "reason": "Reason (optional)",
+                "reasonPlaceholder": "Why is this user being banned?",
+                "expires": "Expires at (optional)",
+                "pickDate": "Pick a date",
+                "permanentHint": "Leave empty for a permanent ban.",
+                "submit": "Ban User"
+            },
+            "jailDialog": {
+                "title": "Jail Member",
+                "description": "Jail {name}? This will strip all their roles and restrict them to read-only access.",
+                "submit": "Jail User"
+            }
+        },
+        "auditLog": {
+            "title": "Audit Log",
+            "description": "A record of all moderation and administrative actions taken on the server.",
+            "filterPlaceholder": "Filter by action",
+            "loading": "Loading...",
+            "emptyTitle": "No audit log entries",
+            "emptyDescription": "Moderation actions will appear here.",
+            "unknownActor": "Unknown",
+            "previous": "Previous",
+            "next": "Next",
+            "page": "Page {n}",
+            "relative": {
+                "justNow": "Just now",
+                "minutesAgo": "{n}m ago",
+                "hoursAgo": "{n}h ago",
+                "daysAgo": "{n}d ago"
+            },
+            "actions": {
+                "ban": "Banned",
+                "unban": "Unbanned",
+                "jail": "Jailed",
+                "unjail": "Unjailed",
+                "message_delete": "Deleted Message",
+                "thread_message_delete": "Deleted Thread Reply",
+                "role_assign": "Assigned Role",
+                "role_remove": "Removed Role",
+                "role_create": "Created Role",
+                "role_update": "Updated Role",
+                "role_delete": "Deleted Role",
+                "channel_create": "Created Channel",
+                "channel_update": "Updated Channel",
+                "channel_delete": "Deleted Channel",
+                "channel_override_update": "Updated Channel Override",
+                "channel_override_delete": "Deleted Channel Override"
+            },
+            "filters": {
+                "all": "All Actions",
+                "ban": "Bans",
+                "unban": "Unbans",
+                "jail": "Jails",
+                "unjail": "Unjails",
+                "message_delete": "Message Deletions",
+                "role_assign": "Role Assigned",
+                "role_remove": "Role Removed",
+                "role_create": "Role Created",
+                "role_update": "Role Updated",
+                "role_delete": "Role Deleted",
+                "channel_create": "Channel Created",
+                "channel_update": "Channel Updated",
+                "channel_delete": "Channel Deleted"
+            },
+            "target": {
+                "unknownUser": "Unknown user",
+                "messageBy": "message by {'@'}{user}",
+                "messageByInChannel": "message by {'@'}{user} in #{channel}",
+                "messageGeneric": "message",
+                "messageInChannel": "message in #{channel}",
+                "roleOnUser": "{role} on {'@'}{user}",
+                "roleOnly": "{role}",
+                "roleFallback": "role",
+                "channelFallback": "channel",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "Reason: {reason}",
+                "expires": "Expires: {date}"
+            }
+        },
+        "about": {
+            "title": "About",
+            "description": "Information about this LaraDisco install.",
+            "version": "Version",
+            "updates": {
+                "title": "Updates",
+                "description": "LaraDisco checks for updates automatically every hour. You can also check manually.",
+                "check": "Check for updates",
+                "checking": "Checking…",
+                "available": "Version {version} is available.",
+                "upToDate": "You are running the latest version.",
+                "failed": "Failed to check for updates"
+            }
+        },
+        "inviteLinks": {
+            "title": "Invite Links",
+            "description": "Generate single-use invite links for new members. Links expire after 1 hour.",
+            "generate": "Generate",
+            "loading": "Loading...",
+            "emptyTitle": "No invite links yet",
+            "emptyDescription": "Generate a link to invite someone to register.",
+            "created": "Created {date}",
+            "expires": "Expires {date}",
+            "expiresNever": "Never",
+            "usedBy": "Used by",
+            "statusActive": "Active",
+            "statusUsed": "Used",
+            "statusExpired": "Expired"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "Minimize",
+        "maximize": "Maximize",
+        "close": "Close"
+    },
+    "notifications": {
+        "messageFrom": "Message from {user}",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "{mention} in #{channel}",
+        "encryptedMessage": "[Encrypted message]",
+        "sentMessage": "sent a message",
+        "inChannelPrefix": "in #{channel}"
+    },
+    "dates": {
+        "todayAt": "Today at {time}",
+        "yesterdayAt": "Yesterday at {time}"
+    },
+    "home": {
+        "welcome": "Welcome to {server}",
+        "selectChannelPrompt": "Select a channel from the sidebar to start chatting."
+    },
+    "directMessages": {
+        "title": "Your Direct Messages",
+        "emptyPrompt": "Select a conversation or start a new one."
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "Connect to your server to get started",
+        "serverAddress": "Server Address",
+        "placeholder": "chat.example.com",
+        "connectedTo": "Connected to {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "Connecting...",
+        "testConnection": "Test Connection",
+        "continue": "Continue",
+        "savedServers": "Saved Servers",
+        "active": "Active"
+    },
+    "updates": {
+        "available": "Update available",
+        "downloadPrompt": "Version {version} is ready to download.",
+        "download": "Download",
+        "later": "Later",
+        "downloading": "Downloading update",
+        "downloadingProgress": "Version {version} — {percent}",
+        "ready": "Update ready",
+        "restartPrompt": "Restart LaraDisco to install version {version}.",
+        "restartNow": "Restart now",
+        "failed": "Update failed",
+        "downloadFailed": "Download failed"
+    },
+    "appContextMenu": {
+        "copyText": "Copy text",
+        "addReaction": "Add reaction",
+        "reply": "Reply",
+        "replyInThread": "Reply in thread",
+        "pinMessage": "Pin message",
+        "unpinMessage": "Unpin message",
+        "editMessage": "Edit message",
+        "deleteMessage": "Delete message",
+        "cut": "Cut",
+        "copy": "Copy",
+        "paste": "Paste",
+        "pastePlain": "Paste as plain text",
+        "wrapCodeBlock": "Wrap as code block",
+        "language": "Language",
+        "plainText": "Plain text",
+        "selectAll": "Select all",
+        "mention": "Mention",
+        "viewProfile": "View profile",
+        "sendMessage": "Send message",
+        "copyImage": "Copy image",
+        "copyImageAddress": "Copy image address",
+        "saveImageAs": "Save image as…",
+        "openLink": "Open link",
+        "copyLink": "Copy link"
+    },
+    "userMenu": {
+        "settings": "Settings",
+        "logout": "Log out"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "Dismiss",
+            "unknown": "Unknown",
+            "encryptedMessage": "[Encrypted message]",
+            "unableToDecrypt": "[Unable to decrypt]",
+            "unableToDecryptInline": "[Unable to decrypt this message]"
+        },
+        "messages": {
+            "selectChannel": "Select a channel",
+            "welcomeChannel": "Welcome to #{channel}",
+            "conversationWith": "Conversation with {name}",
+            "conversationStart": "This is the start of your conversation.",
+            "pinned": "pinned",
+            "edited": "(edited)",
+            "escapeTo": "escape to",
+            "cancelInline": "cancel",
+            "enterTo": "enter to",
+            "saveInline": "save",
+            "unknownUser": "Unknown",
+            "deleteDialogTitle": "Delete Message",
+            "deleteDialogDescription": "Are you sure you want to delete this message? This cannot be undone.",
+            "deleteConfirm": "Delete",
+            "cancel": "Cancel",
+            "noPermissionToSend": "You do not have permission to send messages in this channel.",
+            "pinnedMessagesTooltip": "Pinned messages",
+            "searchMessagesTooltip": "Search messages",
+            "showMembers": "Show members",
+            "hideMembers": "Hide members",
+            "encryptionNotSetUp": "Encryption is not set up. Please complete E2EE setup before sending messages.",
+            "failedToEncrypt": "Failed to encrypt message. Please try again.",
+            "failedToSend": "Failed to send message. Please try again.",
+            "failedToUpload": "Failed to upload {fileName}. Please try again.",
+            "fetchingLinkPreview": "Fetching link preview…"
+        },
+        "composer": {
+            "attachFile": "Attach file",
+            "placeholderChannel": "Message #{channel}",
+            "placeholderDefault": "Message #channel",
+            "placeholderDisabled": "Sending too fast — please wait…",
+            "replyingTo": "Replying to {user}",
+            "fileTooLarge": "{count} files exceed the 100 MB limit: {files}",
+            "preparing": "Preparing…",
+            "encrypting": "Encrypting…",
+            "finishing": "Finishing…"
+        },
+        "thread": {
+            "title": "Thread",
+            "followTooltip": "Follow thread",
+            "unfollowTooltip": "Unfollow thread",
+            "noReplies": "No replies yet. Start the conversation!",
+            "replyPlaceholder": "Reply in thread...",
+            "replyCount": "{count} reply | {count} replies",
+            "encryptionNotSetUp": "Encryption is not set up.",
+            "failedToEncrypt": "Failed to encrypt message.",
+            "failedToSendReply": "Failed to send reply.",
+            "deleteDialogTitle": "Delete Message",
+            "deleteDialogDescription": "Are you sure you want to delete this message? This cannot be undone.",
+            "deleteConfirm": "Delete",
+            "cancel": "Cancel"
+        },
+        "messageActions": {
+            "addReaction": "Add reaction",
+            "reply": "Reply",
+            "replyInThread": "Reply in Thread",
+            "pinMessage": "Pin message",
+            "unpinMessage": "Unpin message",
+            "editMessage": "Edit message",
+            "deleteMessage": "Delete message"
+        },
+        "pinned": {
+            "title": "Pinned Messages",
+            "empty": "No pinned messages yet.",
+            "unpinTooltip": "Unpin message"
+        },
+        "files": {
+            "download": "Download",
+            "close": "Close",
+            "failedToLoadAudio": "Failed to load audio",
+            "failedToLoadVideo": "Failed to load video"
+        },
+        "gifs": {
+            "searchPlaceholder": "Search GIFs...",
+            "noResults": "No GIFs found",
+            "categories": {
+                "excited": "Excited",
+                "happy": "Happy",
+                "sad": "Sad",
+                "love": "Love",
+                "angry": "Angry",
+                "laugh": "Laugh",
+                "dance": "Dance",
+                "thumbsUp": "Thumbs Up",
+                "facepalm": "Facepalm"
+            }
+        },
+        "search": {
+            "titleInConversation": "Search in {name}",
+            "closeTooltip": "Close search (Esc)",
+            "closeLabel": "Close search",
+            "placeholder": "Search messages…",
+            "ariaLabel": "Search messages",
+            "searching": "Searching…",
+            "noResults": "No results found",
+            "resultsCount": "{count} result found | {count} results found",
+            "typeToSearch": "Type to search messages",
+            "offlineNote": "Search is fully local — works offline, never leaves your device",
+            "tryDifferent": "Try different search terms",
+            "loadMore": "Load more results",
+            "unknownUser": "Unknown"
+        },
+        "onlineUsers": {
+            "online": "Online — {count}",
+            "idle": "Idle — {count}",
+            "dnd": "Do Not Disturb — {count}",
+            "offline": "Offline — {count}"
+        },
+        "typing": {
+            "one": "{user} is typing...",
+            "several": "Several people are typing..."
+        },
+        "mentions": {
+            "label": "Mentions",
+            "searching": "Searching...",
+            "everyoneDescription": "Notify all members in this server",
+            "hereDescription": "Notify online members in this channel"
+        },
+        "voice": {
+            "connected": "Voice Connected",
+            "poorConnection": "Poor Connection",
+            "connectionLost": "Connection Lost",
+            "disconnect": "Disconnect",
+            "mute": "Mute",
+            "unmute": "Unmute",
+            "deafen": "Deafen",
+            "undeafen": "Undeafen",
+            "shareScreen": "Share Screen",
+            "stopSharing": "Stop Sharing",
+            "enableAudio": "Click to enable audio"
+        },
+        "dm": {
+            "title": "Direct Messages",
+            "newMessageTooltip": "New Message",
+            "searchPlaceholder": "Find or start a conversation",
+            "noUsersFound": "No users found",
+            "noDmsYet": "No direct messages yet",
+            "startConversationHint": "Click + to start a conversation",
+            "backToChannels": "Back to Channels",
+            "unableToDecrypt": "[Unable to decrypt]"
+        },
+        "userProfile": {
+            "unknownUser": "Unknown User",
+            "memberSince": "Member Since",
+            "memberSinceUnknown": "Unknown",
+            "roles": "Roles",
+            "sendMessage": "Send Message",
+            "status": {
+                "online": "Online",
+                "idle": "Idle",
+                "dnd": "Do Not Disturb",
+                "offline": "Offline"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "Direct Messages",
+            "statusOnline": "Online",
+            "statusDnd": "Do Not Disturb",
+            "statusInvisible": "Invisible",
+            "settings": "Settings",
+            "logout": "Logout"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "Jump to present",
+            "jumpToBottom": "Jump to bottom",
+            "newMessages": "{count} new message | {count} new messages"
+        },
+        "threadPreview": {
+            "replies": "{count} reply | {count} replies",
+            "lastReply": "Last reply {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "Open in browser"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "Toggle audio",
+            "expand": "Expand",
+            "fullscreen": "Fullscreen",
+            "popOut": "Pop out",
+            "close": "Close"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "End-to-End Encryption",
+            "description": "Secure your messages so only you and the intended recipients can read them.",
+            "checking": "Checking encryption status...",
+            "restoreTitle": "Restore Your Keys",
+            "restoreDescription": "A key backup was found. Enter your backup PIN to restore your encryption identity on this device.",
+            "deviceName": "Device Name",
+            "deviceNamePlaceholder": "e.g. My Laptop",
+            "backupPin": "Backup PIN",
+            "backupPinPlaceholder": "Enter your backup PIN",
+            "incorrectPin": "Incorrect PIN",
+            "restoreContinue": "Restore & Continue",
+            "newIdentity": "New Identity",
+            "generating": "Generating your encryption keys...",
+            "allSet": "You're All Set!",
+            "allSetDescription": "End-to-end encryption is active. Your messages are now secured."
+        },
+        "backup": {
+            "restoreTitle": "Restore Key Backup",
+            "createTitle": "Create Key Backup",
+            "restoreDescription": "Enter the PIN you used when creating your backup.",
+            "createDescription": "Choose a PIN to encrypt your key backup. You'll need this PIN to restore your keys on another device.",
+            "keysRestored": "Keys Restored Successfully!",
+            "backupCreated": "Backup Created Successfully!",
+            "backupPinLabel": "Backup PIN",
+            "choosePinLabel": "Choose a PIN",
+            "pinPlaceholderRestore": "Enter your backup PIN",
+            "pinPlaceholderCreate": "Minimum 6 characters",
+            "confirmPin": "Confirm PIN",
+            "confirmPinPlaceholder": "Enter PIN again",
+            "pinsDoNotMatch": "PINs do not match",
+            "backupFailed": "Backup failed",
+            "restoreFailed": "Restore failed",
+            "importantLabel": "Important:",
+            "warningPinOnly": "This PIN is used only for encrypting your key backup",
+            "warningNeverSent": "It is never sent to the server",
+            "warningForgotten": "If you forget your PIN, you cannot restore your keys",
+            "warningStrong": "The backup uses strong encryption (Argon2id + AES-256-GCM)",
+            "restoreKeys": "Restore Keys",
+            "createBackup": "Create Backup"
+        },
+        "avatarCrop": {
+            "title": "Update avatar",
+            "description": "Crop and upload a new profile picture",
+            "selectPrompt": "Select an image to use as your avatar",
+            "chooseImage": "Choose image",
+            "chooseDifferent": "Choose different image",
+            "saving": "Saving...",
+            "saveAvatar": "Save avatar"
+        }
+    },
+    "notificationBell": {
+        "title": "Notifications",
+        "markAllRead": "Mark all read",
+        "markAsRead": "Mark as read",
+        "empty": "No new notifications",
+        "sentMessage": "sent a message",
+        "inChannel": "in #{channel}"
+    },
+    "sidebar": {
+        "toggleSidebar": "Toggle Sidebar"
+    }
+}

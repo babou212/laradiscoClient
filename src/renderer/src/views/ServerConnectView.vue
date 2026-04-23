@@ -1,0 +1,123 @@
+<script setup lang="ts">
+import { Loader2Icon, CheckCircle2Icon } from 'lucide-vue-next';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import { useServerStore } from '@/stores/server';
+
+const { t } = useI18n();
+const router = useRouter();
+const serverStore = useServerStore();
+
+const host = ref('');
+const isTestingConnection = ref(false);
+const serverInfo = ref<Record<string, unknown> | null>(null);
+
+async function testConnection(): Promise<void> {
+    if (!host.value.trim()) return;
+
+    serverInfo.value = null;
+    serverStore.clearError();
+    isTestingConnection.value = true;
+
+    const result = await serverStore.pingServer(host.value.trim());
+
+    if (result.success && result.data) {
+        serverInfo.value = result.data;
+    }
+
+    isTestingConnection.value = false;
+}
+
+async function connectAndSave(): Promise<void> {
+    if (!serverInfo.value) return;
+
+    const name = (serverInfo.value.app as string) || host.value.trim();
+    const connection = await serverStore.saveConnection(name, host.value.trim());
+
+    if (connection) {
+        router.push({ name: 'login' });
+    }
+}
+</script>
+
+<template>
+    <AuthLayout :title="t('serverConnect.title')" :description="t('serverConnect.description')">
+        <form @submit.prevent="testConnection" class="space-y-5">
+            <div class="grid gap-2">
+                <Label for="host">{{ t('serverConnect.serverAddress') }}</Label>
+                <Input
+                    id="host"
+                    v-model="host"
+                    type="text"
+                    :placeholder="t('serverConnect.placeholder')"
+                    :disabled="isTestingConnection"
+                />
+            </div>
+
+            <div
+                v-if="serverStore.connectionError"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+            >
+                {{ serverStore.connectionError }}
+            </div>
+
+            <div
+                v-if="serverInfo"
+                class="flex items-start gap-3 rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500 dark:text-green-400"
+            >
+                <CheckCircle2Icon class="mt-0.5 size-4 shrink-0" />
+                <div>
+                    <p class="font-medium">{{ t('serverConnect.connectedTo', { app: serverInfo.app }) }}</p>
+                    <p class="mt-0.5 text-xs opacity-70">
+                        {{ t('serverConnect.laravelVersion', { version: serverInfo.version }) }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 pt-1">
+                <Button v-if="!serverInfo" type="submit" :disabled="isTestingConnection || !host.trim()" class="w-full">
+                    <Loader2Icon v-if="isTestingConnection" class="animate-spin" />
+                    <span v-if="isTestingConnection">{{ t('serverConnect.connecting') }}</span>
+                    <span v-else>{{ t('serverConnect.testConnection') }}</span>
+                </Button>
+                <Button v-else type="button" @click="connectAndSave" class="w-full">
+                    {{ t('serverConnect.continue') }}
+                </Button>
+            </div>
+        </form>
+
+        <div v-if="serverStore.servers.length > 0" class="border-border border-t pt-6">
+            <p class="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">
+                {{ t('serverConnect.savedServers') }}
+            </p>
+            <div class="space-y-2">
+                <button
+                    v-for="server in serverStore.servers"
+                    :key="server.id"
+                    @click="
+                        host = server.host;
+                        serverInfo = null;
+                        serverStore.clearError();
+                    "
+                    class="border-border bg-card hover:border-ring hover:bg-accent flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition"
+                >
+                    <div>
+                        <p class="text-foreground font-medium">{{ server.name }}</p>
+                        <p class="text-muted-foreground text-xs">{{ server.host }}</p>
+                    </div>
+                    <span
+                        v-if="server.is_active"
+                        class="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500 dark:text-green-400"
+                    >
+                        {{ t('serverConnect.active') }}
+                    </span>
+                </button>
+            </div>
+        </div>
+    </AuthLayout>
+</template>

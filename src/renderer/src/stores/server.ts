@@ -1,0 +1,117 @@
+import * as Sentry from '@sentry/electron/renderer';
+import { acceptHMRUpdate, defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+
+export interface ReverbConfig {
+    key: string;
+    host: string;
+    port: number;
+    scheme: string;
+}
+
+export interface ServerConnection {
+    id: number;
+    name: string;
+    host: string;
+    is_active: boolean;
+    created_at: string;
+}
+
+export const useServerStore = defineStore('server', () => {
+    const activeServer = ref<ServerConnection | null>(null);
+    const servers = ref<ServerConnection[]>([]);
+    const isConnecting = ref(false);
+    const connectionError = ref<string | null>(null);
+    const reverbConfig = ref<ReverbConfig | null>(null);
+
+    const isConnected = computed(() => !!activeServer.value);
+    const activeHost = computed(() => activeServer.value?.host ?? null);
+
+    async function loadActiveServer(): Promise<void> {
+        activeServer.value = await window.api.server.getActive();
+        Sentry.setTag('server.host', activeServer.value?.host ?? 'none');
+    }
+
+    async function loadAllServers(): Promise<void> {
+        servers.value = await window.api.server.getAll();
+    }
+
+    async function pingServer(
+        host: string,
+    ): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+        isConnecting.value = true;
+        connectionError.value = null;
+
+        try {
+            const result = await window.api.server.ping(host);
+            if (!result.success) {
+                connectionError.value = result.error ?? 'Connection failed';
+            } else if (result.data?.reverb) {
+                reverbConfig.value = result.data.reverb as ReverbConfig;
+            }
+            return result;
+        } catch {
+            connectionError.value = 'Unexpected error connecting to server';
+            return { success: false, error: connectionError.value };
+        } finally {
+            isConnecting.value = false;
+        }
+    }
+
+    async function saveConnection(name: string, host: string): Promise<ServerConnection | null> {
+        const result = await window.api.server.save(name, host);
+        if (result.success && result.connection) {
+            activeServer.value = result.connection;
+            await loadAllServers();
+            return result.connection;
+        }
+        return null;
+    }
+
+    async function switchServer(id: number): Promise<void> {
+        await window.api.server.setActive(id);
+        await loadActiveServer();
+    }
+
+    async function removeServer(id: number): Promise<void> {
+        await window.api.server.remove(id);
+        if (activeServer.value?.id === id) {
+            activeServer.value = null;
+        }
+        await loadAllServers();
+    }
+
+    function clearError(): void {
+        connectionError.value = null;
+    }
+
+    function $reset(): void {
+        activeServer.value = null;
+        servers.value = [];
+        isConnecting.value = false;
+        connectionError.value = null;
+        reverbConfig.value = null;
+    }
+
+    return {
+        activeServer,
+        servers,
+        isConnecting,
+        connectionError,
+        isConnected,
+        activeHost,
+        reverbConfig,
+        loadActiveServer,
+        loadAllServers,
+        pingServer,
+        saveConnection,
+        switchServer,
+        removeServer,
+        clearError,
+        $reset,
+    };
+});
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useServerStore, import.meta.hot));
+}

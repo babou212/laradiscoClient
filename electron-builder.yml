@@ -1,0 +1,80 @@
+appId: com.laradisco.client
+productName: LaraDisco
+copyright: Copyright © ${author}
+
+afterPack: scripts/afterPack.cjs
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - LICENSE
+  - "!**/{.DS_Store,.git,.gitignore,.gitattributes,.editorconfig,.eslintrc*,.prettierrc*,tsconfig*.json}"
+
+asarUnpack:
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/uiohook-napi/**"
+
+publish:
+  provider: github
+  owner: babou212
+  repo: laradiscoClient
+
+mac:
+  category: public.app-category.social-networking
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  notarize: false
+  extendInfo:
+    NSMicrophoneUsageDescription: LaraDisco needs microphone access for voice channels.
+    NSScreenCaptureUsageDescription: LaraDisco needs screen recording access to share your screen in voice channels.
+    NSAppleEventsUsageDescription: LaraDisco needs accessibility access for the global push-to-talk hotkey.
+
+dmg:
+  title: LaraDisco ${version}
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LaraDisco
+
+extraResources:
+  - from: "build/tray"
+    to: "tray"
+
+linux:
+  category: Network
+  executableName: laradisco-client
+  extraFiles:
+    - from: "node_modules/electron/dist/WidevineCdm"
+      to: "WidevineCdm"
+  target:
+    - target: AppImage
+      arch:
+        - x64

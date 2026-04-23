@@ -1,0 +1,985 @@
+{
+    "common": {
+        "loading": "加载中",
+        "loadingEllipsis": "加载中...",
+        "save": "保存",
+        "cancel": "取消",
+        "continue": "继续",
+        "back": "返回",
+        "sending": "发送中...",
+        "saveSuccess": "保存成功",
+        "retry": "重试",
+        "close": "关闭"
+    },
+    "validation": {
+        "emailRequired": "请输入邮箱地址",
+        "emailInvalid": "请输入有效的邮箱地址。",
+        "passwordRequired": "请输入密码",
+        "passwordMin8": "密码至少需要8个字符。",
+        "passwordConfirmRequired": "请确认您的密码。",
+        "passwordsMatch": "两次输入的密码不一致。",
+        "displayNameRequired": "请输入显示名称。",
+        "usernameRequired": "请输入用户名。",
+        "usernameInvalidChars": "用户名只能包含字母、数字、下划线、点和连字符。",
+        "inviteRequired": "请输入邀请码。",
+        "codeLength6": "重置码必须为6位数字。",
+        "codeNumeric": "重置码必须为数字。"
+    },
+    "auth": {
+        "serverFallback": "服务器",
+        "login": {
+            "title": "欢迎回来",
+            "descriptionPrefix": "登录到 {server}",
+            "email": "邮箱",
+            "password": "密码",
+            "emailPlaceholder": "you{'@'}example.com",
+            "passwordPlaceholder": "••••••••",
+            "signIn": "登录",
+            "signingIn": "登录中...",
+            "forgotPassword": "忘记密码？",
+            "noAccount": "没有账号？注册",
+            "changeServer": "更换服务器"
+        },
+        "register": {
+            "joinTitle": "加入服务器",
+            "createTitle": "创建账号",
+            "inviteDescription": "输入邀请码以开始",
+            "signupDescription": "注册 {server}",
+            "inviteCodeLabel": "邀请码",
+            "invitePlaceholder": "粘贴您的邀请码",
+            "askAdmin": "向服务器管理员索取邀请码。",
+            "continue": "继续",
+            "validating": "验证中...",
+            "alreadyHaveAccount": "已有账号？登录",
+            "displayName": "显示名称",
+            "displayNamePlaceholder": "您的名字",
+            "username": "用户名",
+            "usernamePlaceholder": "yourname",
+            "email": "邮箱",
+            "emailPlaceholder": "you{'@'}example.com",
+            "password": "密码",
+            "confirmPassword": "确认密码",
+            "passwordPlaceholder": "••••••••",
+            "createAccount": "创建账号",
+            "creatingAccount": "创建账号中...",
+            "useDifferentInvite": "使用其他邀请码",
+            "invalidInvite": "无效的邀请链接",
+            "unableToReach": "无法连接到服务器，请稍后再试。"
+        },
+        "forgot": {
+            "resetTitle": "重置密码",
+            "doneTitle": "密码已重置",
+            "emailDescription": "输入您的邮箱地址，我们将向您发送6位重置码。",
+            "codeDescription": "输入发送至 {email} 的验证码并设置新密码。",
+            "successHeading": "密码已成功重置。",
+            "successSub": "您现在可以使用新密码登录。",
+            "email": "邮箱",
+            "emailPlaceholder": "you{'@'}example.com",
+            "resetCode": "重置码",
+            "codePlaceholder": "000000",
+            "newPassword": "新密码",
+            "confirmPassword": "确认密码",
+            "passwordPlaceholder": "••••••••",
+            "sendResetCode": "发送重置码",
+            "sending": "发送中...",
+            "resetPassword": "重置密码",
+            "resetting": "重置中...",
+            "tryAgain": "没有收到验证码？重试",
+            "backToLogin": "返回登录",
+            "tooManyRequests": "请求过于频繁，请稍后再试。",
+            "unableToReach": "无法连接到服务器，请稍后再试。",
+            "invalidInput": "输入无效。"
+        },
+        "twoFactor": {
+            "title": "双因素认证",
+            "recoveryTitle": "恢复码",
+            "description": "输入身份验证器应用中的6位验证码以继续。",
+            "recoveryDescription": "输入您的紧急恢复码以验证身份。",
+            "recoveryCode": "恢复码",
+            "recoveryPlaceholder": "xxxxx-xxxxx",
+            "useRecoveryInstead": "使用恢复码",
+            "useAuthInstead": "使用身份验证码",
+            "backToLogin": "返回登录"
+        }
+    },
+    "settings": {
+        "header": "设置",
+        "subheader": "管理您的个人资料和账号设置",
+        "back": "返回",
+        "navAriaLabel": "设置",
+        "appearance": {
+            "title": "主题",
+            "description": "选择主题以更改应用的外观"
+        },
+        "password": {
+            "title": "更新密码",
+            "description": "确保您的账号使用长而随机的密码以保持安全",
+            "currentPassword": "当前密码",
+            "newPassword": "新密码",
+            "confirmPassword": "确认密码",
+            "currentPlaceholder": "当前密码",
+            "newPlaceholder": "新密码",
+            "confirmPlaceholder": "确认密码",
+            "save": "保存密码"
+        },
+        "notifications": {
+            "title": "通知",
+            "description": "控制您接收通知的方式和时间",
+            "typesHeading": "通知类型",
+            "deliveryHeading": "通知方式",
+            "mentionLabel": "提及通知",
+            "mentionDescription": "当有人通过 {'@'}用户名、{'@'}everyone 或 {'@'}here 提及您时收到通知",
+            "dmLabel": "私信通知",
+            "dmDescription": "当有人向您发送私信时收到通知",
+            "toastLabel": "应用内弹窗",
+            "toastDescription": "在屏幕角落显示弹窗通知",
+            "browserLabel": "桌面通知",
+            "browserDescription": "当应用在后台运行时显示桌面通知",
+            "save": "保存偏好"
+        },
+        "language": {
+            "title": "语言",
+            "description": "选择应用中使用的语言",
+            "label": "显示语言",
+            "options": {
+                "en": "English",
+                "es": "Español",
+                "de": "Deutsch",
+                "pl": "Polski",
+                "fr": "Français",
+                "pt": "Português",
+                "ru": "Русский",
+                "zh": "中文"
+            }
+        },
+        "nav": {
+            "profile": "个人资料",
+            "password": "密码",
+            "twoFactor": "双因素认证",
+            "security": "安全",
+            "appearance": "外观",
+            "voice": "语音",
+            "screenShare": "屏幕共享",
+            "notifications": "通知",
+            "language": "语言",
+            "about": "关于",
+            "server": "服务器",
+            "inviteLinks": "邀请链接",
+            "roles": "角色",
+            "members": "成员",
+            "channels": "频道",
+            "moderation": "管理",
+            "auditLog": "审计日志"
+        },
+        "common": {
+            "cancel": "取消",
+            "save": "保存",
+            "saveChanges": "保存更改",
+            "delete": "删除",
+            "loading": "加载中...",
+            "unknown": "未知",
+            "none": "无",
+            "processing": "处理中..."
+        },
+        "profile": {
+            "avatar": {
+                "title": "头像",
+                "description": "其他用户可以看到您的头像",
+                "change": "更换头像",
+                "upload": "上传头像",
+                "remove": "移除头像"
+            },
+            "info": {
+                "title": "个人信息",
+                "description": "更新您的名称和邮箱地址",
+                "name": "名称",
+                "namePlaceholder": "全名",
+                "email": "邮箱地址",
+                "emailPlaceholder": "邮箱地址",
+                "save": "保存更改",
+                "saved": "保存成功"
+            },
+            "danger": {
+                "title": "危险区域",
+                "description": "永久删除您的账号及所有数据",
+                "warningTitle": "此操作不可撤销",
+                "warningBody": "删除账号后，您的所有数据将被永久移除。",
+                "deleteAccount": "删除账号",
+                "confirmTitle": "确定要删除您的账号吗？",
+                "confirmBody": "账号删除后，其所有资源和数据也将被永久删除。请输入密码以确认。",
+                "passwordLabel": "密码",
+                "passwordPlaceholder": "密码"
+            }
+        },
+        "voice": {
+            "microphone": {
+                "title": "麦克风",
+                "description": "选择语音频道使用的麦克风",
+                "input": "输入设备",
+                "systemDefault": "系统默认",
+                "refresh": "刷新设备",
+                "micFallback": "麦克风 ({id})"
+            },
+            "pushToTalk": {
+                "title": "按键说话",
+                "description": "按住按键以取消静音。在所有窗口和应用中均可使用。",
+                "enable": "启用按键说话",
+                "keybind": "快捷键",
+                "pressAnyKey": "按任意键或组合键…",
+                "notSet": "未设置",
+                "setKey": "设置按键",
+                "changeKey": "更改按键",
+                "cancel": "取消",
+                "clear": "清除",
+                "hint": "按任意键或组合键（如 F5、空格、Alt + Z、Ctrl + Shift + M）。按住按键说话，松开静音。",
+                "playSound": "按键说话时播放提示音",
+                "errors": {
+                    "unsupportedGlobal": "\"{key}\" 不能用作全局快捷键。",
+                    "keyNotSupported": "不支持此按键。",
+                    "captureNotReady": "按键捕获未就绪，请重试。",
+                    "captureFailed": "按键捕获失败，请重试。"
+                }
+            },
+            "audio": {
+                "title": "音频处理",
+                "description": "内置降噪和音频增强",
+                "noiseSuppression": "噪音抑制",
+                "noiseSuppressionHint": "过滤键盘声、风扇声和环境噪音等背景噪声。",
+                "echoCancellation": "回声消除",
+                "echoCancellationHint": "防止扬声器的音频被麦克风拾取。",
+                "autoGain": "自动增益控制",
+                "autoGainHint": "自动调节麦克风音量以保持一致的音量水平。"
+            },
+            "test": {
+                "title": "麦克风测试",
+                "description": "测试您的麦克风并查看当前音频处理设置下的输入电平。",
+                "start": "测试麦克风",
+                "stop": "停止测试",
+                "listening": "正在收听...",
+                "hint": "对着麦克风说话——您会听到自己的声音并看到输入电平。请使用耳机以避免反馈。"
+            }
+        },
+        "security": {
+            "encryption": {
+                "title": "加密",
+                "description": "管理您的端到端加密设置",
+                "active": "加密已启用",
+                "notSetUp": "加密未设置",
+                "activeDescription": "您的消息已经过端到端加密。",
+                "notSetUpDescription": "设置加密以保护您的消息。"
+            },
+            "keyBackup": {
+                "title": "密钥备份",
+                "description": "备份您的密钥以在多台设备上使用加密",
+                "exists": "备份已存在",
+                "none": "无备份",
+                "existsDescription": "您的密钥已备份，可以在新设备上恢复。",
+                "noneDescription": "创建备份以在其他设备上使用加密。",
+                "update": "更新备份",
+                "create": "创建备份"
+            },
+            "devices": {
+                "title": "设备",
+                "description": "管理与您加密身份关联的设备",
+                "empty": "未找到设备。",
+                "thisDevice": "当前设备",
+                "added": "添加于 {date}"
+            },
+            "auditLog": {
+                "title": "审计日志",
+                "description": "密钥透明度日志——所有加密事件的加密记录",
+                "load": "加载审计日志",
+                "deviceLabel": "设备：",
+                "hashLabel": "哈希：",
+                "events": {
+                    "identity_created": "身份已创建",
+                    "device_registered": "设备已注册",
+                    "device_revoked": "设备已撤销",
+                    "backup_created": "密钥备份已创建",
+                    "backup_restored": "密钥备份已恢复",
+                    "key_package_uploaded": "密钥包已上传",
+                    "signed_prekey_rotated": "签名预密钥已轮换"
+                }
+            },
+            "danger": {
+                "title": "危险区域",
+                "resetTitle": "重置加密",
+                "resetDescription": "删除所有本地加密密钥。您需要重新设置加密。",
+                "reset": "重置"
+            },
+            "dialogs": {
+                "revokeTitle": "撤销设备",
+                "revokeDescription": "确定要撤销 {name} 吗？该设备将无法解密新消息。",
+                "revoke": "撤销",
+                "renameTitle": "重命名设备",
+                "renameDescription": "为此设备输入新名称。",
+                "renamePlaceholder": "设备名称",
+                "rename": "重命名",
+                "wipeTitle": "重置加密",
+                "wipeDescription": "这将永久删除此设备上的所有加密密钥。除非您有密钥备份，否则将无法解密现有消息。此操作不可撤销。",
+                "wipeConfirm": "删除所有密钥",
+                "never": "从不"
+            }
+        },
+        "twoFactor": {
+            "title": "双因素认证",
+            "description": "为您的账号添加额外的安全保护",
+            "disabledBadge": "已禁用",
+            "enabledBadge": "已启用",
+            "disabledBody": "启用双因素认证后，登录时将提示您输入安全密码。此密码可从您手机上支持 TOTP 的应用中获取。",
+            "enabledBody": "双因素认证已启用，登录时将提示您输入安全的随机密码，可从您手机上支持 TOTP 的应用中获取。",
+            "continueSetup": "继续设置",
+            "enable": "启用双因素认证",
+            "disable": "禁用双因素认证",
+            "recovery": {
+                "title": "双因素恢复码",
+                "description": "恢复码可在您丢失双因素认证设备时帮助您重新获得账号访问权限。请将它们存储在安全的密码管理器中。",
+                "hide": "隐藏恢复码",
+                "view": "查看恢复码",
+                "regenerate": "重新生成",
+                "hintPrefix": "每个恢复码只能使用一次。如需更多，请点击",
+                "hintRegen": "重新生成",
+                "hintSuffix": "。",
+                "failedToFetch": "获取恢复码失败"
+            },
+            "setup": {
+                "scanTitle": "启用双因素认证",
+                "scanDescription": "扫描二维码或在身份验证器应用中输入设置密钥",
+                "verifyTitle": "验证认证码",
+                "verifyDescription": "输入身份验证器应用中的6位验证码",
+                "continue": "继续",
+                "orManual": "或手动输入密钥",
+                "back": "返回",
+                "confirm": "确认",
+                "invalidCode": "验证码无效",
+                "failedToFetchQr": "获取二维码失败",
+                "failedToFetchKey": "获取设置密钥失败"
+            }
+        },
+        "screenShare": {
+            "title": "屏幕共享质量",
+            "description": "选择共享屏幕时的质量预设。",
+            "label": "质量预设",
+            "placeholder": "选择质量...",
+            "presets": {
+                "low": "720p / 30 FPS",
+                "lowDescription": "较低带宽占用",
+                "medium": "1080p / 30 FPS",
+                "mediumDescription": "平衡画质",
+                "high": "1080p / 60 FPS",
+                "highDescription": "流畅高清",
+                "source": "原始分辨率 / 60 FPS",
+                "sourceDescription": "原始分辨率，最高画质"
+            }
+        },
+        "channels": {
+            "title": "频道",
+            "description": "管理分类、频道和频道权限覆盖。",
+            "newCategory": "新建分类",
+            "newChannel": "新建频道",
+            "loading": "加载频道中...",
+            "emptyTitle": "还没有频道",
+            "emptyDescription": "创建一个分类并添加频道以开始。",
+            "emptyCategory": "此分类中没有频道。",
+            "privateBadge": "私密",
+            "unknown": "未知",
+            "roleLabel": "角色",
+            "userLabel": "用户",
+            "create": {
+                "title": "创建频道",
+                "description": "向服务器添加新频道。",
+                "name": "名称",
+                "namePlaceholder": "频道名称",
+                "type": "类型",
+                "typePlaceholder": "选择类型...",
+                "typeText": "文字",
+                "typeVoice": "语音",
+                "topic": "话题",
+                "topicPlaceholder": "这个频道是关于什么的？",
+                "category": "分类",
+                "categoryNone": "无",
+                "privateLabel": "私密频道（需要明确的角色/用户访问权限）",
+                "submit": "创建频道"
+            },
+            "edit": {
+                "title": "编辑频道",
+                "description": "更新频道设置。",
+                "name": "名称",
+                "topic": "话题",
+                "category": "分类",
+                "slowmode": "慢速模式（秒）",
+                "privateLabel": "私密频道",
+                "submit": "保存更改"
+            },
+            "delete": {
+                "title": "删除频道",
+                "description": "确定要删除 {name} 吗？此频道中的所有消息将丢失。此操作不可撤销。",
+                "submit": "删除频道"
+            },
+            "category": {
+                "createTitle": "创建分类",
+                "createDescription": "添加新分类以组织频道。",
+                "name": "名称",
+                "namePlaceholder": "分类名称",
+                "create": "创建",
+                "editTitle": "编辑分类",
+                "editDescription": "更新分类名称。",
+                "save": "保存",
+                "deleteTitle": "删除分类",
+                "deleteDescription": "确定要删除 {name} 吗？此分类中的所有频道也将被删除。此操作不可撤销。",
+                "deleteSubmit": "删除分类"
+            },
+            "overrides": {
+                "title": "权限覆盖",
+                "description": "管理 #{name} 的权限覆盖。覆盖可以允许或拒绝此频道中角色的特定权限。",
+                "loading": "加载中...",
+                "current": "当前覆盖",
+                "add": "添加覆盖",
+                "role": "角色",
+                "rolePlaceholder": "选择角色...",
+                "permissions": "权限",
+                "allow": "允许",
+                "deny": "拒绝",
+                "save": "保存覆盖"
+            }
+        },
+        "members": {
+            "title": "成员",
+            "description": "管理成员角色。分配或移除角色以控制权限。",
+            "searchPlaceholder": "搜索成员...",
+            "loading": "加载中...",
+            "emptyTitle": "未找到成员",
+            "emptyTrySearch": "请尝试其他搜索词。",
+            "emptyNone": "尚无注册成员。",
+            "addRole": "添加角色",
+            "assign": {
+                "title": "分配角色",
+                "description": "选择要分配给 {name} 的角色。",
+                "placeholder": "选择角色...",
+                "allAssigned": "该成员已拥有所有可用角色。"
+            },
+            "remove": {
+                "title": "移除角色",
+                "description": "确定要从 {name} 移除角色 {role} 吗？",
+                "submit": "移除角色"
+            }
+        },
+        "roles": {
+            "title": "角色",
+            "description": "管理服务器角色及其权限。位置较高的角色优先级更高。",
+            "createRole": "创建角色",
+            "loading": "加载中...",
+            "emptyTitle": "还没有角色",
+            "emptyDescription": "创建角色以管理权限。",
+            "defaultBadge": "默认",
+            "adminBadge": "管理员",
+            "memberCount": "{n} 位成员",
+            "position": "位置：{n}",
+            "permissionsCount": "{n} 项权限",
+            "form": {
+                "name": "名称",
+                "namePlaceholder": "角色名称",
+                "color": "颜色",
+                "position": "位置",
+                "displaySeparately": "单独显示",
+                "mentionable": "可被提及",
+                "permissions": "权限",
+                "categories": {
+                    "general": "常规服务器",
+                    "membership": "成员管理",
+                    "text": "文字频道",
+                    "voice": "语音频道",
+                    "admin": "管理员"
+                }
+            },
+            "create": {
+                "title": "创建角色",
+                "description": "创建具有特定权限的新角色。",
+                "submit": "创建角色"
+            },
+            "edit": {
+                "title": "编辑角色",
+                "description": "修改角色设置和权限。",
+                "submit": "保存更改"
+            },
+            "delete": {
+                "title": "删除角色",
+                "description": "确定要删除角色 {name} 吗？拥有此角色的所有用户将失去其权限。此操作不可撤销。",
+                "submit": "删除角色"
+            }
+        },
+        "moderation": {
+            "bans": {
+                "title": "封禁列表",
+                "description": "查看和管理被封禁的用户。封禁将阻止用户访问服务器。",
+                "loading": "加载中...",
+                "emptyTitle": "没有封禁记录",
+                "emptyDescription": "所有用户均可访问服务器。",
+                "bannedBadge": "已封禁",
+                "reasonLabel": "原因：{reason}",
+                "noReason": "未提供原因",
+                "byUser": "操作人：{user}",
+                "expires": "到期：{date}",
+                "unban": "解除封禁"
+            },
+            "actions": {
+                "title": "成员操作",
+                "description": "封禁或禁闭成员。被禁闭的用户权限受限，只能查看频道。",
+                "searchPlaceholder": "搜索成员...",
+                "empty": "未找到成员。",
+                "jail": "禁闭",
+                "ban": "封禁"
+            },
+            "banDialog": {
+                "title": "封禁成员",
+                "description": "将 {name} 从服务器封禁。该用户将无法访问任何频道。",
+                "reason": "原因（可选）",
+                "reasonPlaceholder": "为什么要封禁此用户？",
+                "expires": "到期时间（可选）",
+                "pickDate": "选择日期",
+                "permanentHint": "留空则为永久封禁。",
+                "submit": "封禁用户"
+            },
+            "jailDialog": {
+                "title": "禁闭成员",
+                "description": "禁闭 {name}？这将移除其所有角色并将其限制为只读访问。",
+                "submit": "禁闭用户"
+            }
+        },
+        "auditLog": {
+            "title": "审计日志",
+            "description": "服务器上所有管理和行政操作的记录。",
+            "filterPlaceholder": "按操作筛选",
+            "loading": "加载中...",
+            "emptyTitle": "没有审计日志",
+            "emptyDescription": "管理操作将显示在此处。",
+            "unknownActor": "未知",
+            "previous": "上一页",
+            "next": "下一页",
+            "page": "第 {n} 页",
+            "relative": {
+                "justNow": "刚刚",
+                "minutesAgo": "{n}分钟前",
+                "hoursAgo": "{n}小时前",
+                "daysAgo": "{n}天前"
+            },
+            "actions": {
+                "ban": "已封禁",
+                "unban": "已解封",
+                "jail": "已禁闭",
+                "unjail": "已解除禁闭",
+                "message_delete": "已删除消息",
+                "thread_message_delete": "已删除主题回复",
+                "role_assign": "已分配角色",
+                "role_remove": "已移除角色",
+                "role_create": "已创建角色",
+                "role_update": "已更新角色",
+                "role_delete": "已删除角色",
+                "channel_create": "已创建频道",
+                "channel_update": "已更新频道",
+                "channel_delete": "已删除频道",
+                "channel_override_update": "已更新频道覆盖",
+                "channel_override_delete": "已删除频道覆盖"
+            },
+            "filters": {
+                "all": "所有操作",
+                "ban": "封禁",
+                "unban": "解封",
+                "jail": "禁闭",
+                "unjail": "解除禁闭",
+                "message_delete": "删除消息",
+                "role_assign": "分配角色",
+                "role_remove": "移除角色",
+                "role_create": "创建角色",
+                "role_update": "更新角色",
+                "role_delete": "删除角色",
+                "channel_create": "创建频道",
+                "channel_update": "更新频道",
+                "channel_delete": "删除频道"
+            },
+            "target": {
+                "unknownUser": "未知用户",
+                "messageBy": "{'@'}{user} 的消息",
+                "messageByInChannel": "{'@'}{user} 在 #{channel} 中的消息",
+                "messageGeneric": "消息",
+                "messageInChannel": "#{channel} 中的消息",
+                "roleOnUser": "{'@'}{user} 的角色 {role}",
+                "roleOnly": "{role}",
+                "roleFallback": "角色",
+                "channelFallback": "频道",
+                "channelName": "#{name}"
+            },
+            "meta": {
+                "reason": "原因：{reason}",
+                "expires": "到期：{date}"
+            }
+        },
+        "about": {
+            "title": "关于",
+            "description": "关于此 LaraDisco 安装的信息。",
+            "version": "版本",
+            "updates": {
+                "title": "更新",
+                "description": "LaraDisco 每小时自动检查更新。您也可以手动检查。",
+                "check": "检查更新",
+                "checking": "检查中…",
+                "available": "版本 {version} 可用。",
+                "upToDate": "您正在运行最新版本。",
+                "failed": "检查更新失败"
+            }
+        },
+        "inviteLinks": {
+            "title": "邀请链接",
+            "description": "为新成员生成一次性邀请链接。链接在1小时后过期。",
+            "generate": "生成",
+            "loading": "加载中...",
+            "emptyTitle": "还没有邀请链接",
+            "emptyDescription": "生成链接以邀请他人注册。",
+            "created": "创建于 {date}",
+            "expires": "过期于 {date}",
+            "expiresNever": "永不过期",
+            "usedBy": "使用者",
+            "statusActive": "有效",
+            "statusUsed": "已使用",
+            "statusExpired": "已过期"
+        }
+    },
+    "titleBar": {
+        "appName": "LaraDisco",
+        "minimize": "最小化",
+        "maximize": "最大化",
+        "close": "关闭"
+    },
+    "notifications": {
+        "messageFrom": "来自 {user} 的消息",
+        "mentionEveryone": "{'@'}everyone",
+        "mentionHere": "{'@'}here",
+        "mentionUser": "{'@'}{user}",
+        "mentionInChannel": "#{channel} 中的 {mention}",
+        "encryptedMessage": "[加密消息]",
+        "sentMessage": "发送了一条消息",
+        "inChannelPrefix": "在 #{channel}"
+    },
+    "dates": {
+        "todayAt": "今天 {time}",
+        "yesterdayAt": "昨天 {time}"
+    },
+    "home": {
+        "welcome": "欢迎来到 {server}",
+        "selectChannelPrompt": "从侧边栏选择一个频道开始聊天。"
+    },
+    "directMessages": {
+        "title": "您的私信",
+        "emptyPrompt": "选择一个对话或开始新对话。"
+    },
+    "serverConnect": {
+        "title": "LaraDisco",
+        "description": "连接到您的服务器以开始",
+        "serverAddress": "服务器地址",
+        "placeholder": "chat.example.com",
+        "connectedTo": "已连接到 {app}",
+        "laravelVersion": "Laravel {version}",
+        "connecting": "连接中...",
+        "testConnection": "测试连接",
+        "continue": "继续",
+        "savedServers": "已保存的服务器",
+        "active": "活跃"
+    },
+    "updates": {
+        "available": "有可用更新",
+        "downloadPrompt": "版本 {version} 已准备好下载。",
+        "download": "下载",
+        "later": "稍后",
+        "downloading": "正在下载更新",
+        "downloadingProgress": "版本 {version} — {percent}",
+        "ready": "更新就绪",
+        "restartPrompt": "重启 LaraDisco 以安装版本 {version}。",
+        "restartNow": "立即重启",
+        "failed": "更新失败",
+        "downloadFailed": "下载失败"
+    },
+    "appContextMenu": {
+        "copyText": "复制文本",
+        "addReaction": "添加表情",
+        "reply": "回复",
+        "replyInThread": "在主题中回复",
+        "pinMessage": "固定消息",
+        "unpinMessage": "取消固定",
+        "editMessage": "编辑消息",
+        "deleteMessage": "删除消息",
+        "cut": "剪切",
+        "copy": "复制",
+        "paste": "粘贴",
+        "pastePlain": "粘贴为纯文本",
+        "wrapCodeBlock": "包裹为代码块",
+        "language": "语言",
+        "plainText": "纯文本",
+        "selectAll": "全选",
+        "mention": "提及",
+        "viewProfile": "查看资料",
+        "sendMessage": "发送消息",
+        "copyImage": "复制图片",
+        "copyImageAddress": "复制图片地址",
+        "saveImageAs": "图片另存为…",
+        "openLink": "打开链接",
+        "copyLink": "复制链接"
+    },
+    "userMenu": {
+        "settings": "设置",
+        "logout": "退出登录"
+    },
+    "chat": {
+        "common": {
+            "dismiss": "关闭",
+            "unknown": "未知",
+            "encryptedMessage": "[加密消息]",
+            "unableToDecrypt": "[无法解密]",
+            "unableToDecryptInline": "[无法解密此消息]"
+        },
+        "messages": {
+            "selectChannel": "选择一个频道",
+            "welcomeChannel": "欢迎来到 #{channel}",
+            "conversationWith": "与 {name} 的对话",
+            "conversationStart": "这是你们对话的开始。",
+            "pinned": "已固定",
+            "edited": "（已编辑）",
+            "escapeTo": "按 Esc",
+            "cancelInline": "取消",
+            "enterTo": "按 Enter",
+            "saveInline": "保存",
+            "unknownUser": "未知",
+            "deleteDialogTitle": "删除消息",
+            "deleteDialogDescription": "确定要删除此消息吗？此操作不可撤销。",
+            "deleteConfirm": "删除",
+            "cancel": "取消",
+            "noPermissionToSend": "您没有在此频道发送消息的权限。",
+            "pinnedMessagesTooltip": "固定消息",
+            "searchMessagesTooltip": "搜索消息",
+            "showMembers": "显示成员",
+            "hideMembers": "隐藏成员",
+            "encryptionNotSetUp": "加密尚未设置。请在发送消息前完成端到端加密设置。",
+            "failedToEncrypt": "消息加密失败，请重试。",
+            "failedToSend": "消息发送失败，请重试。",
+            "failedToUpload": "上传 {fileName} 失败，请重试。",
+            "fetchingLinkPreview": "正在获取链接预览…"
+        },
+        "composer": {
+            "attachFile": "附加文件",
+            "placeholderChannel": "在 #{channel} 中发送消息",
+            "placeholderDefault": "在 #频道 中发送消息",
+            "placeholderDisabled": "发送过快——请稍候…",
+            "replyingTo": "回复 {user}",
+            "fileTooLarge": "{count} 个文件超过 100 MB 限制：{files}",
+            "preparing": "准备中…",
+            "encrypting": "加密中…",
+            "finishing": "完成中…"
+        },
+        "thread": {
+            "title": "主题",
+            "followTooltip": "关注主题",
+            "unfollowTooltip": "取消关注主题",
+            "noReplies": "暂无回复。开始对话吧！",
+            "replyPlaceholder": "在主题中回复...",
+            "replyCount": "{count} 条回复",
+            "encryptionNotSetUp": "加密尚未设置。",
+            "failedToEncrypt": "消息加密失败。",
+            "failedToSendReply": "回复发送失败。",
+            "deleteDialogTitle": "删除消息",
+            "deleteDialogDescription": "确定要删除此消息吗？此操作不可撤销。",
+            "deleteConfirm": "删除",
+            "cancel": "取消"
+        },
+        "messageActions": {
+            "addReaction": "添加表情",
+            "reply": "回复",
+            "replyInThread": "在主题中回复",
+            "pinMessage": "固定消息",
+            "unpinMessage": "取消固定",
+            "editMessage": "编辑消息",
+            "deleteMessage": "删除消息"
+        },
+        "pinned": {
+            "title": "固定消息",
+            "empty": "暂无固定消息。",
+            "unpinTooltip": "取消固定"
+        },
+        "files": {
+            "download": "下载",
+            "close": "关闭",
+            "failedToLoadAudio": "音频加载失败",
+            "failedToLoadVideo": "视频加载失败"
+        },
+        "gifs": {
+            "searchPlaceholder": "搜索 GIF...",
+            "noResults": "未找到 GIF",
+            "categories": {
+                "excited": "兴奋",
+                "happy": "开心",
+                "sad": "难过",
+                "love": "爱",
+                "angry": "生气",
+                "laugh": "大笑",
+                "dance": "跳舞",
+                "thumbsUp": "点赞",
+                "facepalm": "捂脸"
+            }
+        },
+        "search": {
+            "titleInConversation": "在 {name} 中搜索",
+            "closeTooltip": "关闭搜索 (Esc)",
+            "closeLabel": "关闭搜索",
+            "placeholder": "搜索消息…",
+            "ariaLabel": "搜索消息",
+            "searching": "搜索中…",
+            "noResults": "未找到结果",
+            "resultsCount": "找到 {count} 条结果",
+            "typeToSearch": "输入以搜索消息",
+            "offlineNote": "搜索完全在本地进行——离线可用，数据不会离开您的设备",
+            "tryDifferent": "请尝试其他搜索词",
+            "loadMore": "加载更多结果",
+            "unknownUser": "未知"
+        },
+        "onlineUsers": {
+            "online": "在线 — {count}",
+            "idle": "空闲 — {count}",
+            "dnd": "请勿打扰 — {count}",
+            "offline": "离线 — {count}"
+        },
+        "typing": {
+            "one": "{user} 正在输入...",
+            "several": "多人正在输入..."
+        },
+        "mentions": {
+            "label": "提及",
+            "searching": "搜索中...",
+            "everyoneDescription": "通知服务器中的所有成员",
+            "hereDescription": "通知此频道中的在线成员"
+        },
+        "voice": {
+            "connected": "语音已连接",
+            "poorConnection": "连接不佳",
+            "connectionLost": "连接丢失",
+            "disconnect": "断开连接",
+            "mute": "静音",
+            "unmute": "取消静音",
+            "deafen": "屏蔽声音",
+            "undeafen": "取消屏蔽",
+            "shareScreen": "共享屏幕",
+            "stopSharing": "停止共享",
+            "enableAudio": "点击启用音频"
+        },
+        "dm": {
+            "title": "私信",
+            "newMessageTooltip": "新消息",
+            "searchPlaceholder": "查找或开始对话",
+            "noUsersFound": "未找到用户",
+            "noDmsYet": "暂无私信",
+            "startConversationHint": "点击 + 开始对话",
+            "backToChannels": "返回频道",
+            "unableToDecrypt": "[无法解密]"
+        },
+        "userProfile": {
+            "unknownUser": "未知用户",
+            "memberSince": "加入时间",
+            "memberSinceUnknown": "未知",
+            "roles": "角色",
+            "sendMessage": "发送消息",
+            "status": {
+                "online": "在线",
+                "idle": "空闲",
+                "dnd": "请勿打扰",
+                "offline": "离线"
+            }
+        },
+        "channelSidebar": {
+            "directMessages": "私信",
+            "statusOnline": "在线",
+            "statusDnd": "请勿打扰",
+            "statusInvisible": "隐身",
+            "settings": "设置",
+            "logout": "退出登录"
+        },
+        "newMessagePill": {
+            "jumpToPresent": "跳转到最新",
+            "jumpToBottom": "跳转到底部",
+            "newMessages": "{count} 条新消息"
+        },
+        "threadPreview": {
+            "replies": "{count} 条回复",
+            "lastReply": "最后回复于 {time}"
+        },
+        "linkPreview": {
+            "openInBrowser": "在浏览器中打开"
+        },
+        "screenShareViewer": {
+            "toggleAudio": "切换音频",
+            "expand": "展开",
+            "fullscreen": "全屏",
+            "popOut": "弹出",
+            "close": "关闭"
+        }
+    },
+    "e2ee": {
+        "wizard": {
+            "title": "端到端加密",
+            "description": "加密您的消息，确保只有您和预期的接收者可以阅读。",
+            "checking": "正在检查加密状态...",
+            "restoreTitle": "恢复您的密钥",
+            "restoreDescription": "找到密钥备份。输入您的备份 PIN 以在此设备上恢复加密身份。",
+            "deviceName": "设备名称",
+            "deviceNamePlaceholder": "例如：我的笔记本",
+            "backupPin": "备份 PIN",
+            "backupPinPlaceholder": "输入您的备份 PIN",
+            "incorrectPin": "PIN 不正确",
+            "restoreContinue": "恢复并继续",
+            "newIdentity": "新身份",
+            "generating": "正在生成加密密钥...",
+            "allSet": "一切就绪！",
+            "allSetDescription": "端到端加密已激活。您的消息现在已被保护。"
+        },
+        "backup": {
+            "restoreTitle": "恢复密钥备份",
+            "createTitle": "创建密钥备份",
+            "restoreDescription": "输入您创建备份时使用的 PIN。",
+            "createDescription": "选择一个 PIN 来加密您的密钥备份。您需要此 PIN 在其他设备上恢复密钥。",
+            "keysRestored": "密钥恢复成功！",
+            "backupCreated": "备份创建成功！",
+            "backupPinLabel": "备份 PIN",
+            "choosePinLabel": "选择 PIN",
+            "pinPlaceholderRestore": "输入您的备份 PIN",
+            "pinPlaceholderCreate": "至少6个字符",
+            "confirmPin": "确认 PIN",
+            "confirmPinPlaceholder": "再次输入 PIN",
+            "pinsDoNotMatch": "两次 PIN 不一致",
+            "backupFailed": "备份失败",
+            "restoreFailed": "恢复失败",
+            "importantLabel": "重要提示：",
+            "warningPinOnly": "此 PIN 仅用于加密密钥备份",
+            "warningNeverSent": "PIN 不会发送到服务器",
+            "warningForgotten": "如果忘记 PIN，将无法恢复密钥",
+            "warningStrong": "备份使用强加密（Argon2id + AES-256-GCM）",
+            "restoreKeys": "恢复密钥",
+            "createBackup": "创建备份"
+        },
+        "avatarCrop": {
+            "title": "更新头像",
+            "description": "裁剪并上传新的头像",
+            "selectPrompt": "选择一张图片作为您的头像",
+            "chooseImage": "选择图片",
+            "chooseDifferent": "选择其他图片",
+            "saving": "保存中...",
+            "saveAvatar": "保存头像"
+        }
+    },
+    "notificationBell": {
+        "title": "通知",
+        "markAllRead": "全部标为已读",
+        "markAsRead": "标为已读",
+        "empty": "没有新通知",
+        "sentMessage": "发送了一条消息",
+        "inChannel": "在 #{channel}"
+    },
+    "sidebar": {
+        "toggleSidebar": "切换侧边栏"
+    }
+}
