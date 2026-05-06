@@ -33,7 +33,6 @@ const channelForPanel = computed(() => {
 
 onMounted(async () => {
     await dmStore.fetchDmGroups();
-    dmStore.decryptLastMessages();
 
     const threadId = route.params.threadId as string;
     if (threadId) {

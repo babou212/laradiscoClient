@@ -11,7 +11,6 @@ import MessageReplyPreview from './MessageReplyPreview.vue';
 import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
 import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -65,27 +64,9 @@ const canReact = computed(() => props.canAddReactions !== false);
 const canReply = computed(() => props.canSendMessages !== false);
 const canThread = computed(() => props.showThreadButton && props.canSendMessages !== false);
 
-const isDecrypting = computed(() => {
-    return !props.message.decrypt_error && props.message.decrypted_content === undefined;
-});
+const displayContent = computed(() => props.message.content ?? '');
 
-const displayContent = computed(() => {
-    if (props.message.decrypt_error) return t('chat.common.unableToDecryptInline');
-    return props.message.decrypted_content ?? '';
-});
-
-const isReplyDecrypting = computed(() => {
-    if (!props.message.reply_to) return false;
-    const reply = props.message.reply_to;
-    return !reply.decrypt_error && reply.decrypted_content === undefined;
-});
-
-const replyDisplayContent = computed(() => {
-    if (!props.message.reply_to) return '';
-    const reply = props.message.reply_to;
-    if (reply.decrypt_error) return t('chat.common.unableToDecrypt');
-    return reply.decrypted_content ?? '';
-});
+const replyDisplayContent = computed(() => props.message.reply_to?.content ?? '');
 
 const groupedReactions = computed(() => {
     const map = new Map<string, { emoji: string; count: number; userReacted: boolean }>();
@@ -332,7 +313,6 @@ const emitShowProfile = (e: MouseEvent) => {
             <MessageReplyPreview
                 v-if="message.reply_to"
                 :username="message.reply_to.user.username"
-                :is-decrypting="isReplyDecrypting"
                 :content="replyDisplayContent"
                 :link-preview="message.reply_to.link_preview"
             />
@@ -362,11 +342,7 @@ const emitShowProfile = (e: MouseEvent) => {
             </div>
 
             <div v-else class="mt-1">
-                <div v-if="isDecrypting" class="flex flex-col gap-1.5">
-                    <Skeleton class="h-4 w-3/4" />
-                    <Skeleton class="h-4 w-1/2" />
-                </div>
-                <div v-else-if="isGifUrl" class="w-fit overflow-hidden rounded-lg" style="min-height: 80px">
+                <div v-if="isGifUrl" class="w-fit overflow-hidden rounded-lg" style="min-height: 80px">
                     <img :src="displayContent" alt="GIF" class="h-auto max-w-sm" loading="lazy" />
                 </div>
 
@@ -391,8 +367,8 @@ const emitShowProfile = (e: MouseEvent) => {
                 <div v-else class="prose-chat text-sm wrap-break-word" v-html="renderedContent" />
             </div>
 
-            <div v-if="message.decrypted_attachments?.length" class="mt-2 flex flex-wrap gap-2">
-                <FileAttachment v-for="att in message.decrypted_attachments" :key="att.id" :attachment="att" />
+            <div v-if="message.attachments?.length" class="mt-2 flex flex-wrap gap-2">
+                <FileAttachment v-for="att in message.attachments" :key="att.id" :attachment="att" />
             </div>
 
             <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">

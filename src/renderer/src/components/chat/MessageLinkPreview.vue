@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ExternalLink } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, shallowRef, watchEffect } from 'vue';
+import { computed, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
 import type { LinkPreviewData } from '@/types/chat';
 
 const { t } = useI18n();
@@ -62,10 +61,7 @@ watchEffect(async () => {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
             const { download_url } = await getAttachmentDownloadUrl(image.id);
-            const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
-            const decryptedBuffer = await decryptAttachment(encryptedBuffer, image.key, image.iv);
-            const blob = new Blob([decryptedBuffer], { type: image.mime_type });
-            imageUrl.value = URL.createObjectURL(blob);
+            imageUrl.value = download_url;
             return;
         } catch (err) {
             if (attempt < MAX_RETRIES - 1) {
@@ -75,10 +71,6 @@ watchEffect(async () => {
             }
         }
     }
-});
-
-onBeforeUnmount(() => {
-    if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
 });
 
 const openExternal = () => {

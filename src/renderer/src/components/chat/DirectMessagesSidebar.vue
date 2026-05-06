@@ -237,14 +237,8 @@ const toggleNewDmSearch = () => {
                                 {{ formatTime(dm.last_message_at) }}
                             </span>
                         </div>
-                        <p v-if="dm.last_message" class="text-sidebar-foreground/60 truncate text-xs">
-                            {{
-                                dm.last_message.decrypted_content
-                                    ? truncateMessage(dm.last_message.decrypted_content)
-                                    : dm.last_message.decrypt_error
-                                      ? t('chat.common.unableToDecrypt')
-                                      : t('chat.common.encryptedMessage')
-                            }}
+                        <p v-if="dm.last_message?.content" class="text-sidebar-foreground/60 truncate text-xs">
+                            {{ truncateMessage(dm.last_message.content) }}
                         </p>
                     </div>
                 </button>

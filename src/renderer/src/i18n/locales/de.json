@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Verschlüsselung",
-                "description": "Verwalte deine Ende-zu-Ende-Verschlüsselungseinstellungen",
-                "active": "Verschlüsselung aktiv",
-                "notSetUp": "Verschlüsselung nicht eingerichtet",
-                "activeDescription": "Deine Nachrichten sind Ende-zu-Ende-verschlüsselt.",
-                "notSetUpDescription": "Richte die Verschlüsselung ein, um deine Nachrichten zu schützen."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Schlüssel-Sicherung",
-                "description": "Sichere deine Schlüssel, um Verschlüsselung auf mehreren Geräten zu nutzen",
-                "exists": "Sicherung vorhanden",
-                "none": "Keine Sicherung",
-                "existsDescription": "Deine Schlüssel sind gesichert und können auf neuen Geräten wiederhergestellt werden.",
-                "noneDescription": "Erstelle eine Sicherung, um Verschlüsselung auf anderen Geräten zu nutzen.",
-                "update": "Sicherung aktualisieren",
-                "create": "Sicherung erstellen"
-            },
-            "devices": {
-                "title": "Geräte",
-                "description": "Verwalte Geräte, die mit deiner Verschlüsselungsidentität verknüpft sind",
-                "empty": "Keine Geräte gefunden.",
-                "thisDevice": "Dieses Gerät",
-                "added": "Hinzugefügt {date}"
-            },
-            "auditLog": {
-                "title": "Prüfprotokoll",
-                "description": "Schlüsseltransparenz-Protokoll – kryptografische Aufzeichnung aller Verschlüsselungsereignisse",
-                "load": "Prüfprotokoll laden",
-                "deviceLabel": "Gerät:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Identität erstellt",
-                    "device_registered": "Gerät registriert",
-                    "device_revoked": "Gerät widerrufen",
-                    "backup_created": "Schlüsselsicherung erstellt",
-                    "backup_restored": "Schlüsselsicherung wiederhergestellt",
-                    "key_package_uploaded": "Schlüsselpakete hochgeladen",
-                    "signed_prekey_rotated": "Signierter Prekey rotiert"
-                }
-            },
-            "danger": {
-                "title": "Gefahrenzone",
-                "resetTitle": "Verschlüsselung zurücksetzen",
-                "resetDescription": "Lösche alle lokalen Verschlüsselungsschlüssel. Du musst die Verschlüsselung erneut einrichten.",
-                "reset": "Zurücksetzen"
-            },
-            "dialogs": {
-                "revokeTitle": "Gerät widerrufen",
-                "revokeDescription": "Bist du sicher, dass du {name} widerrufen möchtest? Dieses Gerät kann dann keine neuen Nachrichten mehr entschlüsseln.",
-                "revoke": "Widerrufen",
-                "renameTitle": "Gerät umbenennen",
-                "renameDescription": "Gib einen neuen Namen für dieses Gerät ein.",
-                "renamePlaceholder": "Gerätename",
-                "rename": "Umbenennen",
-                "wipeTitle": "Verschlüsselung zurücksetzen",
-                "wipeDescription": "Dadurch werden alle Verschlüsselungsschlüssel von diesem Gerät dauerhaft gelöscht. Du verlierst die Möglichkeit, bestehende Nachrichten zu entschlüsseln, es sei denn, du hast eine Schlüsselsicherung. Diese Aktion kann nicht rückgängig gemacht werden.",
-                "wipeConfirm": "Alle Schlüssel löschen",
-                "never": "Nie"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} in #{channel}",
-        "encryptedMessage": "[Verschlüsselte Nachricht]",
         "sentMessage": "hat eine Nachricht gesendet",
         "inChannelPrefix": "in #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Verbindung wird hergestellt...",
         "testConnection": "Verbindung testen",
-        "continue": "Weiter",
-        "savedServers": "Gespeicherte Server",
-        "active": "Aktiv"
+        "continue": "Weiter"
     },
     "updates": {
         "available": "Update verfügbar",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "Schließen",
-            "unknown": "Unbekannt",
-            "encryptedMessage": "[Verschlüsselte Nachricht]",
-            "unableToDecrypt": "[Entschlüsselung nicht möglich]",
-            "unableToDecryptInline": "[Diese Nachricht kann nicht entschlüsselt werden]"
+            "unknown": "Unbekannt"
         },
         "messages": {
             "selectChannel": "Kanal auswählen",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "Nachrichten durchsuchen",
             "showMembers": "Mitglieder anzeigen",
             "hideMembers": "Mitglieder ausblenden",
-            "encryptionNotSetUp": "Verschlüsselung ist nicht eingerichtet. Bitte schließe die E2EE-Einrichtung ab, bevor du Nachrichten sendest.",
-            "failedToEncrypt": "Nachricht konnte nicht verschlüsselt werden. Bitte versuche es erneut.",
             "failedToSend": "Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
             "failedToUpload": "Hochladen von {fileName} fehlgeschlagen. Bitte versuche es erneut.",
             "fetchingLinkPreview": "Link-Vorschau wird geladen…"
@@ -771,7 +715,6 @@
             "replyingTo": "Antwort an {user}",
             "fileTooLarge": "{count} Dateien überschreiten das 100-MB-Limit: {files}",
             "preparing": "Wird vorbereitet…",
-            "encrypting": "Wird verschlüsselt…",
             "finishing": "Wird abgeschlossen…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "Noch keine Antworten. Starte die Unterhaltung!",
             "replyPlaceholder": "Im Thread antworten...",
             "replyCount": "{count} Antwort | {count} Antworten",
-            "encryptionNotSetUp": "Verschlüsselung ist nicht eingerichtet.",
-            "failedToEncrypt": "Nachricht konnte nicht verschlüsselt werden.",
             "failedToSendReply": "Antwort konnte nicht gesendet werden.",
             "deleteDialogTitle": "Nachricht löschen",
             "deleteDialogDescription": "Bist du sicher, dass du diese Nachricht löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
@@ -834,7 +775,7 @@
             "noResults": "Keine Ergebnisse gefunden",
             "resultsCount": "{count} Ergebnis gefunden | {count} Ergebnisse gefunden",
             "typeToSearch": "Tippe, um Nachrichten zu suchen",
-            "offlineNote": "Die Suche ist vollständig lokal – funktioniert offline und verlässt niemals dein Gerät",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Versuche andere Suchbegriffe",
             "loadMore": "Weitere Ergebnisse laden",
             "unknownUser": "Unbekannt"
@@ -875,8 +816,7 @@
             "noUsersFound": "Keine Benutzer gefunden",
             "noDmsYet": "Noch keine Direktnachrichten",
             "startConversationHint": "Klicke auf +, um eine Unterhaltung zu starten",
-            "backToChannels": "Zurück zu den Kanälen",
-            "unableToDecrypt": "[Entschlüsselung nicht möglich]"
+            "backToChannels": "Zurück zu den Kanälen"
         },
         "userProfile": {
             "unknownUser": "Unbekannter Benutzer",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "Ende-zu-Ende-Verschlüsselung",
-            "description": "Sichere deine Nachrichten, damit nur du und die beabsichtigten Empfänger sie lesen können.",
-            "checking": "Verschlüsselungsstatus wird geprüft...",
-            "restoreTitle": "Schlüssel wiederherstellen",
-            "restoreDescription": "Eine Schlüsselsicherung wurde gefunden. Gib deine Sicherungs-PIN ein, um deine Verschlüsselungsidentität auf diesem Gerät wiederherzustellen.",
-            "deviceName": "Gerätename",
-            "deviceNamePlaceholder": "z. B. Mein Laptop",
-            "backupPin": "Sicherungs-PIN",
-            "backupPinPlaceholder": "Gib deine Sicherungs-PIN ein",
-            "incorrectPin": "Falsche PIN",
-            "restoreContinue": "Wiederherstellen & Fortfahren",
-            "newIdentity": "Neue Identität",
-            "generating": "Deine Verschlüsselungsschlüssel werden generiert...",
-            "allSet": "Alles eingerichtet!",
-            "allSetDescription": "Die Ende-zu-Ende-Verschlüsselung ist aktiv. Deine Nachrichten sind jetzt gesichert."
-        },
-        "backup": {
-            "restoreTitle": "Schlüsselsicherung wiederherstellen",
-            "createTitle": "Schlüsselsicherung erstellen",
-            "restoreDescription": "Gib die PIN ein, die du beim Erstellen der Sicherung verwendet hast.",
-            "createDescription": "Wähle eine PIN, um deine Schlüsselsicherung zu verschlüsseln. Du benötigst diese PIN, um deine Schlüssel auf einem anderen Gerät wiederherzustellen.",
-            "keysRestored": "Schlüssel erfolgreich wiederhergestellt!",
-            "backupCreated": "Sicherung erfolgreich erstellt!",
-            "backupPinLabel": "Sicherungs-PIN",
-            "choosePinLabel": "PIN wählen",
-            "pinPlaceholderRestore": "Gib deine Sicherungs-PIN ein",
-            "pinPlaceholderCreate": "Mindestens 6 Zeichen",
-            "confirmPin": "PIN bestätigen",
-            "confirmPinPlaceholder": "PIN erneut eingeben",
-            "pinsDoNotMatch": "PINs stimmen nicht überein",
-            "backupFailed": "Sicherung fehlgeschlagen",
-            "restoreFailed": "Wiederherstellung fehlgeschlagen",
-            "importantLabel": "Wichtig:",
-            "warningPinOnly": "Diese PIN wird nur zum Verschlüsseln deiner Schlüsselsicherung verwendet",
-            "warningNeverSent": "Sie wird niemals an den Server gesendet",
-            "warningForgotten": "Wenn du deine PIN vergisst, kannst du deine Schlüssel nicht wiederherstellen",
-            "warningStrong": "Die Sicherung verwendet starke Verschlüsselung (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Schlüssel wiederherstellen",
-            "createBackup": "Sicherung erstellen"
-        },
         "avatarCrop": {
             "title": "Avatar aktualisieren",
             "description": "Neues Profilbild zuschneiden und hochladen",

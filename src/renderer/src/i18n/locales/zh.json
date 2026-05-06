@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "加密",
-                "description": "管理您的端到端加密设置",
-                "active": "加密已启用",
-                "notSetUp": "加密未设置",
-                "activeDescription": "您的消息已经过端到端加密。",
-                "notSetUpDescription": "设置加密以保护您的消息。"
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "密钥备份",
-                "description": "备份您的密钥以在多台设备上使用加密",
-                "exists": "备份已存在",
-                "none": "无备份",
-                "existsDescription": "您的密钥已备份，可以在新设备上恢复。",
-                "noneDescription": "创建备份以在其他设备上使用加密。",
-                "update": "更新备份",
-                "create": "创建备份"
-            },
-            "devices": {
-                "title": "设备",
-                "description": "管理与您加密身份关联的设备",
-                "empty": "未找到设备。",
-                "thisDevice": "当前设备",
-                "added": "添加于 {date}"
-            },
-            "auditLog": {
-                "title": "审计日志",
-                "description": "密钥透明度日志——所有加密事件的加密记录",
-                "load": "加载审计日志",
-                "deviceLabel": "设备：",
-                "hashLabel": "哈希：",
-                "events": {
-                    "identity_created": "身份已创建",
-                    "device_registered": "设备已注册",
-                    "device_revoked": "设备已撤销",
-                    "backup_created": "密钥备份已创建",
-                    "backup_restored": "密钥备份已恢复",
-                    "key_package_uploaded": "密钥包已上传",
-                    "signed_prekey_rotated": "签名预密钥已轮换"
-                }
-            },
-            "danger": {
-                "title": "危险区域",
-                "resetTitle": "重置加密",
-                "resetDescription": "删除所有本地加密密钥。您需要重新设置加密。",
-                "reset": "重置"
-            },
-            "dialogs": {
-                "revokeTitle": "撤销设备",
-                "revokeDescription": "确定要撤销 {name} 吗？该设备将无法解密新消息。",
-                "revoke": "撤销",
-                "renameTitle": "重命名设备",
-                "renameDescription": "为此设备输入新名称。",
-                "renamePlaceholder": "设备名称",
-                "rename": "重命名",
-                "wipeTitle": "重置加密",
-                "wipeDescription": "这将永久删除此设备上的所有加密密钥。除非您有密钥备份，否则将无法解密现有消息。此操作不可撤销。",
-                "wipeConfirm": "删除所有密钥",
-                "never": "从不"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "#{channel} 中的 {mention}",
-        "encryptedMessage": "[加密消息]",
         "sentMessage": "发送了一条消息",
         "inChannelPrefix": "在 #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "连接中...",
         "testConnection": "测试连接",
-        "continue": "继续",
-        "savedServers": "已保存的服务器",
-        "active": "活跃"
+        "continue": "继续"
     },
     "updates": {
         "available": "有可用更新",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "关闭",
-            "unknown": "未知",
-            "encryptedMessage": "[加密消息]",
-            "unableToDecrypt": "[无法解密]",
-            "unableToDecryptInline": "[无法解密此消息]"
+            "unknown": "未知"
         },
         "messages": {
             "selectChannel": "选择一个频道",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "搜索消息",
             "showMembers": "显示成员",
             "hideMembers": "隐藏成员",
-            "encryptionNotSetUp": "加密尚未设置。请在发送消息前完成端到端加密设置。",
-            "failedToEncrypt": "消息加密失败，请重试。",
             "failedToSend": "消息发送失败，请重试。",
             "failedToUpload": "上传 {fileName} 失败，请重试。",
             "fetchingLinkPreview": "正在获取链接预览…"
@@ -771,7 +715,6 @@
             "replyingTo": "回复 {user}",
             "fileTooLarge": "{count} 个文件超过 100 MB 限制：{files}",
             "preparing": "准备中…",
-            "encrypting": "加密中…",
             "finishing": "完成中…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "暂无回复。开始对话吧！",
             "replyPlaceholder": "在主题中回复...",
             "replyCount": "{count} 条回复",
-            "encryptionNotSetUp": "加密尚未设置。",
-            "failedToEncrypt": "消息加密失败。",
             "failedToSendReply": "回复发送失败。",
             "deleteDialogTitle": "删除消息",
             "deleteDialogDescription": "确定要删除此消息吗？此操作不可撤销。",
@@ -834,7 +775,7 @@
             "noResults": "未找到结果",
             "resultsCount": "找到 {count} 条结果",
             "typeToSearch": "输入以搜索消息",
-            "offlineNote": "搜索完全在本地进行——离线可用，数据不会离开您的设备",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "请尝试其他搜索词",
             "loadMore": "加载更多结果",
             "unknownUser": "未知"
@@ -875,8 +816,7 @@
             "noUsersFound": "未找到用户",
             "noDmsYet": "暂无私信",
             "startConversationHint": "点击 + 开始对话",
-            "backToChannels": "返回频道",
-            "unableToDecrypt": "[无法解密]"
+            "backToChannels": "返回频道"
         },
         "userProfile": {
             "unknownUser": "未知用户",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "端到端加密",
-            "description": "加密您的消息，确保只有您和预期的接收者可以阅读。",
-            "checking": "正在检查加密状态...",
-            "restoreTitle": "恢复您的密钥",
-            "restoreDescription": "找到密钥备份。输入您的备份 PIN 以在此设备上恢复加密身份。",
-            "deviceName": "设备名称",
-            "deviceNamePlaceholder": "例如：我的笔记本",
-            "backupPin": "备份 PIN",
-            "backupPinPlaceholder": "输入您的备份 PIN",
-            "incorrectPin": "PIN 不正确",
-            "restoreContinue": "恢复并继续",
-            "newIdentity": "新身份",
-            "generating": "正在生成加密密钥...",
-            "allSet": "一切就绪！",
-            "allSetDescription": "端到端加密已激活。您的消息现在已被保护。"
-        },
-        "backup": {
-            "restoreTitle": "恢复密钥备份",
-            "createTitle": "创建密钥备份",
-            "restoreDescription": "输入您创建备份时使用的 PIN。",
-            "createDescription": "选择一个 PIN 来加密您的密钥备份。您需要此 PIN 在其他设备上恢复密钥。",
-            "keysRestored": "密钥恢复成功！",
-            "backupCreated": "备份创建成功！",
-            "backupPinLabel": "备份 PIN",
-            "choosePinLabel": "选择 PIN",
-            "pinPlaceholderRestore": "输入您的备份 PIN",
-            "pinPlaceholderCreate": "至少6个字符",
-            "confirmPin": "确认 PIN",
-            "confirmPinPlaceholder": "再次输入 PIN",
-            "pinsDoNotMatch": "两次 PIN 不一致",
-            "backupFailed": "备份失败",
-            "restoreFailed": "恢复失败",
-            "importantLabel": "重要提示：",
-            "warningPinOnly": "此 PIN 仅用于加密密钥备份",
-            "warningNeverSent": "PIN 不会发送到服务器",
-            "warningForgotten": "如果忘记 PIN，将无法恢复密钥",
-            "warningStrong": "备份使用强加密（Argon2id + AES-256-GCM）",
-            "restoreKeys": "恢复密钥",
-            "createBackup": "创建备份"
-        },
         "avatarCrop": {
             "title": "更新头像",
             "description": "裁剪并上传新的头像",

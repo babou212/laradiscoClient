@@ -56,7 +56,7 @@ const props = defineProps<Props>();
 
 const replyPreviewContent = computed(() => {
     if (!props.replyingTo) return '';
-    const raw = props.replyingTo.decrypted_content ?? t('chat.common.encryptedMessage');
+    const raw = props.replyingTo.content ?? '';
     return formatReplyPreview(raw, props.replyingTo.link_preview);
 });
 
@@ -367,11 +367,9 @@ useEventListener(document, 'click', handleClickOutside);
                                     {{
                                         uf.status === 'preparing'
                                             ? t('chat.composer.preparing')
-                                            : uf.status === 'encrypting'
-                                              ? t('chat.composer.encrypting')
-                                              : uf.status === 'finishing'
-                                                ? t('chat.composer.finishing')
-                                                : `${uf.progress}%`
+                                            : uf.status === 'finishing'
+                                              ? t('chat.composer.finishing')
+                                              : `${uf.progress}%`
                                     }}
                                 </span>
                             </div>

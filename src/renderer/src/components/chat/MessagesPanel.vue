@@ -35,7 +35,6 @@ import {
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
-import { useE2EE } from '@/composables/useE2EE';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
@@ -47,13 +46,12 @@ import type { StagedFile } from '@/lib/message-schemas';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
-import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import type {
+    Attachment,
     AvatarUrls,
     ChannelPermissions,
-    EncryptedAttachmentMeta,
     LinkPreviewData,
     MessageData,
     MessageUser,
@@ -90,8 +88,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const authStore = useAuthStore();
 const chatStore = useChatStore();
-const e2eeStore = useE2eeStore();
-const e2ee = useE2EE();
 const presenceStore = usePresenceStore();
 const dmStore = useDirectMessagesStore();
 const router = useRouter();
@@ -157,18 +153,6 @@ const activeMessages = activeStore.messages;
 
 const vlistRef = useTemplateRef<VListHandle>('vlistRef');
 
-async function decryptAfterLoad(): Promise<void> {
-    if (!e2eeStore.isReady) return;
-    await e2ee.lookupDecryptedCache(activeMessages.value);
-    const hasUnresolved = activeMessages.value.some((m) => m.decrypted_content === undefined && !m.decrypt_error);
-    if (hasUnresolved && channelId.value) {
-        await e2ee.lookupDecryptedCache(activeMessages.value);
-    }
-    const chId = isDmRef.value ? undefined : Number(channelId.value);
-    const dmId = isDmRef.value ? Number(channelId.value) : undefined;
-    await e2ee.decryptMessages(activeMessages.value, chId, dmId);
-}
-
 const {
     pinnedToBottom,
     unreadNewCount,
@@ -186,22 +170,12 @@ const {
     canLoadOlder: activeStore.canLoadMore,
     canLoadNewer: activeStore.canLoadNewer,
     isViewingHistory: activeStore.isViewingHistory,
-    onLoadOlder: async () => {
-        await activeStore.loadOlderMessages();
-        await decryptAfterLoad();
-    },
-    onLoadNewer: async () => {
-        await activeStore.loadNewerMessages();
-        await decryptAfterLoad();
-    },
-    onLoadAround: async (messageId: string) => {
-        await activeStore.loadMessagesAround(messageId);
-        await decryptAfterLoad();
-    },
+    onLoadOlder: () => activeStore.loadOlderMessages(),
+    onLoadNewer: () => activeStore.loadNewerMessages(),
+    onLoadAround: (messageId: string) => activeStore.loadMessagesAround(messageId),
     onResetToLive: async () => {
         if (channelId.value) {
             await activeStore.resetToLive(String(channelId.value));
-            await decryptAfterLoad();
         }
     },
 });
@@ -352,17 +326,18 @@ async function buildLinkPreviewWithTimeout(content: string): Promise<LinkPreview
         if (result.imageBytes && result.imageMime) {
             try {
                 const imageBytes = result.imageBytes;
-                const encrypted = await window.api.attachments.encrypt(imageBytes);
-                const imageBlob = new Blob([encrypted.encrypted], { type: 'application/octet-stream' });
+                const imageBlob = new Blob([imageBytes as BlobPart], { type: result.imageMime });
                 const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
-                const uploadResponse = await uploadFn(props.channel.id, imageBlob, null);
+                const uploadResponse = await uploadFn(props.channel.id, imageBlob, null, {
+                    width: result.imageWidth,
+                    height: result.imageHeight,
+                });
                 preview.image = {
                     id: uploadResponse.attachment_id,
-                    key: encrypted.key,
-                    iv: encrypted.iv,
-                    file_name: 'preview',
                     mime_type: result.imageMime,
                     size: imageBytes.length,
+                    width: result.imageWidth,
+                    height: result.imageHeight,
                 };
             } catch (err) {
                 console.warn('[link preview] image upload failed:', err);
@@ -387,13 +362,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
 
     const mentionMeta = extractMentionMetadata(content);
 
-    let messageContent = content;
-
-    if (!e2eeStore.isReady) {
-        sendError.value = t('chat.messages.encryptionNotSetUp');
-        return;
-    }
-
     if (files.length > 0) {
         uploadingFiles.value = files.map((f) =>
             UploadingFileSchema.parse({
@@ -407,7 +375,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         );
     }
 
-    const attachmentMetas: EncryptedAttachmentMeta[] = [];
+    const optimisticAttachments: Attachment[] = [];
     const attachmentIds: string[] = [];
 
     for (const staged of files) {
@@ -415,63 +383,38 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const isImage = staged.file.type.startsWith('image/');
             const isVideo = staged.file.type.startsWith('video/');
 
-            {
-                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                if (idx !== -1) {
-                    uploadingFiles.value[idx].status = 'encrypting';
-                    uploadingFiles.value[idx].progress = 10;
-                }
-            }
-            const fileData = new Uint8Array(await staged.file.arrayBuffer());
-            const encrypted = await window.api.attachments.encrypt(fileData);
-
-            {
-                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                if (idx !== -1) {
-                    uploadingFiles.value[idx].progress = 20;
-                }
-            }
-
-            const fileBlob = new Blob([encrypted.encrypted], { type: 'application/octet-stream' });
+            const fileBytes = new Uint8Array(await staged.file.arrayBuffer());
+            const fileBlob = new Blob([fileBytes], { type: staged.file.type || 'application/octet-stream' });
 
             let thumbnailBlob: Blob | null = null;
-            let thumbnailMeta: Partial<EncryptedAttachmentMeta> = {};
+            let width: number | undefined;
+            let height: number | undefined;
 
             if (isImage) {
                 const thumbResult = await window.api.attachments.generateThumbnail({
-                    fileData,
+                    fileData: fileBytes,
                     mimeType: staged.file.type,
                 });
-
                 if (thumbResult) {
-                    thumbnailBlob = new Blob([thumbResult.thumbnailEncrypted], { type: 'application/octet-stream' });
-                    thumbnailMeta = {
-                        thumbnail_key: thumbResult.thumbnailKey,
-                        thumbnail_iv: thumbResult.thumbnailIv,
-                        thumbnail_width: thumbResult.width,
-                        thumbnail_height: thumbResult.height,
-                    };
+                    thumbnailBlob = new Blob([thumbResult.thumbnail], { type: 'image/webp' });
+                    width = thumbResult.width;
+                    height = thumbResult.height;
                 }
             }
 
             if (isVideo) {
                 try {
                     const videoThumb = await window.api.attachments.generateVideoThumbnail({
-                        fileData,
+                        fileData: fileBytes,
                         mimeType: staged.file.type,
                     });
-                    if (!videoThumb) throw new Error('ffmpeg returned no thumbnail');
-                    const thumbBase64 = videoThumb.dataUrl.split(',')[1];
-                    const thumbBytes = Uint8Array.from(atob(thumbBase64), (c) => c.charCodeAt(0));
-                    const thumbEncrypted = await window.api.attachments.encrypt(thumbBytes);
-
-                    thumbnailBlob = new Blob([thumbEncrypted.encrypted], { type: 'application/octet-stream' });
-                    thumbnailMeta = {
-                        thumbnail_key: thumbEncrypted.key,
-                        thumbnail_iv: thumbEncrypted.iv,
-                        thumbnail_width: videoThumb.width,
-                        thumbnail_height: videoThumb.height,
-                    };
+                    if (videoThumb) {
+                        const thumbBase64 = videoThumb.dataUrl.split(',')[1];
+                        const thumbBytes = Uint8Array.from(atob(thumbBase64), (c) => c.charCodeAt(0));
+                        thumbnailBlob = new Blob([thumbBytes], { type: 'image/webp' });
+                        width = videoThumb.width;
+                        height = videoThumb.height;
+                    }
                 } catch (err) {
                     console.warn('Video thumbnail generation failed, continuing without thumbnail:', err);
                 }
@@ -481,15 +424,21 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
                 if (idx !== -1) {
                     uploadingFiles.value[idx].status = 'uploading';
-                    uploadingFiles.value[idx].progress = 30;
+                    uploadingFiles.value[idx].progress = 10;
                 }
             }
 
             const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
-            const uploadResponse = await uploadFn(props.channel.id, fileBlob, thumbnailBlob, (progress) => {
-                const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
-                if (idx !== -1) uploadingFiles.value[idx].progress = 30 + Math.round(progress * 0.65);
-            });
+            const uploadResponse = await uploadFn(
+                props.channel.id,
+                fileBlob,
+                thumbnailBlob,
+                { width, height },
+                (progress) => {
+                    const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
+                    if (idx !== -1) uploadingFiles.value[idx].progress = 10 + Math.round(progress * 0.85);
+                },
+            );
 
             {
                 const idx = uploadingFiles.value.findIndex((f) => f.id === staged.id);
@@ -500,15 +449,16 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             }
 
             attachmentIds.push(uploadResponse.attachment_id);
-            attachmentMetas.push({
+            optimisticAttachments.push({
                 id: uploadResponse.attachment_id,
-                key: encrypted.key,
-                iv: encrypted.iv,
                 file_name: staged.file.name,
                 mime_type: staged.file.type || 'application/octet-stream',
                 size: staged.file.size,
-                ...thumbnailMeta,
-                ...(staged.preview ? { thumbnail_data_url: staged.preview } : {}),
+                width: width ?? null,
+                height: height ?? null,
+                has_thumbnail: thumbnailBlob != null,
+                thumbnail_size: uploadResponse.thumbnail_size ?? null,
+                thumbnail_data_url: staged.preview,
             });
         } catch (err) {
             console.error('Failed to upload attachment:', err);
@@ -519,15 +469,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     }
 
     uploadingFiles.value = [];
-
-    const envelopeMetas: EncryptedAttachmentMeta[] | undefined =
-        attachmentMetas.length > 0
-            ? attachmentMetas.map((meta) => {
-                  const copy = { ...meta };
-                  delete copy.thumbnail_data_url;
-                  return copy;
-              })
-            : undefined;
 
     previewLoading.value = true;
     let linkPreview: LinkPreviewData | null;
@@ -540,56 +481,31 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         attachmentIds.push(linkPreview.image.id);
     }
 
-    try {
-        if (props.isDm) {
-            messageContent = await e2ee.encryptForDM(Number(props.channel.id), content, envelopeMetas, linkPreview);
-        } else {
-            messageContent = await e2ee.encryptForChannel(
-                Number(props.channel.id),
-                content,
-                envelopeMetas,
-                linkPreview,
-            );
-        }
-    } catch {
-        sendError.value = t('chat.messages.failedToEncrypt');
-        return;
-    }
-
     const data: {
-        message_bytes: string;
-        reply_to_id?: number;
-        sender_device_id?: string;
+        content: string;
+        reply_to_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
         mention_here?: boolean;
-        epoch?: number;
         attachment_ids?: string[];
     } = {
-        message_bytes: messageContent,
+        content,
     };
 
     if (attachmentIds.length > 0) {
         data.attachment_ids = attachmentIds;
     }
 
-    {
-        const senderDeviceId = await e2ee.getDeviceId();
-        if (senderDeviceId) data.sender_device_id = senderDeviceId;
-    }
-
-    {
-        if (mentionMeta.mentionEveryone) {
-            data.mention_everyone = true;
-        } else if (mentionMeta.mentionHere) {
-            data.mention_here = true;
-        } else if (mentionMeta.userIds.length > 0) {
-            data.mention_user_ids = mentionMeta.userIds;
-        }
+    if (mentionMeta.mentionEveryone) {
+        data.mention_everyone = true;
+    } else if (mentionMeta.mentionHere) {
+        data.mention_here = true;
+    } else if (mentionMeta.userIds.length > 0) {
+        data.mention_user_ids = mentionMeta.userIds;
     }
 
     if (replyingToMessage.value) {
-        data.reply_to_id = Number(replyingToMessage.value.id);
+        data.reply_to_id = String(replyingToMessage.value.id);
     }
 
     const optimisticMessage: MessageData = {
@@ -599,7 +515,14 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         edited_at: null,
         deleted_at: null,
         reply_to_id: replyingToMessage.value?.id || null,
-        reply_to: replyingToMessage.value || null,
+        reply_to: replyingToMessage.value
+            ? {
+                  id: replyingToMessage.value.id,
+                  content: replyingToMessage.value.content,
+                  user: replyingToMessage.value.user,
+                  link_preview: replyingToMessage.value.link_preview,
+              }
+            : null,
         user: {
             id: currentUser.value!.id,
             username: currentUser.value!.username ?? currentUser.value!.name,
@@ -607,8 +530,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         },
         reactions: [],
         created_at: new Date().toISOString(),
-        decrypted_content: content,
-        decrypted_attachments: attachmentMetas.length > 0 ? attachmentMetas : undefined,
+        attachments: optimisticAttachments.length > 0 ? optimisticAttachments : undefined,
         link_preview: linkPreview,
     };
 
@@ -619,40 +541,12 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
 
     try {
         const response = props.isDm
-            ? await sendDmMessage(String(props.channel.id), {
-                  message_bytes: data.message_bytes,
-                  sender_device_id: data.sender_device_id ?? '',
-                  reply_to_id: data.reply_to_id != null ? String(data.reply_to_id) : undefined,
-                  attachment_ids: data.attachment_ids,
-              })
-            : await apiSendMessage(String(props.channel.id), {
-                  message_bytes: data.message_bytes,
-                  sender_device_id: data.sender_device_id ?? '',
-                  reply_to_id: data.reply_to_id != null ? String(data.reply_to_id) : undefined,
-                  attachment_ids: data.attachment_ids,
-              });
+            ? await sendDmMessage(String(props.channel.id), data)
+            : await apiSendMessage(String(props.channel.id), data);
 
         if (response.data) {
             const serverMsg = normalizeMessage(response.data, response.included);
-            serverMsg.decrypted_content = content;
-            serverMsg.decrypted_attachments = attachmentMetas.length > 0 ? attachmentMetas : undefined;
-            serverMsg.link_preview = linkPreview;
-            if (serverMsg.reply_to && optimisticMessage.reply_to) {
-                serverMsg.reply_to.decrypted_content = optimisticMessage.reply_to.decrypted_content;
-                serverMsg.reply_to.link_preview = optimisticMessage.reply_to.link_preview;
-                serverMsg.reply_to.decrypt_error = optimisticMessage.reply_to.decrypt_error;
-            }
-            e2ee.cacheDecryptedContent(
-                Number(serverMsg.id),
-                content,
-                {
-                    conversationType: props.isDm ? 'dm' : 'channel',
-                    conversationId: Number(props.channel!.id),
-                    userName: currentUser.value?.username ?? currentUser.value!.name,
-                },
-                envelopeMetas,
-                linkPreview,
-            ).catch(() => {});
+            serverMsg.link_preview = linkPreview ?? serverMsg.link_preview;
             const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
             if (idx !== -1) {
                 activeMessages.value.splice(idx, 1, serverMsg);
@@ -682,7 +576,7 @@ const startReply = (message: MessageData) => {
 
 const startEdit = (message: MessageData) => {
     editingMessageId.value = message.id;
-    editContent.value = message.decrypted_content ?? message.content;
+    editContent.value = message.content ?? '';
 };
 
 const cancelEdit = () => {
@@ -694,51 +588,17 @@ const saveEdit = async (message: MessageData) => {
     if (!editContent.value.trim() || !props.channel?.id) return;
 
     try {
-        let contentToSend = editContent.value;
-        if (!e2eeStore.isReady) return;
-
-        try {
-            if (props.isDm) {
-                contentToSend = await e2ee.encryptForDM(
-                    Number(props.channel.id),
-                    editContent.value,
-                    message.decrypted_attachments,
-                );
-            } else {
-                contentToSend = await e2ee.encryptForChannel(
-                    Number(props.channel.id),
-                    editContent.value,
-                    message.decrypted_attachments,
-                );
-            }
-        } catch {
-            return;
-        }
-
-        const editData = {
-            message_bytes: contentToSend,
-            sender_device_id: (await e2ee.getDeviceId()) ?? '',
-        };
+        const editData = { content: editContent.value };
         if (props.isDm) {
             await editDmMessage(String(props.channel.id), String(message.id), editData);
         } else {
             await apiEditMessage(String(props.channel.id), String(message.id), editData);
         }
         activeStore.updateMessage(message.id, {
+            content: editContent.value,
             is_edited: true,
             edited_at: new Date().toISOString(),
-            decrypted_content: editContent.value,
         });
-        e2ee.cacheDecryptedContent(
-            Number(message.id),
-            editContent.value,
-            {
-                conversationType: props.isDm ? 'dm' : 'channel',
-                conversationId: Number(props.channel!.id),
-                userName: currentUser.value?.username ?? currentUser.value!.name,
-            },
-            message.decrypted_attachments,
-        ).catch(() => {});
         cancelEdit();
     } catch (error) {
         console.error('Failed to edit message:', error);
@@ -764,7 +624,6 @@ const confirmDeleteMessage = async () => {
             await apiDeleteMessage(String(props.channel.id), String(message.id));
         }
         activeStore.removeMessage(message.id);
-        e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
     } catch (error) {
         console.error('Failed to delete message:', error);
     } finally {
@@ -848,7 +707,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                             "
                         />
                     </div>
-                    <SimpleTooltip v-if="e2eeStore.isReady" :content="t('chat.messages.searchMessagesTooltip')">
+                    <SimpleTooltip :content="t('chat.messages.searchMessagesTooltip')">
                         <button
                             class="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
                             :class="{ 'bg-muted text-foreground': showSearch }"

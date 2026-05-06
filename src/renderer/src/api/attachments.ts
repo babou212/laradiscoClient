@@ -2,7 +2,7 @@ import api from './client';
 
 export interface UploadResponse {
     attachment_id: string;
-    encrypted_size: number;
+    size: number;
     thumbnail_size?: number | null;
 }
 
@@ -20,6 +20,7 @@ export async function uploadChannelAttachment(
     channelId: string | number,
     file: Blob,
     thumbnail?: Blob | null,
+    extra?: { width?: number; height?: number },
     onProgress?: (progress: number) => void,
 ): Promise<UploadResponse> {
     const formData = new FormData();
@@ -27,6 +28,8 @@ export async function uploadChannelAttachment(
     if (thumbnail) {
         formData.append('thumbnail', thumbnail);
     }
+    if (extra?.width != null) formData.append('width', String(extra.width));
+    if (extra?.height != null) formData.append('height', String(extra.height));
 
     const r = await api.post(`/channels/${channelId}/attachments/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -44,6 +47,7 @@ export async function uploadDmAttachment(
     groupId: string | number,
     file: Blob,
     thumbnail?: Blob | null,
+    extra?: { width?: number; height?: number },
     onProgress?: (progress: number) => void,
 ): Promise<UploadResponse> {
     const formData = new FormData();
@@ -51,6 +55,8 @@ export async function uploadDmAttachment(
     if (thumbnail) {
         formData.append('thumbnail', thumbnail);
     }
+    if (extra?.width != null) formData.append('width', String(extra.width));
+    if (extra?.height != null) formData.append('height', String(extra.height));
 
     const r = await api.post(`/direct-messages/${groupId}/attachments/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

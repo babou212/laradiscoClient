@@ -4,8 +4,6 @@ import { contextBridge } from 'electron';
 import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
 import { clipboardApi } from './apis/clipboard';
-import { messagesApi } from './apis/messages';
-import { mlsApi } from './apis/mls';
 import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
 import { serverApi } from './apis/server';
@@ -23,8 +21,6 @@ const api = {
     settings: settingsApi,
     window: windowApi,
     updater: updaterApi,
-    mls: mlsApi,
-    messages: messagesApi,
     attachments: attachmentsApi,
     clipboard: clipboardApi,
     unfurl: unfurlApi,

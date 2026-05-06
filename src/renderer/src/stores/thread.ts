@@ -71,9 +71,11 @@ export const useThreadStore = defineStore('thread', () => {
     async function sendReply(
         channelId: string | number,
         messageId: string | number,
-        messageBytes: string,
+        content: string,
         extra?: {
-            sender_device_id?: string;
+            attachment_ids?: string[];
+            client_temp_id?: string;
+            thread_name?: string;
             mention_user_ids?: number[];
             mention_everyone?: boolean;
             mention_here?: boolean;
@@ -81,8 +83,7 @@ export const useThreadStore = defineStore('thread', () => {
     ): Promise<MessageData | null> {
         try {
             const response = await createThreadReply(String(channelId), String(messageId), {
-                message_bytes: messageBytes,
-                sender_device_id: extra?.sender_device_id ?? '',
+                content,
                 ...extra,
             });
             const reply = normalizeMessage(response.data, response.included);
@@ -98,7 +99,6 @@ export const useThreadStore = defineStore('thread', () => {
                         content: reply.content,
                         user: reply.user,
                         created_at: reply.created_at,
-                        sender_device_id: reply.sender_device_id,
                     },
                 };
             }
@@ -114,16 +114,11 @@ export const useThreadStore = defineStore('thread', () => {
         channelId: string | number,
         threadId: string | number,
         messageId: string | number,
-        messageBytes: string,
-        extra?: {
-            sender_device_id?: string;
-        },
+        content: string,
     ): Promise<void> {
         try {
             await editThreadMessage(String(channelId), String(threadId), String(messageId), {
-                message_bytes: messageBytes,
-                sender_device_id: extra?.sender_device_id ?? '',
-                ...extra,
+                content,
             });
             const msg = threadMessages.value.find((m) => m.id === String(messageId));
             if (msg) {

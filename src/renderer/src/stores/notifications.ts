@@ -4,8 +4,6 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead } from
 import { t } from '@/i18n';
 import { getEcho } from '@/lib/echo';
 import router from '@/router';
-import { useE2eeStore } from '@/stores/e2ee';
-import { useServerStore } from '@/stores/server';
 
 export interface AppNotification {
     id: string;
@@ -16,8 +14,6 @@ export interface AppNotification {
         sender_username: string;
         sender_avatar: string | null;
         content: string;
-        sender_device_id?: string;
-        decrypted_content?: string;
 
         channel_id?: number;
         channel_name?: string;
@@ -93,12 +89,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
                 created_at: r.attributes.created_at,
             }));
             unreadCount.value = response.meta?.unread_count ?? notifications.value.length;
-
-            for (const notification of notifications.value) {
-                if (!notification.data.decrypted_content) {
-                    tryDecryptNotification(notification);
-                }
-            }
         } catch (err) {
             console.error('Failed to fetch notifications:', err);
         }
@@ -124,7 +114,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
                     sender_username: raw.sender_username as string,
                     sender_avatar: (raw.sender_avatar as string | null) ?? null,
                     content: raw.content as string,
-                    sender_device_id: raw.sender_device_id as string | undefined,
                     channel_id: raw.channel_id as number | undefined,
                     channel_name: raw.channel_name as string | undefined,
                     mention_type: raw.mention_type as 'user' | 'everyone' | 'here' | undefined,
@@ -139,21 +128,19 @@ export const useNotificationsStore = defineStore('notifications', () => {
             notifications.value.unshift(notification);
             unreadCount.value++;
 
-            tryDecryptNotification(notification).then(() => {
-                const prefs = preferences.value;
-                const isDm = notification.data.notification_type === 'direct_message';
+            const prefs = preferences.value;
+            const isDm = notification.data.notification_type === 'direct_message';
 
-                if (isDm && !prefs.enable_dm_notifications) return;
-                if (!isDm && !prefs.enable_mention_notifications) return;
+            if (isDm && !prefs.enable_dm_notifications) return;
+            if (!isDm && !prefs.enable_mention_notifications) return;
 
-                if (prefs.enable_browser_notifications) {
-                    showNativeNotification(notification);
-                }
+            if (prefs.enable_browser_notifications) {
+                showNativeNotification(notification);
+            }
 
-                if (prefs.enable_toast_notifications) {
-                    addToast(notification);
-                }
-            });
+            if (prefs.enable_toast_notifications) {
+                addToast(notification);
+            }
         });
 
         isConnected.value = true;
@@ -187,32 +174,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
         setTimeout(() => {
             dismissToast(notification.id);
         }, 5000);
-    };
-
-    const tryDecryptNotification = async (notification: AppNotification): Promise<void> => {
-        const { data } = notification;
-
-        const e2eeStore = useE2eeStore();
-        if (!e2eeStore.isReady) return;
-
-        const serverStore = useServerStore();
-        const serverId = serverStore.activeServer?.id;
-        if (!serverId || !data.message_id) return;
-
-        try {
-            const cached = await window.api.messages.getDecryptedBatch(serverId, [data.message_id]);
-            const plaintext = cached[data.message_id];
-            if (plaintext) {
-                data.decrypted_content = plaintext;
-
-                const existing = notifications.value.find((n) => n.id === notification.id);
-                if (existing) {
-                    existing.data.decrypted_content = plaintext;
-                }
-            }
-        } catch (err) {
-            console.warn('Failed to look up decrypted notification content:', err);
-        }
     };
 
     const dismissToast = (notificationId: string) => {
@@ -264,10 +225,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
             });
         }
 
-        const displayContent = data.decrypted_content ?? null;
-        const body = displayContent
-            ? `${data.sender_username}: ${displayContent.substring(0, 100)}`
-            : `${data.sender_username}: ${t('notifications.encryptedMessage')}`;
+        const body = data.content ? `${data.sender_username}: ${data.content.substring(0, 100)}` : data.sender_username;
 
         window.api.notifications.show({ title, body, notificationId: notification.id });
     };

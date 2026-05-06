@@ -37,11 +37,11 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => !!user.value && !!token.value);
 
-    function getValidServer(): { host: string; id: number } | null {
+    function getValidServer(): { host: string } | null {
         const serverStore = useServerStore();
         const server = serverStore.activeServer;
-        if (!server?.host || server.id == null) return null;
-        return { host: server.host, id: server.id };
+        if (!server?.host) return null;
+        return { host: server.host };
     }
 
     watch(
@@ -65,7 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
         const server = getValidServer();
         if (!server) return false;
 
-        const session = await window.api.auth.getSession(server.id);
+        const session = await window.api.auth.getSession();
         if (!session) return false;
 
         const result = await window.api.auth.validate(server.host, session.token);
@@ -76,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
             return true;
         }
 
-        await window.api.auth.logout(server.host, server.id);
+        await window.api.auth.logout(server.host);
         return false;
     }
 
@@ -91,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
         loginError.value = null;
 
         try {
-            const result = await window.api.auth.login(server.host, server.id, email, password);
+            const result = await window.api.auth.login(server.host, email, password);
 
             if (result.twoFactor && result.challengeToken) {
                 challengeToken.value = result.challengeToken;
@@ -128,7 +128,6 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const result = await window.api.auth.twoFactorChallenge(
                 server.host,
-                server.id,
                 challengeToken.value,
                 code,
                 recoveryCode,
@@ -172,7 +171,6 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const result = await window.api.auth.register(
                 server.host,
-                server.id,
                 inviteToken,
                 name,
                 username,
@@ -199,17 +197,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function logout(): Promise<void> {
-        try {
-            const { useE2eeStore } = await import('./e2ee');
-            const e2eeStore = useE2eeStore();
-            await e2eeStore.wipeKeys();
-        } catch (error) {
-            console.error(error);
-        }
-
         const server = getValidServer();
         if (server) {
-            await window.api.auth.logout(server.host, server.id);
+            await window.api.auth.logout(server.host);
         }
         user.value = null;
         token.value = null;

@@ -38,34 +38,24 @@ export interface LinkPreviewData {
     title: string;
     description?: string;
     site_name?: string;
-    image?: EncryptedAttachmentMeta;
+    image?: { id: string; mime_type: string; size: number; width?: number; height?: number };
     image_url?: string;
     image_width?: number;
     image_height?: number;
     fetched_at: number;
 }
 
-export interface EncryptedAttachmentMeta {
+export interface Attachment {
     id: string;
-    key: string; // base64 AES-256-GCM key
-    iv: string; // base64 IV
     file_name: string;
     mime_type: string;
     size: number;
-    thumbnail_key?: string;
-    thumbnail_iv?: string;
-    thumbnail_width?: number;
-    thumbnail_height?: number;
-    thumbnail_data_url?: string; // local blob URL for optimistic rendering
-}
-
-export interface ServerAttachment {
-    id: string;
-    storage_path: string;
-    encrypted_size: number;
-    thumbnail_path: string | null;
-    thumbnail_size: number | null;
-    status: string;
+    width?: number | null;
+    height?: number | null;
+    has_thumbnail: boolean;
+    thumbnail_size?: number | null;
+    thumbnail_data_url?: string; // optimistic-render preview only
+    status?: string;
 }
 
 export interface AvatarUrls {
@@ -95,18 +85,15 @@ export interface ThreadPreview {
     is_following?: boolean;
     last_reply?: {
         id: string;
-        content: string;
+        content: string | null;
         user: MessageUser;
         created_at: string;
-        sender_device_id?: string;
-        decrypted_content?: string;
-        decrypt_error?: boolean;
     } | null;
 }
 
 export interface MessageData {
     id: string;
-    content: string;
+    content: string | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
@@ -115,11 +102,8 @@ export interface MessageData {
     thread?: ThreadPreview | null;
     reply_to?: {
         id: string;
-        content: string;
+        content: string | null;
         user: MessageUser;
-        decrypted_content?: string;
-        decrypt_error?: boolean;
-        decrypt_attempts?: number;
         link_preview?: LinkPreviewData | null;
     } | null;
     user: MessageUser;
@@ -128,13 +112,9 @@ export interface MessageData {
     is_pinned?: boolean;
     pinned_at?: string | null;
     pinned_by?: MessageUser | null;
-    sender_device_id?: string;
-    decrypted_content?: string;
-    decrypt_error?: boolean;
-    decrypt_attempts?: number;
-    encrypted_attachments?: ServerAttachment[];
-    decrypted_attachments?: EncryptedAttachmentMeta[];
+    attachments?: Attachment[];
     link_preview?: LinkPreviewData | null;
+    client_temp_id?: string | null;
 }
 
 export interface MessagesResponse {

@@ -95,9 +95,7 @@ export interface AvatarUrls {
 }
 
 export interface MessageAttributes {
-    sender_device_id?: string;
-    message_bytes?: string;
-    content: string;
+    content: string | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
@@ -109,9 +107,7 @@ export interface MessageAttributes {
 }
 
 export interface DirectMessageAttributes {
-    sender_device_id?: string;
-    message_bytes?: string;
-    content: string;
+    content: string | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
@@ -174,12 +170,15 @@ export interface InviteLinkAttributes {
     created_at: string;
 }
 
-export interface EncryptedAttachmentAttributes {
-    storage_path: string;
-    encrypted_size: number;
-    thumbnail_path: string | null;
-    thumbnail_size: number | null;
-    status: string;
+export interface AttachmentAttributes {
+    file_name: string;
+    mime_type: string;
+    size: number;
+    width?: number | null;
+    height?: number | null;
+    has_thumbnail: boolean;
+    thumbnail_size?: number | null;
+    created_at?: string;
 }
 
 export type CategoryResource = JsonApiResource<
@@ -200,7 +199,7 @@ export type MessageResource = JsonApiResource<
         reactions?: JsonApiRelationship<'reactions'>;
         replyTo?: JsonApiRelationship<'messages'>;
         threadStarted?: JsonApiRelationship<'threads'>;
-        encryptedAttachments?: JsonApiRelationship<'encrypted-attachments'>;
+        attachments?: JsonApiRelationship<'attachments'>;
     }
 >;
 
@@ -211,7 +210,7 @@ export type DirectMessageResource = JsonApiResource<
         user?: JsonApiRelationship<'users'>;
         reactions?: JsonApiRelationship<'reactions'>;
         replyTo?: JsonApiRelationship<'direct-messages'>;
-        encryptedAttachments?: JsonApiRelationship<'encrypted-attachments'>;
+        attachments?: JsonApiRelationship<'attachments'>;
     }
 >;
 
@@ -245,7 +244,7 @@ export type InviteLinkResource = JsonApiResource<
     }
 >;
 
-export type EncryptedAttachmentResource = JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes>;
+export type AttachmentResource = JsonApiResource<'attachments', AttachmentAttributes>;
 
 export function findIncluded<R = JsonApiResource>(
     included: JsonApiResource[] | undefined,

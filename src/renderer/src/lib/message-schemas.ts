@@ -19,7 +19,7 @@ export const UploadingFileSchema = z.object({
     name: z.string().min(1),
     size: z.number().nonnegative(),
     progress: z.number().min(0).max(100),
-    status: z.enum(['preparing', 'encrypting', 'uploading', 'finishing']),
+    status: z.enum(['preparing', 'uploading', 'finishing']),
     preview: z.string().optional(),
 });
 

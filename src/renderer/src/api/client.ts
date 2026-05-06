@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/electron/renderer';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
-import { useE2eeStore } from '@/stores/e2ee';
 import { useServerStore } from '@/stores/server';
 
 function buildBaseUrl(host: string): string {
@@ -37,11 +36,6 @@ api.interceptors.request.use(async (config) => {
 
     if (authStore.token) {
         config.headers.Authorization = `Bearer ${authStore.token}`;
-    }
-
-    const e2eeStore = useE2eeStore();
-    if (e2eeStore.deviceId) {
-        config.headers['X-Device-Id'] = e2eeStore.deviceId;
     }
 
     return config;

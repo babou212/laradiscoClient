@@ -6,17 +6,16 @@ import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { Slider } from '@/components/ui/slider';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
+import type { Attachment } from '@/types/chat';
 
 const props = defineProps<{
-    attachment: EncryptedAttachmentMeta;
+    attachment: Attachment;
 }>();
 
 const { t } = useI18n();
 
 const howl = shallowRef<Howl | null>(null);
-const blobUrl = shallowRef<string | null>(null);
+const sourceUrl = shallowRef<string | null>(null);
 const isPlaying = shallowRef(false);
 const isLoading = shallowRef(false);
 const loadError = shallowRef(false);
@@ -84,14 +83,11 @@ function stopTimeTracking() {
     }
 }
 
-async function decryptAudio(): Promise<string> {
+async function resolveUrl(): Promise<string> {
+    if (sourceUrl.value) return sourceUrl.value;
     const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
-
-    const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
-
-    const decryptedBuffer = await decryptAttachment(encryptedBuffer, props.attachment.key, props.attachment.iv);
-    const blob = new Blob([decryptedBuffer], { type: props.attachment.mime_type });
-    return URL.createObjectURL(blob);
+    sourceUrl.value = download_url;
+    return download_url;
 }
 
 async function loadAndPlay() {
@@ -106,10 +102,10 @@ async function loadAndPlay() {
     loadError.value = false;
 
     try {
-        blobUrl.value = await decryptAudio();
+        const url = await resolveUrl();
 
         howl.value = new Howl({
-            src: [blobUrl.value],
+            src: [url],
             html5: true,
             format: [format.value],
             volume: volume.value,
@@ -213,16 +209,13 @@ function toggleMute() {
 
 async function downloadFile() {
     try {
-        const url = blobUrl.value ?? (await decryptAudio());
+        const url = await resolveUrl();
         const a = document.createElement('a');
         a.href = url;
         a.download = props.attachment.file_name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        if (!blobUrl.value) {
-            URL.revokeObjectURL(url);
-        }
     } catch (err) {
         console.error('Failed to download audio:', err);
     }
@@ -234,10 +227,7 @@ function cleanup() {
         howl.value.unload();
         howl.value = null;
     }
-    if (blobUrl.value) {
-        URL.revokeObjectURL(blobUrl.value);
-        blobUrl.value = null;
-    }
+    sourceUrl.value = null;
 }
 
 onBeforeUnmount(cleanup);

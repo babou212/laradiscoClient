@@ -1,5 +1,5 @@
 import type {
-    EncryptedAttachmentAttributes,
+    AttachmentAttributes,
     JsonApiResource,
     MessageAttributes,
     MessageResource,
@@ -10,7 +10,7 @@ import type {
     UserAttributes,
 } from './types';
 import { findIncluded, relationshipId, relationshipIds } from './types';
-import type { MessageData, MessageReaction, MessageUser, ServerAttachment, ThreadPreview } from '@/types/chat';
+import type { Attachment, MessageData, MessageReaction, MessageUser, ThreadPreview } from '@/types/chat';
 
 function normalizeUser(resource: JsonApiResource<'users', UserAttributes> | undefined): MessageUser {
     if (!resource) {
@@ -35,16 +35,16 @@ function normalizeReaction(
     };
 }
 
-function normalizeAttachment(
-    resource: JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes>,
-): ServerAttachment {
+function normalizeAttachment(resource: JsonApiResource<'attachments', AttachmentAttributes>): Attachment {
     return {
         id: resource.id,
-        storage_path: '',
-        encrypted_size: resource.attributes.encrypted_size,
-        thumbnail_path: null,
+        file_name: resource.attributes.file_name,
+        mime_type: resource.attributes.mime_type,
+        size: resource.attributes.size,
+        width: resource.attributes.width ?? null,
+        height: resource.attributes.height ?? null,
+        has_thumbnail: !!resource.attributes.has_thumbnail,
         thumbnail_size: resource.attributes.thumbnail_size ?? null,
-        status: resource.attributes.status ?? 'confirmed',
     };
 }
 
@@ -69,7 +69,6 @@ function normalizeThreadPreview(
                 content: replyRes.attributes.content,
                 user: normalizeUser(replyUserRes),
                 created_at: replyRes.attributes.created_at,
-                sender_device_id: replyRes.attributes.sender_device_id,
             };
         }
     }
@@ -131,16 +130,10 @@ export function normalizeMessage(
         }
     }
 
-    const attachmentIds = relationshipIds(rels.encryptedAttachments);
-    const encrypted_attachments: ServerAttachment[] = attachmentIds
-        .map((aid) =>
-            findIncluded<JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes>>(
-                included,
-                'encrypted-attachments',
-                aid,
-            ),
-        )
-        .filter((a): a is JsonApiResource<'encrypted-attachments', EncryptedAttachmentAttributes> => !!a)
+    const attachmentIds = relationshipIds(rels.attachments);
+    const attachments: Attachment[] = attachmentIds
+        .map((aid) => findIncluded<JsonApiResource<'attachments', AttachmentAttributes>>(included, 'attachments', aid))
+        .filter((a): a is JsonApiResource<'attachments', AttachmentAttributes> => !!a)
         .map(normalizeAttachment);
 
     return {
@@ -158,8 +151,7 @@ export function normalizeMessage(
         created_at: attrs.created_at,
         is_pinned: attrs.is_pinned ?? false,
         pinned_at: attrs.pinned_at ?? null,
-        sender_device_id: attrs.sender_device_id,
-        encrypted_attachments: encrypted_attachments.length > 0 ? encrypted_attachments : undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
     };
 }
 
@@ -208,6 +200,11 @@ export function coerceBroadcastMessage(msg: MessageData): MessageData {
             if (msg.thread.last_reply.user) {
                 msg.thread.last_reply.user.id = String(msg.thread.last_reply.user.id);
             }
+        }
+    }
+    if (msg.attachments) {
+        for (const a of msg.attachments) {
+            a.id = String(a.id);
         }
     }
     return msg;

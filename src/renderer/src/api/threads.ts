@@ -2,13 +2,14 @@ import api from './client';
 import type { JsonApiCollectionResponse, JsonApiResponse, MessageResource, ThreadResource } from './types';
 
 export interface CreateThreadReplyData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
+    attachment_ids?: string[];
+    thread_name?: string;
+    client_temp_id?: string;
 }
 
 export interface EditThreadMessageData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
 }
 
 export async function getThread(
@@ -31,7 +32,7 @@ export async function getThreadMessages(
     const r = await api.get(`/channels/${channelId}/threads/${threadId}/messages`, {
         params: {
             sort: 'created_at',
-            include: 'user,reactions,encryptedAttachments',
+            include: 'user,reactions,attachments',
             ...params,
         },
     });

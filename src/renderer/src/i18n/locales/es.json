@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Cifrado",
-                "description": "Gestiona los ajustes del cifrado de extremo a extremo",
-                "active": "Cifrado activo",
-                "notSetUp": "Cifrado no configurado",
-                "activeDescription": "Tus mensajes están cifrados de extremo a extremo.",
-                "notSetUpDescription": "Configura el cifrado para proteger tus mensajes."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Copia de seguridad de claves",
-                "description": "Haz una copia de seguridad de tus claves para usar el cifrado en varios dispositivos",
-                "exists": "Hay una copia de seguridad",
-                "none": "Sin copia de seguridad",
-                "existsDescription": "Tus claves están respaldadas y se pueden restaurar en nuevos dispositivos.",
-                "noneDescription": "Crea una copia para usar el cifrado en otros dispositivos.",
-                "update": "Actualizar copia",
-                "create": "Crear copia"
-            },
-            "devices": {
-                "title": "Dispositivos",
-                "description": "Gestiona los dispositivos vinculados a tu identidad de cifrado",
-                "empty": "No se encontraron dispositivos.",
-                "thisDevice": "Este dispositivo",
-                "added": "Añadido {date}"
-            },
-            "auditLog": {
-                "title": "Registro de auditoría",
-                "description": "Registro de transparencia — historial criptográfico de todos los eventos de cifrado",
-                "load": "Cargar registro de auditoría",
-                "deviceLabel": "Dispositivo:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Identidad creada",
-                    "device_registered": "Dispositivo registrado",
-                    "device_revoked": "Dispositivo revocado",
-                    "backup_created": "Copia de claves creada",
-                    "backup_restored": "Copia de claves restaurada",
-                    "key_package_uploaded": "Paquetes de claves subidos",
-                    "signed_prekey_rotated": "Prekey firmada rotada"
-                }
-            },
-            "danger": {
-                "title": "Zona peligrosa",
-                "resetTitle": "Restablecer cifrado",
-                "resetDescription": "Elimina todas las claves de cifrado locales. Tendrás que configurar el cifrado de nuevo.",
-                "reset": "Restablecer"
-            },
-            "dialogs": {
-                "revokeTitle": "Revocar dispositivo",
-                "revokeDescription": "¿Seguro que quieres revocar {name}? Este dispositivo ya no podrá descifrar mensajes nuevos.",
-                "revoke": "Revocar",
-                "renameTitle": "Renombrar dispositivo",
-                "renameDescription": "Introduce un nuevo nombre para este dispositivo.",
-                "renamePlaceholder": "Nombre del dispositivo",
-                "rename": "Renombrar",
-                "wipeTitle": "Restablecer cifrado",
-                "wipeDescription": "Esto eliminará permanentemente todas las claves de cifrado de este dispositivo. Perderás la capacidad de descifrar los mensajes existentes a menos que tengas una copia de seguridad de claves. Esta acción no se puede deshacer.",
-                "wipeConfirm": "Eliminar todas las claves",
-                "never": "Nunca"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} en #{channel}",
-        "encryptedMessage": "[Mensaje cifrado]",
         "sentMessage": "te envió un mensaje",
         "inChannelPrefix": "en #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Conectando...",
         "testConnection": "Probar conexión",
-        "continue": "Continuar",
-        "savedServers": "Servidores guardados",
-        "active": "Activo"
+        "continue": "Continuar"
     },
     "updates": {
         "available": "Actualización disponible",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "Descartar",
-            "unknown": "Desconocido",
-            "encryptedMessage": "[Mensaje cifrado]",
-            "unableToDecrypt": "[No se pudo descifrar]",
-            "unableToDecryptInline": "[No se pudo descifrar este mensaje]"
+            "unknown": "Desconocido"
         },
         "messages": {
             "selectChannel": "Selecciona un canal",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "Buscar mensajes",
             "showMembers": "Mostrar miembros",
             "hideMembers": "Ocultar miembros",
-            "encryptionNotSetUp": "El cifrado no está configurado. Completa la configuración de E2EE antes de enviar mensajes.",
-            "failedToEncrypt": "No se pudo cifrar el mensaje. Inténtalo de nuevo.",
             "failedToSend": "No se pudo enviar el mensaje. Inténtalo de nuevo.",
             "failedToUpload": "No se pudo subir {fileName}. Inténtalo de nuevo.",
             "fetchingLinkPreview": "Obteniendo vista previa del enlace…"
@@ -771,7 +715,6 @@
             "replyingTo": "Respondiendo a {user}",
             "fileTooLarge": "{count} archivos superan el límite de 100 MB: {files}",
             "preparing": "Preparando…",
-            "encrypting": "Cifrando…",
             "finishing": "Finalizando…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "Aún no hay respuestas. ¡Inicia la conversación!",
             "replyPlaceholder": "Responder en el hilo...",
             "replyCount": "{count} respuesta | {count} respuestas",
-            "encryptionNotSetUp": "El cifrado no está configurado.",
-            "failedToEncrypt": "No se pudo cifrar el mensaje.",
             "failedToSendReply": "No se pudo enviar la respuesta.",
             "deleteDialogTitle": "Eliminar mensaje",
             "deleteDialogDescription": "¿Seguro que quieres eliminar este mensaje? Esta acción no se puede deshacer.",
@@ -834,7 +775,7 @@
             "noResults": "Sin resultados",
             "resultsCount": "{count} resultado encontrado | {count} resultados encontrados",
             "typeToSearch": "Escribe para buscar mensajes",
-            "offlineNote": "La búsqueda es totalmente local — funciona sin conexión y nunca sale de tu dispositivo",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Prueba con otros términos de búsqueda",
             "loadMore": "Cargar más resultados",
             "unknownUser": "Desconocido"
@@ -875,8 +816,7 @@
             "noUsersFound": "No se encontraron usuarios",
             "noDmsYet": "Aún no hay mensajes directos",
             "startConversationHint": "Haz clic en + para iniciar una conversación",
-            "backToChannels": "Volver a los canales",
-            "unableToDecrypt": "[No se pudo descifrar]"
+            "backToChannels": "Volver a los canales"
         },
         "userProfile": {
             "unknownUser": "Usuario desconocido",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "Cifrado de extremo a extremo",
-            "description": "Protege tus mensajes para que solo tú y los destinatarios previstos puedan leerlos.",
-            "checking": "Comprobando el estado del cifrado...",
-            "restoreTitle": "Restaurar tus claves",
-            "restoreDescription": "Se encontró una copia de seguridad de claves. Introduce tu PIN para restaurar tu identidad de cifrado en este dispositivo.",
-            "deviceName": "Nombre del dispositivo",
-            "deviceNamePlaceholder": "p. ej. Mi portátil",
-            "backupPin": "PIN de la copia",
-            "backupPinPlaceholder": "Introduce tu PIN",
-            "incorrectPin": "PIN incorrecto",
-            "restoreContinue": "Restaurar y continuar",
-            "newIdentity": "Nueva identidad",
-            "generating": "Generando tus claves de cifrado...",
-            "allSet": "¡Todo listo!",
-            "allSetDescription": "El cifrado de extremo a extremo está activo. Tus mensajes están ahora protegidos."
-        },
-        "backup": {
-            "restoreTitle": "Restaurar copia de claves",
-            "createTitle": "Crear copia de claves",
-            "restoreDescription": "Introduce el PIN que usaste al crear tu copia de seguridad.",
-            "createDescription": "Elige un PIN para cifrar tu copia de claves. Necesitarás este PIN para restaurar tus claves en otro dispositivo.",
-            "keysRestored": "¡Claves restauradas correctamente!",
-            "backupCreated": "¡Copia creada correctamente!",
-            "backupPinLabel": "PIN de la copia",
-            "choosePinLabel": "Elige un PIN",
-            "pinPlaceholderRestore": "Introduce tu PIN",
-            "pinPlaceholderCreate": "Mínimo 6 caracteres",
-            "confirmPin": "Confirmar PIN",
-            "confirmPinPlaceholder": "Introduce el PIN de nuevo",
-            "pinsDoNotMatch": "Los PIN no coinciden",
-            "backupFailed": "Error al crear la copia",
-            "restoreFailed": "Error al restaurar",
-            "importantLabel": "Importante:",
-            "warningPinOnly": "Este PIN se usa solo para cifrar tu copia de claves",
-            "warningNeverSent": "Nunca se envía al servidor",
-            "warningForgotten": "Si olvidas tu PIN, no podrás restaurar tus claves",
-            "warningStrong": "La copia usa cifrado robusto (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Restaurar claves",
-            "createBackup": "Crear copia"
-        },
         "avatarCrop": {
             "title": "Actualizar avatar",
             "description": "Recorta y sube una nueva foto de perfil",

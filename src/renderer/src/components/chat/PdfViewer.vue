@@ -4,16 +4,15 @@ import { onBeforeUnmount, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
+import type { Attachment } from '@/types/chat';
 
 const props = defineProps<{
-    attachment: EncryptedAttachmentMeta;
+    attachment: Attachment;
 }>();
 
 const { t } = useI18n();
 
-const blobUrl = shallowRef<string | null>(null);
+const downloadUrl = shallowRef<string | null>(null);
 const isLoading = shallowRef(false);
 const downloading = shallowRef(false);
 const lightboxOpen = shallowRef(false);
@@ -28,25 +27,22 @@ watchEffect((onCleanup) => {
 });
 
 onBeforeUnmount(() => {
-    if (blobUrl.value) {
-        URL.revokeObjectURL(blobUrl.value);
-    }
+    downloadUrl.value = null;
 });
 
-async function decryptPdf(): Promise<string> {
+async function resolveUrl(): Promise<string> {
+    if (downloadUrl.value) return downloadUrl.value;
     const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
-    const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
-    const decryptedBuffer = await decryptAttachment(encryptedBuffer, props.attachment.key, props.attachment.iv);
-    const blob = new Blob([decryptedBuffer], { type: 'application/pdf' });
-    return URL.createObjectURL(blob);
+    downloadUrl.value = download_url;
+    return download_url;
 }
 
 async function openLightbox() {
     lightboxOpen.value = true;
-    if (blobUrl.value) return;
+    if (downloadUrl.value) return;
     isLoading.value = true;
     try {
-        blobUrl.value = await decryptPdf();
+        await resolveUrl();
     } catch (err) {
         console.error('Failed to load PDF:', err);
         lightboxOpen.value = false;
@@ -59,16 +55,13 @@ async function downloadFile() {
     if (downloading.value) return;
     downloading.value = true;
     try {
-        const url = blobUrl.value ?? (await decryptPdf());
+        const url = await resolveUrl();
         const a = document.createElement('a');
         a.href = url;
         a.download = props.attachment.file_name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        if (!blobUrl.value) {
-            URL.revokeObjectURL(url);
-        }
     } catch (err) {
         console.error('Failed to download PDF:', err);
     } finally {
@@ -137,8 +130,8 @@ function formatFileSize(bytes: number): string {
                                 <Loader2 :size="32" class="animate-spin text-white" />
                             </div>
                             <iframe
-                                v-else-if="blobUrl"
-                                :src="blobUrl"
+                                v-else-if="downloadUrl"
+                                :src="downloadUrl"
                                 class="h-full w-full rounded-b-lg"
                                 :title="attachment.file_name"
                             />

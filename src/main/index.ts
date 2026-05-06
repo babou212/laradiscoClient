@@ -368,14 +368,12 @@ app.whenReady().then(() => {
     }
 
     setImmediate(async () => {
-        const [{ initDatabase }, mls, { initPushToTalk }, { initAutoUpdater }] = await Promise.all([
+        const [{ initDatabase }, { initPushToTalk }, { initAutoUpdater }] = await Promise.all([
             import('./database'),
-            import('./mls'),
             import('./ptt'),
             import('./updater'),
         ]);
         initDatabase();
-        mls.initMls();
         initPushToTalk();
         initAutoUpdater();
     });

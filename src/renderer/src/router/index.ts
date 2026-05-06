@@ -3,7 +3,6 @@ import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePres
 import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
-import { useE2eeStore } from '@/stores/e2ee';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
 import { useServerStore } from '@/stores/server';
@@ -152,12 +151,6 @@ const router = createRouter({
             ],
         },
         {
-            path: '/e2ee-setup',
-            name: 'e2ee-setup',
-            component: () => import('@/components/e2ee/E2EESetupWizard.vue'),
-            meta: { requiresAuth: true },
-        },
-        {
             path: '/:pathMatch(.*)*',
             name: 'not-found',
             redirect: { name: 'home' },
@@ -237,18 +230,6 @@ router.beforeEach(async (to) => {
         }
         if (authStore.user) {
             connectRealtime(Number(authStore.user.id));
-
-            const e2eeStore = useE2eeStore();
-            if (!e2eeStore.isReady && !e2eeStore.isSettingUp) {
-                try {
-                    await e2eeStore.initialize();
-                } catch (error) {
-                    console.error('E2EE initialization failed:', error);
-                }
-            }
-            if (e2eeStore.needsSetup && to.name !== 'e2ee-setup') {
-                return { name: 'e2ee-setup' };
-            }
         }
     }
 

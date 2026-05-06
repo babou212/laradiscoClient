@@ -25,9 +25,7 @@ const getMentionLabel = (notification: AppNotification): string => {
 };
 
 const getDisplayContent = (notification: AppNotification): string => {
-    const { data } = notification;
-    if (data.decrypted_content) return data.decrypted_content;
-    return t('chat.common.encryptedMessage');
+    return notification.data.content ?? '';
 };
 
 const handleNotificationClick = async (notification: AppNotification) => {

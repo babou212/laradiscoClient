@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Chiffrement",
-                "description": "Gérez vos paramètres de chiffrement de bout en bout",
-                "active": "Chiffrement actif",
-                "notSetUp": "Chiffrement non configuré",
-                "activeDescription": "Vos messages sont chiffrés de bout en bout.",
-                "notSetUpDescription": "Configurez le chiffrement pour sécuriser vos messages."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Sauvegarde des clés",
-                "description": "Sauvegardez vos clés pour utiliser le chiffrement sur plusieurs appareils",
-                "exists": "Sauvegarde existante",
-                "none": "Aucune sauvegarde",
-                "existsDescription": "Vos clés sont sauvegardées et peuvent être restaurées sur de nouveaux appareils.",
-                "noneDescription": "Créez une sauvegarde pour utiliser le chiffrement sur d'autres appareils.",
-                "update": "Mettre à jour la sauvegarde",
-                "create": "Créer une sauvegarde"
-            },
-            "devices": {
-                "title": "Appareils",
-                "description": "Gérez les appareils liés à votre identité de chiffrement",
-                "empty": "Aucun appareil trouvé.",
-                "thisDevice": "Cet appareil",
-                "added": "Ajouté le {date}"
-            },
-            "auditLog": {
-                "title": "Journal d'audit",
-                "description": "Journal de transparence des clés — enregistrement cryptographique de tous les événements de chiffrement",
-                "load": "Charger le journal d'audit",
-                "deviceLabel": "Appareil :",
-                "hashLabel": "Hash :",
-                "events": {
-                    "identity_created": "Identité créée",
-                    "device_registered": "Appareil enregistré",
-                    "device_revoked": "Appareil révoqué",
-                    "backup_created": "Sauvegarde des clés créée",
-                    "backup_restored": "Sauvegarde des clés restaurée",
-                    "key_package_uploaded": "Paquets de clés téléversés",
-                    "signed_prekey_rotated": "Préclé signée renouvelée"
-                }
-            },
-            "danger": {
-                "title": "Zone de danger",
-                "resetTitle": "Réinitialiser le chiffrement",
-                "resetDescription": "Supprimer toutes les clés de chiffrement locales. Vous devrez reconfigurer le chiffrement.",
-                "reset": "Réinitialiser"
-            },
-            "dialogs": {
-                "revokeTitle": "Révoquer l'appareil",
-                "revokeDescription": "Êtes-vous sûr de vouloir révoquer {name} ? Cet appareil ne pourra plus déchiffrer les nouveaux messages.",
-                "revoke": "Révoquer",
-                "renameTitle": "Renommer l'appareil",
-                "renameDescription": "Saisissez un nouveau nom pour cet appareil.",
-                "renamePlaceholder": "Nom de l'appareil",
-                "rename": "Renommer",
-                "wipeTitle": "Réinitialiser le chiffrement",
-                "wipeDescription": "Cela supprimera définitivement toutes les clés de chiffrement de cet appareil. Vous perdrez la capacité de déchiffrer les messages existants sauf si vous avez une sauvegarde des clés. Cette action est irréversible.",
-                "wipeConfirm": "Supprimer toutes les clés",
-                "never": "Jamais"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} dans #{channel}",
-        "encryptedMessage": "[Message chiffré]",
         "sentMessage": "a envoyé un message",
         "inChannelPrefix": "dans #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Connexion...",
         "testConnection": "Tester la connexion",
-        "continue": "Continuer",
-        "savedServers": "Serveurs enregistrés",
-        "active": "Actif"
+        "continue": "Continuer"
     },
     "updates": {
         "available": "Mise à jour disponible",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "Fermer",
-            "unknown": "Inconnu",
-            "encryptedMessage": "[Message chiffré]",
-            "unableToDecrypt": "[Impossible de déchiffrer]",
-            "unableToDecryptInline": "[Impossible de déchiffrer ce message]"
+            "unknown": "Inconnu"
         },
         "messages": {
             "selectChannel": "Sélectionnez un salon",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "Rechercher des messages",
             "showMembers": "Afficher les membres",
             "hideMembers": "Masquer les membres",
-            "encryptionNotSetUp": "Le chiffrement n'est pas configuré. Veuillez compléter la configuration E2EE avant d'envoyer des messages.",
-            "failedToEncrypt": "Échec du chiffrement du message. Veuillez réessayer.",
             "failedToSend": "Échec de l'envoi du message. Veuillez réessayer.",
             "failedToUpload": "Échec du téléversement de {fileName}. Veuillez réessayer.",
             "fetchingLinkPreview": "Récupération de l'aperçu du lien…"
@@ -771,7 +715,6 @@
             "replyingTo": "Réponse à {user}",
             "fileTooLarge": "{count} fichiers dépassent la limite de 100 Mo : {files}",
             "preparing": "Préparation…",
-            "encrypting": "Chiffrement…",
             "finishing": "Finalisation…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "Aucune réponse pour le moment. Lancez la conversation !",
             "replyPlaceholder": "Répondre dans le fil...",
             "replyCount": "{count} réponse | {count} réponses",
-            "encryptionNotSetUp": "Le chiffrement n'est pas configuré.",
-            "failedToEncrypt": "Échec du chiffrement du message.",
             "failedToSendReply": "Échec de l'envoi de la réponse.",
             "deleteDialogTitle": "Supprimer le message",
             "deleteDialogDescription": "Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.",
@@ -834,7 +775,7 @@
             "noResults": "Aucun résultat trouvé",
             "resultsCount": "{count} résultat trouvé | {count} résultats trouvés",
             "typeToSearch": "Tapez pour rechercher des messages",
-            "offlineNote": "La recherche est entièrement locale — fonctionne hors ligne, ne quitte jamais votre appareil",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Essayez d'autres termes de recherche",
             "loadMore": "Charger plus de résultats",
             "unknownUser": "Inconnu"
@@ -875,8 +816,7 @@
             "noUsersFound": "Aucun utilisateur trouvé",
             "noDmsYet": "Aucun message direct pour le moment",
             "startConversationHint": "Cliquez sur + pour démarrer une conversation",
-            "backToChannels": "Retour aux salons",
-            "unableToDecrypt": "[Impossible de déchiffrer]"
+            "backToChannels": "Retour aux salons"
         },
         "userProfile": {
             "unknownUser": "Utilisateur inconnu",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "Chiffrement de bout en bout",
-            "description": "Sécurisez vos messages pour que seuls vous et les destinataires prévus puissent les lire.",
-            "checking": "Vérification du statut de chiffrement...",
-            "restoreTitle": "Restaurer vos clés",
-            "restoreDescription": "Une sauvegarde de clés a été trouvée. Saisissez votre code PIN de sauvegarde pour restaurer votre identité de chiffrement sur cet appareil.",
-            "deviceName": "Nom de l'appareil",
-            "deviceNamePlaceholder": "ex. Mon ordinateur",
-            "backupPin": "Code PIN de sauvegarde",
-            "backupPinPlaceholder": "Saisissez votre code PIN de sauvegarde",
-            "incorrectPin": "Code PIN incorrect",
-            "restoreContinue": "Restaurer et continuer",
-            "newIdentity": "Nouvelle identité",
-            "generating": "Génération de vos clés de chiffrement...",
-            "allSet": "Tout est prêt !",
-            "allSetDescription": "Le chiffrement de bout en bout est actif. Vos messages sont maintenant sécurisés."
-        },
-        "backup": {
-            "restoreTitle": "Restaurer la sauvegarde des clés",
-            "createTitle": "Créer une sauvegarde des clés",
-            "restoreDescription": "Saisissez le code PIN que vous avez utilisé lors de la création de votre sauvegarde.",
-            "createDescription": "Choisissez un code PIN pour chiffrer votre sauvegarde de clés. Vous aurez besoin de ce code PIN pour restaurer vos clés sur un autre appareil.",
-            "keysRestored": "Clés restaurées avec succès !",
-            "backupCreated": "Sauvegarde créée avec succès !",
-            "backupPinLabel": "Code PIN de sauvegarde",
-            "choosePinLabel": "Choisir un code PIN",
-            "pinPlaceholderRestore": "Saisissez votre code PIN de sauvegarde",
-            "pinPlaceholderCreate": "Minimum 6 caractères",
-            "confirmPin": "Confirmer le code PIN",
-            "confirmPinPlaceholder": "Saisissez le code PIN à nouveau",
-            "pinsDoNotMatch": "Les codes PIN ne correspondent pas",
-            "backupFailed": "Échec de la sauvegarde",
-            "restoreFailed": "Échec de la restauration",
-            "importantLabel": "Important :",
-            "warningPinOnly": "Ce code PIN est utilisé uniquement pour chiffrer votre sauvegarde de clés",
-            "warningNeverSent": "Il n'est jamais envoyé au serveur",
-            "warningForgotten": "Si vous oubliez votre code PIN, vous ne pourrez pas restaurer vos clés",
-            "warningStrong": "La sauvegarde utilise un chiffrement fort (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Restaurer les clés",
-            "createBackup": "Créer la sauvegarde"
-        },
         "avatarCrop": {
             "title": "Mettre à jour l'avatar",
             "description": "Recadrer et téléverser une nouvelle photo de profil",

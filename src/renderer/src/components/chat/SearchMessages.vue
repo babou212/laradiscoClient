@@ -4,7 +4,7 @@ import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { useEncryptedSearch } from '@/composables/useEncryptedSearch';
+import { useMessageSearch } from '@/composables/useMessageSearch';
 
 type Props = {
     conversationType: 'channel' | 'dm';
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const { isSearching, searchResults, searchError, hasMore, searchInConversation, loadMoreResults, clearSearch } =
-    useEncryptedSearch();
+    useMessageSearch();
 
 const { t } = useI18n();
 

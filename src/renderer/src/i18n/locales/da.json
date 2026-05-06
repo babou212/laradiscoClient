@@ -261,65 +261,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Kryptering",
-                "description": "Administrér dine end-to-end-krypteringsindstillinger",
-                "active": "Kryptering aktiv",
-                "notSetUp": "Kryptering ikke konfigureret",
-                "activeDescription": "Dine beskeder er end-to-end-krypterede.",
-                "notSetUpDescription": "Konfigurér kryptering for at sikre dine beskeder."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Nøglesikkerhedskopi",
-                "description": "Sikkerhedskopiér dine nøgler for at bruge kryptering på flere enheder",
-                "exists": "Sikkerhedskopi findes",
-                "none": "Ingen sikkerhedskopi",
-                "existsDescription": "Dine nøgler er sikkerhedskopierede og kan gendannes på nye enheder.",
-                "noneDescription": "Opret en sikkerhedskopi for at bruge kryptering på andre enheder.",
-                "update": "Opdatér sikkerhedskopi",
-                "create": "Opret sikkerhedskopi"
-            },
-            "devices": {
-                "title": "Enheder",
-                "description": "Administrér enheder tilknyttet din krypteringsidentitet",
-                "empty": "Ingen enheder fundet.",
-                "thisDevice": "Denne enhed",
-                "added": "Tilføjet {date}"
-            },
-            "auditLog": {
-                "title": "Revisionslog",
-                "description": "Nøgletransparenslog — kryptografisk optegnelse af alle krypteringshændelser",
-                "load": "Indlæs revisionslog",
-                "deviceLabel": "Enhed:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Identitet oprettet",
-                    "device_registered": "Enhed registreret",
-                    "device_revoked": "Enhed tilbagekaldt",
-                    "backup_created": "Nøglesikkerhedskopi oprettet",
-                    "backup_restored": "Nøglesikkerhedskopi gendannet",
-                    "key_package_uploaded": "Nøglepakker uploadet",
-                    "signed_prekey_rotated": "Signeret prænøgle roteret"
-                }
-            },
-            "danger": {
-                "title": "Farezone",
-                "resetTitle": "Nulstil kryptering",
-                "resetDescription": "Slet alle lokale krypteringsnøgler. Du skal opsætte kryptering igen.",
-                "reset": "Nulstil"
-            },
-            "dialogs": {
-                "revokeTitle": "Tilbagekald enhed",
-                "revokeDescription": "Er du sikker på du vil tilbagekalde {name}? Denne enhed vil ikke længere kunne dekryptere nye beskeder.",
-                "revoke": "Tilbagekald",
-                "renameTitle": "Omdøb enhed",
-                "renameDescription": "Indtast et nyt navn til denne enhed.",
-                "renamePlaceholder": "Enhedsnavn",
-                "rename": "Omdøb",
-                "wipeTitle": "Nulstil kryptering",
-                "wipeDescription": "Dette sletter alle krypteringsnøgler permanent fra denne enhed. Du mister muligheden for at dekryptere eksisterende beskeder, medmindre du har en nøglesikkerhedskopi. Denne handling kan ikke fortrydes.",
-                "wipeConfirm": "Slet alle nøgler",
-                "never": "Aldrig"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -657,7 +609,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} i #{channel}",
-        "encryptedMessage": "[Krypteret besked]",
         "sentMessage": "sendte en besked",
         "inChannelPrefix": "i #{channel}"
     },
@@ -682,9 +633,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Forbinder...",
         "testConnection": "Test forbindelse",
-        "continue": "Fortsæt",
-        "savedServers": "Gemte servere",
-        "active": "Aktiv"
+        "continue": "Fortsæt"
     },
     "updates": {
         "available": "Opdatering tilgængelig",
@@ -732,10 +681,7 @@
     "chat": {
         "common": {
             "dismiss": "Afvis",
-            "unknown": "Ukendt",
-            "encryptedMessage": "[Krypteret besked]",
-            "unableToDecrypt": "[Kan ikke dekryptere]",
-            "unableToDecryptInline": "[Kan ikke dekryptere denne besked]"
+            "unknown": "Ukendt"
         },
         "messages": {
             "selectChannel": "Vælg en kanal",
@@ -758,8 +704,6 @@
             "searchMessagesTooltip": "Søg beskeder",
             "showMembers": "Vis medlemmer",
             "hideMembers": "Skjul medlemmer",
-            "encryptionNotSetUp": "Kryptering er ikke konfigureret. Fuldfør E2EE-opsætning før du sender beskeder.",
-            "failedToEncrypt": "Kunne ikke kryptere besked. Prøv igen.",
             "failedToSend": "Kunne ikke sende besked. Prøv igen.",
             "failedToUpload": "Kunne ikke uploade {fileName}. Prøv igen.",
             "fetchingLinkPreview": "Henter linkforhåndsvisning…"
@@ -772,7 +716,6 @@
             "replyingTo": "Svarer til {user}",
             "fileTooLarge": "{count} filer overskrider 100 MB-grænsen: {files}",
             "preparing": "Forbereder…",
-            "encrypting": "Krypterer…",
             "finishing": "Afslutter…"
         },
         "thread": {
@@ -782,8 +725,6 @@
             "noReplies": "Ingen svar endnu. Start samtalen!",
             "replyPlaceholder": "Svar i tråden...",
             "replyCount": "{count} svar | {count} svar",
-            "encryptionNotSetUp": "Kryptering er ikke konfigureret.",
-            "failedToEncrypt": "Kunne ikke kryptere besked.",
             "failedToSendReply": "Kunne ikke sende svar.",
             "deleteDialogTitle": "Slet besked",
             "deleteDialogDescription": "Er du sikker på du vil slette denne besked? Dette kan ikke fortrydes.",
@@ -835,7 +776,7 @@
             "noResults": "Ingen resultater fundet",
             "resultsCount": "{count} resultat fundet | {count} resultater fundet",
             "typeToSearch": "Skriv for at søge i beskeder",
-            "offlineNote": "Søgning er fuldt lokal — fungerer offline, forlader aldrig din enhed",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Prøv andre søgeord",
             "loadMore": "Indlæs flere resultater",
             "unknownUser": "Ukendt"
@@ -876,8 +817,7 @@
             "noUsersFound": "Ingen brugere fundet",
             "noDmsYet": "Ingen direkte beskeder endnu",
             "startConversationHint": "Klik på + for at starte en samtale",
-            "backToChannels": "Tilbage til kanaler",
-            "unableToDecrypt": "[Kan ikke dekryptere]"
+            "backToChannels": "Tilbage til kanaler"
         },
         "userProfile": {
             "unknownUser": "Ukendt bruger",
@@ -921,47 +861,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "End-to-end-kryptering",
-            "description": "Sikr dine beskeder, så kun du og de tilsigtede modtagere kan læse dem.",
-            "checking": "Tjekker krypteringsstatus...",
-            "restoreTitle": "Gendan dine nøgler",
-            "restoreDescription": "En nøglesikkerhedskopi blev fundet. Indtast din sikkerhedskopi-PIN for at gendanne din krypteringsidentitet på denne enhed.",
-            "deviceName": "Enhedsnavn",
-            "deviceNamePlaceholder": "f.eks. Min bærbare",
-            "backupPin": "Sikkerhedskopi-PIN",
-            "backupPinPlaceholder": "Indtast din sikkerhedskopi-PIN",
-            "incorrectPin": "Forkert PIN",
-            "restoreContinue": "Gendan & fortsæt",
-            "newIdentity": "Ny identitet",
-            "generating": "Genererer dine krypteringsnøgler...",
-            "allSet": "Du er klar!",
-            "allSetDescription": "End-to-end-kryptering er aktiv. Dine beskeder er nu sikrede."
-        },
-        "backup": {
-            "restoreTitle": "Gendan nøglesikkerhedskopi",
-            "createTitle": "Opret nøglesikkerhedskopi",
-            "restoreDescription": "Indtast den PIN, du brugte da du oprettede din sikkerhedskopi.",
-            "createDescription": "Vælg en PIN til at kryptere din nøglesikkerhedskopi. Du skal bruge denne PIN for at gendanne dine nøgler på en anden enhed.",
-            "keysRestored": "Nøgler gendannet!",
-            "backupCreated": "Sikkerhedskopi oprettet!",
-            "backupPinLabel": "Sikkerhedskopi-PIN",
-            "choosePinLabel": "Vælg en PIN",
-            "pinPlaceholderRestore": "Indtast din sikkerhedskopi-PIN",
-            "pinPlaceholderCreate": "Mindst 6 tegn",
-            "confirmPin": "Bekræft PIN",
-            "confirmPinPlaceholder": "Indtast PIN igen",
-            "pinsDoNotMatch": "PIN-koderne er ikke ens",
-            "backupFailed": "Sikkerhedskopiering mislykkedes",
-            "restoreFailed": "Gendannelse mislykkedes",
-            "importantLabel": "Vigtigt:",
-            "warningPinOnly": "Denne PIN bruges kun til at kryptere din nøglesikkerhedskopi",
-            "warningNeverSent": "Den sendes aldrig til serveren",
-            "warningForgotten": "Hvis du glemmer din PIN, kan du ikke gendanne dine nøgler",
-            "warningStrong": "Sikkerhedskopien bruger stærk kryptering (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Gendan nøgler",
-            "createBackup": "Opret sikkerhedskopi"
-        },
         "avatarCrop": {
             "title": "Opdatér avatar",
             "description": "Beskær og upload et nyt profilbillede",

@@ -6,7 +6,6 @@ import { promisify } from 'util';
 import * as Sentry from '@sentry/electron/main';
 import { BrowserWindow, ipcMain, net, Notification, type IpcMainInvokeEvent } from 'electron';
 import sharp from 'sharp';
-import { encryptFile, decryptFile } from './crypto/file-encryption';
 
 function captureIpcError(channel: string, err: unknown): string {
     const error = err instanceof Error ? err : new Error(String(err));
@@ -55,14 +54,13 @@ function isAllowedServerUrl(raw: string): boolean {
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
 
-    const servers = getAllServers();
-    return servers.some((s) => {
-        const host = s.host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const [hostname, port] = host.split(':');
-        if (parsed.hostname !== hostname) return false;
-        if (port && parsed.port && parsed.port !== port) return false;
-        return true;
-    });
+    const active = getActiveServer();
+    if (!active) return false;
+    const host = active.host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const [hostname, port] = host.split(':');
+    if (parsed.hostname !== hostname) return false;
+    if (port && parsed.port && parsed.port !== port) return false;
+    return true;
 }
 
 const execFileAsync = promisify(execFile);
@@ -76,25 +74,8 @@ export function getVideoCache(attachmentId: string): { data: Buffer; mimeType: s
     return videoCache.get(attachmentId);
 }
 
-import {
-    addServerConnection,
-    getActiveServer,
-    getAllServers,
-    getAuthSession,
-    getSetting,
-    removeAuthSession,
-    removeServer,
-    saveAuthSession,
-    setActiveServer,
-    setSetting,
-    storeDecryptedMessage,
-    storeDecryptedMessageIfAbsent,
-    getDecryptedMessages,
-    indexMessageForSearch,
-    removeMessageFromSearchIndex,
-    searchMessages,
-    clearSearchIndex,
-} from './database';
+import { getAuthSession, removeAuthSession, saveAuthSession } from './auth-storage';
+import { clearActiveServer, getActiveServer, getSetting, saveActiveServer, setSetting } from './database';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
 import { unfurlUrl } from './services/unfurl';
 
@@ -165,7 +146,7 @@ export function registerIpcHandlers(): void {
 
     handle('server:save', async (_event, name: string, host: string) => {
         try {
-            const connection = addServerConnection(name, host);
+            const connection = saveActiveServer(name, host);
             return { success: true, connection };
         } catch (err: unknown) {
             return { success: false, error: captureIpcError('server:save', err) };
@@ -177,20 +158,20 @@ export function registerIpcHandlers(): void {
     });
 
     handle('server:getAll', async () => {
-        return getAllServers();
+        const active = getActiveServer();
+        return active ? [active] : [];
     });
 
-    handle('server:setActive', async (_event, id: number) => {
-        setActiveServer(id);
+    handle('server:setActive', async () => {
         return { success: true };
     });
 
-    handle('server:remove', async (_event, id: number) => {
-        removeServer(id);
+    handle('server:remove', async () => {
+        clearActiveServer();
         return { success: true };
     });
 
-    handle('auth:login', async (_event, host: string, serverId: number, email: string, password: string) => {
+    handle('auth:login', async (_event, host: string, email: string, password: string) => {
         const url = `${buildBaseUrl(host)}/api/v1/auth/login`;
         try {
             const response = await net.fetch(url, {
@@ -227,14 +208,13 @@ export function registerIpcHandlers(): void {
 
             const user = parseUserResource(data.user);
 
-            saveAuthSession(
-                serverId,
-                Number(user.id),
-                user.name,
-                user.email,
-                user.avatar_urls?.thumb ?? null,
-                data.token,
-            );
+            saveAuthSession({
+                user_id: Number(user.id),
+                user_name: user.name,
+                user_email: user.email,
+                user_avatar: user.avatar_urls?.thumb ?? null,
+                token: data.token,
+            });
 
             return { success: true, user, token: data.token };
         } catch (err: unknown) {
@@ -244,14 +224,7 @@ export function registerIpcHandlers(): void {
 
     handle(
         'auth:twoFactorChallenge',
-        async (
-            _event,
-            host: string,
-            serverId: number,
-            challengeToken: string,
-            code: string | null,
-            recoveryCode: string | null,
-        ) => {
+        async (_event, host: string, challengeToken: string, code: string | null, recoveryCode: string | null) => {
             const url = `${buildBaseUrl(host)}/api/v1/auth/two-factor-challenge`;
             try {
                 const response = await net.fetch(url, {
@@ -283,14 +256,13 @@ export function registerIpcHandlers(): void {
                 const data = body.data;
                 const user = parseUserResource(data.user);
 
-                saveAuthSession(
-                    serverId,
-                    Number(user.id),
-                    user.name,
-                    user.email,
-                    user.avatar_urls?.thumb ?? null,
-                    data.token,
-                );
+                saveAuthSession({
+                    user_id: Number(user.id),
+                    user_name: user.name,
+                    user_email: user.email,
+                    user_avatar: user.avatar_urls?.thumb ?? null,
+                    token: data.token,
+                });
 
                 return { success: true, user, token: data.token };
             } catch (err: unknown) {
@@ -324,7 +296,6 @@ export function registerIpcHandlers(): void {
         async (
             _event,
             host: string,
-            serverId: number,
             inviteToken: string,
             name: string,
             username: string,
@@ -369,14 +340,13 @@ export function registerIpcHandlers(): void {
                 const data = body.data;
                 const user = parseUserResource(data.user);
 
-                saveAuthSession(
-                    serverId,
-                    Number(user.id),
-                    user.name,
-                    user.email,
-                    user.avatar_urls?.thumb ?? null,
-                    data.token,
-                );
+                saveAuthSession({
+                    user_id: Number(user.id),
+                    user_name: user.name,
+                    user_email: user.email,
+                    user_avatar: user.avatar_urls?.thumb ?? null,
+                    token: data.token,
+                });
 
                 return { success: true, user, token: data.token };
             } catch (err: unknown) {
@@ -385,12 +355,12 @@ export function registerIpcHandlers(): void {
         },
     );
 
-    handle('auth:getSession', async (_event, serverId: number) => {
-        return getAuthSession(serverId);
+    handle('auth:getSession', async () => {
+        return getAuthSession();
     });
 
-    handle('auth:logout', async (_event, host: string, serverId: number) => {
-        const session = getAuthSession(serverId);
+    handle('auth:logout', async (_event, host: string) => {
+        const session = getAuthSession();
         if (session) {
             try {
                 await net.fetch(`${buildBaseUrl(host)}/api/v1/auth/logout`, {
@@ -403,7 +373,7 @@ export function registerIpcHandlers(): void {
             } catch (error) {
                 console.error(error);
             }
-            removeAuthSession(serverId);
+            removeAuthSession();
         }
         return { success: true };
     });
@@ -439,71 +409,6 @@ export function registerIpcHandlers(): void {
         return { success: true };
     });
 
-    handle('messages:storeDecrypted', async (_event, serverId: number, messageId: number, plaintext: string) => {
-        storeDecryptedMessage(serverId, messageId, plaintext);
-    });
-
-    handle(
-        'messages:storeDecryptedIfAbsent',
-        async (_event, serverId: number, messageId: number, plaintext: string) => {
-            storeDecryptedMessageIfAbsent(serverId, messageId, plaintext);
-        },
-    );
-
-    handle('messages:getDecryptedBatch', async (_event, serverId: number, messageIds: number[]) => {
-        const map = getDecryptedMessages(serverId, messageIds);
-        return Object.fromEntries(map);
-    });
-
-    handle(
-        'messages:indexForSearch',
-        async (
-            _event,
-            params: {
-                serverId: number;
-                messageId: number;
-                conversationType: 'channel' | 'dm';
-                conversationId: number;
-                userName: string;
-                plaintext: string;
-            },
-        ) => {
-            indexMessageForSearch(params);
-        },
-    );
-
-    handle('messages:removeFromSearchIndex', async (_event, serverId: number, messageId: number) => {
-        removeMessageFromSearchIndex(serverId, messageId);
-    });
-
-    handle(
-        'messages:searchLocal',
-        async (
-            _event,
-            params: {
-                serverId: number;
-                conversationType: 'channel' | 'dm';
-                conversationId: number;
-                query: string;
-                limit?: number;
-                offset?: number;
-            },
-        ) => {
-            return searchMessages(
-                params.serverId,
-                params.conversationType,
-                params.conversationId,
-                params.query,
-                params.limit ?? 50,
-                params.offset ?? 0,
-            );
-        },
-    );
-
-    handle('messages:clearSearchIndex', async (_event, serverId: number) => {
-        clearSearchIndex(serverId);
-    });
-
     ipcMain.on('notifications:show', (event, payload: { title: string; body: string; notificationId: string }) => {
         if (!isTrustedSender(event as unknown as IpcMainInvokeEvent)) return;
         if (!Notification.isSupported()) return;
@@ -527,32 +432,6 @@ export function registerIpcHandlers(): void {
         notification.show();
     });
 
-    handle(
-        'attachment:encrypt',
-        async (
-            _event,
-            fileData: Uint8Array,
-        ): Promise<{ encrypted: Uint8Array<ArrayBuffer>; key: string; iv: string; size: number }> => {
-            const data = Buffer.from(fileData);
-            const result = encryptFile(data);
-            return {
-                encrypted: new Uint8Array(result.encrypted),
-                key: result.key,
-                iv: result.iv,
-                size: result.encrypted.length,
-            };
-        },
-    );
-
-    handle(
-        'attachment:decryptBuffer',
-        async (_event, params: { encryptedBase64: string; key: string; iv: string }): Promise<string> => {
-            const encrypted = Buffer.from(params.encryptedBase64, 'base64');
-            const decrypted = decryptFile(encrypted, params.key, params.iv);
-            return decrypted.toString('base64');
-        },
-    );
-
     handle('attachment:downloadBuffer', async (_event, url: string): Promise<Buffer> => {
         if (!isAllowedServerUrl(url)) {
             throw new Error('attachment:downloadBuffer: URL not in allowed servers');
@@ -567,10 +446,7 @@ export function registerIpcHandlers(): void {
 
     handle(
         'video:prepare',
-        async (
-            _event,
-            params: { attachmentId: string; downloadUrl: string; key: string; iv: string; mimeType: string },
-        ): Promise<string> => {
+        async (_event, params: { attachmentId: string; downloadUrl: string; mimeType: string }): Promise<string> => {
             if (videoCache.has(params.attachmentId)) {
                 return `app-video://${params.attachmentId}`;
             }
@@ -589,8 +465,7 @@ export function registerIpcHandlers(): void {
                 if (!response.ok) {
                     throw new Error(`Failed to download video: HTTP ${response.status} ${response.statusText}`);
                 }
-                const encrypted = Buffer.from(await response.arrayBuffer());
-                let data = decryptFile(encrypted, params.key, params.iv);
+                let data = Buffer.from(await response.arrayBuffer());
                 let mimeType = params.mimeType;
 
                 const tmpDir = await mkdtemp(join(tmpdir(), 'laradisco-vid-'));
@@ -775,10 +650,8 @@ export function registerIpcHandlers(): void {
             _event,
             params: { fileData: Uint8Array; mimeType: string },
         ): Promise<{
-            thumbnailEncrypted: Uint8Array<ArrayBuffer>;
-            thumbnailKey: string;
-            thumbnailIv: string;
-            thumbnailSize: number;
+            thumbnail: Uint8Array<ArrayBuffer>;
+            size: number;
             width: number;
             height: number;
             format: string;
@@ -787,13 +660,10 @@ export function registerIpcHandlers(): void {
 
             const data = Buffer.from(params.fileData);
             const thumb = await generateThumbnail(data);
-            const encrypted = encryptFile(thumb.thumbnail);
 
             return {
-                thumbnailEncrypted: new Uint8Array(encrypted.encrypted),
-                thumbnailKey: encrypted.key,
-                thumbnailIv: encrypted.iv,
-                thumbnailSize: encrypted.encrypted.length,
+                thumbnail: new Uint8Array(thumb.thumbnail),
+                size: thumb.thumbnail.length,
                 width: thumb.width,
                 height: thumb.height,
                 format: thumb.format,

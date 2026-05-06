@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Szyfrowanie",
-                "description": "Zarządzaj ustawieniami szyfrowania end-to-end",
-                "active": "Szyfrowanie aktywne",
-                "notSetUp": "Szyfrowanie nieskonfigurowane",
-                "activeDescription": "Twoje wiadomości są szyfrowane end-to-end.",
-                "notSetUpDescription": "Skonfiguruj szyfrowanie, aby zabezpieczyć wiadomości."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Kopia zapasowa kluczy",
-                "description": "Utwórz kopię zapasową kluczy, aby używać szyfrowania na wielu urządzeniach",
-                "exists": "Kopia zapasowa istnieje",
-                "none": "Brak kopii zapasowej",
-                "existsDescription": "Twoje klucze mają kopię zapasową i można je przywrócić na nowych urządzeniach.",
-                "noneDescription": "Utwórz kopię zapasową, aby używać szyfrowania na innych urządzeniach.",
-                "update": "Aktualizuj kopię zapasową",
-                "create": "Utwórz kopię zapasową"
-            },
-            "devices": {
-                "title": "Urządzenia",
-                "description": "Zarządzaj urządzeniami powiązanymi z Twoją tożsamością szyfrowania",
-                "empty": "Nie znaleziono urządzeń.",
-                "thisDevice": "To urządzenie",
-                "added": "Dodano {date}"
-            },
-            "auditLog": {
-                "title": "Dziennik audytu",
-                "description": "Dziennik transparentności kluczy — kryptograficzny zapis wszystkich zdarzeń szyfrowania",
-                "load": "Załaduj dziennik audytu",
-                "deviceLabel": "Urządzenie:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Utworzono tożsamość",
-                    "device_registered": "Zarejestrowano urządzenie",
-                    "device_revoked": "Unieważniono urządzenie",
-                    "backup_created": "Utworzono kopię zapasową kluczy",
-                    "backup_restored": "Przywrócono kopię zapasową kluczy",
-                    "key_package_uploaded": "Przesłano pakiety kluczy",
-                    "signed_prekey_rotated": "Zrotowano podpisany prekey"
-                }
-            },
-            "danger": {
-                "title": "Strefa niebezpieczna",
-                "resetTitle": "Resetuj szyfrowanie",
-                "resetDescription": "Usuń wszystkie lokalne klucze szyfrowania. Będzie trzeba ponownie skonfigurować szyfrowanie.",
-                "reset": "Resetuj"
-            },
-            "dialogs": {
-                "revokeTitle": "Unieważnij urządzenie",
-                "revokeDescription": "Czy na pewno chcesz unieważnić {name}? To urządzenie nie będzie już mogło odszyfrować nowych wiadomości.",
-                "revoke": "Unieważnij",
-                "renameTitle": "Zmień nazwę urządzenia",
-                "renameDescription": "Wprowadź nową nazwę dla tego urządzenia.",
-                "renamePlaceholder": "Nazwa urządzenia",
-                "rename": "Zmień nazwę",
-                "wipeTitle": "Resetuj szyfrowanie",
-                "wipeDescription": "To trwale usunie wszystkie klucze szyfrowania z tego urządzenia. Utracisz możliwość odszyfrowania istniejących wiadomości, chyba że masz kopię zapasową kluczy. Tej operacji nie można cofnąć.",
-                "wipeConfirm": "Usuń wszystkie klucze",
-                "never": "Nigdy"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} w #{channel}",
-        "encryptedMessage": "[Zaszyfrowana wiadomość]",
         "sentMessage": "wysłał wiadomość",
         "inChannelPrefix": "w #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Łączenie...",
         "testConnection": "Testuj połączenie",
-        "continue": "Kontynuuj",
-        "savedServers": "Zapisane serwery",
-        "active": "Aktywny"
+        "continue": "Kontynuuj"
     },
     "updates": {
         "available": "Dostępna aktualizacja",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "Odrzuć",
-            "unknown": "Nieznany",
-            "encryptedMessage": "[Zaszyfrowana wiadomość]",
-            "unableToDecrypt": "[Nie można odszyfrować]",
-            "unableToDecryptInline": "[Nie można odszyfrować tej wiadomości]"
+            "unknown": "Nieznany"
         },
         "messages": {
             "selectChannel": "Wybierz kanał",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "Szukaj wiadomości",
             "showMembers": "Pokaż członków",
             "hideMembers": "Ukryj członków",
-            "encryptionNotSetUp": "Szyfrowanie nie jest skonfigurowane. Dokończ konfigurację E2EE przed wysyłaniem wiadomości.",
-            "failedToEncrypt": "Nie udało się zaszyfrować wiadomości. Spróbuj ponownie.",
             "failedToSend": "Nie udało się wysłać wiadomości. Spróbuj ponownie.",
             "failedToUpload": "Nie udało się przesłać {fileName}. Spróbuj ponownie.",
             "fetchingLinkPreview": "Pobieranie podglądu linku…"
@@ -771,7 +715,6 @@
             "replyingTo": "Odpowiadasz do {user}",
             "fileTooLarge": "{count} plików przekracza limit 100 MB: {files}",
             "preparing": "Przygotowywanie…",
-            "encrypting": "Szyfrowanie…",
             "finishing": "Finalizowanie…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "Brak odpowiedzi. Rozpocznij konwersację!",
             "replyPlaceholder": "Odpowiedz w wątku...",
             "replyCount": "{count} odpowiedź | {count} odpowiedzi",
-            "encryptionNotSetUp": "Szyfrowanie nie jest skonfigurowane.",
-            "failedToEncrypt": "Nie udało się zaszyfrować wiadomości.",
             "failedToSendReply": "Nie udało się wysłać odpowiedzi.",
             "deleteDialogTitle": "Usuń wiadomość",
             "deleteDialogDescription": "Czy na pewno chcesz usunąć tę wiadomość? Tej operacji nie można cofnąć.",
@@ -834,7 +775,7 @@
             "noResults": "Nie znaleziono wyników",
             "resultsCount": "{count} wynik | {count} wyników",
             "typeToSearch": "Wpisz, aby wyszukać wiadomości",
-            "offlineNote": "Wyszukiwanie jest w pełni lokalne — działa offline i nigdy nie opuszcza twojego urządzenia",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Spróbuj innych terminów wyszukiwania",
             "loadMore": "Załaduj więcej wyników",
             "unknownUser": "Nieznany"
@@ -875,8 +816,7 @@
             "noUsersFound": "Nie znaleziono użytkowników",
             "noDmsYet": "Brak wiadomości prywatnych",
             "startConversationHint": "Kliknij +, aby rozpocząć konwersację",
-            "backToChannels": "Powrót do kanałów",
-            "unableToDecrypt": "[Nie można odszyfrować]"
+            "backToChannels": "Powrót do kanałów"
         },
         "userProfile": {
             "unknownUser": "Nieznany użytkownik",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "Szyfrowanie end-to-end",
-            "description": "Zabezpiecz swoje wiadomości, aby tylko Ty i zamierzeni odbiorcy mogli je odczytać.",
-            "checking": "Sprawdzanie statusu szyfrowania...",
-            "restoreTitle": "Przywróć swoje klucze",
-            "restoreDescription": "Znaleziono kopię zapasową kluczy. Wprowadź PIN kopii zapasowej, aby przywrócić tożsamość szyfrowania na tym urządzeniu.",
-            "deviceName": "Nazwa urządzenia",
-            "deviceNamePlaceholder": "np. Mój laptop",
-            "backupPin": "PIN kopii zapasowej",
-            "backupPinPlaceholder": "Wprowadź PIN kopii zapasowej",
-            "incorrectPin": "Nieprawidłowy PIN",
-            "restoreContinue": "Przywróć i kontynuuj",
-            "newIdentity": "Nowa tożsamość",
-            "generating": "Generowanie kluczy szyfrowania...",
-            "allSet": "Wszystko gotowe!",
-            "allSetDescription": "Szyfrowanie end-to-end jest aktywne. Twoje wiadomości są teraz zabezpieczone."
-        },
-        "backup": {
-            "restoreTitle": "Przywróć kopię zapasową kluczy",
-            "createTitle": "Utwórz kopię zapasową kluczy",
-            "restoreDescription": "Wprowadź PIN użyty podczas tworzenia kopii zapasowej.",
-            "createDescription": "Wybierz PIN do zaszyfrowania kopii zapasowej kluczy. Będzie potrzebny do przywrócenia kluczy na innym urządzeniu.",
-            "keysRestored": "Klucze przywrócono pomyślnie!",
-            "backupCreated": "Kopię zapasową utworzono pomyślnie!",
-            "backupPinLabel": "PIN kopii zapasowej",
-            "choosePinLabel": "Wybierz PIN",
-            "pinPlaceholderRestore": "Wprowadź PIN kopii zapasowej",
-            "pinPlaceholderCreate": "Minimum 6 znaków",
-            "confirmPin": "Potwierdź PIN",
-            "confirmPinPlaceholder": "Wprowadź PIN ponownie",
-            "pinsDoNotMatch": "PIN-y nie są zgodne",
-            "backupFailed": "Kopia zapasowa nieudana",
-            "restoreFailed": "Przywracanie nieudane",
-            "importantLabel": "Ważne:",
-            "warningPinOnly": "Ten PIN jest używany tylko do szyfrowania kopii zapasowej kluczy",
-            "warningNeverSent": "Nigdy nie jest wysyłany na serwer",
-            "warningForgotten": "Jeśli zapomnisz PIN-u, nie będziesz mógł przywrócić kluczy",
-            "warningStrong": "Kopia zapasowa używa silnego szyfrowania (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Przywróć klucze",
-            "createBackup": "Utwórz kopię zapasową"
-        },
         "avatarCrop": {
             "title": "Zaktualizuj awatar",
             "description": "Przytnij i prześlij nowe zdjęcie profilowe",

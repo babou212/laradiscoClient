@@ -1,8 +1,5 @@
 import { lookup } from 'dns/promises';
-import { eq } from 'drizzle-orm';
 import ipaddr from 'ipaddr.js';
-import { getDb } from '../db';
-import { linkPreviews } from '../db/schema';
 import { normalizeUrl } from './urlNormalize';
 
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
@@ -11,10 +8,6 @@ const FETCH_TIMEOUT_MS = 8000;
 const IMAGE_FETCH_TIMEOUT_MS = 4000;
 const MAX_REDIRECTS = 5;
 const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0';
-
-const CACHE_TTL_OK = 24 * 60 * 60 * 1000;
-const CACHE_TTL_OK_NO_IMAGE = 15 * 60 * 1000;
-const CACHE_TTL_FAILED = 60 * 60 * 1000;
 
 export interface LinkPreviewMetadata {
     url: string;
@@ -267,75 +260,6 @@ function parseOgMetadata(html: string, finalUrl: string): LinkPreviewMetadata {
     };
 }
 
-function lookupCache(url: string): UnfurlResult | null {
-    const db = getDb();
-    const row = db.select().from(linkPreviews).where(eq(linkPreviews.url, url)).get();
-    if (!row) return null;
-
-    const age = Date.now() - row.fetched_at;
-    if (row.status === 'blocked') {
-        return { status: 'blocked', error: row.error ?? 'Blocked' };
-    }
-    if (row.status === 'failed') {
-        if (age > CACHE_TTL_FAILED) return null;
-        return { status: 'failed', error: row.error ?? 'Failed' };
-    }
-    if (row.status === 'ok') {
-        const ttl = row.image_blob ? CACHE_TTL_OK : CACHE_TTL_OK_NO_IMAGE;
-        if (age > ttl) return null;
-        try {
-            const metadata = JSON.parse(row.metadata_json ?? '{}') as LinkPreviewMetadata;
-            return {
-                status: 'ok',
-                metadata,
-                imageBytes: row.image_blob ?? undefined,
-                imageMime: row.image_mime ?? undefined,
-                imageWidth: row.image_width ?? undefined,
-                imageHeight: row.image_height ?? undefined,
-            };
-        } catch {
-            return null;
-        }
-    }
-    return null;
-}
-
-function writeCache(url: string, result: UnfurlResult): void {
-    const db = getDb();
-    const values =
-        result.status === 'ok'
-            ? {
-                  url,
-                  status: 'ok' as const,
-                  metadata_json: JSON.stringify(result.metadata),
-                  image_blob: result.imageBytes ?? null,
-                  image_mime: result.imageMime ?? null,
-                  image_width: result.imageWidth ?? null,
-                  image_height: result.imageHeight ?? null,
-                  error: null,
-                  fetched_at: Date.now(),
-              }
-            : {
-                  url,
-                  status: result.status,
-                  metadata_json: null,
-                  image_blob: null,
-                  image_mime: null,
-                  image_width: null,
-                  image_height: null,
-                  error: result.error,
-                  fetched_at: Date.now(),
-              };
-
-    db.insert(linkPreviews)
-        .values(values)
-        .onConflictDoUpdate({
-            target: linkPreviews.url,
-            set: values,
-        })
-        .run();
-}
-
 function rewriteForFetch(rawUrl: string): string {
     try {
         const u = new URL(rawUrl);
@@ -560,9 +484,6 @@ export async function unfurlUrl(rawUrl: string): Promise<UnfurlResult> {
         return { status: 'failed', error: 'Invalid URL' };
     }
 
-    const cached = lookupCache(url);
-    if (cached) return cached;
-
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -578,18 +499,12 @@ export async function unfurlUrl(rawUrl: string): Promise<UnfurlResult> {
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             const isBlock = /^Blocked/.test(message);
-            const result: UnfurlResult = isBlock
-                ? { status: 'blocked', error: message }
-                : { status: 'failed', error: message };
-            writeCache(url, result);
-            return result;
+            return isBlock ? { status: 'blocked', error: message } : { status: 'failed', error: message };
         }
 
         const ct = htmlResult.contentType.split(';')[0].trim().toLowerCase();
         if (ct && !ct.includes('html') && !ct.includes('xml')) {
-            const failed: UnfurlResult = { status: 'failed', error: `Unsupported content-type: ${ct}` };
-            writeCache(url, failed);
-            return failed;
+            return { status: 'failed', error: `Unsupported content-type: ${ct}` };
         }
 
         const html = decodeHtml(htmlResult.body, htmlResult.contentType);
@@ -598,9 +513,7 @@ export async function unfurlUrl(rawUrl: string): Promise<UnfurlResult> {
         console.info('[unfurl]', url, metadata.image_url ? `og:image=${metadata.image_url}` : 'no og:image found');
 
         if (looksLikeAntiBot(metadata.title)) {
-            const failed: UnfurlResult = { status: 'failed', error: 'Anti-bot wall detected' };
-            writeCache(url, failed);
-            return failed;
+            return { status: 'failed', error: 'Anti-bot wall detected' };
         }
 
         let imageBytes: Buffer | undefined;
@@ -646,20 +559,13 @@ export async function unfurlUrl(rawUrl: string): Promise<UnfurlResult> {
             console.warn('[unfurl] image unavailable; sending metadata-only preview');
         }
 
-        const ok: UnfurlResult = {
+        return {
             status: 'ok',
             metadata,
             imageBytes,
             imageMime,
         };
-        writeCache(url, ok);
-        return ok;
     } finally {
         clearTimeout(timeout);
     }
-}
-
-export function clearLinkPreviewCache(): void {
-    const db = getDb();
-    db.delete(linkPreviews).run();
 }

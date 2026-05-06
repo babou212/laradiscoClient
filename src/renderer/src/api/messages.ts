@@ -2,25 +2,18 @@ import api from './client';
 import type { JsonApiCollectionResponse, JsonApiResponse, MessageResource } from './types';
 
 export interface SendMessageData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
     reply_to_id?: string;
     attachment_ids?: string[];
-    encrypted_attachments?: {
-        id: string;
-        key: string;
-        iv: string;
-        file_name: string;
-        mime_type: string;
-        size: number;
-        thumbnail_key?: string;
-        thumbnail_iv?: string;
-    }[];
+    client_temp_id?: string;
+    mention_user_ids?: number[];
+    mention_everyone?: boolean;
+    mention_here?: boolean;
+    thread_name?: string;
 }
 
 export interface EditMessageData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
 }
 
 export async function getMessages(
@@ -31,7 +24,7 @@ export async function getMessages(
         params: {
             sort: 'created_at',
             include:
-                'user,reactions,replyTo,replyTo.user,threadStarted,threadStarted.latestReply,threadStarted.latestReply.user,encryptedAttachments',
+                'user,reactions,replyTo,replyTo.user,threadStarted,threadStarted.latestReply,threadStarted.latestReply.user,attachments',
             ...params,
         },
     });

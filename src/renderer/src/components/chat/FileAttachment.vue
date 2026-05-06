@@ -1,27 +1,24 @@
 <script setup lang="ts">
 import { Download, File, Image, Loader2, X } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AudioPlayer from './AudioPlayer.vue';
 import PdfViewer from './PdfViewer.vue';
 import VideoPlayer from './VideoPlayer.vue';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
+import type { Attachment } from '@/types/chat';
 
 const props = defineProps<{
-    attachment: EncryptedAttachmentMeta;
+    attachment: Attachment;
 }>();
 
 const { t } = useI18n();
 
 const thumbnailUrl = shallowRef<string | null>(props.attachment.thumbnail_data_url ?? null);
-const thumbnailLoading = shallowRef(false);
+const downloadUrl = shallowRef<string | null>(null);
 const downloading = shallowRef(false);
 const lightboxOpen = shallowRef(false);
-const fullImageUrl = shallowRef<string | null>(null);
-const fullImageLoading = shallowRef(false);
 
 const isImage = computed(() => props.attachment.mime_type.startsWith('image/'));
 const isAudio = computed(() => props.attachment.mime_type.startsWith('audio/'));
@@ -42,64 +39,27 @@ onBeforeUnmount(() => {
     if (thumbnailUrl.value && thumbnailUrl.value.startsWith('blob:')) {
         URL.revokeObjectURL(thumbnailUrl.value);
     }
-    if (fullImageUrl.value) {
-        URL.revokeObjectURL(fullImageUrl.value);
-    }
 });
 
-function onThumbnailError() {
-    if (thumbnailUrl.value) {
-        thumbnailUrl.value = null;
-        loadThumbnail();
+async function ensureUrls(): Promise<{ download_url: string; thumbnail_url?: string }> {
+    const urls = await getAttachmentDownloadUrl(props.attachment.id);
+    downloadUrl.value = urls.download_url;
+    if (urls.thumbnail_url && !thumbnailUrl.value) {
+        thumbnailUrl.value = urls.thumbnail_url;
     }
-}
-
-async function loadThumbnail() {
-    if (!props.attachment.thumbnail_key || thumbnailLoading.value || thumbnailUrl.value) return;
-    thumbnailLoading.value = true;
-
-    try {
-        const { thumbnail_url } = await getAttachmentDownloadUrl(props.attachment.id);
-        if (!thumbnail_url) return;
-
-        const encryptedBuffer = await window.api.attachments.downloadBuffer(thumbnail_url);
-
-        const decryptedBuffer = await decryptAttachment(
-            encryptedBuffer,
-            props.attachment.thumbnail_key!,
-            props.attachment.thumbnail_iv!,
-        );
-        const blob = new Blob([decryptedBuffer], { type: props.attachment.mime_type });
-        thumbnailUrl.value = URL.createObjectURL(blob);
-    } catch (err) {
-        console.error('Failed to load thumbnail:', err);
-    } finally {
-        thumbnailLoading.value = false;
-    }
-}
-
-async function decryptFullImage(): Promise<string> {
-    const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
-
-    const encryptedBuffer = await window.api.attachments.downloadBuffer(download_url);
-
-    const decryptedBuffer = await decryptAttachment(encryptedBuffer, props.attachment.key, props.attachment.iv);
-    const blob = new Blob([decryptedBuffer], { type: props.attachment.mime_type });
-    return URL.createObjectURL(blob);
+    return urls;
 }
 
 async function openLightbox() {
-    lightboxOpen.value = true;
-    if (fullImageUrl.value) return;
-    fullImageLoading.value = true;
-    try {
-        fullImageUrl.value = await decryptFullImage();
-    } catch (err) {
-        console.error('Failed to load full image:', err);
-        lightboxOpen.value = false;
-    } finally {
-        fullImageLoading.value = false;
+    if (!downloadUrl.value) {
+        try {
+            await ensureUrls();
+        } catch (err) {
+            console.error('Failed to load attachment:', err);
+            return;
+        }
     }
+    lightboxOpen.value = true;
 }
 
 async function downloadFile() {
@@ -107,18 +67,13 @@ async function downloadFile() {
     downloading.value = true;
 
     try {
-        const url = fullImageUrl.value ?? (await decryptFullImage());
-
+        const url = downloadUrl.value ?? (await ensureUrls()).download_url;
         const a = document.createElement('a');
         a.href = url;
         a.download = props.attachment.file_name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
-        if (!fullImageUrl.value) {
-            URL.revokeObjectURL(url);
-        }
     } catch (err) {
         console.error('Failed to download file:', err);
     } finally {
@@ -132,13 +87,9 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-watch(
-    () => props.attachment.thumbnail_key,
-    (key) => {
-        if (key) loadThumbnail();
-    },
-    { immediate: true },
-);
+if (isImage.value && props.attachment.has_thumbnail && !thumbnailUrl.value) {
+    ensureUrls().catch((err) => console.error('Failed to load attachment urls:', err));
+}
 </script>
 
 <template>
@@ -150,18 +101,18 @@ watch(
         <PdfViewer v-else-if="isPdf" :attachment="attachment" />
 
         <div
-            v-else-if="isImage && (thumbnailUrl || attachment.thumbnail_key)"
+            v-else-if="isImage && (thumbnailUrl || attachment.has_thumbnail)"
             class="bg-muted group cursor-pointer overflow-hidden rounded-lg"
             @click="openLightbox"
         >
             <div
                 class="relative"
                 :style="
-                    attachment.thumbnail_width && attachment.thumbnail_height
+                    attachment.width && attachment.height
                         ? {
-                              aspectRatio: `${attachment.thumbnail_width}/${attachment.thumbnail_height}`,
+                              aspectRatio: `${attachment.width}/${attachment.height}`,
                               maxHeight: '15rem',
-                              maxWidth: `calc(15rem * ${attachment.thumbnail_width} / ${attachment.thumbnail_height})`,
+                              maxWidth: `calc(15rem * ${attachment.width} / ${attachment.height})`,
                           }
                         : { aspectRatio: '16/9', maxHeight: '15rem', maxWidth: 'calc(15rem * 16 / 9)' }
                 "
@@ -171,7 +122,6 @@ watch(
                     :src="thumbnailUrl"
                     :alt="attachment.file_name"
                     class="h-full w-full rounded-lg object-cover"
-                    @error="onThumbnailError"
                 />
                 <div v-else class="flex h-full w-full items-center justify-center">
                     <Loader2 :size="24" class="text-muted-foreground animate-spin" />
@@ -209,8 +159,8 @@ watch(
                 >
                     <div class="relative max-h-[90vh] max-w-[90vw]">
                         <img
-                            v-if="fullImageUrl"
-                            :src="fullImageUrl"
+                            v-if="downloadUrl"
+                            :src="downloadUrl"
                             :alt="attachment.file_name"
                             class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
                         />

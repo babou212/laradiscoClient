@@ -19,15 +19,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { useE2EE } from '@/composables/useE2EE';
 import { useMessageScroll } from '@/composables/useMessageScroll';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
-import { useE2eeStore } from '@/stores/e2ee';
 import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import { useUsersStore } from '@/stores/users';
@@ -43,10 +40,8 @@ const emit = defineEmits<{ close: [] }>();
 
 const authStore = useAuthStore();
 const usersStore = useUsersStore();
-const e2eeStore = useE2eeStore();
 const presenceStore = usePresenceStore();
 const threadStore = useThreadStore();
-const e2ee = useE2EE();
 const { t } = useI18n();
 
 const currentUser = computed(() => authStore.user);
@@ -61,12 +56,7 @@ let typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 let currentThreadListener: string | null = null;
 
-const parentDisplayContent = computed(() => {
-    const msg = threadStore.parentMessage;
-    if (!msg) return '';
-    if (msg.decrypt_error) return t('chat.common.unableToDecryptInline');
-    return msg.decrypted_content ?? '';
-});
+const parentDisplayContent = computed(() => threadStore.parentMessage?.content ?? '');
 
 const parentRendered = computed(() => renderMarkdownWithMentions(parentDisplayContent.value));
 
@@ -75,12 +65,6 @@ const isParentGifUrl = computed(() => {
     return (
         !!content.match(/^https?:\/\/.*\.gif$/i) || content.includes('tenor.com') || content.includes('media.tenor.com')
     );
-});
-
-const isParentDecrypting = computed(() => {
-    const msg = threadStore.parentMessage;
-    if (!msg) return false;
-    return !msg.decrypt_error && msg.decrypted_content === undefined;
 });
 
 function extractMentionMetadata(content: string): {
@@ -109,61 +93,19 @@ const joinThread = (threadId: number | string) => {
     currentThreadListener = `thread.${threadId}`;
 
     echo.join(currentThreadListener)
-        .listen('ThreadMessageSent', async (data: { message: MessageData }) => {
+        .listen('ThreadMessageSent', (data: { message: MessageData }) => {
             coerceBroadcastMessage(data.message);
-            if (data.message.user.id === currentUser.value?.id) {
-                const ourDeviceId = e2eeStore.isReady ? await e2ee.getDeviceId() : null;
-                const msgDeviceId = data.message.sender_device_id ?? '';
-                if (!msgDeviceId || !ourDeviceId || msgDeviceId === ourDeviceId) return;
-            }
-
-            if (e2eeStore.isReady) {
-                await e2ee.decryptMessageQueued(data.message, Number(props.channelId), undefined);
-            }
-
+            if (threadStore.threadMessages.some((m) => m.id === data.message.id)) return;
             threadStore.addThreadMessage(data.message);
             notifyNewMessage();
         })
-        .listen('ThreadMessageEdited', async (data: { message: MessageData }) => {
+        .listen('ThreadMessageEdited', (data: { message: MessageData }) => {
             coerceBroadcastMessage(data.message);
-            const update: Partial<MessageData> = {
+            threadStore.updateThreadMessage(data.message.id, {
                 content: data.message.content,
                 is_edited: true,
                 edited_at: data.message.edited_at,
-            };
-
-            if (e2eeStore.isReady) {
-                const ourDeviceId = await e2ee.getDeviceId();
-                if (ourDeviceId && data.message.sender_device_id === ourDeviceId) {
-                    const temp: MessageData[] = [
-                        { ...data.message, decrypted_content: undefined, decrypt_error: false },
-                    ];
-                    await e2ee.lookupDecryptedCache(temp);
-                    if (temp[0].decrypted_content) {
-                        update.decrypted_content = temp[0].decrypted_content;
-                        update.decrypted_attachments = temp[0].decrypted_attachments;
-                        update.decrypt_error = false;
-                    } else {
-                        update.decrypt_error = true;
-                    }
-                } else {
-                    try {
-                        const plaintext = await e2ee.decrypt(
-                            data.message.content,
-                            Number(props.channelId),
-                            undefined,
-                            Number(data.message.id),
-                        );
-                        update.decrypted_content = plaintext.text;
-                        update.decrypted_attachments = plaintext.attachments;
-                        update.decrypt_error = false;
-                    } catch {
-                        update.decrypt_error = true;
-                    }
-                }
-            }
-
-            threadStore.updateThreadMessage(data.message.id, update);
+            });
         })
         .listen('ThreadMessageDeleted', (data: { message_id: number | string }) => {
             threadStore.removeThreadMessage(String(data.message_id));
@@ -224,21 +166,13 @@ const canLoadOlder = computed(() => threadStore.prevCursor != null);
 const canLoadNewer = computed(() => false);
 const isViewingHistoryThread = computed(() => false);
 
-async function decryptThreadAfterLoad(): Promise<void> {
-    if (!e2eeStore.isReady) return;
-    await e2ee.decryptMessages(threadStore.threadMessages, Number(props.channelId), undefined);
-}
-
 const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, notifyNewMessage } = useMessageScroll({
     containerRef: messagesContainer,
     contentRef: messagesContent,
     canLoadOlder,
     canLoadNewer,
     isViewingHistory: isViewingHistoryThread,
-    onLoadOlder: async () => {
-        await threadStore.loadOlderMessages(props.channelId);
-        await decryptThreadAfterLoad();
-    },
+    onLoadOlder: () => threadStore.loadOlderMessages(props.channelId),
     onLoadNewer: async () => {},
     onLoadAround: async () => {},
     onResetToLive: async () => {},
@@ -270,7 +204,7 @@ const emitTyping = () => {
 
 watch(
     () => threadStore.activeThread?.id,
-    async (threadId, oldThreadId) => {
+    (threadId, oldThreadId) => {
         if (oldThreadId) leaveThread();
         if (threadId) {
             joinThread(threadId);
@@ -281,9 +215,8 @@ watch(
 
 watch(
     () => threadStore.isLoadingMessages,
-    async (loading, wasLoading) => {
+    (loading, wasLoading) => {
         if (wasLoading && !loading) {
-            await decryptThreadAfterLoad();
             resetThreadScroll();
         }
     },
@@ -300,35 +233,16 @@ const sendReply = async (content: string) => {
     sendError.value = null;
 
     const mentionMeta = extractMentionMetadata(content);
-    let messageContent = content;
-
-    if (!e2eeStore.isReady) {
-        sendError.value = t('chat.thread.encryptionNotSetUp');
-        return;
-    }
-
-    try {
-        messageContent = await e2ee.encryptForChannel(Number(props.channelId), content);
-    } catch {
-        sendError.value = t('chat.thread.failedToEncrypt');
-        return;
-    }
 
     const extra: {
-        sender_device_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
         mention_here?: boolean;
     } = {};
 
-    {
-        const senderDeviceId = await e2ee.getDeviceId();
-        if (senderDeviceId) extra.sender_device_id = senderDeviceId;
-
-        if (mentionMeta.mentionEveryone) extra.mention_everyone = true;
-        else if (mentionMeta.mentionHere) extra.mention_here = true;
-        else if (mentionMeta.userIds.length > 0) extra.mention_user_ids = mentionMeta.userIds;
-    }
+    if (mentionMeta.mentionEveryone) extra.mention_everyone = true;
+    else if (mentionMeta.mentionHere) extra.mention_here = true;
+    else if (mentionMeta.userIds.length > 0) extra.mention_user_ids = mentionMeta.userIds;
 
     const optimistic: MessageData = {
         id: String(Date.now()),
@@ -344,21 +258,14 @@ const sendReply = async (content: string) => {
         },
         reactions: [],
         created_at: new Date().toISOString(),
-        decrypted_content: content,
     };
 
     threadStore.addThreadMessage(optimistic);
     resetThreadScroll();
 
-    const reply = await threadStore.sendReply(props.channelId, threadStore.parentMessage.id, messageContent, extra);
+    const reply = await threadStore.sendReply(props.channelId, threadStore.parentMessage.id, content, extra);
 
     if (reply) {
-        reply.decrypted_content = content;
-        e2ee.cacheDecryptedContent(Number(reply.id), content, {
-            conversationType: 'channel',
-            conversationId: Number(props.channelId),
-            userName: currentUser.value?.username ?? currentUser.value!.name,
-        }).catch(() => {});
         const idx = threadStore.threadMessages.findIndex((m) => m.id === optimistic.id);
         if (idx !== -1) threadStore.threadMessages.splice(idx, 1, reply);
     } else {
@@ -369,7 +276,7 @@ const sendReply = async (content: string) => {
 
 const startEdit = (message: MessageData) => {
     editingMessageId.value = message.id;
-    editContent.value = message.decrypted_content ?? message.content;
+    editContent.value = message.content ?? '';
 };
 
 const cancelEdit = () => {
@@ -380,25 +287,8 @@ const cancelEdit = () => {
 const saveEdit = async (message: MessageData) => {
     if (!editContent.value.trim() || !threadStore.activeThread) return;
     try {
-        if (!e2eeStore.isReady) return;
-
-        const extra: {
-            sender_device_id?: string;
-        } = {};
-        const contentToSend = await e2ee.encryptForChannel(Number(props.channelId), editContent.value);
-        const senderDeviceId = await e2ee.getDeviceId();
-        if (senderDeviceId) extra.sender_device_id = senderDeviceId;
-
-        await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, contentToSend, extra);
-
-        e2ee.cacheDecryptedContent(Number(message.id), editContent.value, {
-            conversationType: 'channel',
-            conversationId: Number(props.channelId),
-            userName: currentUser.value?.username ?? currentUser.value!.name,
-        }).catch(() => {});
-        threadStore.updateThreadMessage(message.id, {
-            decrypted_content: editContent.value,
-        });
+        await threadStore.editMessage(props.channelId, threadStore.activeThread.id, message.id, editContent.value);
+        threadStore.updateThreadMessage(message.id, { content: editContent.value });
         cancelEdit();
     } catch (error) {
         console.error('Failed to edit thread message:', error);
@@ -419,7 +309,6 @@ const confirmDeleteMessage = async () => {
 
     try {
         await threadStore.deleteMessage(props.channelId, threadStore.activeThread.id, message.id);
-        e2ee.removeFromSearchIndex(Number(message.id)).catch(() => {});
     } finally {
         showDeleteDialog.value = false;
         pendingDeleteMessage.value = null;
@@ -514,24 +403,13 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
                             {{ formatMessageDate(threadStore.parentMessage.created_at) }}
                         </span>
                     </div>
-                    <div v-if="isParentDecrypting" class="mt-1 flex flex-col gap-1">
-                        <Skeleton class="h-3 w-3/4" />
-                        <Skeleton class="h-3 w-1/2" />
-                    </div>
-                    <div
-                        v-else-if="isParentGifUrl"
-                        class="mt-1 w-fit overflow-hidden rounded-lg"
-                        style="min-height: 80px"
-                    >
+                    <div v-if="isParentGifUrl" class="mt-1 w-fit overflow-hidden rounded-lg" style="min-height: 80px">
                         <img :src="parentDisplayContent" alt="GIF" class="h-auto max-w-xs" loading="lazy" />
                     </div>
                     <div v-else class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="parentRendered" />
-                    <div
-                        v-if="!isParentDecrypting && threadStore.parentMessage.decrypted_attachments?.length"
-                        class="mt-1.5 flex flex-wrap gap-2"
-                    >
+                    <div v-if="threadStore.parentMessage.attachments?.length" class="mt-1.5 flex flex-wrap gap-2">
                         <FileAttachment
-                            v-for="att in threadStore.parentMessage.decrypted_attachments"
+                            v-for="att in threadStore.parentMessage.attachments"
                             :key="att.id"
                             :attachment="att"
                         />

@@ -9,16 +9,12 @@ export type { NotificationsApi } from './types/notifications';
 export type { SettingsApi } from './types/settings';
 export type { WindowApi } from './types/window';
 export type { UpdaterApi } from './types/updater';
-export type { MlsSetupResult, MlsKeyBackup, MlsGroupInfo, MlsApi } from './types/mls';
-export type { SearchResult, MessagesApi } from './types/messages';
 export type { TrayApi } from './types/tray';
 export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unfurl';
 
 import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
 import type { ClipboardApi } from './types/clipboard';
-import type { MessagesApi } from './types/messages';
-import type { MlsApi } from './types/mls';
 import type { NotificationsApi } from './types/notifications';
 import type { PttApi } from './types/ptt';
 import type { ServerApi } from './types/server';
@@ -36,8 +32,6 @@ interface AppApi {
     settings: SettingsApi;
     window: WindowApi;
     updater: UpdaterApi;
-    mls: MlsApi;
-    messages: MessagesApi;
     attachments: AttachmentsApi;
     clipboard: ClipboardApi;
     unfurl: UnfurlApi;

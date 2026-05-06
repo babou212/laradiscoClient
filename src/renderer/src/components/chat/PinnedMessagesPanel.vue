@@ -44,13 +44,8 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
     }
 });
 
-const displayContent = (message: MessageData): string => {
-    if (message.decrypt_error) return t('chat.common.unableToDecryptInline');
-    return message.decrypted_content ?? '';
-};
-
 const renderedContent = (message: MessageData): string => {
-    return renderMarkdownWithMentions(displayContent(message));
+    return renderMarkdownWithMentions(message.content ?? '');
 };
 </script>
 

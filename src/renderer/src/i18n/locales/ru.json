@@ -260,65 +260,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Шифрование",
-                "description": "Управление настройками сквозного шифрования",
-                "active": "Шифрование активно",
-                "notSetUp": "Шифрование не настроено",
-                "activeDescription": "Ваши сообщения защищены сквозным шифрованием.",
-                "notSetUpDescription": "Настройте шифрование для защиты сообщений."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Резервная копия ключей",
-                "description": "Создайте резервную копию ключей для использования шифрования на нескольких устройствах",
-                "exists": "Копия существует",
-                "none": "Нет копии",
-                "existsDescription": "Ваши ключи сохранены и могут быть восстановлены на новых устройствах.",
-                "noneDescription": "Создайте резервную копию для использования шифрования на других устройствах.",
-                "update": "Обновить копию",
-                "create": "Создать копию"
-            },
-            "devices": {
-                "title": "Устройства",
-                "description": "Управление устройствами, связанными с вашей учётной записью шифрования",
-                "empty": "Устройства не найдены.",
-                "thisDevice": "Это устройство",
-                "added": "Добавлено {date}"
-            },
-            "auditLog": {
-                "title": "Журнал аудита",
-                "description": "Журнал прозрачности ключей — криптографическая запись всех событий шифрования",
-                "load": "Загрузить журнал аудита",
-                "deviceLabel": "Устройство:",
-                "hashLabel": "Хеш:",
-                "events": {
-                    "identity_created": "Личность создана",
-                    "device_registered": "Устройство зарегистрировано",
-                    "device_revoked": "Устройство отозвано",
-                    "backup_created": "Резервная копия ключей создана",
-                    "backup_restored": "Резервная копия ключей восстановлена",
-                    "key_package_uploaded": "Пакеты ключей загружены",
-                    "signed_prekey_rotated": "Подписанный предключ обновлён"
-                }
-            },
-            "danger": {
-                "title": "Опасная зона",
-                "resetTitle": "Сбросить шифрование",
-                "resetDescription": "Удалить все локальные ключи шифрования. Вам потребуется заново настроить шифрование.",
-                "reset": "Сбросить"
-            },
-            "dialogs": {
-                "revokeTitle": "Отозвать устройство",
-                "revokeDescription": "Вы уверены, что хотите отозвать {name}? Это устройство больше не сможет расшифровывать новые сообщения.",
-                "revoke": "Отозвать",
-                "renameTitle": "Переименовать устройство",
-                "renameDescription": "Введите новое имя для этого устройства.",
-                "renamePlaceholder": "Имя устройства",
-                "rename": "Переименовать",
-                "wipeTitle": "Сбросить шифрование",
-                "wipeDescription": "Все ключи шифрования на этом устройстве будут безвозвратно удалены. Вы потеряете возможность расшифровывать существующие сообщения, если у вас нет резервной копии ключей. Это действие необратимо.",
-                "wipeConfirm": "Удалить все ключи",
-                "never": "Никогда"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -656,7 +608,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} в #{channel}",
-        "encryptedMessage": "[Зашифрованное сообщение]",
         "sentMessage": "отправил сообщение",
         "inChannelPrefix": "в #{channel}"
     },
@@ -681,9 +632,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Подключение...",
         "testConnection": "Проверить соединение",
-        "continue": "Продолжить",
-        "savedServers": "Сохранённые серверы",
-        "active": "Активен"
+        "continue": "Продолжить"
     },
     "updates": {
         "available": "Доступно обновление",
@@ -731,10 +680,7 @@
     "chat": {
         "common": {
             "dismiss": "Закрыть",
-            "unknown": "Неизвестно",
-            "encryptedMessage": "[Зашифрованное сообщение]",
-            "unableToDecrypt": "[Не удалось расшифровать]",
-            "unableToDecryptInline": "[Не удалось расшифровать это сообщение]"
+            "unknown": "Неизвестно"
         },
         "messages": {
             "selectChannel": "Выберите канал",
@@ -757,8 +703,6 @@
             "searchMessagesTooltip": "Поиск сообщений",
             "showMembers": "Показать участников",
             "hideMembers": "Скрыть участников",
-            "encryptionNotSetUp": "Шифрование не настроено. Завершите настройку E2EE перед отправкой сообщений.",
-            "failedToEncrypt": "Не удалось зашифровать сообщение. Попробуйте снова.",
             "failedToSend": "Не удалось отправить сообщение. Попробуйте снова.",
             "failedToUpload": "Не удалось загрузить {fileName}. Попробуйте снова.",
             "fetchingLinkPreview": "Загрузка предпросмотра ссылки…"
@@ -771,7 +715,6 @@
             "replyingTo": "Ответ для {user}",
             "fileTooLarge": "{count} файлов превышают лимит в 100 МБ: {files}",
             "preparing": "Подготовка…",
-            "encrypting": "Шифрование…",
             "finishing": "Завершение…"
         },
         "thread": {
@@ -781,8 +724,6 @@
             "noReplies": "Ответов пока нет. Начните обсуждение!",
             "replyPlaceholder": "Ответить в ветке...",
             "replyCount": "{count} ответ | {count} ответа | {count} ответов",
-            "encryptionNotSetUp": "Шифрование не настроено.",
-            "failedToEncrypt": "Не удалось зашифровать сообщение.",
             "failedToSendReply": "Не удалось отправить ответ.",
             "deleteDialogTitle": "Удалить сообщение",
             "deleteDialogDescription": "Вы уверены, что хотите удалить это сообщение? Это действие необратимо.",
@@ -834,7 +775,7 @@
             "noResults": "Ничего не найдено",
             "resultsCount": "Найден {count} результат | Найдено {count} результата | Найдено {count} результатов",
             "typeToSearch": "Введите запрос для поиска сообщений",
-            "offlineNote": "Поиск полностью локальный — работает офлайн и не покидает устройство",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Попробуйте другие поисковые запросы",
             "loadMore": "Загрузить ещё",
             "unknownUser": "Неизвестный"
@@ -875,8 +816,7 @@
             "noUsersFound": "Пользователи не найдены",
             "noDmsYet": "Личных сообщений пока нет",
             "startConversationHint": "Нажмите + чтобы начать беседу",
-            "backToChannels": "Вернуться к каналам",
-            "unableToDecrypt": "[Не удалось расшифровать]"
+            "backToChannels": "Вернуться к каналам"
         },
         "userProfile": {
             "unknownUser": "Неизвестный пользователь",
@@ -920,47 +860,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "Сквозное шифрование",
-            "description": "Защитите сообщения так, чтобы их могли читать только вы и получатели.",
-            "checking": "Проверка статуса шифрования...",
-            "restoreTitle": "Восстановить ключи",
-            "restoreDescription": "Найдена резервная копия ключей. Введите PIN-код для восстановления шифрования на этом устройстве.",
-            "deviceName": "Имя устройства",
-            "deviceNamePlaceholder": "напр. Мой ноутбук",
-            "backupPin": "PIN-код резервной копии",
-            "backupPinPlaceholder": "Введите PIN-код",
-            "incorrectPin": "Неверный PIN-код",
-            "restoreContinue": "Восстановить и продолжить",
-            "newIdentity": "Новая личность",
-            "generating": "Генерация ключей шифрования...",
-            "allSet": "Всё готово!",
-            "allSetDescription": "Сквозное шифрование активно. Ваши сообщения теперь защищены."
-        },
-        "backup": {
-            "restoreTitle": "Восстановить резервную копию ключей",
-            "createTitle": "Создать резервную копию ключей",
-            "restoreDescription": "Введите PIN-код, который вы использовали при создании резервной копии.",
-            "createDescription": "Выберите PIN-код для шифрования резервной копии ключей. Он понадобится для восстановления ключей на другом устройстве.",
-            "keysRestored": "Ключи успешно восстановлены!",
-            "backupCreated": "Резервная копия создана!",
-            "backupPinLabel": "PIN-код резервной копии",
-            "choosePinLabel": "Выберите PIN-код",
-            "pinPlaceholderRestore": "Введите PIN-код",
-            "pinPlaceholderCreate": "Минимум 6 символов",
-            "confirmPin": "Подтвердите PIN-код",
-            "confirmPinPlaceholder": "Введите PIN-код ещё раз",
-            "pinsDoNotMatch": "PIN-коды не совпадают",
-            "backupFailed": "Ошибка создания резервной копии",
-            "restoreFailed": "Ошибка восстановления",
-            "importantLabel": "Важно:",
-            "warningPinOnly": "Этот PIN-код используется только для шифрования резервной копии ключей",
-            "warningNeverSent": "Он никогда не отправляется на сервер",
-            "warningForgotten": "Если вы забудете PIN-код, восстановить ключи будет невозможно",
-            "warningStrong": "Резервная копия использует надёжное шифрование (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Восстановить ключи",
-            "createBackup": "Создать резервную копию"
-        },
         "avatarCrop": {
             "title": "Обновить аватар",
             "description": "Обрежьте и загрузите новое изображение профиля",

@@ -9,8 +9,6 @@ import {
     unpinChannelMessage,
     unpinDmMessage,
 } from '@/api/pins';
-import { useE2EE } from '@/composables/useE2EE';
-import { useE2eeStore } from '@/stores/e2ee';
 import { useUsersStore } from '@/stores/users';
 import type { MessageData } from '@/types/chat';
 
@@ -19,8 +17,6 @@ export function usePinnedMessages(
     isDm: Ref<boolean>,
     activeMessages: ComputedRef<MessageData[]>,
 ) {
-    const e2eeStore = useE2eeStore();
-    const e2ee = useE2EE();
     const usersStore = useUsersStore();
 
     const pinnedMessages = ref<MessageData[]>([]);
@@ -45,11 +41,6 @@ export function usePinnedMessages(
 
     async function fetchAndDecryptPinned(): Promise<void> {
         await fetchPinnedMessages();
-        if (e2eeStore.isReady && pinnedMessages.value.length > 0) {
-            const chId = isDm.value ? undefined : channelId.value;
-            const dmId = isDm.value ? channelId.value : undefined;
-            await e2ee.decryptMessages(pinnedMessages.value, chId, dmId);
-        }
     }
 
     async function togglePinnedPanel(): Promise<void> {

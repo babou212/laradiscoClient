@@ -5,18 +5,17 @@ import { useI18n } from 'vue-i18n';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { Slider } from '@/components/ui/slider';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { decryptAttachment } from '@/lib/decrypt-attachment';
-import type { EncryptedAttachmentMeta } from '@/types/chat';
+import type { Attachment } from '@/types/chat';
 
 const props = defineProps<{
-    attachment: EncryptedAttachmentMeta;
+    attachment: Attachment;
 }>();
 
 const { t } = useI18n();
 
 const videoRef = useTemplateRef<HTMLVideoElement>('videoRef');
-const blobUrl = shallowRef<string | null>(null);
-const thumbnailUrl = shallowRef<string | null>(props.attachment.thumbnail_data_url ?? null);
+const videoSrc = shallowRef<string | null>(null);
+const thumbnailUrl = shallowRef<string | null>(null);
 const thumbnailLoading = shallowRef(false);
 const isLoading = shallowRef(false);
 const isBuffering = shallowRef(false);
@@ -47,10 +46,10 @@ const progress = computed(() => {
 
 const seekValue = computed(() => [progress.value]);
 const thumbnailContainerStyle = computed(() => {
-    if (blobUrl.value) return {};
-    if (props.attachment.thumbnail_width && props.attachment.thumbnail_height) {
+    if (videoSrc.value) return {};
+    if (props.attachment.width && props.attachment.height) {
         return {
-            aspectRatio: `${props.attachment.thumbnail_width}/${props.attachment.thumbnail_height}`,
+            aspectRatio: `${props.attachment.width}/${props.attachment.height}`,
             maxHeight: '320px',
             minWidth: '240px',
         };
@@ -77,47 +76,33 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function decryptVideo(): Promise<string> {
+async function prepareVideo(): Promise<string> {
     const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
 
     return window.api.attachments.prepareVideo({
         attachmentId: props.attachment.id,
         downloadUrl: download_url,
-        key: props.attachment.key,
-        iv: props.attachment.iv,
         mimeType: props.attachment.mime_type,
     });
 }
 
-function onThumbnailError() {
-    if (thumbnailUrl.value) {
-        thumbnailUrl.value = null;
-        loadThumbnail();
-    }
-}
-
 async function loadThumbnail() {
-    if (!props.attachment.thumbnail_key || thumbnailLoading.value || thumbnailUrl.value) return;
+    if (!props.attachment.has_thumbnail || thumbnailLoading.value || thumbnailUrl.value) return;
     thumbnailLoading.value = true;
 
     try {
         const { thumbnail_url } = await getAttachmentDownloadUrl(props.attachment.id);
         if (!thumbnail_url) return;
-
-        const encryptedBuffer = await window.api.attachments.downloadBuffer(thumbnail_url);
-
-        const decryptedBuffer = await decryptAttachment(
-            encryptedBuffer,
-            props.attachment.thumbnail_key!,
-            props.attachment.thumbnail_iv!,
-        );
-        const blob = new Blob([decryptedBuffer], { type: 'image/webp' });
-        thumbnailUrl.value = URL.createObjectURL(blob);
+        thumbnailUrl.value = thumbnail_url;
     } catch (err) {
         console.error('Failed to load video thumbnail:', err);
     } finally {
         thumbnailLoading.value = false;
     }
+}
+
+function onThumbnailError() {
+    thumbnailUrl.value = null;
 }
 
 function startTimeTracking() {
@@ -168,12 +153,12 @@ async function loadAndPlay() {
     loadError.value = false;
 
     try {
-        const url = await decryptVideo();
+        const url = await prepareVideo();
         if (!isMounted) {
             window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
             return;
         }
-        blobUrl.value = url;
+        videoSrc.value = url;
         await nextTick();
         videoRef.value?.load();
     } catch (err) {
@@ -200,7 +185,7 @@ function onVideoLoaded() {
 }
 
 function togglePlayPause() {
-    if (!blobUrl.value) {
+    if (!videoSrc.value) {
         loadAndPlay();
         return;
     }
@@ -241,10 +226,10 @@ function onVideoError() {
         console.error('Video element error:', err.code, err.message);
     }
 
-    if (retryCount.value < 1 && blobUrl.value) {
+    if (retryCount.value < 1 && videoSrc.value) {
         retryCount.value++;
         window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
-        blobUrl.value = null;
+        videoSrc.value = null;
         videoReady.value = false;
         isLoading.value = false;
         isBuffering.value = false;
@@ -304,31 +289,13 @@ function setSpeed(speed: number) {
 
 async function downloadFile() {
     try {
-        const sourceUrl = blobUrl.value ?? (await decryptVideo());
-        let tempBlobUrl: string | null = null;
-        let downloadUrl: string;
-
-        if (sourceUrl.startsWith('app-video://')) {
-            const response = await fetch(sourceUrl);
-            const blob = await response.blob();
-            tempBlobUrl = URL.createObjectURL(blob);
-            downloadUrl = tempBlobUrl;
-        } else {
-            downloadUrl = sourceUrl;
-        }
-
+        const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = download_url;
         a.download = props.attachment.file_name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
-        if (tempBlobUrl) {
-            URL.revokeObjectURL(tempBlobUrl);
-        } else if (!blobUrl.value) {
-            await window.api.attachments.cleanupVideo(props.attachment.id);
-        }
     } catch (err) {
         console.error('Failed to download video:', err);
     }
@@ -338,18 +305,13 @@ function cleanup() {
     isMounted = false;
     stopTimeTracking();
     clearTimeout(controlsTimer);
-    if (blobUrl.value) {
+    if (videoSrc.value) {
         window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
-        blobUrl.value = null;
-    }
-    if (thumbnailUrl.value && thumbnailUrl.value.startsWith('blob:')) {
-        const url = thumbnailUrl.value;
-        thumbnailUrl.value = null;
-        URL.revokeObjectURL(url);
+        videoSrc.value = null;
     }
 }
 
-if (props.attachment.thumbnail_key) {
+if (props.attachment.has_thumbnail) {
     loadThumbnail();
 }
 
@@ -386,24 +348,24 @@ onBeforeUnmount(cleanup);
             <div
                 v-if="!videoReady || !isPlaying"
                 class="relative flex items-center justify-center"
-                :class="{ 'absolute inset-0 z-10': blobUrl }"
+                :class="{ 'absolute inset-0 z-10': videoSrc }"
                 :style="thumbnailContainerStyle"
             >
                 <img
-                    v-if="thumbnailUrl && !blobUrl"
+                    v-if="thumbnailUrl && !videoSrc"
                     :src="thumbnailUrl"
                     :alt="attachment.file_name"
                     class="h-full w-full object-cover"
                     @error="onThumbnailError"
                 />
-                <div v-else-if="!blobUrl" class="bg-accent/50 absolute inset-0 flex items-center justify-center">
+                <div v-else-if="!videoSrc" class="bg-accent/50 absolute inset-0 flex items-center justify-center">
                     <Film :size="32" class="text-muted-foreground" />
                 </div>
 
                 <button
                     v-if="!isPlaying && !videoReady"
                     class="absolute inset-0 z-20 flex items-center justify-center transition-colors hover:bg-black/20"
-                    @click="blobUrl ? togglePlayPause() : loadAndPlay()"
+                    @click="videoSrc ? togglePlayPause() : loadAndPlay()"
                 >
                     <div
                         v-if="isLoading"
@@ -421,10 +383,10 @@ onBeforeUnmount(cleanup);
             </div>
 
             <video
-                v-if="blobUrl"
+                v-if="videoSrc"
                 ref="videoRef"
                 class="max-h-[70vh] w-full"
-                :src="blobUrl"
+                :src="videoSrc"
                 preload="auto"
                 playsinline
                 @canplay="onVideoLoaded"
@@ -436,14 +398,14 @@ onBeforeUnmount(cleanup);
             />
 
             <div
-                v-if="blobUrl && isBuffering"
+                v-if="videoSrc && isBuffering"
                 class="absolute inset-0 z-20 flex items-center justify-center bg-black/40"
             >
                 <Loader2 :size="32" class="animate-spin text-white" />
             </div>
 
             <div
-                v-if="blobUrl"
+                v-if="videoSrc"
                 class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pt-8 pb-2 transition-opacity duration-300"
                 :class="controlsVisible ? 'opacity-100' : 'pointer-events-none opacity-0'"
             >
@@ -529,7 +491,7 @@ onBeforeUnmount(cleanup);
 
             <Transition name="fade">
                 <button
-                    v-if="blobUrl && videoReady && isPaused && !isBuffering"
+                    v-if="videoSrc && videoReady && isPaused && !isBuffering"
                     class="absolute inset-0 z-10 flex items-center justify-center"
                     @click="togglePlayPause"
                 >

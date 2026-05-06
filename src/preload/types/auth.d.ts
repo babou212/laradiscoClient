@@ -22,20 +22,17 @@ export interface AuthUser {
 }
 
 export interface AuthSession {
-    id: number;
-    server_id: number;
     user_id: number;
     user_name: string;
     user_email: string;
     user_avatar: string | null;
     token: string;
-    created_at: string;
+    saved_at: string;
 }
 
 export interface AuthApi {
     login: (
         host: string,
-        serverId: number,
         email: string,
         password: string,
     ) => Promise<{
@@ -48,18 +45,16 @@ export interface AuthApi {
     }>;
     twoFactorChallenge: (
         host: string,
-        serverId: number,
         challengeToken: string,
         code: string | null,
         recoveryCode: string | null,
     ) => Promise<{ success: boolean; user?: AuthUser; token?: string; error?: string }>;
-    getSession: (serverId: number) => Promise<AuthSession | null>;
-    logout: (host: string, serverId: number) => Promise<{ success: boolean }>;
+    getSession: () => Promise<AuthSession | null>;
+    logout: (host: string) => Promise<{ success: boolean }>;
     validate: (host: string, token: string) => Promise<{ valid: boolean; user?: AuthUser }>;
     validateInvite: (host: string, token: string) => Promise<{ success: boolean; error?: string }>;
     register: (
         host: string,
-        serverId: number,
         inviteToken: string,
         name: string,
         username: string,

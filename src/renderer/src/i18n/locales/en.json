@@ -262,65 +262,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Encryption",
-                "description": "Manage your end-to-end encryption settings",
-                "active": "Encryption Active",
-                "notSetUp": "Encryption Not Set Up",
-                "activeDescription": "Your messages are end-to-end encrypted.",
-                "notSetUpDescription": "Set up encryption to secure your messages."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Key Backup",
-                "description": "Back up your keys to use encryption on multiple devices",
-                "exists": "Backup Exists",
-                "none": "No Backup",
-                "existsDescription": "Your keys are backed up and can be restored on new devices.",
-                "noneDescription": "Create a backup to use encryption on other devices.",
-                "update": "Update Backup",
-                "create": "Create Backup"
-            },
-            "devices": {
-                "title": "Devices",
-                "description": "Manage devices linked to your encryption identity",
-                "empty": "No devices found.",
-                "thisDevice": "This device",
-                "added": "Added {date}"
-            },
-            "auditLog": {
-                "title": "Audit Log",
-                "description": "Key transparency log — cryptographic record of all encryption events",
-                "load": "Load audit log",
-                "deviceLabel": "Device:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Identity Created",
-                    "device_registered": "Device Registered",
-                    "device_revoked": "Device Revoked",
-                    "backup_created": "Key Backup Created",
-                    "backup_restored": "Key Backup Restored",
-                    "key_package_uploaded": "Key Packages Uploaded",
-                    "signed_prekey_rotated": "Signed Prekey Rotated"
-                }
-            },
-            "danger": {
-                "title": "Danger Zone",
-                "resetTitle": "Reset Encryption",
-                "resetDescription": "Delete all local encryption keys. You will need to set up encryption again.",
-                "reset": "Reset"
-            },
-            "dialogs": {
-                "revokeTitle": "Revoke Device",
-                "revokeDescription": "Are you sure you want to revoke {name}? This device will no longer be able to decrypt new messages.",
-                "revoke": "Revoke",
-                "renameTitle": "Rename Device",
-                "renameDescription": "Enter a new name for this device.",
-                "renamePlaceholder": "Device name",
-                "rename": "Rename",
-                "wipeTitle": "Reset Encryption",
-                "wipeDescription": "This will permanently delete all encryption keys from this device. You will lose the ability to decrypt existing messages unless you have a key backup. This action cannot be undone.",
-                "wipeConfirm": "Delete All Keys",
-                "never": "Never"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -658,7 +610,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} in #{channel}",
-        "encryptedMessage": "[Encrypted message]",
         "sentMessage": "sent a message",
         "inChannelPrefix": "in #{channel}"
     },
@@ -683,9 +634,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Connecting...",
         "testConnection": "Test Connection",
-        "continue": "Continue",
-        "savedServers": "Saved Servers",
-        "active": "Active"
+        "continue": "Continue"
     },
     "updates": {
         "available": "Update available",
@@ -733,10 +682,7 @@
     "chat": {
         "common": {
             "dismiss": "Dismiss",
-            "unknown": "Unknown",
-            "encryptedMessage": "[Encrypted message]",
-            "unableToDecrypt": "[Unable to decrypt]",
-            "unableToDecryptInline": "[Unable to decrypt this message]"
+            "unknown": "Unknown"
         },
         "messages": {
             "selectChannel": "Select a channel",
@@ -759,8 +705,6 @@
             "searchMessagesTooltip": "Search messages",
             "showMembers": "Show members",
             "hideMembers": "Hide members",
-            "encryptionNotSetUp": "Encryption is not set up. Please complete E2EE setup before sending messages.",
-            "failedToEncrypt": "Failed to encrypt message. Please try again.",
             "failedToSend": "Failed to send message. Please try again.",
             "failedToUpload": "Failed to upload {fileName}. Please try again.",
             "fetchingLinkPreview": "Fetching link preview…"
@@ -773,7 +717,6 @@
             "replyingTo": "Replying to {user}",
             "fileTooLarge": "{count} files exceed the 100 MB limit: {files}",
             "preparing": "Preparing…",
-            "encrypting": "Encrypting…",
             "finishing": "Finishing…"
         },
         "thread": {
@@ -783,8 +726,6 @@
             "noReplies": "No replies yet. Start the conversation!",
             "replyPlaceholder": "Reply in thread...",
             "replyCount": "{count} reply | {count} replies",
-            "encryptionNotSetUp": "Encryption is not set up.",
-            "failedToEncrypt": "Failed to encrypt message.",
             "failedToSendReply": "Failed to send reply.",
             "deleteDialogTitle": "Delete Message",
             "deleteDialogDescription": "Are you sure you want to delete this message? This cannot be undone.",
@@ -836,7 +777,7 @@
             "noResults": "No results found",
             "resultsCount": "{count} result found | {count} results found",
             "typeToSearch": "Type to search messages",
-            "offlineNote": "Search is fully local — works offline, never leaves your device",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Try different search terms",
             "loadMore": "Load more results",
             "unknownUser": "Unknown"
@@ -877,8 +818,7 @@
             "noUsersFound": "No users found",
             "noDmsYet": "No direct messages yet",
             "startConversationHint": "Click + to start a conversation",
-            "backToChannels": "Back to Channels",
-            "unableToDecrypt": "[Unable to decrypt]"
+            "backToChannels": "Back to Channels"
         },
         "userProfile": {
             "unknownUser": "Unknown User",
@@ -922,47 +862,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "End-to-End Encryption",
-            "description": "Secure your messages so only you and the intended recipients can read them.",
-            "checking": "Checking encryption status...",
-            "restoreTitle": "Restore Your Keys",
-            "restoreDescription": "A key backup was found. Enter your backup PIN to restore your encryption identity on this device.",
-            "deviceName": "Device Name",
-            "deviceNamePlaceholder": "e.g. My Laptop",
-            "backupPin": "Backup PIN",
-            "backupPinPlaceholder": "Enter your backup PIN",
-            "incorrectPin": "Incorrect PIN",
-            "restoreContinue": "Restore & Continue",
-            "newIdentity": "New Identity",
-            "generating": "Generating your encryption keys...",
-            "allSet": "You're All Set!",
-            "allSetDescription": "End-to-end encryption is active. Your messages are now secured."
-        },
-        "backup": {
-            "restoreTitle": "Restore Key Backup",
-            "createTitle": "Create Key Backup",
-            "restoreDescription": "Enter the PIN you used when creating your backup.",
-            "createDescription": "Choose a PIN to encrypt your key backup. You'll need this PIN to restore your keys on another device.",
-            "keysRestored": "Keys Restored Successfully!",
-            "backupCreated": "Backup Created Successfully!",
-            "backupPinLabel": "Backup PIN",
-            "choosePinLabel": "Choose a PIN",
-            "pinPlaceholderRestore": "Enter your backup PIN",
-            "pinPlaceholderCreate": "Minimum 6 characters",
-            "confirmPin": "Confirm PIN",
-            "confirmPinPlaceholder": "Enter PIN again",
-            "pinsDoNotMatch": "PINs do not match",
-            "backupFailed": "Backup failed",
-            "restoreFailed": "Restore failed",
-            "importantLabel": "Important:",
-            "warningPinOnly": "This PIN is used only for encrypting your key backup",
-            "warningNeverSent": "It is never sent to the server",
-            "warningForgotten": "If you forget your PIN, you cannot restore your keys",
-            "warningStrong": "The backup uses strong encryption (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Restore Keys",
-            "createBackup": "Create Backup"
-        },
         "avatarCrop": {
             "title": "Update avatar",
             "description": "Crop and upload a new profile picture",

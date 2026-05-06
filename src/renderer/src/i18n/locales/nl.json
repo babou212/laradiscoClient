@@ -262,65 +262,17 @@
             }
         },
         "security": {
-            "encryption": {
-                "title": "Versleuteling",
-                "description": "Beheer uw end-to-end-versleutelingsinstellingen",
-                "active": "Versleuteling actief",
-                "notSetUp": "Versleuteling niet ingesteld",
-                "activeDescription": "Uw berichten zijn end-to-end-versleuteld.",
-                "notSetUpDescription": "Stel versleuteling in om uw berichten te beveiligen."
+            "title": "Account Security",
+            "description": "Manage your account security settings",
+            "password": {
+                "title": "Password",
+                "description": "Change your account password",
+                "cta": "Change password"
             },
-            "keyBackup": {
-                "title": "Sleutelback-up",
-                "description": "Maak een back-up van uw sleutels om versleuteling op meerdere apparaten te gebruiken",
-                "exists": "Back-up aanwezig",
-                "none": "Geen back-up",
-                "existsDescription": "Er is een back-up van uw sleutels en deze kunnen worden hersteld op nieuwe apparaten.",
-                "noneDescription": "Maak een back-up om versleuteling op andere apparaten te gebruiken.",
-                "update": "Back-up bijwerken",
-                "create": "Back-up aanmaken"
-            },
-            "devices": {
-                "title": "Apparaten",
-                "description": "Beheer apparaten gekoppeld aan uw versleutelingsidentiteit",
-                "empty": "Geen apparaten gevonden.",
-                "thisDevice": "Dit apparaat",
-                "added": "Toegevoegd op {date}"
-            },
-            "auditLog": {
-                "title": "Auditlogboek",
-                "description": "Sleuteltransparantie-logboek — cryptografisch register van alle versleutelingsgebeurtenissen",
-                "load": "Auditlogboek laden",
-                "deviceLabel": "Apparaat:",
-                "hashLabel": "Hash:",
-                "events": {
-                    "identity_created": "Identiteit aangemaakt",
-                    "device_registered": "Apparaat geregistreerd",
-                    "device_revoked": "Apparaat ingetrokken",
-                    "backup_created": "Sleutelback-up aangemaakt",
-                    "backup_restored": "Sleutelback-up hersteld",
-                    "key_package_uploaded": "Sleutelpakketten geüpload",
-                    "signed_prekey_rotated": "Ondertekende voorsleutel geroteerd"
-                }
-            },
-            "danger": {
-                "title": "Gevarenzone",
-                "resetTitle": "Versleuteling resetten",
-                "resetDescription": "Verwijder alle lokale versleutelingssleutels. U moet versleuteling opnieuw instellen.",
-                "reset": "Resetten"
-            },
-            "dialogs": {
-                "revokeTitle": "Apparaat intrekken",
-                "revokeDescription": "Weet u zeker dat u {name} wilt intrekken? Dit apparaat kan geen nieuwe berichten meer ontsleutelen.",
-                "revoke": "Intrekken",
-                "renameTitle": "Apparaat hernoemen",
-                "renameDescription": "Voer een nieuwe naam in voor dit apparaat.",
-                "renamePlaceholder": "Apparaatnaam",
-                "rename": "Hernoemen",
-                "wipeTitle": "Versleuteling resetten",
-                "wipeDescription": "Hierdoor worden alle versleutelingssleutels permanent van dit apparaat verwijderd. U verliest de mogelijkheid om bestaande berichten te ontsleutelen, tenzij u een sleutelback-up heeft. Deze actie kan niet ongedaan worden gemaakt.",
-                "wipeConfirm": "Alle sleutels verwijderen",
-                "never": "Nooit"
+            "twoFactor": {
+                "title": "Two-Factor Authentication",
+                "description": "Add an extra layer of security to your account",
+                "cta": "Manage 2FA"
             }
         },
         "twoFactor": {
@@ -658,7 +610,6 @@
         "mentionHere": "{'@'}here",
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} in #{channel}",
-        "encryptedMessage": "[Versleuteld bericht]",
         "sentMessage": "heeft een bericht verzonden",
         "inChannelPrefix": "in #{channel}"
     },
@@ -683,9 +634,7 @@
         "laravelVersion": "Laravel {version}",
         "connecting": "Verbinden...",
         "testConnection": "Verbinding testen",
-        "continue": "Doorgaan",
-        "savedServers": "Opgeslagen servers",
-        "active": "Actief"
+        "continue": "Doorgaan"
     },
     "updates": {
         "available": "Update beschikbaar",
@@ -733,10 +682,7 @@
     "chat": {
         "common": {
             "dismiss": "Sluiten",
-            "unknown": "Onbekend",
-            "encryptedMessage": "[Versleuteld bericht]",
-            "unableToDecrypt": "[Kan niet ontsleutelen]",
-            "unableToDecryptInline": "[Kan dit bericht niet ontsleutelen]"
+            "unknown": "Onbekend"
         },
         "messages": {
             "selectChannel": "Selecteer een kanaal",
@@ -759,8 +705,6 @@
             "searchMessagesTooltip": "Berichten zoeken",
             "showMembers": "Leden tonen",
             "hideMembers": "Leden verbergen",
-            "encryptionNotSetUp": "Versleuteling is niet ingesteld. Voltooi de E2EE-installatie voordat u berichten verzendt.",
-            "failedToEncrypt": "Bericht kon niet worden versleuteld. Probeer het opnieuw.",
             "failedToSend": "Bericht kon niet worden verzonden. Probeer het opnieuw.",
             "failedToUpload": "{fileName} kon niet worden geüpload. Probeer het opnieuw.",
             "fetchingLinkPreview": "Linkvoorbeeld ophalen…"
@@ -773,7 +717,6 @@
             "replyingTo": "Antwoorden aan {user}",
             "fileTooLarge": "{count} bestanden overschrijden de limiet van 100 MB: {files}",
             "preparing": "Voorbereiden…",
-            "encrypting": "Versleutelen…",
             "finishing": "Afronden…"
         },
         "thread": {
@@ -783,8 +726,6 @@
             "noReplies": "Nog geen antwoorden. Begin het gesprek!",
             "replyPlaceholder": "Antwoorden in thread...",
             "replyCount": "{count} antwoord | {count} antwoorden",
-            "encryptionNotSetUp": "Versleuteling is niet ingesteld.",
-            "failedToEncrypt": "Bericht kon niet worden versleuteld.",
             "failedToSendReply": "Antwoord kon niet worden verzonden.",
             "deleteDialogTitle": "Bericht verwijderen",
             "deleteDialogDescription": "Weet u zeker dat u dit bericht wilt verwijderen? Dit kan niet ongedaan worden gemaakt.",
@@ -836,7 +777,7 @@
             "noResults": "Geen resultaten gevonden",
             "resultsCount": "{count} resultaat gevonden | {count} resultaten gevonden",
             "typeToSearch": "Typ om berichten te zoeken",
-            "offlineNote": "Zoeken is volledig lokaal — werkt offline en verlaat nooit uw apparaat",
+            "offlineNote": "Results come from the server — full message history is searchable",
             "tryDifferent": "Probeer andere zoektermen",
             "loadMore": "Meer resultaten laden",
             "unknownUser": "Onbekend"
@@ -877,8 +818,7 @@
             "noUsersFound": "Geen gebruikers gevonden",
             "noDmsYet": "Nog geen directe berichten",
             "startConversationHint": "Klik op + om een gesprek te starten",
-            "backToChannels": "Terug naar kanalen",
-            "unableToDecrypt": "[Kan niet ontsleutelen]"
+            "backToChannels": "Terug naar kanalen"
         },
         "userProfile": {
             "unknownUser": "Onbekende gebruiker",
@@ -922,47 +862,6 @@
         }
     },
     "e2ee": {
-        "wizard": {
-            "title": "End-to-end-versleuteling",
-            "description": "Beveilig uw berichten zodat alleen u en de beoogde ontvangers ze kunnen lezen.",
-            "checking": "Versleutelingsstatus controleren...",
-            "restoreTitle": "Herstel uw sleutels",
-            "restoreDescription": "Er is een sleutelback-up gevonden. Voer uw back-up-PIN in om uw versleutelingsidentiteit op dit apparaat te herstellen.",
-            "deviceName": "Apparaatnaam",
-            "deviceNamePlaceholder": "bijv. Mijn laptop",
-            "backupPin": "Back-up-PIN",
-            "backupPinPlaceholder": "Voer uw back-up-PIN in",
-            "incorrectPin": "Onjuiste PIN",
-            "restoreContinue": "Herstellen & doorgaan",
-            "newIdentity": "Nieuwe identiteit",
-            "generating": "Uw versleutelingssleutels genereren...",
-            "allSet": "U bent helemaal klaar!",
-            "allSetDescription": "End-to-end-versleuteling is actief. Uw berichten zijn nu beveiligd."
-        },
-        "backup": {
-            "restoreTitle": "Sleutelback-up herstellen",
-            "createTitle": "Sleutelback-up aanmaken",
-            "restoreDescription": "Voer de PIN in die u heeft gebruikt bij het aanmaken van uw back-up.",
-            "createDescription": "Kies een PIN om uw sleutelback-up te versleutelen. U heeft deze PIN nodig om uw sleutels op een ander apparaat te herstellen.",
-            "keysRestored": "Sleutels succesvol hersteld!",
-            "backupCreated": "Back-up succesvol aangemaakt!",
-            "backupPinLabel": "Back-up-PIN",
-            "choosePinLabel": "Kies een PIN",
-            "pinPlaceholderRestore": "Voer uw back-up-PIN in",
-            "pinPlaceholderCreate": "Minimaal 6 tekens",
-            "confirmPin": "Bevestig PIN",
-            "confirmPinPlaceholder": "Voer PIN opnieuw in",
-            "pinsDoNotMatch": "PIN's komen niet overeen",
-            "backupFailed": "Back-up mislukt",
-            "restoreFailed": "Herstel mislukt",
-            "importantLabel": "Belangrijk:",
-            "warningPinOnly": "Deze PIN wordt alleen gebruikt om uw sleutelback-up te versleutelen",
-            "warningNeverSent": "Deze wordt nooit naar de server verzonden",
-            "warningForgotten": "Als u uw PIN vergeet, kunt u uw sleutels niet herstellen",
-            "warningStrong": "De back-up gebruikt sterke versleuteling (Argon2id + AES-256-GCM)",
-            "restoreKeys": "Sleutels herstellen",
-            "createBackup": "Back-up aanmaken"
-        },
         "avatarCrop": {
             "title": "Avatar bijwerken",
             "description": "Bijsnijden en uploaden van een nieuwe profielfoto",

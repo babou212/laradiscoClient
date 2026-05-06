@@ -90,34 +90,5 @@ async function connectAndSave(): Promise<void> {
                 </Button>
             </div>
         </form>
-
-        <div v-if="serverStore.servers.length > 0" class="border-border border-t pt-6">
-            <p class="text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase">
-                {{ t('serverConnect.savedServers') }}
-            </p>
-            <div class="space-y-2">
-                <button
-                    v-for="server in serverStore.servers"
-                    :key="server.id"
-                    @click="
-                        host = server.host;
-                        serverInfo = null;
-                        serverStore.clearError();
-                    "
-                    class="border-border bg-card hover:border-ring hover:bg-accent flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition"
-                >
-                    <div>
-                        <p class="text-foreground font-medium">{{ server.name }}</p>
-                        <p class="text-muted-foreground text-xs">{{ server.host }}</p>
-                    </div>
-                    <span
-                        v-if="server.is_active"
-                        class="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500 dark:text-green-400"
-                    >
-                        {{ t('serverConnect.active') }}
-                    </span>
-                </button>
-            </div>
-        </div>
     </AuthLayout>
 </template>

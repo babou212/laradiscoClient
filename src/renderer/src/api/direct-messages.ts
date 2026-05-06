@@ -7,25 +7,14 @@ import type {
 } from './types';
 
 export interface SendDmMessageData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
     reply_to_id?: string;
     attachment_ids?: string[];
-    encrypted_attachments?: {
-        id: string;
-        key: string;
-        iv: string;
-        file_name: string;
-        mime_type: string;
-        size: number;
-        thumbnail_key?: string;
-        thumbnail_iv?: string;
-    }[];
+    client_temp_id?: string;
 }
 
 export interface EditDmMessageData {
-    message_bytes: string;
-    sender_device_id: string;
+    content: string;
 }
 
 export async function getDmGroups(params?: {
@@ -53,7 +42,7 @@ export async function getDmMessages(
     const r = await api.get(`/direct-messages/${groupId}`, {
         params: {
             sort: 'created_at',
-            include: 'user,reactions,replyTo,replyTo.user,encryptedAttachments',
+            include: 'user,reactions,replyTo,replyTo.user,attachments',
             ...params,
         },
     });

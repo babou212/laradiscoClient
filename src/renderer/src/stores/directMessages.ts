@@ -2,7 +2,6 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { createDmGroup, findDmGroup, getDmGroups, getDmMessages } from '@/api/direct-messages';
 import { normalizeMessages } from '@/api/normalizers';
-import { useE2EE } from '@/composables/useE2EE';
 import type { AvatarUrls, MessageData } from '@/types/chat';
 
 function extractCursor(url: string | null | undefined): string | null {
@@ -24,12 +23,9 @@ export interface DmGroup {
     } | null;
     last_message: {
         id: string;
-        content: string;
+        content: string | null;
         created_at: string;
         user_id: string;
-        sender_device_id?: string;
-        decrypted_content?: string;
-        decrypt_error?: boolean;
     } | null;
     last_message_at: string | null;
 }
@@ -70,14 +66,8 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
                 content: message.content,
                 created_at: message.created_at,
                 user_id: message.user.id,
-                sender_device_id: message.sender_device_id,
-                decrypted_content: message.decrypted_content,
             };
             group.last_message_at = message.created_at;
-
-            if (!message.decrypted_content) {
-                decryptLastMessage(group).catch(() => {});
-            }
         }
     }
 
@@ -100,47 +90,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     function removeMessage(messageId: string): void {
         const idx = messages.value.findIndex((m) => m.id === messageId);
         if (idx !== -1) messages.value.splice(idx, 1);
-    }
-
-    async function decryptLastMessage(group: DmGroup): Promise<void> {
-        const lm = group.last_message;
-        if (!lm || lm.decrypted_content || lm.decrypt_error) return;
-
-        const e2ee = useE2EE();
-
-        const temp: MessageData[] = [
-            {
-                id: lm.id,
-                content: lm.content,
-                sender_device_id: lm.sender_device_id,
-            } as MessageData,
-        ];
-        await e2ee.lookupDecryptedCache(temp);
-        if (temp[0].decrypted_content) {
-            lm.decrypted_content = temp[0].decrypted_content;
-            return;
-        }
-
-        const ourDeviceId = await e2ee.getDeviceId();
-        if (ourDeviceId && lm.sender_device_id === ourDeviceId) {
-            lm.decrypt_error = true;
-            return;
-        }
-
-        try {
-            const plaintext = await e2ee.decrypt(lm.content, undefined, Number(group.id), Number(lm.id));
-            lm.decrypted_content = plaintext.text;
-        } catch {
-            lm.decrypt_error = true;
-        }
-    }
-
-    async function decryptLastMessages(): Promise<void> {
-        await Promise.allSettled(
-            dmGroups.value
-                .filter((g) => g.last_message && !g.last_message.decrypted_content)
-                .map((g) => decryptLastMessage(g)),
-        );
     }
 
     async function fetchDmGroups(): Promise<void> {
@@ -168,7 +117,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
                             content: (msgAttrs.content as string) ?? '',
                             created_at: (msgAttrs.created_at as string) ?? '',
                             user_id: userRel?.id ?? '',
-                            sender_device_id: msgAttrs.sender_device_id as string | undefined,
                         };
                     }
                 }
@@ -324,7 +272,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         loadMessagesAround,
         startOrGetDm,
         clearCurrentDm,
-        decryptLastMessages,
         $reset,
     };
 });

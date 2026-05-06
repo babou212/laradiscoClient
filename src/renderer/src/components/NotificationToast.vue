@@ -24,14 +24,8 @@ const getMentionLabel = (notification: ToastNotification): string => {
     return `@${data.sender_username}`;
 };
 
-const getDisplayContent = (notification: ToastNotification): string => {
-    const { data } = notification;
-    if (data.decrypted_content) return data.decrypted_content;
-    return t('notifications.encryptedMessage');
-};
-
 const getDisplayPreview = (notification: ToastNotification): string => {
-    const content = getDisplayContent(notification);
+    const content = notification.data.content ?? '';
     return content.length > 80 ? content.substring(0, 80) + '...' : content;
 };
 
