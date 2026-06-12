@@ -2,16 +2,8 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { createDmGroup, findDmGroup, getDmGroups, getDmMessages } from '@/api/direct-messages';
 import { normalizeMessages } from '@/api/normalizers';
+import { readPageMeta } from '@/api/pagination';
 import type { AvatarUrls, MessageData } from '@/types/chat';
-
-function extractCursor(url: string | null | undefined): string | null {
-    if (!url) return null;
-    try {
-        return new URL(url).searchParams.get('cursor');
-    } catch {
-        return url;
-    }
-}
 
 export interface DmGroup {
     id: string;
@@ -44,14 +36,16 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     const dmGroups = ref<DmGroup[]>([]);
     const currentDmGroup = ref<CurrentDmGroup | null>(null);
     const messages = ref<MessageData[]>([]);
-    const nextCursor = ref<string | null>(null);
-    const prevCursor = ref<string | null>(null);
+    const oldestId = ref<string | null>(null);
+    const newestId = ref<string | null>(null);
+    const hasMoreBefore = ref(false);
+    const hasMoreAfter = ref(false);
     const isLoadingGroups = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
 
     const selectedDmGroupId = computed(() => currentDmGroup.value?.id ?? null);
-    const isViewingHistory = computed(() => nextCursor.value !== null);
+    const isViewingHistory = computed(() => hasMoreAfter.value);
 
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
@@ -154,13 +148,18 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     async function fetchMessages(groupId: string): Promise<void> {
         isLoadingMessages.value = true;
         messages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
         try {
             const response = await getDmMessages(groupId);
             messages.value = normalizeMessages(response.data, response.included);
-            prevCursor.value = extractCursor(response.links?.prev);
-            nextCursor.value = extractCursor(response.links?.next);
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
         } catch (error) {
             console.error('Failed to fetch DM messages:', error);
         } finally {
@@ -169,13 +168,17 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     }
 
     async function loadOlderMessages(): Promise<void> {
-        if (!currentDmGroup.value || !prevCursor.value || isLoadingMore.value) return;
+        if (!currentDmGroup.value || !hasMoreBefore.value || !oldestId.value || isLoadingMore.value) return;
         isLoadingMore.value = true;
         try {
-            const response = await getDmMessages(currentDmGroup.value.id, { cursor: prevCursor.value });
+            const response = await getDmMessages(currentDmGroup.value.id, { before: oldestId.value });
             const older = normalizeMessages(response.data, response.included);
-            messages.value = [...older, ...messages.value];
-            prevCursor.value = extractCursor(response.links?.prev);
+            const meta = readPageMeta(response.meta);
+            if (older.length > 0) {
+                messages.value = [...older, ...messages.value];
+                if (meta.oldestId) oldestId.value = meta.oldestId;
+            }
+            hasMoreBefore.value = meta.hasMoreBefore;
         } catch (error) {
             console.error('Failed to load older DM messages:', error);
         } finally {
@@ -184,13 +187,17 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     }
 
     async function loadNewerMessages(): Promise<void> {
-        if (!currentDmGroup.value || !nextCursor.value || isLoadingMore.value) return;
+        if (!currentDmGroup.value || !hasMoreAfter.value || !newestId.value || isLoadingMore.value) return;
         isLoadingMore.value = true;
         try {
-            const response = await getDmMessages(currentDmGroup.value.id, { cursor: nextCursor.value });
+            const response = await getDmMessages(currentDmGroup.value.id, { after: newestId.value });
             const newer = normalizeMessages(response.data, response.included);
-            messages.value = [...messages.value, ...newer];
-            nextCursor.value = extractCursor(response.links?.next);
+            const meta = readPageMeta(response.meta);
+            if (newer.length > 0) {
+                messages.value = [...messages.value, ...newer];
+                if (meta.newestId) newestId.value = meta.newestId;
+            }
+            hasMoreAfter.value = meta.hasMoreAfter;
         } catch (error) {
             console.error('Failed to load newer DM messages:', error);
         } finally {
@@ -204,8 +211,11 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { around: messageId });
             messages.value = normalizeMessages(response.data, response.included);
-            prevCursor.value = extractCursor(response.links?.prev);
-            nextCursor.value = extractCursor(response.links?.next);
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
         } catch (error) {
             console.error('Failed to load DM messages around target:', error);
         } finally {
@@ -235,16 +245,20 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     function clearCurrentDm(): void {
         currentDmGroup.value = null;
         messages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
     }
 
     function $reset(): void {
         dmGroups.value = [];
         currentDmGroup.value = null;
         messages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
         isLoadingGroups.value = false;
         isLoadingMessages.value = false;
         isLoadingMore.value = false;
@@ -254,8 +268,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         dmGroups,
         currentDmGroup,
         messages,
-        nextCursor,
-        prevCursor,
+        oldestId,
+        newestId,
+        hasMoreBefore,
+        hasMoreAfter,
         isLoadingGroups,
         isLoadingMessages,
         isLoadingMore,

@@ -1,8 +1,7 @@
-import { computed, onUnmounted, watch } from 'vue';
+import { onUnmounted, watch } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import { coerceBroadcastMessage } from '@/api/normalizers';
 import { getEcho } from '@/lib/echo';
-import { useAuthStore } from '@/stores/auth';
 import { useThreadStore } from '@/stores/thread';
 import { useUsersStore } from '@/stores/users';
 import type { AvatarUrls, MessageData, MessageReaction, ThreadPreview } from '@/types/chat';
@@ -12,6 +11,7 @@ interface ChannelRealtimeOptions {
     isDm: Ref<boolean>;
     messages: ComputedRef<MessageData[]>;
     isLoadingMessages: ComputedRef<boolean>;
+    isViewingHistory: Ref<boolean>;
     addMessage: (msg: MessageData) => void;
     updateMessage: (id: string, partial: Partial<MessageData>) => void;
     removeMessage: (id: string) => void;
@@ -30,6 +30,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
         channelId,
         isDm,
         messages,
+        isViewingHistory,
         addMessage,
         updateMessage,
         removeMessage,
@@ -43,10 +44,7 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
         fetchAndDecryptPinned,
     } = options;
 
-    const authStore = useAuthStore();
     const threadStore = useThreadStore();
-
-    const currentUser = computed(() => authStore.user);
 
     let currentChannelListener: string | null = null;
 
@@ -91,8 +89,10 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                     return;
                 }
 
-                if (data.message.user.id === currentUser.value?.id) {
-                    addMessage(data.message);
+                // While viewing an older window (not anchored to the live tail),
+                // don't splice a non-contiguous message into the list — surface
+                // it via the unread pill. It loads when the user returns to live.
+                if (isViewingHistory.value) {
                     notifyNewMessage();
                     return;
                 }

@@ -38,13 +38,9 @@ export function useActiveStore(isDm: Ref<boolean>) {
         }
     }
 
-    const canLoadMore = computed<boolean>(() =>
-        isDm.value ? dmStore.prevCursor != null : chatStore.prevCursor != null,
-    );
+    const canLoadMore = computed<boolean>(() => (isDm.value ? dmStore.hasMoreBefore : chatStore.hasMoreBefore));
 
-    const canLoadNewer = computed<boolean>(() =>
-        isDm.value ? dmStore.nextCursor != null : chatStore.nextCursor != null,
-    );
+    const canLoadNewer = computed<boolean>(() => (isDm.value ? dmStore.hasMoreAfter : chatStore.hasMoreAfter));
 
     const isViewingHistory = computed<boolean>(() =>
         isDm.value ? dmStore.isViewingHistory : chatStore.isViewingHistory,

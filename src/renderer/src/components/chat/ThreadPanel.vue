@@ -2,11 +2,6 @@
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import FileAttachment from './FileAttachment.vue';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import NewMessagePill from './NewMessagePill.vue';
-import TypingIndicator from './TypingIndicator.vue';
 import { coerceBroadcastMessage } from '@/api/normalizers';
 import { sendThreadTyping } from '@/api/typing';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +15,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { useMessageScroll } from '@/composables/useMessageScroll';
+import { useChatScroll } from '@/composables/useChatScroll';
 import { getEcho } from '@/lib/echo';
 import { renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
@@ -29,6 +24,11 @@ import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import { useUsersStore } from '@/stores/users';
 import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
+import FileAttachment from './FileAttachment.vue';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
+import TypingIndicator from './TypingIndicator.vue';
 
 interface Props {
     channelId: string;
@@ -96,6 +96,12 @@ const joinThread = (threadId: number | string) => {
         .listen('ThreadMessageSent', (data: { message: MessageData }) => {
             coerceBroadcastMessage(data.message);
             if (threadStore.threadMessages.some((m) => m.id === data.message.id)) return;
+            // While viewing an older window, don't splice in a non-contiguous
+            // message — surface it via the pill; it loads on return to live.
+            if (threadStore.isViewingHistory) {
+                notifyNewMessage();
+                return;
+            }
             threadStore.addThreadMessage(data.message);
             notifyNewMessage();
         })
@@ -162,33 +168,29 @@ const leaveThread = () => {
     typingUsers.clear();
 };
 
-const canLoadOlder = computed(() => threadStore.prevCursor != null);
-const canLoadNewer = computed(() => false);
-const isViewingHistoryThread = computed(() => false);
+const canLoadOlder = computed(() => threadStore.hasMoreBefore);
+const canLoadNewer = computed(() => threadStore.hasMoreAfter);
+const isViewingHistoryThread = computed(() => threadStore.isViewingHistory);
 
-const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, notifyNewMessage } = useMessageScroll({
-    containerRef: messagesContainer,
-    contentRef: messagesContent,
-    canLoadOlder,
-    canLoadNewer,
-    isViewingHistory: isViewingHistoryThread,
-    onLoadOlder: () => threadStore.loadOlderMessages(props.channelId),
-    onLoadNewer: async () => {},
-    onLoadAround: async () => {},
-    onResetToLive: async () => {},
-});
+const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, notifyNewMessage, resetForNewConversation } =
+    useChatScroll({
+        containerRef: messagesContainer,
+        contentRef: messagesContent,
+        canLoadOlder,
+        canLoadNewer,
+        isViewingHistory: isViewingHistoryThread,
+        onLoadOlder: () => threadStore.loadOlderMessages(),
+        onLoadNewer: () => threadStore.loadNewerMessages(),
+        onLoadAround: (messageId: string) => threadStore.loadMessagesAround(messageId),
+        onResetToLive: () => threadStore.resetToLive(),
+    });
 
 function resetThreadScroll(): void {
-    pinnedToBottom.value = true;
-    unreadNewCount.value = 0;
-    nextTick(() => {
-        if (messagesContainer.value) {
-            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-        }
-    });
+    resetForNewConversation();
 }
 
-const showPill = computed(() => !pinnedToBottom.value);
+const showPillForHistory = computed(() => threadStore.isViewingHistory);
+const showPill = computed(() => !pinnedToBottom.value || showPillForHistory.value);
 
 const emitTyping = () => {
     const thread = threadStore.activeThread;
@@ -259,6 +261,13 @@ const sendReply = async (content: string) => {
         reactions: [],
         created_at: new Date().toISOString(),
     };
+
+    // Snap back to the live tail if viewing history, so the reply lands
+    // contiguously rather than after a gap.
+    if (threadStore.isViewingHistory) {
+        await threadStore.resetToLive();
+        await nextTick();
+    }
 
     threadStore.addThreadMessage(optimistic);
     resetThreadScroll();
@@ -428,7 +437,11 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         </div>
 
         <div class="relative min-h-0 flex-1">
-            <div ref="messagesContainer" class="h-full overflow-y-auto overscroll-contain p-3">
+            <div
+                ref="messagesContainer"
+                class="h-full overflow-y-auto overscroll-contain p-3"
+                style="overflow-anchor: none"
+            >
                 <div ref="messagesContent">
                     <div v-if="threadStore.isLoadingMessages" class="flex items-center justify-center py-4">
                         <div class="border-primary h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
@@ -480,7 +493,11 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             </div>
 
             <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-                <NewMessagePill :count="unreadNewCount" @click="jumpToBottom" />
+                <NewMessagePill
+                    :count="unreadNewCount"
+                    :viewing-history="showPillForHistory"
+                    @click="jumpToBottom"
+                />
             </div>
         </div>
 

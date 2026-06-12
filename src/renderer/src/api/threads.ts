@@ -27,11 +27,10 @@ export async function getThread(
 export async function getThreadMessages(
     channelId: string,
     threadId: string,
-    params?: { sort?: string; include?: string; cursor?: string },
+    params?: { include?: string; limit?: number; before?: string; after?: string; around?: string },
 ): Promise<JsonApiCollectionResponse<MessageResource>> {
     const r = await api.get(`/channels/${channelId}/threads/${threadId}/messages`, {
         params: {
-            sort: 'created_at',
             include: 'user,reactions,attachments',
             ...params,
         },

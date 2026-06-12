@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { normalizeMessage, normalizeMessages } from '@/api/normalizers';
+import { readPageMeta } from '@/api/pagination';
 import {
     getThreadMessages,
     createThreadReply,
@@ -19,26 +20,44 @@ export const useThreadStore = defineStore('thread', () => {
     const isLoadingThread = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
-    const nextCursor = ref<string | null>(null);
-    const prevCursor = ref<string | null>(null);
+    // Anchor pagination edges (mirrors chat.ts).
+    const currentChannelId = ref<string | null>(null);
+    const oldestId = ref<string | null>(null);
+    const newestId = ref<string | null>(null);
+    const hasMoreBefore = ref(false);
+    const hasMoreAfter = ref(false);
+
+    const isViewingHistory = computed(() => hasMoreAfter.value);
+
+    async function fetchLatest(channelId: string, threadId: string): Promise<void> {
+        isLoadingMessages.value = true;
+        try {
+            const response = await getThreadMessages(channelId, threadId);
+            threadMessages.value = normalizeMessages(response.data, response.included);
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
+        } catch (error) {
+            console.error('Failed to fetch thread messages:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
 
     async function openThread(channelId: string | number, message: MessageData): Promise<void> {
         parentMessage.value = message;
         threadMessages.value = [];
         activeThread.value = message.thread ?? null;
+        currentChannelId.value = String(channelId);
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
 
         if (message.thread) {
-            isLoadingMessages.value = true;
-            try {
-                const response = await getThreadMessages(String(channelId), String(message.thread.id));
-                threadMessages.value = normalizeMessages(response.data, response.included);
-                nextCursor.value = response.links?.next ?? null;
-                prevCursor.value = response.links?.prev ?? null;
-            } catch (error) {
-                console.error('Failed to fetch thread messages:', error);
-            } finally {
-                isLoadingMessages.value = false;
-            }
+            await fetchLatest(String(channelId), String(message.thread.id));
         }
     }
 
@@ -46,26 +65,94 @@ export const useThreadStore = defineStore('thread', () => {
         activeThread.value = null;
         parentMessage.value = null;
         threadMessages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        currentChannelId.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
     }
 
-    async function loadOlderMessages(channelId: string | number): Promise<void> {
-        if (!activeThread.value || !prevCursor.value || isLoadingMore.value) return;
+    async function loadOlderMessages(): Promise<void> {
+        if (
+            !activeThread.value ||
+            !currentChannelId.value ||
+            !hasMoreBefore.value ||
+            !oldestId.value ||
+            isLoadingMore.value
+        )
+            return;
 
         isLoadingMore.value = true;
         try {
-            const response = await getThreadMessages(String(channelId), String(activeThread.value.id), {
-                cursor: prevCursor.value,
+            const response = await getThreadMessages(currentChannelId.value, String(activeThread.value.id), {
+                before: oldestId.value,
             });
             const older = normalizeMessages(response.data, response.included);
-            threadMessages.value = [...older, ...threadMessages.value];
-            prevCursor.value = response.links?.prev ?? null;
+            const meta = readPageMeta(response.meta);
+            if (older.length > 0) {
+                threadMessages.value = [...older, ...threadMessages.value];
+                if (meta.oldestId) oldestId.value = meta.oldestId;
+            }
+            hasMoreBefore.value = meta.hasMoreBefore;
         } catch (error) {
             console.error('Failed to load older thread messages:', error);
         } finally {
             isLoadingMore.value = false;
         }
+    }
+
+    async function loadNewerMessages(): Promise<void> {
+        if (
+            !activeThread.value ||
+            !currentChannelId.value ||
+            !hasMoreAfter.value ||
+            !newestId.value ||
+            isLoadingMore.value
+        )
+            return;
+
+        isLoadingMore.value = true;
+        try {
+            const response = await getThreadMessages(currentChannelId.value, String(activeThread.value.id), {
+                after: newestId.value,
+            });
+            const newer = normalizeMessages(response.data, response.included);
+            const meta = readPageMeta(response.meta);
+            if (newer.length > 0) {
+                threadMessages.value = [...threadMessages.value, ...newer];
+                if (meta.newestId) newestId.value = meta.newestId;
+            }
+            hasMoreAfter.value = meta.hasMoreAfter;
+        } catch (error) {
+            console.error('Failed to load newer thread messages:', error);
+        } finally {
+            isLoadingMore.value = false;
+        }
+    }
+
+    async function loadMessagesAround(messageId: string): Promise<void> {
+        if (!activeThread.value || !currentChannelId.value) return;
+        isLoadingMessages.value = true;
+        try {
+            const response = await getThreadMessages(currentChannelId.value, String(activeThread.value.id), {
+                around: messageId,
+            });
+            threadMessages.value = normalizeMessages(response.data, response.included);
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
+        } catch (error) {
+            console.error('Failed to load thread messages around target:', error);
+        } finally {
+            isLoadingMessages.value = false;
+        }
+    }
+
+    async function resetToLive(): Promise<void> {
+        if (!activeThread.value || !currentChannelId.value) return;
+        await fetchLatest(currentChannelId.value, String(activeThread.value.id));
     }
 
     async function sendReply(
@@ -228,8 +315,11 @@ export const useThreadStore = defineStore('thread', () => {
         isLoadingThread.value = false;
         isLoadingMessages.value = false;
         isLoadingMore.value = false;
-        nextCursor.value = null;
-        prevCursor.value = null;
+        currentChannelId.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
     }
 
     return {
@@ -239,11 +329,17 @@ export const useThreadStore = defineStore('thread', () => {
         isLoadingThread,
         isLoadingMessages,
         isLoadingMore,
-        nextCursor,
-        prevCursor,
+        oldestId,
+        newestId,
+        hasMoreBefore,
+        hasMoreAfter,
+        isViewingHistory,
         openThread,
         closeThread,
         loadOlderMessages,
+        loadNewerMessages,
+        loadMessagesAround,
+        resetToLive,
         sendReply,
         editMessage,
         deleteMessage,

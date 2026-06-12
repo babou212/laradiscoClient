@@ -18,11 +18,10 @@ export interface EditMessageData {
 
 export async function getMessages(
     channelId: string,
-    params?: { sort?: string; include?: string; cursor?: string; around?: string },
+    params?: { include?: string; limit?: number; before?: string; after?: string; around?: string },
 ): Promise<JsonApiCollectionResponse<MessageResource>> {
     const r = await api.get(`/channels/${channelId}/messages`, {
         params: {
-            sort: 'created_at',
             include:
                 'user,reactions,replyTo,replyTo.user,threadStarted,threadStarted.latestReply,threadStarted.latestReply.user,attachments',
             ...params,

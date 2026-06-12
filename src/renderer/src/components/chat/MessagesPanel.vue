@@ -1,18 +1,9 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-vue-next';
-import { VList } from 'virtua/vue';
-import type { VListHandle } from 'virtua/vue';
-import { computed, nextTick, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import NewMessagePill from './NewMessagePill.vue';
-import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
-import SearchMessages from './SearchMessages.vue';
-import TypingIndicator from './TypingIndicator.vue';
-import UserProfilePanel from './UserProfilePanel.vue';
 import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
 import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
 import {
@@ -35,10 +26,10 @@ import {
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useActiveStore } from '@/composables/useActiveStore';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
+import { useChatScroll } from '@/composables/useChatScroll';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
 import { useRateLimit } from '@/composables/useRateLimit';
 import { useTypingIndicator } from '@/composables/useTypingIndicator';
-import { useVirtualMessageScroll } from '@/composables/useVirtualMessageScroll';
 import { extractFirstPreviewUrl } from '@/lib/extractUrls';
 import { UploadingFileSchema } from '@/lib/message-schemas';
 import type { UploadingFile } from '@/lib/message-schemas';
@@ -58,6 +49,13 @@ import type {
 } from '@/types/chat';
 import type { OnlineUser } from '@/types/user';
 import { extractMentionMetadata } from '@/utils/mentions';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
+import SearchMessages from './SearchMessages.vue';
+import TypingIndicator from './TypingIndicator.vue';
+import UserProfilePanel from './UserProfilePanel.vue';
 
 type ChannelData = {
     id: string;
@@ -151,22 +149,21 @@ const startDmFromProfile = async (userId: string) => {
 const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
 
-const vlistRef = useTemplateRef<VListHandle>('vlistRef');
+const containerRef = ref<HTMLElement | null>(null);
+const contentRef = ref<HTMLElement | null>(null);
 
 const {
     pinnedToBottom,
     unreadNewCount,
     isLoadingOlder,
-    isPrepend,
-    onScroll: handleVListScroll,
     jumpToBottom,
     jumpToMessage,
     notifyNewMessage,
     scrollToBottom,
-    resetScroll,
-} = useVirtualMessageScroll({
-    vlistRef,
-    messages: activeMessages,
+    resetForNewConversation,
+} = useChatScroll({
+    containerRef,
+    contentRef,
     canLoadOlder: activeStore.canLoadMore,
     canLoadNewer: activeStore.canLoadNewer,
     isViewingHistory: activeStore.isViewingHistory,
@@ -181,7 +178,7 @@ const {
 });
 
 function resetForNewChannel(): void {
-    resetScroll();
+    resetForNewConversation();
 }
 
 function maybeMarkChannelRead(): void {
@@ -229,6 +226,7 @@ useChannelRealtime({
     isDm: isDmRef,
     messages: activeMessages,
     isLoadingMessages: activeStore.isLoadingMessages,
+    isViewingHistory: activeStore.isViewingHistory,
     addMessage: activeStore.addMessage,
     updateMessage: activeStore.updateMessage,
     removeMessage: activeStore.removeMessage,
@@ -534,6 +532,14 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         link_preview: linkPreview,
     };
 
+    // If the user was viewing history (scrolled into an older window), snap back
+    // to the live tail before appending so the optimistic message lands in a
+    // contiguous position rather than after a gap.
+    if (activeStore.isViewingHistory.value && props.channel?.id) {
+        await activeStore.resetToLive(String(props.channel.id));
+        await nextTick();
+    }
+
     activeStore.addMessage(optimisticMessage);
     pinnedToBottom.value = true;
     nextTick(() => scrollToBottom());
@@ -748,17 +754,16 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                     </div>
                 </div>
 
-                <VList
+                <div
                     v-else
-                    ref="vlistRef"
-                    :data="activeMessages"
-                    :shift="isPrepend"
-                    :buffer-size="4000"
-                    class="h-full overscroll-contain px-4 pt-4"
-                    @scroll="handleVListScroll"
+                    ref="containerRef"
+                    class="h-full overflow-y-auto overscroll-contain px-4 pt-4 pb-4"
+                    style="overflow-anchor: none"
                 >
-                    <template #default="{ item }: { item: MessageData }">
+                    <div ref="contentRef">
                         <Message
+                            v-for="item in activeMessages"
+                            :key="item.id"
                             :message="item"
                             :is-editing="editingMessageId === item.id"
                             :edit-content="editContent"
@@ -782,10 +787,9 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                                 emojiPickerMessageId = emojiPickerMessageId === item.id ? null : item.id
                             "
                             @update-edit-content="editContent = $event"
-                            @content-resize="pinnedToBottom && scrollToBottom()"
                         />
-                    </template>
-                </VList>
+                    </div>
+                </div>
 
                 <div
                     v-if="isLoadingOlder"

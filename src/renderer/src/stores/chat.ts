@@ -1,36 +1,34 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useUsersStore } from './users';
 import { getCategories } from '@/api/categories';
 import { getChannel, markChannelRead as apiMarkChannelRead } from '@/api/channels';
 import { getMessages } from '@/api/messages';
 import { normalizeMessages } from '@/api/normalizers';
+import { readPageMeta } from '@/api/pagination';
 import type { ChannelAttributes } from '@/api/types';
 import { getEcho } from '@/lib/echo';
 import type { Category, Channel, ChannelPermissions, MessageData } from '@/types/chat';
-
-function extractCursor(url: string | null | undefined): string | null {
-    if (!url) return null;
-    try {
-        return new URL(url).searchParams.get('cursor');
-    } catch {
-        return url;
-    }
-}
+import { useUsersStore } from './users';
 
 export const useChatStore = defineStore('chat', () => {
     const currentChannel = ref<Channel | null>(null);
     const currentChannelPermissions = ref<ChannelPermissions | null>(null);
     const messages = ref<MessageData[]>([]);
-    const nextCursor = ref<string | null>(null);
-    const prevCursor = ref<string | null>(null);
+    // Anchor pagination edges: ids of the oldest/newest loaded message and
+    // whether more exist beyond each edge (see readPageMeta).
+    const oldestId = ref<string | null>(null);
+    const newestId = ref<string | null>(null);
+    const hasMoreBefore = ref(false);
+    const hasMoreAfter = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
     const serverName = ref<string>('Laradisco');
     const categories = ref<Category[]>([]);
 
     const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
-    const isViewingHistory = computed(() => nextCursor.value !== null);
+    // We are viewing history (not pinned to the live tail) only when newer
+    // messages exist beyond what is loaded.
+    const isViewingHistory = computed(() => hasMoreAfter.value);
 
     function addMessage(message: MessageData): void {
         const exists = messages.value.some((m) => m.id === message.id);
@@ -133,21 +131,30 @@ export const useChatStore = defineStore('chat', () => {
         await fetchMessages(id);
     }
 
+    function hydrateUsers(msgs: MessageData[]): void {
+        const usersStore = useUsersStore();
+        usersStore.hydrateFromUsers(msgs.map((m) => m.user));
+        usersStore.hydrateFromUsers(
+            msgs.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
+        );
+    }
+
     async function fetchMessages(channelId: string): Promise<void> {
         isLoadingMessages.value = true;
         messages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
         try {
             const response = await getMessages(channelId);
             messages.value = normalizeMessages(response.data, response.included);
-            prevCursor.value = extractCursor(response.links?.prev);
-            nextCursor.value = extractCursor(response.links?.next);
-            const usersStore = useUsersStore();
-            usersStore.hydrateFromUsers(messages.value.map((m) => m.user));
-            usersStore.hydrateFromUsers(
-                messages.value.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
-            );
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
+            hydrateUsers(messages.value);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
@@ -156,18 +163,18 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     async function loadOlderMessages(): Promise<void> {
-        if (!currentChannel.value || !prevCursor.value || isLoadingMore.value) return;
+        if (!currentChannel.value || !hasMoreBefore.value || !oldestId.value || isLoadingMore.value) return;
         isLoadingMore.value = true;
         try {
-            const response = await getMessages(currentChannel.value.id, { cursor: prevCursor.value });
+            const response = await getMessages(currentChannel.value.id, { before: oldestId.value });
             const older = normalizeMessages(response.data, response.included);
-            messages.value = [...older, ...messages.value];
-            prevCursor.value = extractCursor(response.links?.prev);
-            const usersStore = useUsersStore();
-            usersStore.hydrateFromUsers(older.map((m) => m.user));
-            usersStore.hydrateFromUsers(
-                older.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
-            );
+            const meta = readPageMeta(response.meta);
+            if (older.length > 0) {
+                messages.value = [...older, ...messages.value];
+                if (meta.oldestId) oldestId.value = meta.oldestId;
+            }
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hydrateUsers(older);
         } catch (error) {
             console.error('Failed to load older messages:', error);
         } finally {
@@ -176,18 +183,18 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     async function loadNewerMessages(): Promise<void> {
-        if (!currentChannel.value || !nextCursor.value || isLoadingMore.value) return;
+        if (!currentChannel.value || !hasMoreAfter.value || !newestId.value || isLoadingMore.value) return;
         isLoadingMore.value = true;
         try {
-            const response = await getMessages(currentChannel.value.id, { cursor: nextCursor.value });
+            const response = await getMessages(currentChannel.value.id, { after: newestId.value });
             const newer = normalizeMessages(response.data, response.included);
-            messages.value = [...messages.value, ...newer];
-            nextCursor.value = extractCursor(response.links?.next);
-            const usersStore = useUsersStore();
-            usersStore.hydrateFromUsers(newer.map((m) => m.user));
-            usersStore.hydrateFromUsers(
-                newer.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
-            );
+            const meta = readPageMeta(response.meta);
+            if (newer.length > 0) {
+                messages.value = [...messages.value, ...newer];
+                if (meta.newestId) newestId.value = meta.newestId;
+            }
+            hasMoreAfter.value = meta.hasMoreAfter;
+            hydrateUsers(newer);
         } catch (error) {
             console.error('Failed to load newer messages:', error);
         } finally {
@@ -201,13 +208,12 @@ export const useChatStore = defineStore('chat', () => {
         try {
             const response = await getMessages(currentChannel.value.id, { around: messageId });
             messages.value = normalizeMessages(response.data, response.included);
-            prevCursor.value = extractCursor(response.links?.prev);
-            nextCursor.value = extractCursor(response.links?.next);
-            const usersStore = useUsersStore();
-            usersStore.hydrateFromUsers(messages.value.map((m) => m.user));
-            usersStore.hydrateFromUsers(
-                messages.value.filter((m) => m.thread?.last_reply?.user).map((m) => m.thread!.last_reply!.user),
-            );
+            const meta = readPageMeta(response.meta);
+            hasMoreBefore.value = meta.hasMoreBefore;
+            hasMoreAfter.value = meta.hasMoreAfter;
+            oldestId.value = meta.oldestId;
+            newestId.value = meta.newestId;
+            hydrateUsers(messages.value);
         } catch (error) {
             console.error('Failed to load messages around target:', error);
         } finally {
@@ -271,8 +277,10 @@ export const useChatStore = defineStore('chat', () => {
         currentChannel.value = null;
         currentChannelPermissions.value = null;
         messages.value = [];
-        nextCursor.value = null;
-        prevCursor.value = null;
+        oldestId.value = null;
+        newestId.value = null;
+        hasMoreBefore.value = false;
+        hasMoreAfter.value = false;
         isLoadingMessages.value = false;
         isLoadingMore.value = false;
         serverName.value = 'Laradisco';
@@ -283,8 +291,10 @@ export const useChatStore = defineStore('chat', () => {
         currentChannel,
         currentChannelPermissions,
         messages,
-        nextCursor,
-        prevCursor,
+        oldestId,
+        newestId,
+        hasMoreBefore,
+        hasMoreAfter,
         isLoadingMessages,
         isLoadingMore,
         serverName,
