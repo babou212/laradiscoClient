@@ -135,6 +135,22 @@ export function isEchoConnected(): boolean {
     return echoInstance !== null;
 }
 
+/**
+ * Current websocket socket id, or undefined if Echo isn't connected yet.
+ * Sent as the `X-Socket-ID` header on API requests so the server's
+ * `->toOthers()` broadcasts can exclude the originating client (preventing the
+ * sender from receiving — and duplicating — their own optimistic message).
+ * Never initializes Echo: returns undefined when no live instance exists.
+ */
+export function getSocketId(): string | undefined {
+    if (!echoInstance) return undefined;
+    try {
+        return echoInstance.socketId();
+    } catch {
+        return undefined;
+    }
+}
+
 export function disconnectEcho(): void {
     if (echoInstance) {
         try {
@@ -147,4 +163,4 @@ export function disconnectEcho(): void {
     }
 }
 
-export default { initEcho, getEcho, isEchoConnected, disconnectEcho };
+export default { initEcho, getEcho, getSocketId, isEchoConnected, disconnectEcho };

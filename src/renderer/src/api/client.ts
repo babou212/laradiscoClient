@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/electron/renderer';
 import axios from 'axios';
+import { getSocketId } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
 
@@ -36,6 +37,13 @@ api.interceptors.request.use(async (config) => {
 
     if (authStore.token) {
         config.headers.Authorization = `Bearer ${authStore.token}`;
+    }
+
+    // Identify our websocket connection so the server's broadcast(...)->toOthers()
+    // excludes this client and we don't receive (and duplicate) our own messages.
+    const socketId = getSocketId();
+    if (socketId) {
+        config.headers['X-Socket-ID'] = socketId;
     }
 
     return config;
