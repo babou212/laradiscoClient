@@ -175,19 +175,36 @@ export const useThreadStore = defineStore('thread', () => {
             });
             const reply = normalizeMessage(response.data, response.included);
 
+            const lastReply = {
+                id: reply.id,
+                content: reply.content,
+                user: reply.user,
+                created_at: reply.created_at,
+            };
+
             if (!activeThread.value && reply.thread_id) {
                 activeThread.value = {
                     id: reply.thread_id,
                     message_count: 1,
                     last_message_at: reply.created_at,
                     is_following: true,
-                    last_reply: {
-                        id: reply.id,
-                        content: reply.content,
-                        user: reply.user,
-                        created_at: reply.created_at,
-                    },
+                    last_reply: lastReply,
                 };
+            } else if (activeThread.value) {
+                activeThread.value.message_count += 1;
+                activeThread.value.last_message_at = reply.created_at;
+                activeThread.value.last_reply = lastReply;
+            }
+
+            // Reflect the new/updated thread on the parent message so its
+            // preview badge appears immediately. The server's ThreadUpdated
+            // broadcast excludes the sender, so without this the badge would
+            // only show up after a channel switch refetch. parentMessage is the
+            // same object reference held in the channel's message list, so this
+            // mutation reactively updates the rendered message.
+            if (parentMessage.value && activeThread.value) {
+                parentMessage.value.thread = { ...activeThread.value };
+                parentMessage.value.thread_id = activeThread.value.id;
             }
 
             return reply;
