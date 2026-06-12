@@ -1,5 +1,6 @@
 import api from './client';
 import type { JsonApiCollectionResponse, JsonApiResponse, MessageResource } from './types';
+import type { LinkPreviewData } from '@/types/chat';
 
 export interface SendMessageData {
     content: string;
@@ -10,6 +11,7 @@ export interface SendMessageData {
     mention_everyone?: boolean;
     mention_here?: boolean;
     thread_name?: string;
+    link_preview?: LinkPreviewData | null;
 }
 
 export interface EditMessageData {

@@ -117,6 +117,7 @@ export function normalizeMessage(
                 id: replyRes.id,
                 content: (replyRes.attributes as MessageAttributes).content,
                 user: normalizeUser(replyUserRes),
+                link_preview: (replyRes.attributes as MessageAttributes).link_preview ?? null,
             };
         }
     }
@@ -152,6 +153,7 @@ export function normalizeMessage(
         is_pinned: attrs.is_pinned ?? false,
         pinned_at: attrs.pinned_at ?? null,
         attachments: attachments.length > 0 ? attachments : undefined,
+        link_preview: attrs.link_preview ?? null,
     };
 }
 

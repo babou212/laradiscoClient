@@ -486,12 +486,17 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         mention_everyone?: boolean;
         mention_here?: boolean;
         attachment_ids?: string[];
+        link_preview?: LinkPreviewData | null;
     } = {
         content,
     };
 
     if (attachmentIds.length > 0) {
         data.attachment_ids = attachmentIds;
+    }
+
+    if (linkPreview) {
+        data.link_preview = linkPreview;
     }
 
     if (mentionMeta.mentionEveryone) {

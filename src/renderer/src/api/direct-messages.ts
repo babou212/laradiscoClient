@@ -5,12 +5,14 @@ import type {
     JsonApiCollectionResponse,
     JsonApiResponse,
 } from './types';
+import type { LinkPreviewData } from '@/types/chat';
 
 export interface SendDmMessageData {
     content: string;
     reply_to_id?: string;
     attachment_ids?: string[];
     client_temp_id?: string;
+    link_preview?: LinkPreviewData | null;
 }
 
 export interface EditDmMessageData {

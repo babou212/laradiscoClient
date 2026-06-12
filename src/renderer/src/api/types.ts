@@ -1,3 +1,5 @@
+import type { LinkPreviewData } from '@/types/chat';
+
 export interface JsonApiResourceIdentifier<T extends string = string> {
     id: string;
     type: T;
@@ -96,6 +98,7 @@ export interface AvatarUrls {
 
 export interface MessageAttributes {
     content: string | null;
+    link_preview?: LinkPreviewData | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
@@ -108,6 +111,7 @@ export interface MessageAttributes {
 
 export interface DirectMessageAttributes {
     content: string | null;
+    link_preview?: LinkPreviewData | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
