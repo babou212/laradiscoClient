@@ -135,9 +135,6 @@ onMounted(() => {
                     <div v-else-if="!searchQuery.trim()" class="flex flex-col items-center gap-2 px-4 py-8 text-center">
                         <Search :size="32" class="text-muted-foreground/50" aria-hidden="true" />
                         <p class="text-muted-foreground text-sm">{{ t('chat.search.typeToSearch') }}</p>
-                        <p class="text-muted-foreground/70 text-xs">
-                            {{ t('chat.search.offlineNote') }}
-                        </p>
                     </div>
 
                     <div
