@@ -25,8 +25,6 @@ const toggleUsersCollapsed = () => {
 onMounted(async () => {
     await chatStore.fetchCategories();
     voiceStore.fetchVoiceParticipants();
-    await voiceStore.loadSettings();
-    voiceStore.initPttListeners();
 
     const voiceChannelIds = chatStore.categories
         .flatMap((cat) => cat.channels)
@@ -43,7 +41,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-    voiceStore.cleanupPttListeners();
     voiceStore.unsubscribeFromVoiceChannels();
 });
 

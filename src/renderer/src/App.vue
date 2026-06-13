@@ -21,12 +21,16 @@ const handleBeforeQuit = () => {
     voiceStore.leaveChannel();
 };
 
-onMounted(() => {
+onMounted(async () => {
     window.api?.window?.onBeforeQuit(handleBeforeQuit);
+
+    await voiceStore.loadSettings();
+    voiceStore.initPttListeners();
 });
 
 onUnmounted(() => {
     window.api?.window?.removeBeforeQuitListener();
+    voiceStore.cleanupPttListeners();
 });
 </script>
 
