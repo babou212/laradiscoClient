@@ -15,7 +15,6 @@ import {
     shell,
 } from 'electron';
 
-
 Menu.setApplicationMenu(null);
 
 if (process.env.USER_DATA_DIR) {

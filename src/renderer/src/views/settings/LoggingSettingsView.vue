@@ -49,7 +49,7 @@ async function revealLog(): Promise<void> {
                 <div>
                     <div class="text-sm font-medium">{{ t('settings.logging.location') }}</div>
                     <code
-                        class="text-muted-foreground mt-1 block rounded bg-muted/50 px-3 py-2 font-mono text-xs break-all"
+                        class="text-muted-foreground bg-muted/50 mt-1 block rounded px-3 py-2 font-mono text-xs break-all"
                     >
                         {{ logPath || '—' }}
                     </code>
@@ -73,7 +73,10 @@ async function revealLog(): Promise<void> {
                     leave-active-class="transition ease-in-out duration-300"
                     leave-to-class="opacity-0"
                 >
-                    <div v-show="recentlySaved" class="flex items-center gap-2 text-sm text-green-600 dark:text-green-500">
+                    <div
+                        v-show="recentlySaved"
+                        class="flex items-center gap-2 text-sm text-green-600 dark:text-green-500"
+                    >
                         <CheckCircle2 class="h-4 w-4" />
                         {{ t('settings.logging.saved') }}
                     </div>

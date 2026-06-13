@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { Key, Shield } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
-import { Button } from '@/components/ui/button';
 
 const { t } = useI18n();
-const router = useRouter();
 </script>
 
 <template>
@@ -15,7 +11,6 @@ const router = useRouter();
                 <h2 class="text-lg font-semibold">{{ t('settings.security.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.security.description') }}</p>
             </div>
-
         </div>
     </div>
 </template>

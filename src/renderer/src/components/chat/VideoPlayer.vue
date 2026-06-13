@@ -370,10 +370,7 @@ onBeforeUnmount(cleanup);
             @mousemove="onMouseMove"
             @mouseleave="onMouseLeave"
         >
-            <div
-                v-if="!videoReady || !isPlaying"
-                class="absolute inset-0 z-10 flex items-center justify-center"
-            >
+            <div v-if="!videoReady || !isPlaying" class="absolute inset-0 z-10 flex items-center justify-center">
                 <img
                     v-if="thumbnailUrl && !videoSrc"
                     :src="thumbnailUrl"

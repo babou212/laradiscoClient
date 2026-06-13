@@ -493,11 +493,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             </div>
 
             <div v-if="showPill" class="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-                <NewMessagePill
-                    :count="unreadNewCount"
-                    :viewing-history="showPillForHistory"
-                    @click="jumpToBottom"
-                />
+                <NewMessagePill :count="unreadNewCount" :viewing-history="showPillForHistory" @click="jumpToBottom" />
             </div>
         </div>
 
