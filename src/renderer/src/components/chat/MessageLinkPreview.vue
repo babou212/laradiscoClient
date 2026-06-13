@@ -17,6 +17,7 @@ const emit = defineEmits<{
 
 const imageUrl = shallowRef<string | null>(null);
 const imageLoaded = shallowRef(false);
+const imageErrored = shallowRef(false);
 
 const hostname = computed(() => {
     try {
@@ -29,13 +30,16 @@ const hostname = computed(() => {
 const displaySite = computed(() => props.linkPreview.site_name || hostname.value);
 
 const displayImageUrl = computed(() => {
+    if (imageErrored.value) return null;
     if (imageUrl.value) return imageUrl.value;
     const fallback = props.linkPreview.image_url;
     if (!fallback) return null;
     return /^https:\/\//i.test(fallback) ? fallback : null;
 });
 
-const hasImage = computed(() => Boolean(props.linkPreview.image) || Boolean(displayImageUrl.value));
+const hasImage = computed(
+    () => !imageErrored.value && (Boolean(props.linkPreview.image) || Boolean(displayImageUrl.value)),
+);
 
 const aspectRatioStyle = computed(() => {
     const w = props.linkPreview.image_width;
@@ -48,6 +52,19 @@ const aspectRatioStyle = computed(() => {
 
 function onImageLoad() {
     imageLoaded.value = true;
+    emit('image-loaded');
+}
+
+function onImageError() {
+    // The downloaded attachment URL failed — fall back to the remote og:image
+    // once; if that also fails (or there is none), hide the image area instead
+    // of leaving a permanent loading shimmer.
+    const remote = props.linkPreview.image_url;
+    if (imageUrl.value && remote && /^https:\/\//i.test(remote)) {
+        imageUrl.value = null;
+        return;
+    }
+    imageErrored.value = true;
     emit('image-loaded');
 }
 
@@ -117,6 +134,7 @@ const openExternal = () => {
                 referrerpolicy="no-referrer"
                 @click="openExternal"
                 @load="onImageLoad"
+                @error="onImageError"
             />
         </div>
     </div>

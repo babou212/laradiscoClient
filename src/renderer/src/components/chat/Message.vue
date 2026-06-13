@@ -213,6 +213,17 @@ const messageWithoutYoutubeUrl = computed(() => {
 
 const linkPreview = computed(() => props.message.link_preview ?? null);
 
+// The link-preview image is bound to the message as a regular attachment so the
+// preview card can load it, but it is already shown inside the card — exclude it
+// here so it is not rendered a second time as a standalone attachment.
+const visibleAttachments = computed(() => {
+    const attachments = props.message.attachments;
+    if (!attachments?.length) return [];
+    const previewImageId = linkPreview.value?.image?.id;
+    if (!previewImageId) return attachments;
+    return attachments.filter((att) => att.id !== previewImageId);
+});
+
 const messageWithoutPreviewUrl = computed(() => {
     const preview = linkPreview.value;
     if (!preview) return displayContent.value;
@@ -367,8 +378,8 @@ const emitShowProfile = (e: MouseEvent) => {
                 <div v-else class="prose-chat text-sm wrap-break-word" v-html="renderedContent" />
             </div>
 
-            <div v-if="message.attachments?.length" class="mt-2 flex flex-wrap gap-2">
-                <FileAttachment v-for="att in message.attachments" :key="att.id" :attachment="att" />
+            <div v-if="visibleAttachments.length" class="mt-2 flex flex-wrap gap-2">
+                <FileAttachment v-for="att in visibleAttachments" :key="att.id" :attachment="att" />
             </div>
 
             <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">

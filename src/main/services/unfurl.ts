@@ -306,7 +306,17 @@ function isRedditUrl(rawUrl: string): boolean {
 function toRedditJsonUrl(rawUrl: string): string | null {
     try {
         const u = new URL(rawUrl);
-        u.hostname = 'old.reddit.com';
+        // Gallery links (reddit.com/gallery/<id>) and comment permalinks
+        // (reddit.com/r/<sub>/comments/<id>/...) both expose the post as JSON at
+        // the canonical /comments/<id>.json endpoint. Resolve to that so gallery
+        // posts — whose images live in gallery_data/media_metadata rather than as
+        // an og:image — are unfurled correctly. old.reddit.com does not render
+        // new-style galleries, so use www.reddit.com for the JSON request.
+        const postIdMatch = u.pathname.match(/\/(?:gallery|comments)\/([a-z0-9]+)/i);
+        if (postIdMatch) {
+            return `https://www.reddit.com/comments/${postIdMatch[1]}.json?raw_json=1`;
+        }
+        u.hostname = 'www.reddit.com';
         u.pathname = u.pathname.replace(/\/+$/, '') + '.json';
         u.search = 'raw_json=1';
         return u.toString();
