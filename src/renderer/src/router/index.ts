@@ -139,11 +139,6 @@ const router = createRouter({
                     component: () => import('@/views/settings/AuditLogSettingsView.vue'),
                 },
                 {
-                    path: 'security',
-                    name: 'settings-security',
-                    component: () => import('@/views/settings/SecuritySettingsView.vue'),
-                },
-                {
                     path: 'about',
                     name: 'settings-about',
                     component: () => import('@/views/settings/AboutSettingsView.vue'),

@@ -21,7 +21,6 @@ const sidebarNavItems: SettingsNavItem[] = [
     { titleKey: 'settings.nav.profile', routeName: 'settings-profile' },
     { titleKey: 'settings.nav.password', routeName: 'settings-password' },
     { titleKey: 'settings.nav.twoFactor', routeName: 'settings-two-factor' },
-    { titleKey: 'settings.nav.security', routeName: 'settings-security' },
     { titleKey: 'settings.nav.appearance', routeName: 'settings-appearance' },
     { titleKey: 'settings.nav.language', routeName: 'settings-language' },
     { titleKey: 'settings.nav.voice', routeName: 'settings-voice' },
