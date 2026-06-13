@@ -27,7 +27,7 @@
         "typecheck:renderer": "vue-tsc --noEmit -p tsconfig.renderer.json",
         "typecheck": "npm run typecheck:node && npm run typecheck:renderer",
         "clean:db": "rm -f \"$HOME/.config/@babou212/laradisco-client/laradisco.db\"* /tmp/laradisco-user2/laradisco.db*",
-        "postinstall": "node scripts/install-ffmpeg.mjs && node scripts/install-widevine.mjs"
+        "postinstall": "node scripts/install-ffmpeg.mjs && node scripts/install-widevine.mjs && node scripts/fix-uiohook-prebuild.mjs"
     },
     "devDependencies": {
         "@electron-toolkit/tsconfig": "^1.0.1",

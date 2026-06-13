@@ -94,6 +94,9 @@ if (!existsSync(extractedLib)) {
 }
 
 // --- Install ---
+// The destination directory (e.g. the Electron framework's Libraries folder on
+// macOS) may not exist yet on a fresh extraction; ensure it's there before copy.
+mkdirSync(dirname(destPath), { recursive: true });
 copyFileSync(extractedLib, destPath);
 rmSync(tmpDir, { recursive: true, force: true });
 
