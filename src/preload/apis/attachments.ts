@@ -4,7 +4,7 @@ export const attachmentsApi = {
     downloadBuffer: (url: string) => ipcRenderer.invoke('attachment:downloadBuffer', url) as Promise<ArrayBuffer>,
 
     prepareVideo: (params: { attachmentId: string; downloadUrl: string; mimeType: string }) =>
-        ipcRenderer.invoke('video:prepare', params) as Promise<string>,
+        ipcRenderer.invoke('video:prepare', params) as Promise<{ data: Uint8Array<ArrayBuffer>; mimeType: string }>,
 
     cleanupVideo: (attachmentId: string) => ipcRenderer.invoke('video:cleanup', attachmentId) as Promise<void>,
 

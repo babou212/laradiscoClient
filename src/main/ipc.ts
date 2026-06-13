@@ -1,19 +1,15 @@
 import { execFile } from 'child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { promisify } from 'util';
-import * as Sentry from '@sentry/electron/main';
 import { BrowserWindow, ipcMain, net, Notification, type IpcMainInvokeEvent } from 'electron';
 import sharp from 'sharp';
+import { FFMPEG_PATH, FFPROBE_PATH } from './ffmpeg';
 
 function captureIpcError(channel: string, err: unknown): string {
     const error = err instanceof Error ? err : new Error(String(err));
-    Sentry.withScope((scope) => {
-        scope.setTag('ipc.channel', channel);
-        scope.setFingerprint(['ipc-error', channel]);
-        Sentry.captureException(error);
-    });
+    console.error(`[ipc:${channel}]`, error);
     return error.message;
 }
 
@@ -59,7 +55,10 @@ function isAllowedServerUrl(raw: string): boolean {
     const host = active.host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
     const [hostname, port] = host.split(':');
     if (parsed.hostname !== hostname) return false;
-    if (port && parsed.port && parsed.port !== port) return false;
+    // Local dev serves object storage (e.g. Garage/MinIO presigned URLs) on a
+    // different port than the API, so don't enforce the port for loopback hosts.
+    const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    if (!isLoopback && port && parsed.port && parsed.port !== port) return false;
     return true;
 }
 
@@ -67,11 +66,44 @@ const execFileAsync = promisify(execFile);
 
 const SUPPORTED_VIDEO_CODECS = new Set(['h264', 'vp8', 'vp9', 'theora', 'mpeg4', 'mp4v', 'mpeg2video']);
 
-const videoCache = new Map<string, { data: Buffer; mimeType: string }>();
-const videoPreparing = new Map<string, Promise<string>>();
+// Prepared (downloaded + maybe transcoded) videos are written to disk so the
+// transcode result can be reused across re-opens without re-running ffmpeg.
+// The renderer reads the bytes back via video:prepare and plays them from a
+// blob: URL. We deliberately do NOT stream them through a custom app-video://
+// protocol: Chromium treats custom-scheme media sources as non-streamed and
+// issues exact partial-range reads that protocol.handle mishandles, producing
+// PIPELINE_ERROR_READ / "Format error" (see electron/electron #38749, #45226).
+// A blob: URL is fully in-memory in the renderer, so it is reliably seekable
+// and format-sniffed with no range handling at all.
+const VIDEO_DIR = join(tmpdir(), 'laradisco-videos');
 
-export function getVideoCache(attachmentId: string): { data: Buffer; mimeType: string } | undefined {
-    return videoCache.get(attachmentId);
+interface PreparedVideo {
+    filePath: string;
+    mimeType: string;
+}
+
+interface PreparedVideoData {
+    data: Uint8Array;
+    mimeType: string;
+}
+
+const videoCache = new Map<string, PreparedVideo>();
+const videoPreparing = new Map<string, Promise<PreparedVideoData>>();
+
+function videoExtForMime(mimeType: string): string {
+    if (mimeType.includes('webm')) return '.webm';
+    if (mimeType.includes('quicktime')) return '.mov';
+    if (mimeType.includes('matroska')) return '.mkv';
+    if (mimeType.includes('ogg')) return '.ogv';
+    return '.mp4';
+}
+
+// Remove every prepared video and the working directory. Called on quit so the
+// temp dir does not leak across sessions.
+export async function cleanupAllVideos(): Promise<void> {
+    videoCache.clear();
+    videoPreparing.clear();
+    await rm(VIDEO_DIR, { recursive: true, force: true }).catch(() => {});
 }
 
 import { getAuthSession, removeAuthSession, saveAuthSession } from './auth-storage';
@@ -446,9 +478,14 @@ export function registerIpcHandlers(): void {
 
     handle(
         'video:prepare',
-        async (_event, params: { attachmentId: string; downloadUrl: string; mimeType: string }): Promise<string> => {
-            if (videoCache.has(params.attachmentId)) {
-                return `app-video://${params.attachmentId}`;
+        async (
+            _event,
+            params: { attachmentId: string; downloadUrl: string; mimeType: string },
+        ): Promise<PreparedVideoData> => {
+            // Already prepared this session — read the cached file straight back.
+            const cached = videoCache.get(params.attachmentId);
+            if (cached) {
+                return { data: new Uint8Array(await readFile(cached.filePath)), mimeType: cached.mimeType };
             }
 
             const inflight = videoPreparing.get(params.attachmentId);
@@ -460,97 +497,95 @@ export function registerIpcHandlers(): void {
                 throw new Error('video:prepare: downloadUrl not in allowed servers');
             }
 
-            const prepare = (async (): Promise<string> => {
+            const prepare = (async (): Promise<PreparedVideoData> => {
                 const response = await net.fetch(params.downloadUrl);
                 if (!response.ok) {
                     throw new Error(`Failed to download video: HTTP ${response.status} ${response.statusText}`);
                 }
-                let data = Buffer.from(await response.arrayBuffer());
-                let mimeType = params.mimeType;
+                const data = Buffer.from(await response.arrayBuffer());
 
-                const tmpDir = await mkdtemp(join(tmpdir(), 'laradisco-vid-'));
+                await mkdir(VIDEO_DIR, { recursive: true });
+                const inputPath = join(VIDEO_DIR, `${params.attachmentId}-src${videoExtForMime(params.mimeType)}`);
+                await writeFile(inputPath, data);
+
+                let videoCodec = 'unknown';
+                let pixFmt = '';
+                let colorTransfer = '';
                 try {
-                    const inputPath = join(tmpDir, 'input');
-                    await writeFile(inputPath, data);
-
-                    let videoCodec = 'unknown';
-                    let pixFmt = '';
-                    let colorTransfer = '';
-                    try {
-                        const { stdout } = await execFileAsync(
-                            'ffprobe',
-                            [
-                                '-v',
-                                'quiet',
-                                '-print_format',
-                                'json',
-                                '-show_streams',
-                                '-select_streams',
-                                'v:0',
-                                inputPath,
-                            ],
-                            { maxBuffer: 10 * 1024 * 1024 },
-                        );
-                        const info = JSON.parse(stdout) as {
-                            streams?: { codec_name?: string; pix_fmt?: string; color_transfer?: string }[];
-                        };
-                        const stream = info.streams?.[0];
-                        videoCodec = stream?.codec_name ?? 'unknown';
-                        pixFmt = stream?.pix_fmt ?? '';
-                        colorTransfer = stream?.color_transfer ?? '';
-                    } catch {
-                        videoCodec = 'unknown';
-                    }
-
-                    const is10bit = /10(?:le|be)|12(?:le|be)/.test(pixFmt);
-                    const isHdr = colorTransfer === 'smpte2084' || colorTransfer === 'arib-std-b67';
-                    const needsTranscode = !SUPPORTED_VIDEO_CODECS.has(videoCodec) || is10bit || isHdr;
-                    console.log(
-                        `[video:prepare] codec=${videoCodec} pix_fmt=${pixFmt} color_transfer=${colorTransfer} needsTranscode=${needsTranscode}`,
+                    const { stdout } = await execFileAsync(
+                        FFPROBE_PATH,
+                        ['-v', 'quiet', '-print_format', 'json', '-show_streams', '-select_streams', 'v:0', inputPath],
+                        { maxBuffer: 10 * 1024 * 1024 },
                     );
-
-                    if (needsTranscode) {
-                        const outputPath = join(tmpDir, 'output.webm');
-                        await execFileAsync(
-                            'ffmpeg',
-                            [
-                                '-y',
-                                '-loglevel',
-                                'error',
-                                '-i',
-                                inputPath,
-                                '-c:v',
-                                'libvpx-vp9',
-                                '-pix_fmt',
-                                'yuv420p',
-                                '-vf',
-                                'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                                '-crf',
-                                '33',
-                                '-b:v',
-                                '0',
-                                '-deadline',
-                                'realtime',
-                                '-cpu-used',
-                                '8',
-                                '-c:a',
-                                'libopus',
-                                outputPath,
-                            ],
-                            { maxBuffer: 50 * 1024 * 1024 },
-                        );
-                        data = await readFile(outputPath);
-                        mimeType = 'video/webm';
-                        console.log(`[video:prepare] transcode OK → VP9/WebM, output size=${data.length} bytes`);
-                    }
+                    const info = JSON.parse(stdout) as {
+                        streams?: { codec_name?: string; pix_fmt?: string; color_transfer?: string }[];
+                    };
+                    const stream = info.streams?.[0];
+                    videoCodec = stream?.codec_name ?? 'unknown';
+                    pixFmt = stream?.pix_fmt ?? '';
+                    colorTransfer = stream?.color_transfer ?? '';
                 } catch (err) {
-                    console.error('[video:prepare] Transcoding failed, serving original:', err);
-                } finally {
-                    await rm(tmpDir, { recursive: true, force: true });
+                    console.error('[video:prepare] ffprobe failed, will transcode defensively:', err);
+                    videoCodec = 'unknown';
                 }
 
-                videoCache.set(params.attachmentId, { data, mimeType });
-                return `app-video://${params.attachmentId}`;
+                const is10bit = /10(?:le|be)|12(?:le|be)/.test(pixFmt);
+                const isHdr = colorTransfer === 'smpte2084' || colorTransfer === 'arib-std-b67';
+                const needsTranscode = !SUPPORTED_VIDEO_CODECS.has(videoCodec) || is10bit || isHdr;
+                console.log(
+                    `[video:prepare] codec=${videoCodec} pix_fmt=${pixFmt} color_transfer=${colorTransfer} needsTranscode=${needsTranscode}`,
+                );
+
+                if (!needsTranscode) {
+                    videoCache.set(params.attachmentId, { filePath: inputPath, mimeType: params.mimeType });
+                    return { data: new Uint8Array(data), mimeType: params.mimeType };
+                }
+
+                const outputPath = join(VIDEO_DIR, `${params.attachmentId}.webm`);
+                try {
+                    await execFileAsync(
+                        FFMPEG_PATH,
+                        [
+                            '-y',
+                            '-loglevel',
+                            'error',
+                            '-i',
+                            inputPath,
+                            '-c:v',
+                            'libvpx-vp9',
+                            '-pix_fmt',
+                            'yuv420p',
+                            '-vf',
+                            'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                            '-crf',
+                            '33',
+                            '-b:v',
+                            '0',
+                            '-deadline',
+                            'realtime',
+                            '-cpu-used',
+                            '8',
+                            '-c:a',
+                            'libopus',
+                            outputPath,
+                        ],
+                        { maxBuffer: 50 * 1024 * 1024 },
+                    );
+                } catch (err) {
+                    // Do NOT fall back to serving the original here. The original
+                    // is in an unsupported codec/format (that is why we are
+                    // transcoding), so handing it to the demuxer guarantees a
+                    // playback error. Fail loudly so the UI shows an error.
+                    await rm(inputPath, { force: true }).catch(() => {});
+                    await rm(outputPath, { force: true }).catch(() => {});
+                    throw new Error(`Failed to transcode video (codec=${videoCodec}): ${String(err)}`);
+                }
+
+                await rm(inputPath, { force: true }).catch(() => {});
+                const out = await readFile(outputPath);
+                console.log(`[video:prepare] transcode OK → VP9/WebM, ${out.length} bytes`);
+                videoCache.set(params.attachmentId, { filePath: outputPath, mimeType: 'video/webm' });
+                return { data: new Uint8Array(out), mimeType: 'video/webm' };
             })();
 
             videoPreparing.set(params.attachmentId, prepare);
@@ -562,9 +597,13 @@ export function registerIpcHandlers(): void {
         },
     );
 
-    handle('video:cleanup', (_event, attachmentId: string): void => {
+    handle('video:cleanup', async (_event, attachmentId: string): Promise<void> => {
+        const entry = videoCache.get(attachmentId);
         videoCache.delete(attachmentId);
         videoPreparing.delete(attachmentId);
+        if (entry) {
+            await rm(entry.filePath, { force: true }).catch(() => {});
+        }
     });
 
     handle(
@@ -584,7 +623,7 @@ export function registerIpcHandlers(): void {
                 for (const seekArgs of [['-ss', '00:00:01'], [] as string[]]) {
                     try {
                         await execFileAsync(
-                            'ffmpeg',
+                            FFMPEG_PATH,
                             [
                                 '-y',
                                 '-loglevel',

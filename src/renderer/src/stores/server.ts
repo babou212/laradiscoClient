@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/electron/renderer';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
@@ -29,7 +28,6 @@ export const useServerStore = defineStore('server', () => {
 
     async function loadActiveServer(): Promise<void> {
         activeServer.value = await window.api.server.getActive();
-        Sentry.setTag('server.host', activeServer.value?.host ?? 'none');
     }
 
     async function loadAllServers(): Promise<void> {

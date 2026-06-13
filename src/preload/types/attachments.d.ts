@@ -1,7 +1,11 @@
 export interface AttachmentsApi {
     downloadBuffer(url: string): Promise<ArrayBuffer>;
 
-    prepareVideo(params: { attachmentId: string; downloadUrl: string; mimeType: string }): Promise<string>;
+    prepareVideo(params: {
+        attachmentId: string;
+        downloadUrl: string;
+        mimeType: string;
+    }): Promise<{ data: Uint8Array<ArrayBuffer>; mimeType: string }>;
 
     cleanupVideo(attachmentId: string): Promise<void>;
 

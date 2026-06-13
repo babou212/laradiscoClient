@@ -19,14 +19,17 @@ export async function getAttachmentDownloadUrl(attachmentId: string): Promise<Do
 export async function uploadChannelAttachment(
     channelId: string | number,
     file: Blob,
+    fileName: string,
     thumbnail?: Blob | null,
     extra?: { width?: number; height?: number },
     onProgress?: (progress: number) => void,
 ): Promise<UploadResponse> {
     const formData = new FormData();
-    formData.append('file', file);
+    // Pass the filename explicitly: a bare Blob is sent as "blob", losing the
+    // original name the server stores as the attachment's file_name.
+    formData.append('file', file, fileName);
     if (thumbnail) {
-        formData.append('thumbnail', thumbnail);
+        formData.append('thumbnail', thumbnail, `thumb-${fileName}`);
     }
     if (extra?.width != null) formData.append('width', String(extra.width));
     if (extra?.height != null) formData.append('height', String(extra.height));
@@ -46,14 +49,17 @@ export async function uploadChannelAttachment(
 export async function uploadDmAttachment(
     groupId: string | number,
     file: Blob,
+    fileName: string,
     thumbnail?: Blob | null,
     extra?: { width?: number; height?: number },
     onProgress?: (progress: number) => void,
 ): Promise<UploadResponse> {
     const formData = new FormData();
-    formData.append('file', file);
+    // Pass the filename explicitly: a bare Blob is sent as "blob", losing the
+    // original name the server stores as the attachment's file_name.
+    formData.append('file', file, fileName);
     if (thumbnail) {
-        formData.append('thumbnail', thumbnail);
+        formData.append('thumbnail', thumbnail, `thumb-${fileName}`);
     }
     if (extra?.width != null) formData.append('width', String(extra.width));
     if (extra?.height != null) formData.append('height', String(extra.height));

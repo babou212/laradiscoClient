@@ -2,8 +2,6 @@ import './assets/css/main.css';
 
 import { PiniaColada } from '@pinia/colada';
 import Aura from '@primeuix/themes/aura';
-import * as Sentry from '@sentry/electron/renderer';
-import { browserTracingIntegration as vueBrowserTracingIntegration, vueIntegration } from '@sentry/vue';
 import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import { createApp } from 'vue';
@@ -26,19 +24,6 @@ app.use(PrimeVue, {
             darkModeSelector: '.dark',
         },
     },
-});
-
-Sentry.init({
-    integrations: [
-        vueIntegration({
-            app,
-            tracingOptions: {
-                trackComponents: true,
-                hooks: ['activate', 'create', 'unmount', 'mount', 'update'],
-            },
-        }),
-        vueBrowserTracingIntegration({ router, routeLabel: 'path' }),
-    ] as NonNullable<Parameters<typeof Sentry.init>[0]>['integrations'],
 });
 
 app.mount('#app');

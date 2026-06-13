@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import * as Sentry from '@sentry/electron/main';
 import {
     app,
     BrowserWindow,
@@ -15,27 +14,8 @@ import {
     session,
     shell,
 } from 'electron';
-import { version } from '../../package.json';
 
 Menu.setApplicationMenu(null);
-
-Sentry.init({
-    dsn: 'https://71284c322a0e09fa3e93f93919f11f53@o4511215356805120.ingest.de.sentry.io/4511215360475216',
-    release: `com.laradisco.client@${version}`,
-    environment: is.dev ? 'development' : 'production',
-    enabled: !is.dev,
-    tracesSampleRate: 0.1,
-    beforeSend(event) {
-        if (event.breadcrumbs) {
-            for (const crumb of event.breadcrumbs) {
-                if (crumb.data?.headers?.Authorization) {
-                    crumb.data.headers.Authorization = '[FILTERED]';
-                }
-            }
-        }
-        return event;
-    },
-});
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
@@ -77,7 +57,7 @@ protocol.registerSchemesAsPrivileged([
     { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
-import { registerIpcHandlers, getVideoCache } from './ipc';
+import { registerIpcHandlers, cleanupAllVideos } from './ipc';
 import { cleanupPushToTalk } from './ptt';
 import { getIsQuitting, initTray, setIsQuitting } from './tray';
 
@@ -209,42 +189,6 @@ app.whenReady().then(() => {
     registerWindowIpcHandlers();
     registerClipboardIpcHandlers();
 
-    session.defaultSession.protocol.handle('app-video', (request) => {
-        const attachmentId = new URL(request.url).hostname;
-        const entry = getVideoCache(attachmentId);
-        if (!entry) {
-            return new Response(null, { status: 404 });
-        }
-
-        const rangeHeader = request.headers.get('Range');
-        if (rangeHeader) {
-            const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
-            if (match) {
-                const start = parseInt(match[1], 10);
-                const end = match[2] ? parseInt(match[2], 10) : entry.data.length - 1;
-                const chunk = entry.data.subarray(start, end + 1);
-                return new Response(new Uint8Array(chunk), {
-                    status: 206,
-                    headers: {
-                        'Content-Type': entry.mimeType,
-                        'Content-Range': `bytes ${start}-${end}/${entry.data.length}`,
-                        'Accept-Ranges': 'bytes',
-                        'Content-Length': String(chunk.length),
-                    },
-                });
-            }
-        }
-
-        return new Response(new Uint8Array(entry.data), {
-            status: 200,
-            headers: {
-                'Content-Type': entry.mimeType,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': String(entry.data.length),
-            },
-        });
-    });
-
     session.defaultSession.protocol.handle('app', (request) => {
         const url = new URL(request.url);
         let filePath = url.pathname;
@@ -288,7 +232,7 @@ app.whenReady().then(() => {
         "connect-src 'self' http: https: ws: wss:",
         "img-src 'self' data: http: https: blob:",
         "font-src 'self' data:",
-        "media-src 'self' blob: data: https: app-video:",
+        "media-src 'self' blob: data: http: https: app-video:",
         'frame-src blob: https://www.youtube.com https://www.youtube-nocookie.com',
         "worker-src 'self' blob:",
         "object-src 'none'",
@@ -419,4 +363,5 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
     setIsQuitting(true);
     cleanupPushToTalk();
+    void cleanupAllVideos();
 });

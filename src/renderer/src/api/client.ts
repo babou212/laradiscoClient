@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/electron/renderer';
 import axios from 'axios';
 import { getSocketId } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -52,33 +51,6 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.config) {
-            Sentry.addBreadcrumb({
-                category: 'http',
-                message: `${error.config.method?.toUpperCase()} ${error.config.url}`,
-                level: 'error',
-                data: {
-                    status: error.response?.status,
-                    url: error.config.url,
-                    method: error.config.method,
-                },
-            });
-        }
-
-        if (error.response?.status >= 500) {
-            Sentry.withScope((scope) => {
-                scope.setTag('http.status_code', error.response.status);
-                scope.setTag('http.method', error.config?.method?.toUpperCase());
-                scope.setContext('request', {
-                    url: error.config?.url,
-                    method: error.config?.method,
-                    baseURL: error.config?.baseURL,
-                });
-                scope.setFingerprint(['http-error', String(error.response.status), error.config?.url ?? 'unknown']);
-                Sentry.captureException(error);
-            });
-        }
-
         if (error.response?.status === 401) {
             const authStore = useAuthStore();
             await authStore.logout();

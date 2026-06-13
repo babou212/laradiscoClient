@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/electron/renderer';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '@/stores/auth';
@@ -104,20 +103,12 @@ export function initEcho(): Echo<'reverb'> {
         const pusher = connector.pusher;
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
-            Sentry.addBreadcrumb({ category: 'websocket', message: 'Echo connected', level: 'info' });
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');
-            Sentry.addBreadcrumb({ category: 'websocket', message: 'Echo disconnected', level: 'warning' });
         });
         pusher.connection.bind('error', (err: unknown) => {
             console.error('[Echo] WebSocket error:', err);
-            Sentry.addBreadcrumb({
-                category: 'websocket',
-                message: 'Echo error',
-                level: 'error',
-                data: { error: String(err) },
-            });
         });
     }
 

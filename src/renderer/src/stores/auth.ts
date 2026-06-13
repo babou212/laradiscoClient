@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/electron/renderer';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useServerStore } from './server';
@@ -72,7 +71,6 @@ export const useAuthStore = defineStore('auth', () => {
         if (result.valid && result.user) {
             user.value = result.user;
             token.value = session.token;
-            Sentry.setUser({ id: result.user.id, username: result.user.username });
             return true;
         }
 
@@ -101,7 +99,6 @@ export const useAuthStore = defineStore('auth', () => {
             if (result.success && result.user && result.token) {
                 user.value = result.user;
                 token.value = result.token;
-                Sentry.setUser({ id: result.user.id, username: result.user.username });
                 return true;
             }
 
@@ -137,7 +134,6 @@ export const useAuthStore = defineStore('auth', () => {
                 user.value = result.user;
                 token.value = result.token;
                 challengeToken.value = null;
-                Sentry.setUser({ id: result.user.id, username: result.user.username });
                 return true;
             }
 
@@ -182,7 +178,6 @@ export const useAuthStore = defineStore('auth', () => {
             if (result.success && result.user && result.token) {
                 user.value = result.user;
                 token.value = result.token;
-                Sentry.setUser({ id: result.user.id, username: result.user.username });
                 return true;
             }
 
@@ -203,7 +198,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
         user.value = null;
         token.value = null;
-        Sentry.setUser(null);
     }
 
     function clearError(): void {

@@ -325,8 +325,9 @@ async function buildLinkPreviewWithTimeout(content: string): Promise<LinkPreview
             try {
                 const imageBytes = result.imageBytes;
                 const imageBlob = new Blob([imageBytes as BlobPart], { type: result.imageMime });
+                const imageName = `image.${result.imageMime.split('/')[1] ?? 'png'}`;
                 const uploadFn = props.isDm ? uploadDmAttachment : uploadChannelAttachment;
-                const uploadResponse = await uploadFn(props.channel.id, imageBlob, null, {
+                const uploadResponse = await uploadFn(props.channel.id, imageBlob, imageName, null, {
                     width: result.imageWidth,
                     height: result.imageHeight,
                 });
@@ -430,6 +431,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             const uploadResponse = await uploadFn(
                 props.channel.id,
                 fileBlob,
+                staged.file.name,
                 thumbnailBlob,
                 { width, height },
                 (progress) => {

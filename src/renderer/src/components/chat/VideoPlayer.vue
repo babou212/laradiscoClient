@@ -45,8 +45,7 @@ const progress = computed(() => {
 });
 
 const seekValue = computed(() => [progress.value]);
-const thumbnailContainerStyle = computed(() => {
-    if (videoSrc.value) return {};
+const playerStyle = computed(() => {
     if (props.attachment.width && props.attachment.height) {
         return {
             aspectRatio: `${props.attachment.width}/${props.attachment.height}`,
@@ -79,11 +78,19 @@ function formatFileSize(bytes: number): string {
 async function prepareVideo(): Promise<string> {
     const { download_url } = await getAttachmentDownloadUrl(props.attachment.id);
 
-    return window.api.attachments.prepareVideo({
+    // The main process downloads and (if needed) transcodes the file, then
+    // hands back the raw bytes. We play them from an in-renderer blob: URL,
+    // which is fully seekable and format-sniffed — sidestepping the custom
+    // protocol + HTTP range path that Chromium's media stack mishandles for
+    // custom schemes (see electron/electron #38749, #45226).
+    const { data, mimeType } = await window.api.attachments.prepareVideo({
         attachmentId: props.attachment.id,
         downloadUrl: download_url,
         mimeType: props.attachment.mime_type,
     });
+
+    const blob = new Blob([data], { type: mimeType });
+    return URL.createObjectURL(blob);
 }
 
 async function loadThumbnail() {
@@ -146,6 +153,13 @@ function onMouseLeave() {
     }
 }
 
+// Release the current blob: URL (if any) so its bytes can be GC'd.
+function revokeSrc() {
+    if (videoSrc.value?.startsWith('blob:')) {
+        URL.revokeObjectURL(videoSrc.value);
+    }
+}
+
 async function loadAndPlay() {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -155,9 +169,11 @@ async function loadAndPlay() {
     try {
         const url = await prepareVideo();
         if (!isMounted) {
+            if (url.startsWith('blob:')) URL.revokeObjectURL(url);
             window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
             return;
         }
+        revokeSrc();
         videoSrc.value = url;
         await nextTick();
         videoRef.value?.load();
@@ -220,7 +236,7 @@ function onEnded() {
     clearTimeout(controlsTimer);
 }
 
-function onVideoError() {
+async function onVideoError() {
     const err = videoRef.value?.error;
     if (err) {
         console.error('Video element error:', err.code, err.message);
@@ -228,12 +244,19 @@ function onVideoError() {
 
     if (retryCount.value < 1 && videoSrc.value) {
         retryCount.value++;
-        window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
+        // Drop the failed source + its prepared file, then actually re-prepare
+        // and play. Previously this reset state but never reloaded, so the
+        // player just bounced back to the poster and the user had to click again.
+        await window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
+        revokeSrc();
         videoSrc.value = null;
         videoReady.value = false;
         isLoading.value = false;
         isBuffering.value = false;
         isPlaying.value = false;
+        await nextTick();
+        if (!isMounted) return;
+        loadAndPlay();
         return;
     }
 
@@ -306,6 +329,7 @@ function cleanup() {
     stopTimeTracking();
     clearTimeout(controlsTimer);
     if (videoSrc.value) {
+        revokeSrc();
         window.api.attachments.cleanupVideo(props.attachment.id).catch(() => {});
         videoSrc.value = null;
     }
@@ -342,14 +366,13 @@ onBeforeUnmount(cleanup);
             v-else
             class="group relative overflow-hidden rounded-lg bg-black"
             :class="{ 'cursor-none': !controlsVisible && isPlaying }"
+            :style="playerStyle"
             @mousemove="onMouseMove"
             @mouseleave="onMouseLeave"
         >
             <div
                 v-if="!videoReady || !isPlaying"
-                class="relative flex items-center justify-center"
-                :class="{ 'absolute inset-0 z-10': videoSrc }"
-                :style="thumbnailContainerStyle"
+                class="absolute inset-0 z-10 flex items-center justify-center"
             >
                 <img
                     v-if="thumbnailUrl && !videoSrc"
@@ -385,7 +408,7 @@ onBeforeUnmount(cleanup);
             <video
                 v-if="videoSrc"
                 ref="videoRef"
-                class="max-h-[70vh] w-full"
+                class="h-full w-full object-contain"
                 :src="videoSrc"
                 preload="auto"
                 playsinline
