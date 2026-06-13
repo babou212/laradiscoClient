@@ -5,11 +5,14 @@ import { join } from 'path';
 import { promisify } from 'util';
 import { BrowserWindow, ipcMain, net, Notification, type IpcMainInvokeEvent } from 'electron';
 import sharp from 'sharp';
+import { getAuthSession, removeAuthSession, saveAuthSession } from './auth-storage';
+import { clearActiveServer, getActiveServer, getSetting, saveActiveServer, setSetting } from './database';
 import { FFMPEG_PATH, FFPROBE_PATH } from './ffmpeg';
+import { logger } from './logger';
 
 function captureIpcError(channel: string, err: unknown): string {
     const error = err instanceof Error ? err : new Error(String(err));
-    console.error(`[ipc:${channel}]`, error);
+    logger.error(`[ipc:${channel}]`, error);
     return error.message;
 }
 
@@ -106,8 +109,6 @@ export async function cleanupAllVideos(): Promise<void> {
     await rm(VIDEO_DIR, { recursive: true, force: true }).catch(() => {});
 }
 
-import { getAuthSession, removeAuthSession, saveAuthSession } from './auth-storage';
-import { clearActiveServer, getActiveServer, getSetting, saveActiveServer, setSetting } from './database';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
 import { unfurlUrl } from './services/unfurl';
 

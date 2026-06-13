@@ -2,6 +2,11 @@
 import { BellOff, BellRing, MessageSquareText, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import FileAttachment from './FileAttachment.vue';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
+import TypingIndicator from './TypingIndicator.vue';
 import { coerceBroadcastMessage } from '@/api/normalizers';
 import { sendThreadTyping } from '@/api/typing';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,11 +29,6 @@ import { usePresenceStore } from '@/stores/presence';
 import { useThreadStore } from '@/stores/thread';
 import { useUsersStore } from '@/stores/users';
 import type { MessageData, MessageReaction, ChannelPermissions } from '@/types/chat';
-import FileAttachment from './FileAttachment.vue';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import NewMessagePill from './NewMessagePill.vue';
-import TypingIndicator from './TypingIndicator.vue';
 
 interface Props {
     channelId: string;

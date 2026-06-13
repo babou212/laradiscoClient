@@ -7,6 +7,7 @@ export type { AuthPermissions, AuthUser, AuthSession, AuthApi } from './types/au
 export type { PttCapturedKey, PttApi } from './types/ptt';
 export type { NotificationsApi } from './types/notifications';
 export type { SettingsApi } from './types/settings';
+export type { LogApi, LogSaveResult } from './types/log';
 export type { WindowApi } from './types/window';
 export type { UpdaterApi } from './types/updater';
 export type { TrayApi } from './types/tray';
@@ -15,6 +16,7 @@ export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unf
 import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
 import type { ClipboardApi } from './types/clipboard';
+import type { LogApi } from './types/log';
 import type { NotificationsApi } from './types/notifications';
 import type { PttApi } from './types/ptt';
 import type { ServerApi } from './types/server';
@@ -30,6 +32,7 @@ interface AppApi {
     ptt: PttApi;
     notifications: NotificationsApi;
     settings: SettingsApi;
+    log: LogApi;
     window: WindowApi;
     updater: UpdaterApi;
     attachments: AttachmentsApi;

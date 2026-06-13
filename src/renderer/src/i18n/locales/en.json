@@ -184,6 +184,7 @@
             "notifications": "Notifications",
             "language": "Language",
             "about": "About",
+            "logs": "Logs",
             "server": "Server",
             "inviteLinks": "Invite Links",
             "roles": "Roles",
@@ -600,6 +601,15 @@
                 "upToDate": "You are running the latest version.",
                 "failed": "Failed to check for updates"
             }
+        },
+        "logging": {
+            "title": "Logs & Diagnostics",
+            "description": "Export the application log file to share with support when reporting a bug.",
+            "location": "Log file location",
+            "save": "Save log file…",
+            "reveal": "Show in folder",
+            "saved": "Log file saved.",
+            "saveFailed": "Failed to save log file"
         },
         "inviteLinks": {
             "title": "Invite Links",

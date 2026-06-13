@@ -15,11 +15,16 @@ import {
     shell,
 } from 'electron';
 
+
 Menu.setApplicationMenu(null);
 
 if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
 }
+
+// Initialise logging right after the userData override so the log file lands in
+// the correct dir, and before app.whenReady() so startup crashes are captured.
+initLogger();
 
 app.commandLine.appendSwitch(
     'enable-features',
@@ -58,6 +63,8 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 import { registerIpcHandlers, cleanupAllVideos } from './ipc';
+import { registerLogIpcHandlers } from './log';
+import { initLogger, logger } from './logger';
 import { cleanupPushToTalk } from './ptt';
 import { getIsQuitting, initTray, setIsQuitting } from './tray';
 
@@ -169,6 +176,14 @@ function createWindow(): void {
         }
     });
 
+    win.webContents.on('render-process-gone', (_event, details) => {
+        logger.error('render-process-gone', details);
+    });
+    win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        if (errorCode === -3) return; // ERR_ABORTED — benign (navigation cancelled)
+        logger.error('did-fail-load', { errorCode, errorDescription, validatedURL });
+    });
+
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
         win.loadURL(process.env['ELECTRON_RENDERER_URL']);
     } else {
@@ -185,9 +200,11 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(() => {
+    logger.info('app ready');
     registerIpcHandlers();
     registerWindowIpcHandlers();
     registerClipboardIpcHandlers();
+    registerLogIpcHandlers();
 
     session.defaultSession.protocol.handle('app', (request) => {
         const url = new URL(request.url);
@@ -336,11 +353,13 @@ app.whenReady().then(() => {
     if (mainWindow) pauseOnHidden(mainWindow);
 
     powerMonitor.on('suspend', () => {
+        logger.info('power: suspend');
         BrowserWindow.getAllWindows().forEach((w) => {
             if (!w.webContents.isDestroyed()) w.webContents.send('app:visibility-change', false);
         });
     });
     powerMonitor.on('resume', () => {
+        logger.info('power: resume');
         BrowserWindow.getAllWindows().forEach((w) => {
             if (!w.webContents.isDestroyed()) w.webContents.send('app:visibility-change', true);
         });
@@ -361,6 +380,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+    logger.info('quitting');
     setIsQuitting(true);
     cleanupPushToTalk();
     void cleanupAllVideos();

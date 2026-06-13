@@ -148,6 +148,11 @@ const router = createRouter({
                     name: 'settings-about',
                     component: () => import('@/views/settings/AboutSettingsView.vue'),
                 },
+                {
+                    path: 'logs',
+                    name: 'settings-logs',
+                    component: () => import('@/views/settings/LoggingSettingsView.vue'),
+                },
             ],
         },
         {

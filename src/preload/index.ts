@@ -1,9 +1,13 @@
 import { electronAPI } from '@electron-toolkit/preload';
 import { contextBridge } from 'electron';
+// Side-effect import: exposes window.__electronLog so electron-log/renderer can
+// forward renderer logs to the main-process log file. Sandbox-safe (ipcRenderer only).
+import 'electron-log/preload';
 
 import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
 import { clipboardApi } from './apis/clipboard';
+import { logApi } from './apis/log';
 import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
 import { serverApi } from './apis/server';
@@ -19,6 +23,7 @@ const api = {
     ptt: pttApi,
     notifications: notificationsApi,
     settings: settingsApi,
+    log: logApi,
     window: windowApi,
     updater: updaterApi,
     attachments: attachmentsApi,

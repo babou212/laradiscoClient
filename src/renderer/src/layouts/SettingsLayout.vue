@@ -28,6 +28,7 @@ const sidebarNavItems: SettingsNavItem[] = [
     { titleKey: 'settings.nav.screenShare', routeName: 'settings-screen-share' },
     { titleKey: 'settings.nav.notifications', routeName: 'settings-notifications' },
     { titleKey: 'settings.nav.about', routeName: 'settings-about' },
+    { titleKey: 'settings.nav.logs', routeName: 'settings-logs' },
 ];
 
 const permissions = computed(() => authStore.user?.permissions);

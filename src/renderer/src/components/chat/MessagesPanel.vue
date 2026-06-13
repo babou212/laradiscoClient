@@ -4,6 +4,13 @@ import { Hash, MessageSquare, PanelRightClose, PanelRightOpen, Pin, Search } fro
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import Message from './Message.vue';
+import MessageInput from './MessageInput.vue';
+import NewMessagePill from './NewMessagePill.vue';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
+import SearchMessages from './SearchMessages.vue';
+import TypingIndicator from './TypingIndicator.vue';
+import UserProfilePanel from './UserProfilePanel.vue';
 import { uploadChannelAttachment, uploadDmAttachment } from '@/api/attachments';
 import { sendDmMessage, editDmMessage, deleteDmMessage } from '@/api/direct-messages';
 import {
@@ -49,13 +56,6 @@ import type {
 } from '@/types/chat';
 import type { OnlineUser } from '@/types/user';
 import { extractMentionMetadata } from '@/utils/mentions';
-import Message from './Message.vue';
-import MessageInput from './MessageInput.vue';
-import NewMessagePill from './NewMessagePill.vue';
-import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
-import SearchMessages from './SearchMessages.vue';
-import TypingIndicator from './TypingIndicator.vue';
-import UserProfilePanel from './UserProfilePanel.vue';
 
 type ChannelData = {
     id: string;
