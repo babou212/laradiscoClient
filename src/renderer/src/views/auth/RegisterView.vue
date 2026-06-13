@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, TicketIcon } from 'lucide-vue-next';
-import { ref, computed, onMounted } from 'vue';
+import { useClipboard } from '@vueuse/core';
+import DOMPurify from 'dompurify';
+import { ArrowLeftIcon, Check, Copy, EyeIcon, EyeOffIcon, Loader2Icon, ShieldCheck, TicketIcon } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { z } from 'zod';
+import { enableTwoFactor as apiEnableTwoFactor, confirmTwoFactor as apiConfirmTwoFactor } from '@/api/two-factor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputOtp } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { isDarkTheme, useAppearance } from '@/composables/useAppearance';
+import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useServerStore } from '@/stores/server';
@@ -39,12 +46,19 @@ const registerSchema = computed(() =>
 
 type InviteFieldErrors = Partial<Record<keyof z.infer<typeof inviteSchema.value>, string>>;
 type RegisterFieldErrors = Partial<Record<keyof z.infer<typeof registerSchema.value>, string>>;
+type Step = 'invite' | 'form' | 'twofa-prompt' | 'twofa-setup' | 'twofa-recovery';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const serverStore = useServerStore();
+const { theme } = useAppearance();
 
-const step = ref<'invite' | 'form'>('invite');
+const { qrCodeSvg, manualSetupKey, recoveryCodesList, fetchSetupData, fetchRecoveryCodes, clearTwoFactorAuthData } =
+    useTwoFactorAuth();
+
+const { copy, copied } = useClipboard();
+
+const step = ref<Step>('invite');
 
 const inviteToken = ref('');
 const name = ref('');
@@ -59,8 +73,57 @@ const error = ref<string | null>(null);
 const inviteFieldErrors = ref<InviteFieldErrors>({});
 const registerFieldErrors = ref<RegisterFieldErrors>({});
 
+// Two-factor setup state
+const code = ref('');
+const codeError = ref('');
+const processing = ref(false);
+
 const serverName = computed(() => serverStore.activeServer?.name ?? t('auth.serverFallback'));
 const serverHost = computed(() => serverStore.activeServer?.host ?? '');
+
+const sanitizedQrCodeSvg = computed(() => {
+    if (!qrCodeSvg.value) return null;
+    return DOMPurify.sanitize(qrCodeSvg.value, {
+        USE_PROFILES: { svg: true },
+        ADD_TAGS: ['svg', 'path', 'rect', 'circle', 'g', 'defs', 'use'],
+        FORBID_TAGS: ['script', 'foreignObject', 'animate', 'set'],
+        FORBID_ATTR: ['onload', 'onerror', 'onclick', 'onmouseover'],
+    });
+});
+
+const layoutTitle = computed(() => {
+    switch (step.value) {
+        case 'invite':
+            return t('auth.register.joinTitle');
+        case 'form':
+            return t('auth.register.createTitle');
+        case 'twofa-prompt':
+            return t('auth.register.twoFactor.promptTitle');
+        case 'twofa-setup':
+            return t('auth.register.twoFactor.scanTitle');
+        case 'twofa-recovery':
+            return t('auth.register.twoFactor.recoveryTitle');
+        default:
+            return '';
+    }
+});
+
+const layoutDescription = computed(() => {
+    switch (step.value) {
+        case 'invite':
+            return t('auth.register.inviteDescription');
+        case 'form':
+            return t('auth.register.signupDescription', { server: serverName.value });
+        case 'twofa-prompt':
+            return t('auth.register.twoFactor.promptBody');
+        case 'twofa-setup':
+            return t('auth.register.twoFactor.scanDescription');
+        case 'twofa-recovery':
+            return t('auth.register.twoFactor.recoveryBody');
+        default:
+            return '';
+    }
+});
 
 const canSubmitInvite = computed(() => inviteToken.value.trim().length > 0 && !isValidating.value);
 
@@ -78,6 +141,10 @@ onMounted(() => {
     if (!serverStore.activeServer) {
         router.replace({ name: 'server-connect' });
     }
+});
+
+onUnmounted(() => {
+    clearTwoFactorAuthData();
 });
 
 async function handleValidateInvite(): Promise<void> {
@@ -145,10 +212,52 @@ async function handleRegister(): Promise<void> {
     );
 
     if (registerResult) {
-        router.push({ name: 'home' });
+        // The account is created and the user is authenticated. Offer optional 2FA
+        // setup before sending them into the app.
+        step.value = 'twofa-prompt';
     } else {
         error.value = authStore.loginError;
     }
+}
+
+async function goToTwoFactorSetup(): Promise<void> {
+    processing.value = true;
+    error.value = null;
+    try {
+        await apiEnableTwoFactor();
+        await fetchSetupData();
+        step.value = 'twofa-setup';
+    } catch {
+        error.value = t('auth.register.twoFactor.enableFailed');
+    } finally {
+        processing.value = false;
+    }
+}
+
+async function confirmSetup(): Promise<void> {
+    if (code.value.length < 6 || processing.value) return;
+    processing.value = true;
+    codeError.value = '';
+    try {
+        await apiConfirmTwoFactor(code.value);
+        await fetchRecoveryCodes();
+        code.value = '';
+        step.value = 'twofa-recovery';
+    } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        codeError.value = axiosErr.response?.data?.error ?? t('auth.register.twoFactor.invalidCode');
+        code.value = '';
+    } finally {
+        processing.value = false;
+    }
+}
+
+function copyRecoveryCodes(): void {
+    copy(recoveryCodesList.value.join('\n'));
+}
+
+function finish(): void {
+    router.push({ name: 'home' });
 }
 
 function goBackToInvite(): void {
@@ -163,14 +272,7 @@ function goToLogin(): void {
 </script>
 
 <template>
-    <AuthLayout
-        :title="step === 'invite' ? t('auth.register.joinTitle') : t('auth.register.createTitle')"
-        :description="
-            step === 'invite'
-                ? t('auth.register.inviteDescription')
-                : t('auth.register.signupDescription', { server: serverName })
-        "
-    >
+    <AuthLayout :title="layoutTitle" :description="layoutDescription">
         <p v-if="step === 'form'" class="text-muted-foreground/60 -mt-6 text-center text-xs">
             {{ serverHost }}
         </p>
@@ -218,7 +320,7 @@ function goToLogin(): void {
             </div>
         </form>
 
-        <form v-else @submit.prevent="handleRegister" class="space-y-5">
+        <form v-else-if="step === 'form'" @submit.prevent="handleRegister" class="space-y-5">
             <div class="grid gap-2">
                 <Label for="name">{{ t('auth.register.displayName') }}</Label>
                 <Input
@@ -327,5 +429,126 @@ function goToLogin(): void {
                 </Button>
             </div>
         </form>
+
+        <!-- Optional two-factor setup: offer it -->
+        <div v-else-if="step === 'twofa-prompt'" class="space-y-5">
+            <div class="flex justify-center">
+                <div class="bg-primary/10 text-primary flex size-14 items-center justify-center rounded-full">
+                    <ShieldCheck class="size-7" />
+                </div>
+            </div>
+
+            <div
+                v-if="error"
+                class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+            >
+                {{ error }}
+            </div>
+
+            <div class="flex flex-col gap-3 pt-1">
+                <Button type="button" :disabled="processing" class="w-full" @click="goToTwoFactorSetup">
+                    <Loader2Icon v-if="processing" class="animate-spin" />
+                    <ShieldCheck v-else class="size-4" />
+                    {{ t('auth.register.twoFactor.enable') }}
+                </Button>
+                <Button type="button" variant="ghost" :disabled="processing" class="w-full" @click="finish">
+                    {{ t('auth.register.twoFactor.skip') }}
+                </Button>
+                <p class="text-muted-foreground text-center text-xs">
+                    {{ t('auth.register.twoFactor.skipHint') }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Optional two-factor setup: scan QR / verify code -->
+        <div v-else-if="step === 'twofa-setup'" class="flex flex-col items-center space-y-5">
+            <div class="border-border relative mx-auto aspect-square w-56 overflow-hidden rounded-lg border">
+                <div
+                    v-if="!qrCodeSvg"
+                    class="bg-background absolute inset-0 z-10 flex animate-pulse items-center justify-center"
+                >
+                    <Spinner class="size-6" />
+                </div>
+                <div v-else class="relative z-10 overflow-hidden p-4">
+                    <div
+                        v-html="sanitizedQrCodeSvg"
+                        class="flex aspect-square size-full items-center justify-center"
+                        :style="{ filter: isDarkTheme(theme) ? 'invert(1) brightness(1.5)' : undefined }"
+                    />
+                </div>
+            </div>
+
+            <div class="relative flex w-full items-center justify-center">
+                <div class="bg-border absolute inset-0 top-1/2 h-px w-full" />
+                <span class="bg-background text-muted-foreground relative px-2 py-1 text-sm">
+                    {{ t('auth.register.twoFactor.orManual') }}
+                </span>
+            </div>
+
+            <div class="border-border flex w-full items-stretch overflow-hidden rounded-xl border">
+                <div v-if="!manualSetupKey" class="bg-muted flex h-full w-full items-center justify-center p-3">
+                    <Spinner />
+                </div>
+                <template v-else>
+                    <input
+                        type="text"
+                        readonly
+                        :value="manualSetupKey"
+                        class="bg-background text-foreground h-full w-full p-3 text-sm"
+                    />
+                    <button
+                        type="button"
+                        @click="copy(manualSetupKey || '')"
+                        class="border-border hover:bg-muted relative block h-auto border-l px-3"
+                    >
+                        <Check v-if="copied" class="w-4 text-green-500" />
+                        <Copy v-else class="w-4" />
+                    </button>
+                </template>
+            </div>
+
+            <form @submit.prevent="confirmSetup" class="w-full space-y-4">
+                <p class="text-muted-foreground text-center text-sm">
+                    {{ t('auth.register.twoFactor.verifyDescription') }}
+                </p>
+                <div class="flex w-full flex-col items-center justify-center space-y-3">
+                    <InputOtp v-model="code" :maxlength="6" :disabled="processing" @complete="confirmSetup" />
+                    <p v-if="codeError" class="text-destructive text-xs">{{ codeError }}</p>
+                </div>
+
+                <div class="flex flex-col gap-3 pt-1">
+                    <Button type="submit" class="w-full" :disabled="processing || code.length < 6">
+                        <Loader2Icon v-if="processing" class="animate-spin" />
+                        <span>{{ t('auth.register.twoFactor.confirm') }}</span>
+                    </Button>
+                    <Button type="button" variant="ghost" class="w-full" :disabled="processing" @click="finish">
+                        {{ t('auth.register.twoFactor.skip') }}
+                    </Button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Optional two-factor setup: recovery codes -->
+        <div v-else-if="step === 'twofa-recovery'" class="space-y-5">
+            <div class="bg-muted grid gap-1 rounded-lg p-4 font-mono text-sm">
+                <div v-if="!recoveryCodesList.length" class="space-y-2">
+                    <div v-for="n in 8" :key="n" class="bg-muted-foreground/20 h-4 animate-pulse rounded" />
+                </div>
+                <div v-else v-for="(rc, index) in recoveryCodesList" :key="index">
+                    {{ rc }}
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 pt-1">
+                <Button type="button" variant="outline" class="w-full" @click="copyRecoveryCodes">
+                    <Check v-if="copied" class="size-4 text-green-500" />
+                    <Copy v-else class="size-4" />
+                    {{ copied ? t('auth.register.twoFactor.copied') : t('auth.register.twoFactor.copyCodes') }}
+                </Button>
+                <Button type="button" class="w-full" :disabled="!recoveryCodesList.length" @click="finish">
+                    {{ t('auth.register.twoFactor.recoveryContinue') }}
+                </Button>
+            </div>
+        </div>
     </AuthLayout>
 </template>

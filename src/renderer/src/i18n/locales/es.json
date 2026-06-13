@@ -64,7 +64,26 @@
             "creatingAccount": "Creando cuenta...",
             "useDifferentInvite": "Usar otro código de invitación",
             "invalidInvite": "Enlace de invitación no válido",
-            "unableToReach": "No se pudo conectar con el servidor. Inténtalo de nuevo más tarde."
+            "unableToReach": "No se pudo conectar con el servidor. Inténtalo de nuevo más tarde.",
+            "twoFactor": {
+                "promptTitle": "Secure your account",
+                "promptBody": "Add two-factor authentication for an extra layer of security. You'll enter a code from your authenticator app each time you sign in.",
+                "enable": "Enable two-factor authentication",
+                "skip": "Skip for now",
+                "skipHint": "You can enable this later in Settings.",
+                "scanTitle": "Set up two-factor authentication",
+                "scanDescription": "Scan the QR code with your authenticator app, or enter the setup key manually.",
+                "orManual": "or enter this key manually",
+                "verifyDescription": "Enter the 6-digit code from your authenticator app to confirm.",
+                "confirm": "Confirm & continue",
+                "invalidCode": "The code is invalid. Please try again.",
+                "enableFailed": "Could not start two-factor setup. You can enable it later in Settings.",
+                "recoveryTitle": "Save your recovery codes",
+                "recoveryBody": "Store these somewhere safe. Each code can be used once to sign in if you lose your authenticator. They won't be shown again.",
+                "copyCodes": "Copy codes",
+                "copied": "Copied",
+                "recoveryContinue": "I've saved my codes — continue"
+            }
         },
         "forgot": {
             "resetTitle": "Restablecer contraseña",
