@@ -16,6 +16,7 @@
         "emailInvalid": "Please enter a valid email address.",
         "passwordRequired": "Password is required",
         "passwordMin8": "Password must be at least 8 characters.",
+        "passwordComplexity": "Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.",
         "passwordConfirmRequired": "Please confirm your password.",
         "passwordsMatch": "Passwords do not match.",
         "displayNameRequired": "Display name is required.",
@@ -60,6 +61,14 @@
             "password": "Password",
             "confirmPassword": "Confirm Password",
             "passwordPlaceholder": "••••••••",
+            "passwordRules": {
+                "length": "At least 12 characters",
+                "case": "Upper & lowercase letters",
+                "number": "A number",
+                "symbol": "A symbol",
+                "breach": "Not found in a data breach (checked on submit)",
+                "breachFailed": "This password appeared in a known data breach — choose another"
+            },
             "createAccount": "Create Account",
             "creatingAccount": "Creating account...",
             "useDifferentInvite": "Use a different invite code",

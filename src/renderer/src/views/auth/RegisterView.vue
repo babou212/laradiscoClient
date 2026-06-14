@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core';
 import DOMPurify from 'dompurify';
-import { ArrowLeftIcon, Check, Copy, EyeIcon, EyeOffIcon, Loader2Icon, ShieldCheck, TicketIcon } from 'lucide-vue-next';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import {
+    ArrowLeftIcon,
+    Check,
+    Circle,
+    Copy,
+    EyeIcon,
+    EyeOffIcon,
+    Info,
+    Loader2Icon,
+    ShieldCheck,
+    TicketIcon,
+    X,
+} from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { z } from 'zod';
@@ -35,7 +47,13 @@ const registerSchema = computed(() =>
                 .min(1, t('validation.usernameRequired'))
                 .regex(/^[a-z0-9_.-]+$/i, t('validation.usernameInvalidChars')),
             email: z.string().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
-            password: z.string().min(8, t('validation.passwordMin8')),
+            password: z
+                .string()
+                .min(12, t('validation.passwordComplexity'))
+                .regex(/\p{Ll}/u, t('validation.passwordComplexity'))
+                .regex(/\p{Lu}/u, t('validation.passwordComplexity'))
+                .regex(/[0-9]/, t('validation.passwordComplexity'))
+                .regex(/[^\p{L}\p{N}]/u, t('validation.passwordComplexity')),
             passwordConfirmation: z.string().min(1, t('validation.passwordConfirmRequired')),
         })
         .refine((d) => d.password === d.passwordConfirmation, {
@@ -67,6 +85,28 @@ const email = ref('');
 const password = ref('');
 const passwordConfirmation = ref('');
 const showPassword = ref(false);
+
+// Complexity rules we can verify locally as the user types. These mirror the
+// server's Password rule so the form rarely round-trips for a fixable mistake.
+const passwordRules = computed(() => {
+    const p = password.value;
+    return [
+        { key: 'length', met: p.length >= 12 },
+        { key: 'case', met: /\p{Ll}/u.test(p) && /\p{Lu}/u.test(p) },
+        { key: 'number', met: /[0-9]/.test(p) },
+        { key: 'symbol', met: /[^\p{L}\p{N}]/u.test(p) },
+    ];
+});
+
+// The HaveIBeenPwned ("not compromised") rule can only be checked by the server,
+// so this row stays neutral until a registration attempt comes back rejected.
+const breachStatus = ref<'idle' | 'failed'>('idle');
+
+// Re-checking on each keystroke would be stale, so clear the failure as soon as
+// the user changes the password.
+watch(password, () => {
+    if (breachStatus.value === 'failed') breachStatus.value = 'idle';
+});
 
 const isValidating = ref(false);
 const error = ref<string | null>(null);
@@ -186,6 +226,7 @@ async function handleRegister(): Promise<void> {
     registerFieldErrors.value = {};
     authStore.clearError();
     error.value = null;
+    breachStatus.value = 'idle';
 
     const result = registerSchema.value.safeParse({
         name: name.value.trim(),
@@ -211,11 +252,29 @@ async function handleRegister(): Promise<void> {
         result.data.passwordConfirmation,
     );
 
-    if (registerResult) {
+    if (registerResult.success) {
         // The account is created and the user is authenticated. Offer optional 2FA
         // setup before sending them into the app.
         step.value = 'twofa-prompt';
-    } else {
+        return;
+    }
+
+    // Surface the server's reasons inline next to each field. An invalid invite
+    // sends the user back to the invite step; anything unmapped uses the banner.
+    const fieldErrors = registerResult.fieldErrors ?? {};
+    const { invite_token: inviteError, password: passwordError, ...formErrors } = fieldErrors;
+    for (const [field, message] of Object.entries(formErrors)) {
+        registerFieldErrors.value[field as keyof RegisterFieldErrors] = message;
+    }
+    // We already enforce every complexity rule client-side before submitting, so a
+    // password rejection from the server is the breach (HaveIBeenPwned) check failing.
+    if (passwordError) {
+        breachStatus.value = 'failed';
+    }
+    if (inviteError) {
+        step.value = 'invite';
+        error.value = inviteError;
+    } else if (Object.keys(formErrors).length === 0 && !passwordError) {
         error.value = authStore.loginError;
     }
 }
@@ -377,7 +436,7 @@ function goToLogin(): void {
                         autocomplete="new-password"
                         :disabled="authStore.isLoggingIn"
                         class="pr-10"
-                        :class="{ 'border-destructive': registerFieldErrors.password }"
+                        :class="{ 'border-destructive': registerFieldErrors.password || breachStatus === 'failed' }"
                     />
                     <button
                         type="button"
@@ -389,9 +448,30 @@ function goToLogin(): void {
                         <EyeIcon v-else class="size-4" />
                     </button>
                 </div>
-                <p v-if="registerFieldErrors.password" class="text-destructive text-xs">
-                    {{ registerFieldErrors.password }}
-                </p>
+                <ul class="space-y-1.5 pt-1">
+                    <li
+                        v-for="rule in passwordRules"
+                        :key="rule.key"
+                        class="flex items-center gap-2 text-xs"
+                        :class="rule.met ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'"
+                    >
+                        <Check v-if="rule.met" class="size-3.5 shrink-0" />
+                        <Circle v-else class="size-3.5 shrink-0" />
+                        {{ t(`auth.register.passwordRules.${rule.key}`) }}
+                    </li>
+                    <li
+                        class="flex items-center gap-2 text-xs"
+                        :class="breachStatus === 'failed' ? 'text-destructive' : 'text-muted-foreground'"
+                    >
+                        <X v-if="breachStatus === 'failed'" class="size-3.5 shrink-0" />
+                        <Info v-else class="size-3.5 shrink-0" />
+                        {{
+                            breachStatus === 'failed'
+                                ? t('auth.register.passwordRules.breachFailed')
+                                : t('auth.register.passwordRules.breach')
+                        }}
+                    </li>
+                </ul>
             </div>
 
             <div class="grid gap-2">

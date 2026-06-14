@@ -358,13 +358,27 @@ export function registerIpcHandlers(): void {
                 const body = await response.json();
 
                 if (!response.ok) {
-                    const errors = body.errors ?? {};
+                    // The API returns JSON:API errors: { errors: [{ detail, source: { pointer } }] }.
+                    // Collapse them into a { field: [messages] } map keyed by the attribute name so
+                    // the renderer can surface each reason inline (a weak password yields several).
+                    const errors: Record<string, string[]> = {};
+                    if (Array.isArray(body.errors)) {
+                        for (const err of body.errors) {
+                            const pointer: string | undefined = err.source?.pointer;
+                            const field = pointer?.replace(/^\/data\/attributes\//, '') ?? '_';
+                            const message = err.detail ?? err.title;
+                            if (!message) continue;
+                            (errors[field] ??= []).push(message);
+                        }
+                    }
                     const firstError =
                         errors.invite_token?.[0] ||
                         errors.name?.[0] ||
                         errors.username?.[0] ||
                         errors.email?.[0] ||
                         errors.password?.[0] ||
+                        errors.password_confirmation?.[0] ||
+                        errors._?.[0] ||
                         body.message ||
                         'Registration failed';
                     return { success: false, error: firstError, errors };

@@ -27,6 +27,13 @@ export interface AuthUser {
     permissions?: AuthPermissions;
 }
 
+/** Outcome of a registration attempt. On failure, `fieldErrors` maps form field
+ *  names to a human-readable reason (multiple backend messages joined). */
+export interface RegisterResult {
+    success: boolean;
+    fieldErrors?: Record<string, string>;
+}
+
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<AuthUser | null>(null);
     const token = ref<string | null>(null);
@@ -154,11 +161,11 @@ export const useAuthStore = defineStore('auth', () => {
         email: string,
         password: string,
         passwordConfirmation: string,
-    ): Promise<boolean> {
+    ): Promise<RegisterResult> {
         const server = getValidServer();
         if (!server) {
             loginError.value = 'No server connection';
-            return false;
+            return { success: false };
         }
 
         isLoggingIn.value = true;
@@ -178,14 +185,23 @@ export const useAuthStore = defineStore('auth', () => {
             if (result.success && result.user && result.token) {
                 user.value = result.user;
                 token.value = result.token;
-                return true;
+                return { success: true };
+            }
+
+            // Map the backend's per-field messages onto the form field names so the
+            // caller can render each reason inline (e.g. every failed password rule).
+            const fieldErrors: Record<string, string> = {};
+            for (const [field, messages] of Object.entries(result.errors ?? {})) {
+                if (!messages?.length) continue;
+                const key = field === 'password_confirmation' ? 'passwordConfirmation' : field;
+                fieldErrors[key] = messages.join(' ');
             }
 
             loginError.value = result.error ?? 'Registration failed';
-            return false;
+            return { success: false, fieldErrors };
         } catch {
             loginError.value = 'Unexpected error during registration';
-            return false;
+            return { success: false };
         } finally {
             isLoggingIn.value = false;
         }
