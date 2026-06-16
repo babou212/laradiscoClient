@@ -3,6 +3,7 @@ import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePres
 import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
+import { useInboxStore } from '@/stores/inbox';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
 import { useServerStore } from '@/stores/server';
@@ -176,6 +177,9 @@ function connectRealtime(userId: number): void {
     void presenceStore.connect();
     notificationsStore.connect(userId);
     chatStore.connectUnread(userId);
+    // Pull any messages buffered while we were offline (the reconnect path is
+    // handled by the Echo 'connected' handler in lib/echo.ts).
+    void useInboxStore().drain();
     startPresenceUpdater();
 }
 

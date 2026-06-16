@@ -7,6 +7,22 @@ import { useServerStore } from '@/stores/server';
 
 let echoInstance: Echo<'reverb'> | null = null;
 let currentConfigKey = '';
+let inboxDrainTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Drain the offline-delivery inbox after a websocket (re)connect. Debounced and
+ * coalesced so a reconnect storm triggers at most one drain per window. The
+ * store is imported lazily to avoid a circular import (stores import echo.ts).
+ */
+function scheduleInboxDrain(): void {
+    if (inboxDrainTimer) return;
+    inboxDrainTimer = setTimeout(() => {
+        inboxDrainTimer = null;
+        void import('@/stores/inbox')
+            .then(({ useInboxStore }) => useInboxStore().drain())
+            .catch((error) => console.error('[Inbox] drain failed:', error));
+    }, 2000);
+}
 
 function resolveReverbConfig() {
     const serverStore = useServerStore();
@@ -103,6 +119,7 @@ export function initEcho(): Echo<'reverb'> {
         const pusher = connector.pusher;
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
+            scheduleInboxDrain();
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');

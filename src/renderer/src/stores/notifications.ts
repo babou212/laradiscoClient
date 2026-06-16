@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, watch } from 'vue';
+import { ackInbox } from '@/api/inbox';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/notifications';
 import { t } from '@/i18n';
 import { getEcho } from '@/lib/echo';
@@ -127,6 +128,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
             notifications.value.unshift(notification);
             unreadCount.value++;
+
+            // Every buffered inbox row (DM or @user mention) has a matching
+            // notification on this channel — acking here deletes the row server
+            // side so it isn't re-delivered on the next reconnect drain.
+            if (notification.data.notification_type === 'direct_message') {
+                void ackInbox([{ message_type: 'direct_message', message_id: notification.data.message_id }]);
+            } else if (notification.data.mention_type === 'user' && notification.data.channel_id != null) {
+                void ackInbox([{ message_type: 'channel', message_id: notification.data.message_id }]);
+            }
 
             const prefs = preferences.value;
             const isDm = notification.data.notification_type === 'direct_message';
