@@ -530,7 +530,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             : null,
         user: {
             id: currentUser.value!.id,
-            username: currentUser.value!.username ?? currentUser.value!.name,
+            username: currentUser.value!.username,
             avatar_urls: null,
         },
         reactions: [],

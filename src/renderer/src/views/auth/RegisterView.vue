@@ -41,7 +41,6 @@ const inviteSchema = computed(() =>
 const registerSchema = computed(() =>
     z
         .object({
-            name: z.string().min(1, t('validation.displayNameRequired')),
             username: z
                 .string()
                 .min(1, t('validation.usernameRequired'))
@@ -79,7 +78,6 @@ const { copy, copied } = useClipboard();
 const step = ref<Step>('invite');
 
 const inviteToken = ref('');
-const name = ref('');
 const username = ref('');
 const email = ref('');
 const password = ref('');
@@ -169,7 +167,6 @@ const canSubmitInvite = computed(() => inviteToken.value.trim().length > 0 && !i
 
 const canSubmitForm = computed(
     () =>
-        name.value.trim() !== '' &&
         username.value.trim() !== '' &&
         email.value.trim() !== '' &&
         password.value.length >= 8 &&
@@ -229,7 +226,6 @@ async function handleRegister(): Promise<void> {
     breachStatus.value = 'idle';
 
     const result = registerSchema.value.safeParse({
-        name: name.value.trim(),
         username: username.value.trim(),
         email: email.value.trim(),
         password: password.value,
@@ -245,7 +241,6 @@ async function handleRegister(): Promise<void> {
 
     const registerResult = await authStore.register(
         inviteToken.value.trim(),
-        result.data.name,
         result.data.username,
         result.data.email,
         result.data.password,
@@ -381,21 +376,6 @@ function goToLogin(): void {
 
         <form v-else-if="step === 'form'" @submit.prevent="handleRegister" class="space-y-5">
             <div class="grid gap-2">
-                <Label for="name">{{ t('auth.register.displayName') }}</Label>
-                <Input
-                    id="name"
-                    v-model="name"
-                    type="text"
-                    :placeholder="t('auth.register.displayNamePlaceholder')"
-                    autocomplete="name"
-                    :disabled="authStore.isLoggingIn"
-                    :class="{ 'border-destructive': registerFieldErrors.name }"
-                    autofocus
-                />
-                <p v-if="registerFieldErrors.name" class="text-destructive text-xs">{{ registerFieldErrors.name }}</p>
-            </div>
-
-            <div class="grid gap-2">
                 <Label for="username">{{ t('auth.register.username') }}</Label>
                 <Input
                     id="username"
@@ -405,6 +385,7 @@ function goToLogin(): void {
                     autocomplete="username"
                     :disabled="authStore.isLoggingIn"
                     :class="{ 'border-destructive': registerFieldErrors.username }"
+                    autofocus
                 />
                 <p v-if="registerFieldErrors.username" class="text-destructive text-xs">
                     {{ registerFieldErrors.username }}

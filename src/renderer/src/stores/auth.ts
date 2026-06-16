@@ -20,7 +20,6 @@ export interface AuthPermissions {
 
 export interface AuthUser {
     id: string;
-    name: string;
     username: string;
     email: string;
     avatar_urls: AvatarUrls | null;
@@ -58,8 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
             usersStore.upsert({
                 id: newUser.id,
                 username: newUser.username,
-                display_name: newUser.name || newUser.username,
-                name: newUser.name ?? null,
+                display_name: newUser.username,
                 avatar_urls: newUser.avatar_urls,
                 permissions: newUser.permissions ?? null,
             });
@@ -156,7 +154,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function register(
         inviteToken: string,
-        name: string,
         username: string,
         email: string,
         password: string,
@@ -175,7 +172,6 @@ export const useAuthStore = defineStore('auth', () => {
             const result = await window.api.auth.register(
                 server.host,
                 inviteToken,
-                name,
                 username,
                 email,
                 password,

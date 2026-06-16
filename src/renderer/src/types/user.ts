@@ -14,7 +14,6 @@ export interface UserProfile {
     username: string;
     email: string;
     email_verified_at: string | null;
-    nickname: string | null;
     avatar_urls: AvatarUrls | null;
     about_me: string | null;
     custom_status: string | null;

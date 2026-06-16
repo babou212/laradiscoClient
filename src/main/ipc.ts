@@ -114,7 +114,6 @@ import { unfurlUrl } from './services/unfurl';
 
 interface AuthUser {
     id: string;
-    name: string;
     username: string;
     email: string;
     avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
@@ -131,7 +130,6 @@ function parseUserResource(resource: Record<string, unknown>): AuthUser {
     const attrs = data.attributes;
     return {
         id: data.id,
-        name: attrs.name as string,
         username: attrs.username as string,
         email: attrs.email as string,
         avatar_urls: (attrs.avatar_urls as AuthUser['avatar_urls']) ?? null,
@@ -243,7 +241,7 @@ export function registerIpcHandlers(): void {
 
             saveAuthSession({
                 user_id: Number(user.id),
-                user_name: user.name,
+                user_name: user.username,
                 user_email: user.email,
                 user_avatar: user.avatar_urls?.thumb ?? null,
                 token: data.token,
@@ -291,7 +289,7 @@ export function registerIpcHandlers(): void {
 
                 saveAuthSession({
                     user_id: Number(user.id),
-                    user_name: user.name,
+                    user_name: user.username,
                     user_email: user.email,
                     user_avatar: user.avatar_urls?.thumb ?? null,
                     token: data.token,
@@ -330,7 +328,6 @@ export function registerIpcHandlers(): void {
             _event,
             host: string,
             inviteToken: string,
-            name: string,
             username: string,
             email: string,
             password: string,
@@ -346,7 +343,6 @@ export function registerIpcHandlers(): void {
                     },
                     body: JSON.stringify({
                         invite_token: inviteToken,
-                        name,
                         username,
                         email,
                         password,
@@ -373,7 +369,6 @@ export function registerIpcHandlers(): void {
                     }
                     const firstError =
                         errors.invite_token?.[0] ||
-                        errors.name?.[0] ||
                         errors.username?.[0] ||
                         errors.email?.[0] ||
                         errors.password?.[0] ||
@@ -389,7 +384,7 @@ export function registerIpcHandlers(): void {
 
                 saveAuthSession({
                     user_id: Number(user.id),
-                    user_name: user.name,
+                    user_name: user.username,
                     user_email: user.email,
                     user_avatar: user.avatar_urls?.thumb ?? null,
                     token: data.token,

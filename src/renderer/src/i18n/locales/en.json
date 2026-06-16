@@ -511,7 +511,15 @@
                 "searchPlaceholder": "Search members...",
                 "empty": "No members found.",
                 "jail": "Jail",
-                "ban": "Ban"
+                "ban": "Ban",
+                "delete": "Delete"
+            },
+            "deleteDialog": {
+                "title": "Delete Member",
+                "description": "Permanently delete {name} from the server. Their account is removed entirely and cannot be restored. Existing messages remain but will be marked as written by a deleted user.",
+                "warning": "This action is permanent and cannot be undone.",
+                "submit": "Delete User",
+                "success": "{name} has been permanently deleted."
             },
             "banDialog": {
                 "title": "Ban Member",
@@ -551,6 +559,7 @@
                 "unban": "Unbanned",
                 "jail": "Jailed",
                 "unjail": "Unjailed",
+                "delete_user": "Deleted User",
                 "message_delete": "Deleted Message",
                 "thread_message_delete": "Deleted Thread Reply",
                 "role_assign": "Assigned Role",
@@ -570,6 +579,7 @@
                 "unban": "Unbans",
                 "jail": "Jails",
                 "unjail": "Unjails",
+                "delete_user": "User Deletions",
                 "message_delete": "Message Deletions",
                 "role_assign": "Role Assigned",
                 "role_remove": "Role Removed",
@@ -734,6 +744,7 @@
             "enterTo": "enter to",
             "saveInline": "save",
             "unknownUser": "Unknown",
+            "deletedUserTag": "(deleted)",
             "deleteDialogTitle": "Delete Message",
             "deleteDialogDescription": "Are you sure you want to delete this message? This cannot be undone.",
             "deleteConfirm": "Delete",

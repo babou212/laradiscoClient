@@ -14,7 +14,6 @@ export interface AuthPermissions {
 
 export interface AuthUser {
     id: string;
-    name: string;
     username: string;
     email: string;
     avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
@@ -56,7 +55,6 @@ export interface AuthApi {
     register: (
         host: string,
         inviteToken: string,
-        name: string,
         username: string,
         email: string,
         password: string,

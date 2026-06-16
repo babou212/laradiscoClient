@@ -18,7 +18,7 @@ const { getInitials } = useInitials();
 const usersStore = useUsersStore();
 
 const avatarUrl = computed(() => usersStore.avatarUrl(props.user.id, 'thumb'));
-const resolvedName = computed(() => usersStore.displayName(props.user.id, props.user.name));
+const resolvedName = computed(() => usersStore.displayName(props.user.id, props.user.username));
 </script>
 
 <template>

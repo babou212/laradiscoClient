@@ -255,7 +255,7 @@ const sendReply = async (content: string) => {
         reply_to_id: null,
         user: {
             id: currentUser.value!.id,
-            username: currentUser.value?.username ?? currentUser.value!.name,
+            username: currentUser.value!.username,
             avatar_urls: null,
         },
         reactions: [],

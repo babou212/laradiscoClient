@@ -107,6 +107,8 @@ export interface MessageData {
         link_preview?: LinkPreviewData | null;
     } | null;
     user: MessageUser;
+    /** Username snapshot retained when the author's account has been deleted from the server. */
+    deleted_author_name?: string | null;
     reactions: MessageReaction[];
     created_at: string;
     is_pinned?: boolean;

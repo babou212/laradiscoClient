@@ -68,6 +68,20 @@ const displayContent = computed(() => props.message.content ?? '');
 
 const replyDisplayContent = computed(() => props.message.reply_to?.content ?? '');
 
+// The author's account has been permanently deleted from the server. Either the
+// message arrived from the API with a name snapshot, or a live deletion event
+// flagged the cached user. In both cases we render a non-interactive tombstone.
+const isDeletedAuthor = computed(
+    () => !!props.message.deleted_author_name || usersStore.get(props.message.user?.id ?? '')?.deleted === true,
+);
+
+const authorDisplayName = computed(() => {
+    if (props.message.deleted_author_name) return props.message.deleted_author_name;
+    return props.message.user
+        ? usersStore.displayName(props.message.user.id, props.message.user.username)
+        : t('chat.messages.unknownUser');
+});
+
 const groupedReactions = computed(() => {
     const map = new Map<string, { emoji: string; count: number; userReacted: boolean }>();
     for (const r of props.message.reactions) {
@@ -274,8 +288,14 @@ const emitShowProfile = (e: MouseEvent) => {
         :data-is-pinned="message.is_pinned ? 'true' : 'false'"
         class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2"
     >
+        <Avatar v-if="isDeletedAuthor" class="size-10 shrink-0 opacity-60">
+            <AvatarFallback class="bg-muted text-muted-foreground text-sm font-semibold">
+                {{ authorDisplayName[0]?.toUpperCase() ?? '?' }}
+            </AvatarFallback>
+        </Avatar>
+
         <Avatar
-            v-if="message.user"
+            v-else-if="message.user"
             :data-context-username="!isDm ? '' : undefined"
             :data-user-id="!isDm ? message.user.id : undefined"
             :data-username="!isDm ? message.user.username : undefined"
@@ -296,6 +316,16 @@ const emitShowProfile = (e: MouseEvent) => {
         <div class="min-w-0 flex-1 overflow-hidden">
             <div class="flex items-baseline gap-2">
                 <span
+                    v-if="isDeletedAuthor"
+                    class="text-muted-foreground inline-flex items-baseline gap-1 text-sm font-semibold italic"
+                >
+                    {{ authorDisplayName }}
+                    <span class="text-muted-foreground/70 text-xs font-normal not-italic">
+                        {{ t('chat.messages.deletedUserTag') }}
+                    </span>
+                </span>
+                <span
+                    v-else
                     :data-context-username="!isDm ? '' : undefined"
                     :data-user-id="!isDm ? message.user.id : undefined"
                     :data-username="!isDm ? message.user.username : undefined"

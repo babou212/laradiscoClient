@@ -43,7 +43,6 @@ type MemberRole = {
 
 type Member = {
     id: string;
-    name: string;
     username: string;
     email: string;
     avatar_urls: { thumb: string; small: string; medium: string } | null;
@@ -87,11 +86,10 @@ const members = computed<Member[]>(() => {
             }));
         return {
             id: res.id,
-            name: res.attributes.name ?? '',
             username: res.attributes.username,
             email: res.attributes.email ?? '',
             avatar_urls: res.attributes.avatar_urls ?? null,
-            display_name: res.attributes.display_name ?? res.attributes.name ?? res.attributes.username,
+            display_name: res.attributes.display_name ?? res.attributes.username,
             roles,
         };
     });
@@ -103,7 +101,7 @@ const filteredMembers = computed(() => {
     return members.value.filter(
         (m) =>
             m.username.toLowerCase().includes(q) ||
-            m.name.toLowerCase().includes(q) ||
+            m.display_name.toLowerCase().includes(q) ||
             m.email.toLowerCase().includes(q),
     );
 });

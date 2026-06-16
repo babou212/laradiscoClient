@@ -29,8 +29,6 @@ export interface StoredUser {
     id: string;
     username: string;
     display_name: string;
-    name: string | null;
-    nickname: string | null;
     about_me: string | null;
     avatar_urls: AvatarUrls | null;
     status: UserStatusType;
@@ -39,13 +37,14 @@ export interface StoredUser {
     permissions: AuthPermissions | null;
     created_at: string | null;
     fetchedAt: number;
+    /** True once the account has been permanently deleted from the server. */
+    deleted?: boolean;
 }
 
 interface ProfileUpdatedPayload {
     user_id: number | string;
     username: string;
     display_name: string | null;
-    nickname?: string | null;
     about_me?: string | null;
     avatar_urls: AvatarUrls | null;
 }
@@ -71,6 +70,11 @@ interface MemberJoinedPayload {
     display_name?: string | null;
     avatar_urls?: AvatarUrls | null;
     custom_status?: string | null;
+}
+
+interface UserDeletedPayload {
+    user_id: number | string;
+    username: string;
 }
 
 type AvatarSize = keyof AvatarUrls;
@@ -100,7 +104,7 @@ export const useUsersStore = defineStore('users', () => {
     const inFlight = new Map<string, Promise<StoredUser | null>>();
     let channel: ReturnType<ReturnType<typeof getEcho>['private']> | null = null;
 
-    const members = computed(() => Array.from(byId.values()));
+    const members = computed(() => Array.from(byId.values()).filter((u) => !u.deleted));
     const onlineMembers = computed(() => members.value.filter((u) => u.status !== 'offline'));
 
     function get(id: string): StoredUser | null {
@@ -134,8 +138,6 @@ export const useUsersStore = defineStore('users', () => {
             id: patch.id,
             username,
             display_name: pick('display_name', username),
-            name: pick('name', null),
-            nickname: pick('nickname', null),
             about_me: pick('about_me', null),
             avatar_urls: pick('avatar_urls', null),
             status: pick('status', 'offline'),
@@ -144,6 +146,7 @@ export const useUsersStore = defineStore('users', () => {
             permissions: pick('permissions', null),
             created_at: pick('created_at', null),
             fetchedAt: pick('fetchedAt', Date.now()),
+            deleted: pick('deleted', false),
         };
         byId.set(patch.id, merged);
         return merged;
@@ -156,9 +159,7 @@ export const useUsersStore = defineStore('users', () => {
             upsert({
                 id: resource.id,
                 username: attrs.username,
-                display_name: attrs.display_name || attrs.nickname || attrs.name || attrs.username,
-                name: attrs.name ?? null,
-                nickname: attrs.nickname ?? null,
+                display_name: attrs.display_name || attrs.username,
                 avatar_urls: attrs.avatar_urls ?? null,
                 status: (attrs as { status?: UserStatusType }).status ?? 'offline',
                 custom_status: attrs.custom_status ?? null,
@@ -175,9 +176,7 @@ export const useUsersStore = defineStore('users', () => {
         return upsert({
             id: resource.id,
             username: attrs.username,
-            display_name: attrs.display_name || attrs.nickname || attrs.name || attrs.username,
-            name: attrs.name ?? null,
-            nickname: attrs.nickname ?? null,
+            display_name: attrs.display_name || attrs.username,
             about_me: attrs.about_me ?? null,
             avatar_urls: attrs.avatar_urls ?? null,
             status: 'offline',
@@ -229,7 +228,6 @@ export const useUsersStore = defineStore('users', () => {
             id,
             username: data.username,
             display_name: display,
-            nickname: data.nickname ?? null,
             about_me: data.about_me ?? null,
             avatar_urls: data.avatar_urls ?? null,
         });
@@ -254,6 +252,22 @@ export const useUsersStore = defineStore('users', () => {
             id,
             roles: data.roles,
             permissions: id === currentAuthUserId ? data.permissions : (existing?.permissions ?? null),
+        });
+    }
+
+    /**
+     * Mark a user as permanently deleted: drop them from the member/presence
+     * lists while keeping a tombstone entry so their authored messages still
+     * resolve a "<username> (deleted)" label without a refetch.
+     */
+    function applyUserDeleted(data: UserDeletedPayload): void {
+        const id = String(data.user_id);
+        upsert({
+            id,
+            username: data.username,
+            display_name: data.username,
+            status: 'offline',
+            deleted: true,
         });
     }
 
@@ -302,6 +316,7 @@ export const useUsersStore = defineStore('users', () => {
                 applyRolesUpdate(data, currentAuthUserId),
             );
             channel.listen('.server.member.joined', (data: MemberJoinedPayload) => applyMemberJoined(data));
+            channel.listen('.user.deleted', (data: UserDeletedPayload) => applyUserDeleted(data));
         } catch (error) {
             console.error('Failed to subscribe users store to presence channel', error);
         }
@@ -354,6 +369,7 @@ export const useUsersStore = defineStore('users', () => {
         applyPresenceUpdate,
         applyRolesUpdate,
         applyMemberJoined,
+        applyUserDeleted,
         connect,
         disconnect,
         $reset,

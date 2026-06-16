@@ -8,12 +8,11 @@ export const authApi = {
     register: (
         host: string,
         inviteToken: string,
-        name: string,
         username: string,
         email: string,
         password: string,
         passwordConfirmation: string,
-    ) => ipcRenderer.invoke('auth:register', host, inviteToken, name, username, email, password, passwordConfirmation),
+    ) => ipcRenderer.invoke('auth:register', host, inviteToken, username, email, password, passwordConfirmation),
     getSession: () => ipcRenderer.invoke('auth:getSession'),
     logout: (host: string) => ipcRenderer.invoke('auth:logout', host),
     validate: (host: string, token: string) => ipcRenderer.invoke('auth:validate', host, token),
