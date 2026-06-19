@@ -31,12 +31,9 @@ app.commandLine.appendSwitch(
         'PlatformHEVCDecoderSupport',
         'VideoToolboxVideoDecoder',
         'WaylandWindowDecorations',
-        // System-audio loopback during screen share. Without these flags, the
-        // audio: 'loopback' option in setDisplayMediaRequestHandler is silently
-        // ignored on Linux/macOS (Windows needs no flag).
-        'PulseaudioLoopbackForScreenShare', // Linux (PulseAudio / pipewire-pulse)
-        'MacLoopbackAudioForScreenShare', // macOS
-        'MacSckSystemAudioLoopbackOverride', // macOS (ScreenCaptureKit)
+        'PulseaudioLoopbackForScreenShare',
+        'MacLoopbackAudioForScreenShare',
+        'MacSckSystemAudioLoopbackOverride',
     ].join(','),
 );
 app.commandLine.appendSwitch('disable-features', 'Vulkan,UseSkiaGraphite,VulkanFromANGLE');

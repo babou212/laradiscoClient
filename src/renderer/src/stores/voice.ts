@@ -131,8 +131,6 @@ export const useVoiceStore = defineStore('voice', () => {
     const screenShareViewMode = ref<ScreenShareViewMode>('pip');
     const screenShareAudioMuted = ref(true);
     let screenShareTracks: Array<LocalVideoTrack | LocalAudioTrack> = [];
-    // Linux-only fallback: raw monitor-source MediaStreamTrack captured via
-    // getUserMedia when getDisplayMedia yields no audio (see captureSystemAudioMonitor).
     let screenShareMonitorTrack: MediaStreamTrack | null = null;
     let isRestartingScreenShare = false;
 
@@ -425,11 +423,11 @@ export const useVoiceStore = defineStore('voice', () => {
                     activeScreenShareView.value = participant.identity;
                 }
             } else if (track.source === Track.Source.ScreenShareAudio) {
-                const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
-                if (existing) {
-                    existing.audioTrack = { mediaStreamTrack: track.mediaStreamTrack };
-                    screenShareParticipants.value = [...screenShareParticipants.value];
-                }
+                screenShareParticipants.value = screenShareParticipants.value.map((s) =>
+                    s.identity === participant.identity
+                        ? { ...s, audioTrack: { mediaStreamTrack: track.mediaStreamTrack } }
+                        : s,
+                );
             }
             updateParticipantTracks(participant.identity);
         });
@@ -447,11 +445,9 @@ export const useVoiceStore = defineStore('voice', () => {
                     activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
                 }
             } else if (track.source === Track.Source.ScreenShareAudio) {
-                const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
-                if (existing) {
-                    existing.audioTrack = null;
-                    screenShareParticipants.value = [...screenShareParticipants.value];
-                }
+                screenShareParticipants.value = screenShareParticipants.value.map((s) =>
+                    s.identity === participant.identity ? { ...s, audioTrack: null } : s,
+                );
             }
             updateParticipantTracks(participant.identity);
         });
@@ -592,11 +588,6 @@ export const useVoiceStore = defineStore('voice', () => {
         activeScreenShareView.value = null;
     }
 
-    // On Linux, Chromium's getDisplayMedia does not reliably capture system
-    // audio (the 'loopback' option / PulseaudioLoopbackForScreenShare flag is
-    // unreliable on PipeWire). PipeWire/PulseAudio expose the system output as a
-    // capturable "Monitor of <sink>" input device, so we grab that directly and
-    // publish it as the screen-share audio track. Returns null if unavailable.
     async function captureSystemAudioMonitor(): Promise<MediaStreamTrack | null> {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
@@ -671,8 +662,6 @@ export const useVoiceStore = defineStore('voice', () => {
                 red: true,
             };
 
-            // Audio track that ends up on the wire — either the one getDisplayMedia
-            // returned (Windows/macOS) or the Linux monitor-source fallback.
             let audioMediaStreamTrack: MediaStreamTrack | null = null;
             if (localAudioTrack) {
                 await room.localParticipant.publishTrack(localAudioTrack, audioPublishOptions);
