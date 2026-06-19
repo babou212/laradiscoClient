@@ -1,7 +1,6 @@
-import { join } from 'path';
-import { is } from '@electron-toolkit/utils';
 import type { BrowserWindow } from 'electron';
 import { app, ipcMain, Menu, nativeImage, Tray } from 'electron';
+import appIcon from '../../resources/icon.png?asset';
 
 let tray: Tray | null = null;
 let isQuitting = false;
@@ -14,16 +13,14 @@ export function setIsQuitting(value: boolean): void {
     isQuitting = value;
 }
 
-function getTrayIconPath(): string {
-    const basePath = is.dev ? join(__dirname, '../../build/tray') : join(process.resourcesPath, 'tray');
-
-    if (process.platform === 'darwin') {
-        return join(basePath, 'iconTemplate.png');
-    }
-    if (process.platform === 'win32') {
-        return join(basePath, 'icon-win.png');
-    }
-    return join(basePath, 'icon.png');
+// Build the tray icon from the same app icon, downscaled to tray size with a
+// @2x representation so it stays crisp on hi-dpi/retina displays.
+function getTrayIcon(): Electron.NativeImage {
+    const src = nativeImage.createFromPath(appIcon);
+    const icon = nativeImage.createEmpty();
+    icon.addRepresentation({ scaleFactor: 1, buffer: src.resize({ width: 16, height: 16 }).toPNG() });
+    icon.addRepresentation({ scaleFactor: 2, buffer: src.resize({ width: 32, height: 32 }).toPNG() });
+    return icon;
 }
 
 function buildContextMenu(win: BrowserWindow | null, isMuted: boolean): Menu {
@@ -83,9 +80,7 @@ function updateBadge(win: BrowserWindow | null, count: number): void {
 }
 
 export function initTray(win: BrowserWindow): void {
-    const iconPath = getTrayIconPath();
-    const icon = nativeImage.createFromPath(iconPath);
-    tray = new Tray(icon);
+    tray = new Tray(getTrayIcon());
     tray.setToolTip('LaraDisco');
 
     let isMuted = false;

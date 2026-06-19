@@ -10,6 +10,7 @@ directories:
 
 files:
   - out/**/*
+  - resources/**/*
   - package.json
   - LICENSE
   - "!**/{.DS_Store,.git,.gitignore,.gitattributes,.editorconfig,.eslintrc*,.prettierrc*,tsconfig*.json}"
@@ -65,10 +66,6 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LaraDisco
-
-extraResources:
-  - from: "build/tray"
-    to: "tray"
 
 linux:
   category: Network

@@ -6,6 +6,7 @@ import 'electron-log/preload';
 
 import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
+import { avatarApi } from './apis/avatar';
 import { clipboardApi } from './apis/clipboard';
 import { logApi } from './apis/log';
 import { notificationsApi } from './apis/notifications';
@@ -27,6 +28,7 @@ const api = {
     window: windowApi,
     updater: updaterApi,
     attachments: attachmentsApi,
+    avatar: avatarApi,
     clipboard: clipboardApi,
     unfurl: unfurlApi,
     tray: trayApi,

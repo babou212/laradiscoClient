@@ -109,6 +109,7 @@ export async function cleanupAllVideos(): Promise<void> {
     await rm(VIDEO_DIR, { recursive: true, force: true }).catch(() => {});
 }
 
+import { ensureAvatarCached } from './media/avatarCache';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
 import { unfurlUrl } from './services/unfurl';
 
@@ -472,6 +473,15 @@ export function registerIpcHandlers(): void {
         });
 
         notification.show();
+    });
+
+    handle('avatar:resolve', async (_event, url: string): Promise<string | null> => {
+        if (!isAllowedServerUrl(url)) {
+            // Not a host the user has connected to — refuse rather than fetch it.
+            return null;
+        }
+        const key = await ensureAvatarCached(url);
+        return key ? `avatar://img/${key}` : null;
     });
 
     handle('attachment:downloadBuffer', async (_event, url: string): Promise<Buffer> => {

@@ -21,8 +21,6 @@ if (process.env.USER_DATA_DIR) {
     app.setPath('userData', process.env.USER_DATA_DIR);
 }
 
-// Initialise logging right after the userData override so the log file lands in
-// the correct dir, and before app.whenReady() so startup crashes are captured.
 initLogger();
 
 app.commandLine.appendSwitch(
@@ -53,17 +51,16 @@ if (existsSync(widevineManifest)) {
 }
 
 protocol.registerSchemesAsPrivileged([
-    // bypassCSP is required so decrypted-in-memory video can be streamed back
-    // to <video> elements without tripping media-src; the scheme is handled
-    // entirely in main from an attachment-id keyed cache, so no external URL
-    // is fetchable via it.
     { scheme: 'app-video', privileges: { secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } },
     { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+    { scheme: 'avatar', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
+import appIcon from '../../resources/icon.png?asset';
 import { registerIpcHandlers, cleanupAllVideos } from './ipc';
 import { registerLogIpcHandlers } from './log';
 import { initLogger, logger } from './logger';
+import { pruneAvatarCache, readAvatarFile } from './media/avatarCache';
 import { cleanupPushToTalk } from './ptt';
 import { getIsQuitting, initTray, setIsQuitting } from './tray';
 
@@ -131,6 +128,7 @@ function createWindow(): void {
         autoHideMenuBar: true,
         backgroundColor: '#1a1a1a',
 
+        ...(isMac ? {} : { icon: appIcon }),
         ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: false }),
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
@@ -213,6 +211,20 @@ app.whenReady().then(() => {
         return net.fetch(`file://${fullPath}`);
     });
 
+    // Serves locally-cached user avatars: avatar://img/<key>. The key is content-
+    // versioned (see avatarCache), so the bytes are immutable and safe to cache hard.
+    session.defaultSession.protocol.handle('avatar', async (request) => {
+        const key = new URL(request.url).pathname.replace(/^\/+/, '');
+        const result = await readAvatarFile(key);
+        if (!result) return new Response('Not found', { status: 404 });
+        return new Response(new Uint8Array(result.data), {
+            headers: {
+                'Content-Type': result.mime,
+                'Cache-Control': 'public, max-age=31536000, immutable',
+            },
+        });
+    });
+
     electronApp.setAppUserModelId('com.laradisco.client');
 
     const defaultUserAgent = session.defaultSession.getUserAgent();
@@ -246,7 +258,7 @@ app.whenReady().then(() => {
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
         "connect-src 'self' http: https: ws: wss:",
-        "img-src 'self' data: http: https: blob:",
+        "img-src 'self' data: http: https: blob: avatar:",
         "font-src 'self' data:",
         "media-src 'self' blob: data: http: https: app-video:",
         'frame-src blob: https://www.youtube.com https://www.youtube-nocookie.com',
@@ -336,6 +348,7 @@ app.whenReady().then(() => {
         initDatabase();
         initPushToTalk();
         initAutoUpdater();
+        void pruneAvatarCache();
     });
 
     const pauseOnHidden = (win: BrowserWindow): void => {

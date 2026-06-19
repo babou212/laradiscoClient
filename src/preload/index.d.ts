@@ -1,6 +1,7 @@
 import type { ElectronAPI } from '@electron-toolkit/preload';
 
 export type { AttachmentsApi } from './types/attachments';
+export type { AvatarApi } from './types/avatar';
 export type { ClipboardApi } from './types/clipboard';
 export type { ServerConnection, ServerApi } from './types/server';
 export type { AuthPermissions, AuthUser, AuthSession, AuthApi } from './types/auth';
@@ -15,6 +16,7 @@ export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unf
 
 import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
+import type { AvatarApi } from './types/avatar';
 import type { ClipboardApi } from './types/clipboard';
 import type { LogApi } from './types/log';
 import type { NotificationsApi } from './types/notifications';
@@ -36,6 +38,7 @@ interface AppApi {
     window: WindowApi;
     updater: UpdaterApi;
     attachments: AttachmentsApi;
+    avatar: AvatarApi;
     clipboard: ClipboardApi;
     unfurl: UnfurlApi;
     tray: TrayApi;
