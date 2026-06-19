@@ -390,6 +390,18 @@ export const useVoiceStore = defineStore('voice', () => {
             refreshParticipants();
         });
         r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+            if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
+                // Play remote participant microphone audio. The JS SDK does not
+                // auto-play subscribed audio — we must attach the track to an
+                // element in the DOM. The configured audioOutput device is
+                // applied to attached elements automatically by the SDK.
+                const el = track.attach();
+                el.dataset.participantAudio = participant.identity;
+                document.body.appendChild(el);
+                if (isSoundMuted.value) participant.setVolume(0);
+                updateParticipantTracks(participant.identity);
+                return;
+            }
             if (track.source === Track.Source.ScreenShare) {
                 const wrappedTrack = { mediaStreamTrack: track.mediaStreamTrack };
                 const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
@@ -419,6 +431,11 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+            if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
+                track.detach().forEach((el) => el.remove());
+                updateParticipantTracks(participant.identity);
+                return;
+            }
             if (track.source === Track.Source.ScreenShare) {
                 screenShareParticipants.value = screenShareParticipants.value.filter(
                     (s) => s.identity !== participant.identity,

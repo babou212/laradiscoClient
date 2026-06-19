@@ -7,7 +7,6 @@ import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
 import { updatePresence } from '@/api/presence';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
 import { useAuthStore } from '@/stores/auth';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
@@ -77,8 +76,6 @@ const selectChannel = (channelId: string) => {
 
 const setStatus = async (status: UserStatusType) => {
     currentStatus.value = status;
-
-    setManualPresenceStatus(status);
 
     if (user.value?.id) {
         presenceStore.updateUserStatus(user.value.id, status, currentCustomStatus.value);

@@ -135,7 +135,9 @@ function createWindow(): void {
             sandbox: true,
             contextIsolation: true,
             nodeIntegration: false,
-            backgroundThrottling: true,
+            // Keep timers (notably the presence heartbeat) running at full rate
+            // when the window is minimised/backgrounded so the user stays online.
+            backgroundThrottling: false,
         },
     });
 

@@ -120,6 +120,12 @@ export function initEcho(): Echo<'reverb'> {
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
             scheduleInboxDrain();
+            // A websocket (re)connect signals connectivity is back: nudge presence
+            // so a drop that downgraded us to idle/offline is corrected at once.
+            // Lazily imported to avoid a circular import (stores import echo.ts).
+            void import('@/stores/presence')
+                .then(({ usePresenceStore }) => usePresenceStore().reconcile())
+                .catch((error) => console.error('[Presence] reconcile failed:', error));
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');
