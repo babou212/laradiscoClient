@@ -239,6 +239,14 @@
                 "refresh": "Actualizar dispositivos",
                 "micFallback": "Micrófono ({id})"
             },
+            "speaker": {
+                "title": "Dispositivo de salida",
+                "description": "Selecciona por qué altavoz o auriculares reproducir el audio de los canales de voz",
+                "output": "Dispositivo de salida",
+                "systemDefault": "Predeterminado del sistema",
+                "refresh": "Actualizar dispositivos",
+                "speakerFallback": "Altavoz ({id})"
+            },
             "pushToTalk": {
                 "title": "Pulsar para hablar",
                 "description": "Mantén pulsada una tecla para activar tu micrófono. Funciona en todas las ventanas y aplicaciones.",

@@ -251,6 +251,14 @@
                 "refresh": "Refresh Devices",
                 "micFallback": "Microphone ({id})"
             },
+            "speaker": {
+                "title": "Output Device",
+                "description": "Select which speaker or headset to play voice channel audio through",
+                "output": "Output Device",
+                "systemDefault": "System Default",
+                "refresh": "Refresh Devices",
+                "speakerFallback": "Speaker ({id})"
+            },
             "pushToTalk": {
                 "title": "Push to Talk",
                 "description": "Hold a key to unmute your microphone. Works across all windows and apps.",

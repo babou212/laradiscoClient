@@ -239,6 +239,14 @@
                 "refresh": "Geräte aktualisieren",
                 "micFallback": "Mikrofon ({id})"
             },
+            "speaker": {
+                "title": "Ausgabegerät",
+                "description": "Wähle den Lautsprecher oder das Headset, über das die Audioausgabe der Sprachkanäle erfolgen soll",
+                "output": "Ausgabegerät",
+                "systemDefault": "Systemstandard",
+                "refresh": "Geräte aktualisieren",
+                "speakerFallback": "Lautsprecher ({id})"
+            },
             "pushToTalk": {
                 "title": "Push-to-Talk",
                 "description": "Halte eine Taste gedrückt, um dein Mikrofon zu aktivieren. Funktioniert fenster- und app-übergreifend.",

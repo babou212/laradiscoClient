@@ -239,6 +239,14 @@
                 "refresh": "刷新设备",
                 "micFallback": "麦克风 ({id})"
             },
+            "speaker": {
+                "title": "输出设备",
+                "description": "选择语音频道音频的播放扬声器或耳机",
+                "output": "输出设备",
+                "systemDefault": "系统默认",
+                "refresh": "刷新设备",
+                "speakerFallback": "扬声器 ({id})"
+            },
             "pushToTalk": {
                 "title": "按键说话",
                 "description": "按住按键以取消静音。在所有窗口和应用中均可使用。",

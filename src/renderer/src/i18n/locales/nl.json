@@ -241,6 +241,14 @@
                 "refresh": "Apparaten vernieuwen",
                 "micFallback": "Microfoon ({id})"
             },
+            "speaker": {
+                "title": "Uitvoerapparaat",
+                "description": "Selecteer via welke luidspreker of headset de audio van spraakkanalen wordt afgespeeld",
+                "output": "Uitvoerapparaat",
+                "systemDefault": "Systeemstandaard",
+                "refresh": "Apparaten vernieuwen",
+                "speakerFallback": "Luidspreker ({id})"
+            },
             "pushToTalk": {
                 "title": "Push-to-talk",
                 "description": "Houd een toets ingedrukt om uw microfoon aan te zetten. Werkt in alle vensters en apps.",

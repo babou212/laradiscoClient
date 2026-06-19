@@ -240,6 +240,14 @@
                 "refresh": "Opdatér enheder",
                 "micFallback": "Mikrofon ({id})"
             },
+            "speaker": {
+                "title": "Outputenhed",
+                "description": "Vælg hvilken højttaler eller hovedtelefon stemmekanallyden skal afspilles igennem",
+                "output": "Outputenhed",
+                "systemDefault": "Systemstandard",
+                "refresh": "Opdatér enheder",
+                "speakerFallback": "Højttaler ({id})"
+            },
             "pushToTalk": {
                 "title": "Tryk-for-at-tale",
                 "description": "Hold en tast nede for at slå mikrofonen til. Virker på tværs af alle vinduer og apps.",

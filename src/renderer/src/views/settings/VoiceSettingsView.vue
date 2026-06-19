@@ -328,6 +328,41 @@ function formatAccelerator(accel: string): string {
 
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
+                <h2 class="text-lg font-semibold">{{ t('settings.voice.speaker.title') }}</h2>
+                <p class="text-muted-foreground mt-1 text-sm">{{ t('settings.voice.speaker.description') }}</p>
+            </div>
+            <div class="p-6">
+                <label class="mb-2 block text-sm font-medium">{{ t('settings.voice.speaker.output') }}</label>
+                <Select
+                    :model-value="voiceStore.selectedSpeakerDeviceId"
+                    @update:model-value="(val) => typeof val === 'string' && voiceStore.setSpeakerDevice(val)"
+                >
+                    <SelectTrigger>
+                        <SelectValue :placeholder="t('settings.voice.speaker.systemDefault')" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="default">{{ t('settings.voice.speaker.systemDefault') }}</SelectItem>
+                        <SelectItem
+                            v-for="speaker in voiceStore.availableSpeakers"
+                            :key="speaker.deviceId"
+                            :value="speaker.deviceId"
+                        >
+                            {{
+                                speaker.label ||
+                                t('settings.voice.speaker.speakerFallback', { id: speaker.deviceId.slice(0, 8) })
+                            }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Button variant="outline" size="sm" class="mt-3" @click="voiceStore.refreshAvailableMics()">
+                    {{ t('settings.voice.speaker.refresh') }}
+                </Button>
+            </div>
+        </div>
+
+        <div class="bg-card rounded-lg border">
+            <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">{{ t('settings.voice.pushToTalk.title') }}</h2>
                 <p class="text-muted-foreground mt-1 text-sm">
                     {{ t('settings.voice.pushToTalk.description') }}

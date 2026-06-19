@@ -239,6 +239,14 @@
                 "refresh": "Actualiser les périphériques",
                 "micFallback": "Microphone ({id})"
             },
+            "speaker": {
+                "title": "Périphérique de sortie",
+                "description": "Sélectionnez le haut-parleur ou le casque par lequel diffuser l'audio des salons vocaux",
+                "output": "Périphérique de sortie",
+                "systemDefault": "Par défaut du système",
+                "refresh": "Actualiser les périphériques",
+                "speakerFallback": "Haut-parleur ({id})"
+            },
             "pushToTalk": {
                 "title": "Appuyer pour parler",
                 "description": "Maintenez une touche enfoncée pour activer votre microphone. Fonctionne dans toutes les fenêtres et applications.",

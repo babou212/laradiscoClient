@@ -239,6 +239,14 @@
                 "refresh": "Odśwież urządzenia",
                 "micFallback": "Mikrofon ({id})"
             },
+            "speaker": {
+                "title": "Urządzenie wyjściowe",
+                "description": "Wybierz głośnik lub słuchawki, przez które ma być odtwarzany dźwięk z kanałów głosowych",
+                "output": "Urządzenie wyjściowe",
+                "systemDefault": "Domyślne systemu",
+                "refresh": "Odśwież urządzenia",
+                "speakerFallback": "Głośnik ({id})"
+            },
             "pushToTalk": {
                 "title": "Push to Talk",
                 "description": "Przytrzymaj klawisz, aby włączyć mikrofon. Działa we wszystkich oknach i aplikacjach.",

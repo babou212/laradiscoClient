@@ -111,6 +111,8 @@ export const useVoiceStore = defineStore('voice', () => {
     const pttSoundEnabled = ref(true);
     const selectedMicDeviceId = ref<string | undefined>(undefined);
     const availableMics = ref<MediaDeviceInfo[]>([]);
+    const selectedSpeakerDeviceId = ref<string | undefined>(undefined);
+    const availableSpeakers = ref<MediaDeviceInfo[]>([]);
     const isAudioPlaybackBlocked = ref(false);
 
     const noiseSuppression = ref(true);
@@ -129,13 +131,14 @@ export const useVoiceStore = defineStore('voice', () => {
     let pttActive = false;
 
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId, ns, ec, agc, ssQuality] = await Promise.all([
+        const [enabled, key, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality] = await Promise.all([
             window.api.settings.get('voice:pttEnabled'),
             window.api.settings.get('voice:pttKey'),
             window.api.settings.get('voice:pttKeycode'),
             window.api.settings.get('voice:pttModifiers'),
             window.api.settings.get('voice:pttSoundEnabled'),
             window.api.settings.get('voice:micDeviceId'),
+            window.api.settings.get('voice:speakerDeviceId'),
             window.api.settings.get('voice:noiseSuppression'),
             window.api.settings.get('voice:echoCancellation'),
             window.api.settings.get('voice:autoGainControl'),
@@ -154,6 +157,7 @@ export const useVoiceStore = defineStore('voice', () => {
         }
         pttSoundEnabled.value = sound !== 'false';
         selectedMicDeviceId.value = micId && micId !== 'default' ? micId : undefined;
+        selectedSpeakerDeviceId.value = speakerId && speakerId !== 'default' ? speakerId : undefined;
         noiseSuppression.value = ns !== 'false';
         echoCancellation.value = ec !== 'false';
         autoGainControl.value = agc !== 'false';
@@ -490,6 +494,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
                 },
                 audioCaptureDefaults: buildAudioCaptureDefaults(),
+                audioOutput: { deviceId: selectedSpeakerDeviceId.value },
                 publishDefaults: {
                     videoCodec: 'vp9' as VideoCodec,
                     backupCodec: { codec: 'vp8' },
@@ -709,17 +714,25 @@ export const useVoiceStore = defineStore('voice', () => {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             availableMics.value = devices.filter((d) => d.kind === 'audioinput');
+            availableSpeakers.value = devices.filter((d) => d.kind === 'audiooutput');
 
-            const selected = selectedMicDeviceId.value;
-            if (selected && !availableMics.value.some((d) => d.deviceId === selected)) {
+            const selectedMic = selectedMicDeviceId.value;
+            if (selectedMic && !availableMics.value.some((d) => d.deviceId === selectedMic)) {
                 selectedMicDeviceId.value = undefined;
                 window.api.settings.set('voice:micDeviceId', '');
                 if (room && room.state === ConnectionState.Connected) {
                     void reapplyAudioProcessing();
                 }
             }
+
+            const selectedSpeaker = selectedSpeakerDeviceId.value;
+            if (selectedSpeaker && !availableSpeakers.value.some((d) => d.deviceId === selectedSpeaker)) {
+                selectedSpeakerDeviceId.value = undefined;
+                window.api.settings.set('voice:speakerDeviceId', '');
+            }
         } catch {
             availableMics.value = [];
+            availableSpeakers.value = [];
         }
     }
 
@@ -731,6 +744,19 @@ export const useVoiceStore = defineStore('voice', () => {
             await room.switchActiveDevice('audioinput', deviceId);
         } else if (room && room.state === ConnectionState.Connected) {
             void reapplyAudioProcessing();
+        }
+    }
+
+    async function setSpeakerDevice(deviceId: string | undefined) {
+        selectedSpeakerDeviceId.value = deviceId;
+        window.api.settings.set('voice:speakerDeviceId', deviceId ?? '');
+
+        if (room && room.state === ConnectionState.Connected) {
+            try {
+                await room.switchActiveDevice('audiooutput', deviceId ?? 'default');
+            } catch (err) {
+                console.warn('[Voice] Failed to switch audio output device:', err);
+            }
         }
     }
 
@@ -869,6 +895,8 @@ export const useVoiceStore = defineStore('voice', () => {
         pttSoundEnabled.value = true;
         selectedMicDeviceId.value = undefined;
         availableMics.value = [];
+        selectedSpeakerDeviceId.value = undefined;
+        availableSpeakers.value = [];
         noiseSuppression.value = true;
         echoCancellation.value = true;
         autoGainControl.value = true;
@@ -892,6 +920,8 @@ export const useVoiceStore = defineStore('voice', () => {
         pttSoundEnabled,
         selectedMicDeviceId,
         availableMics,
+        selectedSpeakerDeviceId,
+        availableSpeakers,
         isAudioPlaybackBlocked,
         noiseSuppression,
         echoCancellation,
@@ -907,6 +937,7 @@ export const useVoiceStore = defineStore('voice', () => {
         toggleSound,
         refreshAvailableMics,
         setMicDevice,
+        setSpeakerDevice,
         enableAudioPlayback,
         setNoiseSuppression,
         setEchoCancellation,
