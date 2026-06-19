@@ -89,6 +89,11 @@ interface VoiceChannel {
     name: string;
 }
 
+// LiveKit participant attribute used to broadcast the user's *intentional* mute
+// state to other participants, independent of the transient mic-track state that
+// push-to-talk toggles on every key press.
+const MUTED_ATTRIBUTE = 'micMuted';
+
 export const useVoiceStore = defineStore('voice', () => {
     const currentChannel = ref<VoiceChannel | null>(null);
     const isMicMuted = ref(false);
@@ -299,12 +304,18 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function participantFromRemote(p: RemoteParticipant): VoiceParticipant {
+        const mutedAttr = p.attributes?.[MUTED_ATTRIBUTE];
+        const isMuted =
+            mutedAttr !== undefined
+                ? mutedAttr === 'true'
+                : (p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false);
+
         return {
             id: p.identity,
             username: p.identity,
             displayName: p.name || p.identity,
             isSpeaking: p.isSpeaking,
-            isMuted: p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false,
+            isMuted,
             isScreenSharing: p.isScreenShareEnabled,
             avatarUrls: findExistingAvatarUrls(p.identity),
         };
@@ -688,6 +699,13 @@ export const useVoiceStore = defineStore('voice', () => {
         isAudioPlaybackBlocked.value = false;
     }
 
+    function syncMuteAttribute(): void {
+        if (!room) return;
+        room.localParticipant
+            .setAttributes({ [MUTED_ATTRIBUTE]: String(isMicMuted.value) })
+            .catch((err) => console.warn('[Voice] Failed to broadcast mute state:', err));
+    }
+
     async function toggleMic() {
         isMicMuted.value = !isMicMuted.value;
         if (room) {
@@ -697,6 +715,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 await room.localParticipant.setMicrophoneEnabled(true);
             }
 
+            syncMuteAttribute();
             refreshParticipants();
         }
     }
