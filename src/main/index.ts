@@ -286,7 +286,9 @@ app.whenReady().then(() => {
                     'X-Content-Type-Options': ['nosniff'],
                     'X-Frame-Options': ['DENY'],
                     'Referrer-Policy': ['strict-origin-when-cross-origin'],
-                    'Permissions-Policy': ['microphone=self, camera=self, geolocation=(), payment=(), usb=(), serial=()'],
+                    'Permissions-Policy': [
+                        'microphone=self, camera=self, geolocation=(), payment=(), usb=(), serial=()',
+                    ],
                 },
             });
         } else {
