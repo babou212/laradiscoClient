@@ -131,6 +131,9 @@ export const useVoiceStore = defineStore('voice', () => {
     const screenShareViewMode = ref<ScreenShareViewMode>('pip');
     const screenShareAudioMuted = ref(true);
     let screenShareTracks: Array<LocalVideoTrack | LocalAudioTrack> = [];
+    // Linux-only fallback: raw monitor-source MediaStreamTrack captured via
+    // getUserMedia when getDisplayMedia yields no audio (see captureSystemAudioMonitor).
+    let screenShareMonitorTrack: MediaStreamTrack | null = null;
     let isRestartingScreenShare = false;
 
     let pttActive = false;
@@ -576,9 +579,53 @@ export const useVoiceStore = defineStore('voice', () => {
             }
         }
         screenShareTracks = [];
+        if (screenShareMonitorTrack) {
+            try {
+                screenShareMonitorTrack.stop();
+            } catch {
+                // ignore
+            }
+            screenShareMonitorTrack = null;
+        }
         isScreenSharing.value = false;
         screenShareParticipants.value = [];
         activeScreenShareView.value = null;
+    }
+
+    // On Linux, Chromium's getDisplayMedia does not reliably capture system
+    // audio (the 'loopback' option / PulseaudioLoopbackForScreenShare flag is
+    // unreliable on PipeWire). PipeWire/PulseAudio expose the system output as a
+    // capturable "Monitor of <sink>" input device, so we grab that directly and
+    // publish it as the screen-share audio track. Returns null if unavailable.
+    async function captureSystemAudioMonitor(): Promise<MediaStreamTrack | null> {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const monitors = devices.filter((d) => d.kind === 'audioinput' && /monitor/i.test(d.label));
+            if (monitors.length === 0) {
+                console.warn(
+                    '[Voice] No monitor audio source found for screen-share audio. ' +
+                        'Available audio inputs: ' +
+                        devices
+                            .filter((d) => d.kind === 'audioinput')
+                            .map((d) => `"${d.label}"`)
+                            .join(', '),
+                );
+                return null;
+            }
+            console.log('[Voice] Using monitor source for screen-share audio:', monitors[0].label);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: { exact: monitors[0].deviceId },
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
+            });
+            return stream.getAudioTracks()[0] ?? null;
+        } catch (err) {
+            console.error('[Voice] Failed to capture system audio monitor:', err);
+            return null;
+        }
     }
 
     async function startScreenShare(): Promise<void> {
@@ -616,14 +663,26 @@ export const useVoiceStore = defineStore('voice', () => {
                 });
             }
 
+            const audioPublishOptions = {
+                source: Track.Source.ScreenShareAudio,
+                name: 'screen-audio',
+                audioPreset: AudioPresets.musicHighQualityStereo,
+                dtx: false,
+                red: true,
+            };
+
+            // Audio track that ends up on the wire — either the one getDisplayMedia
+            // returned (Windows/macOS) or the Linux monitor-source fallback.
+            let audioMediaStreamTrack: MediaStreamTrack | null = null;
             if (localAudioTrack) {
-                await room.localParticipant.publishTrack(localAudioTrack, {
-                    source: Track.Source.ScreenShareAudio,
-                    name: 'screen-audio',
-                    audioPreset: AudioPresets.musicHighQualityStereo,
-                    dtx: false,
-                    red: true,
-                });
+                await room.localParticipant.publishTrack(localAudioTrack, audioPublishOptions);
+                audioMediaStreamTrack = localAudioTrack.mediaStreamTrack;
+            } else {
+                screenShareMonitorTrack = await captureSystemAudioMonitor();
+                if (screenShareMonitorTrack) {
+                    await room.localParticipant.publishTrack(screenShareMonitorTrack, audioPublishOptions);
+                    audioMediaStreamTrack = screenShareMonitorTrack;
+                }
             }
 
             screenShareTracks = tracks as Array<LocalVideoTrack | LocalAudioTrack>;
@@ -636,7 +695,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     identity: localIdentity,
                     displayName: room.localParticipant.name || localIdentity,
                     videoTrack: { mediaStreamTrack: localVideoTrack!.mediaStreamTrack },
-                    audioTrack: localAudioTrack ? { mediaStreamTrack: localAudioTrack.mediaStreamTrack } : null,
+                    audioTrack: audioMediaStreamTrack ? { mediaStreamTrack: audioMediaStreamTrack } : null,
                 },
             ];
 
@@ -661,6 +720,19 @@ export const useVoiceStore = defineStore('voice', () => {
             }
         }
         screenShareTracks = [];
+        if (screenShareMonitorTrack) {
+            try {
+                await room.localParticipant.unpublishTrack(screenShareMonitorTrack, true);
+            } catch (err) {
+                console.warn('[Voice] Failed to unpublish screen share monitor track:', err);
+            }
+            try {
+                screenShareMonitorTrack.stop();
+            } catch {
+                // ignore
+            }
+            screenShareMonitorTrack = null;
+        }
         isScreenSharing.value = false;
 
         const localIdentity = room.localParticipant.identity;

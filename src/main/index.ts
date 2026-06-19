@@ -31,6 +31,12 @@ app.commandLine.appendSwitch(
         'PlatformHEVCDecoderSupport',
         'VideoToolboxVideoDecoder',
         'WaylandWindowDecorations',
+        // System-audio loopback during screen share. Without these flags, the
+        // audio: 'loopback' option in setDisplayMediaRequestHandler is silently
+        // ignored on Linux/macOS (Windows needs no flag).
+        'PulseaudioLoopbackForScreenShare', // Linux (PulseAudio / pipewire-pulse)
+        'MacLoopbackAudioForScreenShare', // macOS
+        'MacSckSystemAudioLoopbackOverride', // macOS (ScreenCaptureKit)
     ].join(','),
 );
 app.commandLine.appendSwitch('disable-features', 'Vulkan,UseSkiaGraphite,VulkanFromANGLE');
@@ -305,7 +311,7 @@ app.whenReady().then(() => {
         async (_request, callback) => {
             const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
             if (sources.length > 0) {
-                callback({ video: sources[0] });
+                callback({ video: sources[0], audio: 'loopback' });
             } else {
                 callback(null as unknown as Electron.Streams);
             }
