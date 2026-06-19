@@ -119,7 +119,7 @@ export const useUsersStore = defineStore('users', () => {
         }
     }
 
-    function resolveAvatar(url: string): void {
+    function resolveAvatar(userId: string, url: string): void {
         const key = avatarPathKey(url);
         if (!key || resolvedAvatars.has(key) || resolvingAvatars.has(key)) return;
         const failedAt = failedAvatars.get(key);
@@ -128,7 +128,7 @@ export const useUsersStore = defineStore('users', () => {
         if (!bridge) return;
         resolvingAvatars.add(key);
         bridge
-            .resolve(url)
+            .resolve(userId, url)
             .then((local) => {
                 if (local) {
                     resolvedAvatars.set(key, local);
@@ -165,8 +165,13 @@ export const useUsersStore = defineStore('users', () => {
         if (!key) return remote;
         const cached = resolvedAvatars.get(key);
         if (cached) return cached;
-        resolveAvatar(remote);
+        resolveAvatar(id, remote);
         return remote;
+    }
+
+    /** Drop a user's locally-cached avatars (their avatar was removed server-side). */
+    function forgetAvatar(id: string): void {
+        void window.api?.avatar?.forget(id).catch(() => {});
     }
 
     function upsert(patch: Partial<StoredUser> & { id: string }): StoredUser {
@@ -250,16 +255,18 @@ export const useUsersStore = defineStore('users', () => {
         for (const u of users) {
             const id = String(u.id);
             seenIds.add(id);
-            const patch: Partial<StoredUser> & { id: string } = {
+            // Deliberately do NOT write avatar_urls here. Presence is a Redis
+            // registry snapshotted when a user came online, so its avatar_urls are
+            // stale (old version + expired presigned signatures). Avatars come from
+            // members/profile/profile.updated/messages instead. Writing them here
+            // flashes an old avatar on startup before the fresh data arrives.
+            upsert({
                 id,
                 username: u.username,
                 display_name: u.display_name ?? u.username,
                 status: u.status ?? 'online',
                 custom_status: u.custom_status ?? null,
-            };
-
-            if (u.avatar_urls !== undefined) patch.avatar_urls = u.avatar_urls;
-            upsert(patch);
+            });
         }
         for (const [id, user] of byId) {
             if (!seenIds.has(id) && user.status !== 'offline') {
@@ -278,20 +285,22 @@ export const useUsersStore = defineStore('users', () => {
             about_me: data.about_me ?? null,
             avatar_urls: data.avatar_urls ?? null,
         });
+        // Avatar removed: purge the user's cached files so nothing stale lingers.
+        // (A *changed* avatar is purged automatically when its new version caches.)
+        if (!data.avatar_urls) forgetAvatar(id);
     }
 
     function applyPresenceUpdate(data: PresenceUpdatedPayload): void {
         const id = String(data.user_id);
-        const patch: Partial<StoredUser> & { id: string } = {
+        // See applyPresenceBatch: presence carries a stale avatar snapshot, so it
+        // updates status only — avatars are governed by profile/members/messages.
+        upsert({
             id,
             username: data.username,
             display_name: data.display_name ?? data.username,
             status: data.status,
             custom_status: data.custom_status,
-        };
-
-        if (data.avatar_urls !== undefined) patch.avatar_urls = data.avatar_urls;
-        upsert(patch);
+        });
     }
 
     function applyRolesUpdate(data: RolesUpdatedPayload, currentAuthUserId: string | null): void {
@@ -409,6 +418,7 @@ export const useUsersStore = defineStore('users', () => {
         get,
         displayName,
         avatarUrl,
+        forgetAvatar,
         upsert,
         fetch,
         hydrateFromUserResponse,

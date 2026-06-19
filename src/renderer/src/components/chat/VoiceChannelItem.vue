@@ -69,8 +69,8 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                     :class="participant.isSpeaking ? 'ring-2 ring-green-500' : ''"
                 >
                     <AvatarImage
-                        v-if="participant.avatarUrls?.thumb"
-                        :src="participant.avatarUrls.thumb"
+                        v-if="usersStore.avatarUrl(String(participant.id), 'thumb')"
+                        :src="usersStore.avatarUrl(String(participant.id), 'thumb')!"
                         :alt="participant.displayName"
                     />
                     <AvatarFallback

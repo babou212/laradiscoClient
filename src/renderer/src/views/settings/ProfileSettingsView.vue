@@ -100,6 +100,7 @@ async function deleteAvatar() {
         await doDeleteAvatar();
         if (authStore.user) {
             usersStore.upsert({ id: authStore.user.id, avatar_urls: null });
+            usersStore.forgetAvatar(authStore.user.id);
             authStore.user = { ...authStore.user, avatar_urls: null };
         }
     } catch (err: unknown) {

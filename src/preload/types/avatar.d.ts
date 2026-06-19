@@ -1,3 +1,4 @@
 export interface AvatarApi {
-    resolve(url: string): Promise<string | null>;
+    resolve(userId: string, url: string): Promise<string | null>;
+    forget(userId: string): Promise<void>;
 }

@@ -109,7 +109,7 @@ export async function cleanupAllVideos(): Promise<void> {
     await rm(VIDEO_DIR, { recursive: true, force: true }).catch(() => {});
 }
 
-import { ensureAvatarCached } from './media/avatarCache';
+import { ensureAvatarCached, forgetUser } from './media/avatarCache';
 import { generateThumbnail, isImageMimeType } from './media/thumbnails';
 import { unfurlUrl } from './services/unfurl';
 
@@ -475,13 +475,17 @@ export function registerIpcHandlers(): void {
         notification.show();
     });
 
-    handle('avatar:resolve', async (_event, url: string): Promise<string | null> => {
+    handle('avatar:resolve', async (_event, userId: string, url: string): Promise<string | null> => {
         if (!isAllowedServerUrl(url)) {
             // Not a host the user has connected to — refuse rather than fetch it.
             return null;
         }
-        const key = await ensureAvatarCached(url);
+        const key = await ensureAvatarCached(String(userId), url);
         return key ? `avatar://img/${key}` : null;
+    });
+
+    handle('avatar:forget', async (_event, userId: string): Promise<void> => {
+        await forgetUser(String(userId));
     });
 
     handle('attachment:downloadBuffer', async (_event, url: string): Promise<Buffer> => {

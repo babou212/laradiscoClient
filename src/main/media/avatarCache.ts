@@ -5,25 +5,45 @@ import { join } from 'path';
 import { app, net } from 'electron';
 import { logger } from '../logger';
 
-// Avatars are cached to disk keyed by the storage object's *path* (the presigned
-// URL minus its signature/query). Re-signing the same avatar yields the same key,
-// so we download a given avatar exactly once; uploading a new avatar creates a new
-// Spatie media record (new path) → new key → the old cache entry is simply unused.
-// This is what makes "cache locally, only refetch when it changes" hold without
-// any backend change, despite the URLs being short-lived presigned links.
+// Avatars are cached to disk so they survive the backend's short-lived (15 min)
+// presigned URLs without a re-download. A cache entry is named:
+//
+//     <userId>__<version>__<fileHash>
+//
+//   userId    – the owning user (lets us purge a user's whole avatar on change)
+//   version   – the Spatie media id from the URL path; the SAME for every size of
+//               one avatar and DIFFERENT after a new upload
+//   fileHash  – sha256 of the URL path (identifies the specific size/conversion)
+//
+// When a new version is cached for a user, every older-version file for that user
+// is deleted immediately, so a stale avatar can never be served after an update.
 
 const MAX_ENTRIES = 1000;
-const KEY_RE = /^[a-f0-9]{64}$/;
+const KEY_RE = /^\d+__[A-Za-z0-9]+__[a-f0-9]{64}$/;
+const USER_RE = /^\d+$/;
 
 function cacheDir(): string {
     return join(app.getPath('userData'), 'avatar-cache');
 }
 
-/** Stable cache key for an avatar URL: sha256 of its path, ignoring the signature query. */
-export function avatarKeyForUrl(rawUrl: string): string | null {
+/** The avatar version (Spatie media id) is the first numeric segment of the path. */
+function versionToken(pathname: string): string {
+    for (const seg of pathname.split('/')) {
+        if (/^\d+$/.test(seg)) return seg;
+    }
+    // No media id in the path (unexpected layout): fall back to hashing the
+    // directory so different avatars still get different version tokens.
+    const dir = pathname.replace(/[^/]+$/, '');
+    return 'x' + createHash('sha1').update(dir).digest('hex');
+}
+
+function keyForUrl(userId: string, rawUrl: string): { key: string; version: string } | null {
+    if (!USER_RE.test(userId)) return null;
     try {
         const { pathname } = new URL(rawUrl);
-        return createHash('sha256').update(pathname).digest('hex');
+        const version = versionToken(pathname);
+        const fileHash = createHash('sha256').update(pathname).digest('hex');
+        return { key: `${userId}__${version}__${fileHash}`, version };
     } catch {
         return null;
     }
@@ -31,44 +51,83 @@ export function avatarKeyForUrl(rawUrl: string): string | null {
 
 const inflight = new Map<string, Promise<string | null>>();
 
-async function download(key: string, url: string): Promise<string | null> {
+/** Delete every cached file for `userId` whose version differs from `keepVersion`. */
+async function purgeOldVersions(userId: string, keepVersion: string): Promise<void> {
+    try {
+        const dir = cacheDir();
+        if (!existsSync(dir)) return;
+        const prefix = `${userId}__`;
+        const keepPrefix = `${userId}__${keepVersion}__`;
+        const stale = (await readdir(dir)).filter((n) => n.startsWith(prefix) && !n.startsWith(keepPrefix));
+        await Promise.all(stale.map((n) => rm(join(dir, n), { force: true }).catch(() => {})));
+        if (stale.length) logger.info(`[avatarCache] purged ${stale.length} stale file(s) for user ${userId}`);
+    } catch (err) {
+        logger.error('[avatarCache] purge error', err);
+    }
+}
+
+async function download(key: string, url: string): Promise<boolean> {
     try {
         const response = await net.fetch(url);
         if (!response.ok) {
-            logger.error('[avatarCache] download failed', { status: response.status, url });
-            return null;
+            logger.error('[avatarCache] download failed', { status: response.status });
+            return false;
         }
         const data = Buffer.from(await response.arrayBuffer());
         await mkdir(cacheDir(), { recursive: true });
         await writeFile(join(cacheDir(), key), data);
-        return key;
+        return true;
     } catch (err) {
         logger.error('[avatarCache] download error', err);
-        return null;
+        return false;
     }
 }
 
 /**
- * Ensure the avatar at `url` is present on disk and return its cache key.
- * Returns null if the URL is unusable or the download failed.
+ * Ensure the avatar at `url` (owned by `userId`) is cached on disk and return its
+ * cache key, purging any older-version avatars for that user. Returns null on failure.
  */
-export async function ensureAvatarCached(url: string): Promise<string | null> {
-    const key = avatarKeyForUrl(url);
-    if (!key) return null;
+export async function ensureAvatarCached(userId: string, url: string): Promise<string | null> {
+    const resolved = keyForUrl(userId, url);
+    if (!resolved) return null;
+    const { key, version } = resolved;
 
     const file = join(cacheDir(), key);
     if (existsSync(file)) {
-        // Bump mtime so the LRU prune keeps recently-used avatars.
         void utimes(file, new Date(), new Date()).catch(() => {});
+        // A previously-cached entry may pre-date an update on another size; make
+        // sure we still drop any older versions left lying around.
+        void purgeOldVersions(userId, version);
         return key;
     }
 
     const existing = inflight.get(key);
     if (existing) return existing;
 
-    const promise = download(key, url).finally(() => inflight.delete(key));
+    const promise = (async () => {
+        const ok = await download(key, url);
+        if (!ok) return null;
+        await purgeOldVersions(userId, version);
+        return key;
+    })().finally(() => inflight.delete(key));
+
     inflight.set(key, promise);
     return promise;
+}
+
+/** Delete every cached file for a user (used when their avatar is removed). */
+export async function forgetUser(userId: string): Promise<void> {
+    if (!USER_RE.test(userId)) return;
+    try {
+        const dir = cacheDir();
+        if (!existsSync(dir)) return;
+        const prefix = `${userId}__`;
+        const files = (await readdir(dir)).filter((n) => n.startsWith(prefix));
+        await Promise.all(files.map((n) => rm(join(dir, n), { force: true }).catch(() => {})));
+        if (files.length) logger.info(`[avatarCache] forgot ${files.length} file(s) for user ${userId}`);
+    } catch (err) {
+        logger.error('[avatarCache] forget error', err);
+    }
 }
 
 function sniffMime(buf: Buffer): string {
