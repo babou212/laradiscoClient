@@ -8,7 +8,6 @@ import {
     ConnectionState,
     Track,
     TrackEvent,
-    VideoPreset,
     VideoPresets,
 } from 'livekit-client';
 import { acceptHMRUpdate, defineStore } from 'pinia';
@@ -51,7 +50,6 @@ export const SCREEN_SHARE_PRESETS: Record<
         height: number;
         frameRate: number;
         encoding: VideoEncoding;
-        simulcastLayers: VideoPreset[];
     }
 > = {
     low: {
@@ -59,28 +57,24 @@ export const SCREEN_SHARE_PRESETS: Record<
         height: 720,
         frameRate: 30,
         encoding: VideoPresets.h720.encoding,
-        simulcastLayers: [VideoPresets.h360],
     },
     medium: {
         width: 1920,
         height: 1080,
         frameRate: 30,
         encoding: VideoPresets.h1080.encoding,
-        simulcastLayers: [VideoPresets.h720, VideoPresets.h360],
     },
     high: {
         width: 1920,
         height: 1080,
-        frameRate: 60,
-        encoding: { maxBitrate: 3_000_000, maxFramerate: 60 },
-        simulcastLayers: [new VideoPreset(1280, 720, 1_500_000, 60), new VideoPreset(640, 360, 600_000, 30)],
+        frameRate: 30,
+        encoding: { maxBitrate: 4_500_000, maxFramerate: 30 },
     },
     source: {
         width: 0,
         height: 0,
-        frameRate: 60,
-        encoding: { maxBitrate: 3_000_000, maxFramerate: 60 },
-        simulcastLayers: [new VideoPreset(1920, 1080, 1_500_000, 60), new VideoPreset(1280, 720, 800_000, 30)],
+        frameRate: 30,
+        encoding: { maxBitrate: 8_000_000, maxFramerate: 30 },
     },
 };
 
@@ -89,9 +83,6 @@ interface VoiceChannel {
     name: string;
 }
 
-// LiveKit participant attribute used to broadcast the user's *intentional* mute
-// state to other participants, independent of the transient mic-track state that
-// push-to-talk toggles on every key press.
 const MUTED_ATTRIBUTE = 'micMuted';
 
 export const useVoiceStore = defineStore('voice', () => {
@@ -392,10 +383,6 @@ export const useVoiceStore = defineStore('voice', () => {
         });
         r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
-                // Play remote participant microphone audio. The JS SDK does not
-                // auto-play subscribed audio — we must attach the track to an
-                // element in the DOM. The configured audioOutput device is
-                // applied to attached elements automatically by the SDK.
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
                 document.body.appendChild(el);
@@ -645,8 +632,6 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    videoSimulcastLayers: preset.simulcastLayers,
-                    simulcast: true,
                     scalabilityMode: 'L3T3_KEY',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
