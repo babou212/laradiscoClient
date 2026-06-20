@@ -206,6 +206,16 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                         msg.thread = threadPreview;
                     }
                 },
+            )
+            .listen(
+                'ThreadDeleted',
+                (data: { message_id: number | string; thread_id: number | string }) => {
+                    const msg = messages.value.find((m) => m.id === String(data.message_id));
+                    if (msg) {
+                        msg.thread = null;
+                        msg.thread_id = null;
+                    }
+                },
             );
     }
 

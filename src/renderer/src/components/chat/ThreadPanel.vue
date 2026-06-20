@@ -156,6 +156,9 @@ const joinThread = (threadId: number | string) => {
                     if (idx !== -1) msg.reactions.splice(idx, 1);
                 }
             }
+        })
+        .listen('ThreadDeleted', () => {
+            threadStore.closeThread();
         });
 };
 

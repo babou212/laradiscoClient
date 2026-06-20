@@ -243,6 +243,21 @@ export const useThreadStore = defineStore('thread', () => {
             await deleteThreadMessage(String(channelId), String(threadId), String(messageId));
             const idx = threadMessages.value.findIndex((m) => m.id === String(messageId));
             if (idx !== -1) threadMessages.value.splice(idx, 1);
+
+            // The deleter is excluded from the server's ThreadDeleted broadcast,
+            // so reflect an emptied thread locally: when the last reply is gone the
+            // server deletes the thread, so clear the parent's preview badge (shared
+            // object reference with the channel list) and close the panel.
+            if (activeThread.value) {
+                activeThread.value.message_count = Math.max(0, activeThread.value.message_count - 1);
+                if (activeThread.value.message_count === 0) {
+                    if (parentMessage.value) {
+                        parentMessage.value.thread = null;
+                        parentMessage.value.thread_id = null;
+                    }
+                    closeThread();
+                }
+            }
         } catch (error) {
             console.error('Failed to delete thread message:', error);
         }
