@@ -60,11 +60,11 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 import appIcon from '../../resources/icon.png?asset';
+import { cleanupActivityDetection } from './activity/detect';
 import { registerIpcHandlers, cleanupAllVideos } from './ipc';
 import { registerLogIpcHandlers } from './log';
 import { initLogger, logger } from './logger';
 import { pruneAvatarCache, readAvatarFile } from './media/avatarCache';
-import { cleanupActivityDetection } from './activity/detect';
 import { cleanupPushToTalk } from './ptt';
 import { getIsQuitting, initTray, setIsQuitting } from './tray';
 
