@@ -165,7 +165,8 @@ export function useChatScroll(options: UseChatScrollOptions) {
         const container = containerRef.value;
 
         if (container) {
-            const elTopInContent = container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top);
+            const elTopInContent =
+                container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top);
             const desired = elTopInContent + el.clientHeight / 2 - container.clientHeight / 2;
             const maxScroll = container.scrollHeight - container.clientHeight;
             const finalScrollTop = Math.max(0, Math.min(desired, maxScroll));
