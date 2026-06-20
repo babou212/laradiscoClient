@@ -377,7 +377,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 (s) => s.identity !== participant.identity,
             );
             if (activeScreenShareView.value === participant.identity) {
-                activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
+                activeScreenShareView.value = null;
             }
             refreshParticipants();
         });
@@ -406,9 +406,6 @@ export const useVoiceStore = defineStore('voice', () => {
                         },
                     ];
                 }
-                if (!activeScreenShareView.value) {
-                    activeScreenShareView.value = participant.identity;
-                }
             } else if (track.source === Track.Source.ScreenShareAudio) {
                 screenShareParticipants.value = screenShareParticipants.value.map((s) =>
                     s.identity === participant.identity
@@ -429,7 +426,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     (s) => s.identity !== participant.identity,
                 );
                 if (activeScreenShareView.value === participant.identity) {
-                    activeScreenShareView.value = screenShareParticipants.value[0]?.identity ?? null;
+                    activeScreenShareView.value = null;
                 }
             } else if (track.source === Track.Source.ScreenShareAudio) {
                 screenShareParticipants.value = screenShareParticipants.value.map((s) =>
