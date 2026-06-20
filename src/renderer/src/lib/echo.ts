@@ -126,6 +126,11 @@ export function initEcho(): Echo<'reverb'> {
             void import('@/stores/presence')
                 .then(({ usePresenceStore }) => usePresenceStore().reconcile())
                 .catch((error) => console.error('[Presence] reconcile failed:', error));
+            // Resync voice channel rosters too, recovering any .voice.joined/.voice.left
+            // deltas missed while the socket was down.
+            void import('@/stores/voice')
+                .then(({ useVoiceStore }) => useVoiceStore().fetchVoiceParticipants())
+                .catch((error) => console.error('[Voice] participant resync failed:', error));
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');

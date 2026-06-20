@@ -92,6 +92,7 @@ export const useVoiceStore = defineStore('voice', () => {
     const isReconnecting = ref(false);
     const currentParticipants = ref<VoiceParticipant[]>([]);
     const channelParticipantsMap = ref<Map<number, VoiceParticipant[]>>(new Map());
+    const userVolumes = ref<Map<string, number>>(new Map()); // userId -> 0..2 (1 = 100%)
 
     const connectionQuality = ref<ConnectionQuality>(ConnectionQuality.Unknown);
 
@@ -128,19 +129,21 @@ export const useVoiceStore = defineStore('voice', () => {
     let pttActive = false;
 
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality] = await Promise.all([
-            window.api.settings.get('voice:pttEnabled'),
-            window.api.settings.get('voice:pttKey'),
-            window.api.settings.get('voice:pttKeycode'),
-            window.api.settings.get('voice:pttModifiers'),
-            window.api.settings.get('voice:pttSoundEnabled'),
-            window.api.settings.get('voice:micDeviceId'),
-            window.api.settings.get('voice:speakerDeviceId'),
-            window.api.settings.get('voice:noiseSuppression'),
-            window.api.settings.get('voice:echoCancellation'),
-            window.api.settings.get('voice:autoGainControl'),
-            window.api.settings.get('voice:screenShareQuality'),
-        ]);
+        const [enabled, key, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality, volumes] =
+            await Promise.all([
+                window.api.settings.get('voice:pttEnabled'),
+                window.api.settings.get('voice:pttKey'),
+                window.api.settings.get('voice:pttKeycode'),
+                window.api.settings.get('voice:pttModifiers'),
+                window.api.settings.get('voice:pttSoundEnabled'),
+                window.api.settings.get('voice:micDeviceId'),
+                window.api.settings.get('voice:speakerDeviceId'),
+                window.api.settings.get('voice:noiseSuppression'),
+                window.api.settings.get('voice:echoCancellation'),
+                window.api.settings.get('voice:autoGainControl'),
+                window.api.settings.get('voice:screenShareQuality'),
+                window.api.settings.get('voice:userVolumes'),
+            ]);
 
         pttEnabled.value = enabled === 'true';
         pttKey.value = key;
@@ -160,6 +163,30 @@ export const useVoiceStore = defineStore('voice', () => {
         autoGainControl.value = agc !== 'false';
         if (ssQuality && ssQuality in SCREEN_SHARE_PRESETS) {
             screenShareQuality.value = ssQuality as ScreenShareQualityPreset;
+        }
+        if (volumes) {
+            try {
+                const parsed = JSON.parse(volumes) as Record<string, number>;
+                userVolumes.value = new Map(
+                    Object.entries(parsed).map(([id, v]) => [id, Math.min(2, Math.max(0, Number(v)))]),
+                );
+            } catch (error) {
+                console.error('[Voice] Failed to parse saved user volumes:', error);
+            }
+        }
+    }
+
+    function getUserVolume(id: string): number {
+        return userVolumes.value.get(id) ?? 1;
+    }
+
+    function setUserVolume(id: string, volume: number): void {
+        const v = Math.min(2, Math.max(0, volume));
+        userVolumes.value.set(id, v);
+        userVolumes.value = new Map(userVolumes.value); // trigger reactivity
+        window.api.settings.set('voice:userVolumes', JSON.stringify(Object.fromEntries(userVolumes.value)));
+        if (room && !isSoundMuted.value) {
+            room.remoteParticipants.get(id)?.setVolume(v);
         }
     }
 
@@ -186,9 +213,28 @@ export const useVoiceStore = defineStore('voice', () => {
         return channelParticipantsMap.value.get(channelId) ?? [];
     }
 
+    // When we leave/disconnect we never receive our own `.voice.left` (the server
+    // broadcasts ->toOthers()), so drop only ourselves from the cached roster and
+    // leave the remaining members visible.
+    function removeSelfFromChannelMap(channelId: number, identity: string): void {
+        const list = channelParticipantsMap.value.get(channelId);
+        if (!list) return;
+        const filtered = list.filter((p) => String(p.id) !== String(identity));
+        if (filtered.length > 0) {
+            channelParticipantsMap.value.set(channelId, filtered);
+        } else {
+            channelParticipantsMap.value.delete(channelId);
+        }
+    }
+
     async function fetchVoiceParticipants(): Promise<void> {
         try {
             const data = await getVoiceParticipants();
+
+            // Rebuild the map wholesale so channels that emptied (e.g. while the
+            // websocket was disconnected) are cleared rather than left stale.
+            const rebuilt = new Map<number, VoiceParticipant[]>();
+            const usersStore = useUsersStore();
 
             for (const [channelIdStr, participants] of Object.entries(data)) {
                 const channelId = Number(channelIdStr);
@@ -201,9 +247,8 @@ export const useVoiceStore = defineStore('voice', () => {
                     isScreenSharing: false,
                     avatarUrls: p.avatar_urls ?? null,
                 }));
-                channelParticipantsMap.value.set(channelId, mapped);
+                rebuilt.set(channelId, mapped);
 
-                const usersStore = useUsersStore();
                 usersStore.hydrateFromUsers(
                     participants.map((p) => ({
                         id: String(p.id),
@@ -213,6 +258,8 @@ export const useVoiceStore = defineStore('voice', () => {
                     })),
                 );
             }
+
+            channelParticipantsMap.value = rebuilt;
         } catch (error) {
             console.error('Failed to fetch voice participants:', error);
         }
@@ -333,10 +380,6 @@ export const useVoiceStore = defineStore('voice', () => {
         });
 
         currentParticipants.value = list;
-
-        if (currentChannel.value) {
-            channelParticipantsMap.value.set(currentChannel.value.id, [...list]);
-        }
     }
 
     function updateParticipantTracks(identity: string): void {
@@ -361,15 +404,11 @@ export const useVoiceStore = defineStore('voice', () => {
             }
         }
         currentParticipants.value = [...currentParticipants.value];
-
-        if (currentChannel.value) {
-            channelParticipantsMap.value.set(currentChannel.value.id, [...currentParticipants.value]);
-        }
     }
 
     function wireRoomEvents(r: Room): void {
         r.on(RoomEvent.ParticipantConnected, (participant) => {
-            if (isSoundMuted.value) participant.setVolume(0);
+            participant.setVolume(isSoundMuted.value ? 0 : getUserVolume(participant.identity));
             refreshParticipants();
         });
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
@@ -386,7 +425,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
                 document.body.appendChild(el);
-                if (isSoundMuted.value) participant.setVolume(0);
+                participant.setVolume(isSoundMuted.value ? 0 : getUserVolume(participant.identity));
                 updateParticipantTracks(participant.identity);
                 return;
             }
@@ -470,7 +509,7 @@ export const useVoiceStore = defineStore('voice', () => {
         r.on(RoomEvent.Disconnected, () => {
             if (room === r) {
                 if (currentChannel.value) {
-                    channelParticipantsMap.value.delete(currentChannel.value.id);
+                    removeSelfFromChannelMap(currentChannel.value.id, r.localParticipant.identity);
                 }
                 currentChannel.value = null;
                 currentParticipants.value = [];
@@ -500,6 +539,7 @@ export const useVoiceStore = defineStore('voice', () => {
             room = new Room({
                 adaptiveStream: true,
                 dynacast: true,
+                webAudioMix: true, // route remote audio through Web Audio GainNode so per-user volume can boost >100%
                 e2ee: {
                     keyProvider,
                     worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
@@ -537,6 +577,11 @@ export const useVoiceStore = defineStore('voice', () => {
                     console.warn('[Voice] No microphone available — joining without mic:', fallbackErr);
                 }
             }
+
+            // Apply saved per-user volumes to participants already in the channel
+            room.remoteParticipants.forEach((p) => {
+                p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
+            });
 
             currentChannel.value = { id: channelId, name: channelName };
             refreshParticipants();
@@ -733,6 +778,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function leaveChannel() {
         const oldRoom = room;
+        const localIdentity = oldRoom?.localParticipant.identity ?? null;
 
         room = null;
         pttActive = false;
@@ -748,8 +794,8 @@ export const useVoiceStore = defineStore('voice', () => {
                 console.warn('[Voice] Error during disconnect:', err);
             }
         }
-        if (currentChannel.value) {
-            channelParticipantsMap.value.delete(currentChannel.value.id);
+        if (currentChannel.value && localIdentity) {
+            removeSelfFromChannelMap(currentChannel.value.id, localIdentity);
         }
         currentChannel.value = null;
         currentParticipants.value = [];
@@ -783,9 +829,8 @@ export const useVoiceStore = defineStore('voice', () => {
     async function toggleSound() {
         isSoundMuted.value = !isSoundMuted.value;
         if (!room) return;
-        const volume = isSoundMuted.value ? 0 : 1;
         room.remoteParticipants.forEach((p) => {
-            p.setVolume(volume);
+            p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
         });
     }
 
@@ -1006,6 +1051,9 @@ export const useVoiceStore = defineStore('voice', () => {
         echoCancellation,
         autoGainControl,
         getChannelParticipants,
+        userVolumes,
+        getUserVolume,
+        setUserVolume,
         loadSettings,
         fetchVoiceParticipants,
         subscribeToVoiceChannels,
