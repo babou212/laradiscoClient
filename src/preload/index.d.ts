@@ -13,7 +13,9 @@ export type { WindowApi } from './types/window';
 export type { UpdaterApi } from './types/updater';
 export type { TrayApi } from './types/tray';
 export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unfurl';
+export type { ClientActivity, ClientActivityType, ActivityApi } from './types/activity';
 
+import type { ActivityApi } from './types/activity';
 import type { AttachmentsApi } from './types/attachments';
 import type { AuthApi } from './types/auth';
 import type { AvatarApi } from './types/avatar';
@@ -42,6 +44,7 @@ interface AppApi {
     clipboard: ClipboardApi;
     unfurl: UnfurlApi;
     tray: TrayApi;
+    activity: ActivityApi;
 }
 
 declare global {

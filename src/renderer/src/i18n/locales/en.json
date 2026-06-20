@@ -165,6 +165,13 @@
             "browserDescription": "Show desktop notifications when the app is in the background",
             "save": "Save preferences"
         },
+        "privacy": {
+            "title": "Privacy",
+            "description": "Control what others can see about your activity",
+            "showActivityLabel": "Share my activity",
+            "showActivityDescription": "Let others see what game or app you're currently using on your profile. When off, your activity is hidden and never shared.",
+            "save": "Save preferences"
+        },
         "language": {
             "title": "Language",
             "description": "Choose the language used throughout the application",
@@ -191,6 +198,7 @@
             "voice": "Voice",
             "screenShare": "Screen Share",
             "notifications": "Notifications",
+            "privacy": "Privacy",
             "language": "Language",
             "about": "About",
             "logs": "Logs",
@@ -888,6 +896,12 @@
                 "idle": "Idle",
                 "dnd": "Do Not Disturb",
                 "offline": "Offline"
+            },
+            "activity": {
+                "game": "Playing",
+                "music": "Listening to",
+                "app": "Using",
+                "elapsed": "for {duration}"
             }
         },
         "channelSidebar": {

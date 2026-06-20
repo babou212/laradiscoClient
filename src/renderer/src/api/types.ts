@@ -82,6 +82,7 @@ export interface UserAttributes {
     avatar_urls?: AvatarUrls | null;
     about_me?: string | null;
     custom_status?: string | null;
+    show_activity?: boolean;
     last_seen_at?: string | null;
     created_at?: string;
     updated_at?: string;

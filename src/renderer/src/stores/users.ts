@@ -12,7 +12,7 @@ import {
 } from '@/api/types';
 import { getUserProfile } from '@/api/users';
 import { getEcho } from '@/lib/echo';
-import type { OnlineUser, UserStatusType } from '@/types';
+import type { OnlineUser, UserActivity, UserStatusType } from '@/types';
 import type { AvatarUrls } from '@/types/chat';
 
 export interface StoredUserRole {
@@ -33,6 +33,7 @@ export interface StoredUser {
     avatar_urls: AvatarUrls | null;
     status: UserStatusType;
     custom_status: string | null;
+    activity: UserActivity | null;
     roles: StoredUserRole[];
     permissions: AuthPermissions | null;
     created_at: string | null;
@@ -56,6 +57,11 @@ interface PresenceUpdatedPayload {
     avatar_urls?: AvatarUrls | null;
     status: UserStatusType;
     custom_status: string | null;
+}
+
+interface ActivityUpdatedPayload {
+    user_id: number | string;
+    activity: UserActivity | null;
 }
 
 interface RolesUpdatedPayload {
@@ -192,6 +198,7 @@ export const useUsersStore = defineStore('users', () => {
             avatar_urls: pick('avatar_urls', null),
             status: pick('status', 'offline'),
             custom_status: pick('custom_status', null),
+            activity: pick('activity', null),
             roles: pick('roles', []),
             permissions: pick('permissions', null),
             created_at: pick('created_at', null),
@@ -266,11 +273,12 @@ export const useUsersStore = defineStore('users', () => {
                 display_name: u.display_name ?? u.username,
                 status: u.status ?? 'online',
                 custom_status: u.custom_status ?? null,
+                activity: u.activity ?? null,
             });
         }
         for (const [id, user] of byId) {
             if (!seenIds.has(id) && user.status !== 'offline') {
-                upsert({ id, status: 'offline' });
+                upsert({ id, status: 'offline', activity: null });
             }
         }
     }
@@ -300,7 +308,17 @@ export const useUsersStore = defineStore('users', () => {
             display_name: data.display_name ?? data.username,
             status: data.status,
             custom_status: data.custom_status,
+            // An offline user is no longer playing anything; drop stale activity.
+            ...(data.status === 'offline' ? { activity: null } : {}),
         });
+    }
+
+    function applyActivityUpdate(data: ActivityUpdatedPayload): void {
+        const id = String(data.user_id);
+        // Only update an already-known user; activity is presence state and
+        // shouldn't conjure a member we otherwise know nothing about.
+        if (!byId.has(id)) return;
+        upsert({ id, activity: data.activity ?? null });
     }
 
     function applyRolesUpdate(data: RolesUpdatedPayload, currentAuthUserId: string | null): void {
@@ -370,6 +388,7 @@ export const useUsersStore = defineStore('users', () => {
             channel = echo.private('presence');
             channel.listen('.user.profile.updated', (data: ProfileUpdatedPayload) => applyProfileUpdate(data));
             channel.listen('.user.presence.updated', (data: PresenceUpdatedPayload) => applyPresenceUpdate(data));
+            channel.listen('.user.activity.updated', (data: ActivityUpdatedPayload) => applyActivityUpdate(data));
             channel.listen('.user.roles.updated', (data: RolesUpdatedPayload) =>
                 applyRolesUpdate(data, currentAuthUserId),
             );
@@ -426,6 +445,7 @@ export const useUsersStore = defineStore('users', () => {
         applyPresenceBatch,
         applyProfileUpdate,
         applyPresenceUpdate,
+        applyActivityUpdate,
         applyRolesUpdate,
         applyMemberJoined,
         applyUserDeleted,

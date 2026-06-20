@@ -64,6 +64,7 @@ import { registerIpcHandlers, cleanupAllVideos } from './ipc';
 import { registerLogIpcHandlers } from './log';
 import { initLogger, logger } from './logger';
 import { pruneAvatarCache, readAvatarFile } from './media/avatarCache';
+import { cleanupActivityDetection } from './activity/detect';
 import { cleanupPushToTalk } from './ptt';
 import { getIsQuitting, initTray, setIsQuitting } from './tray';
 
@@ -347,14 +348,17 @@ app.whenReady().then(() => {
     }
 
     setImmediate(async () => {
-        const [{ initDatabase }, { initPushToTalk }, { initAutoUpdater }] = await Promise.all([
-            import('./database'),
-            import('./ptt'),
-            import('./updater'),
-        ]);
+        const [{ initDatabase }, { initPushToTalk }, { initAutoUpdater }, { initActivityDetection }] =
+            await Promise.all([
+                import('./database'),
+                import('./ptt'),
+                import('./updater'),
+                import('./activity/detect'),
+            ]);
         initDatabase();
         initPushToTalk();
         initAutoUpdater();
+        initActivityDetection();
         void pruneAvatarCache();
     });
 
@@ -402,5 +406,6 @@ app.on('before-quit', () => {
     logger.info('quitting');
     setIsQuitting(true);
     cleanupPushToTalk();
+    cleanupActivityDetection();
     void cleanupAllVideos();
 });

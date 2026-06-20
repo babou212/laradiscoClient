@@ -17,6 +17,7 @@ export async function getProfile(): Promise<JsonApiResponse<UserResource>> {
 export async function updateProfile(data: {
     username?: string;
     email?: string;
+    show_activity?: boolean;
 }): Promise<JsonApiResponse<UserResource>> {
     const r = await api.patch('/settings/profile', data);
     return r.data;
