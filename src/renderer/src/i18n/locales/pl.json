@@ -655,8 +655,7 @@
         "description": "Połącz się z serwerem, aby rozpocząć",
         "serverAddress": "Adres serwera",
         "placeholder": "chat.przyklad.com",
-        "connectedTo": "Połączono z {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Połączono",
         "connecting": "Łączenie...",
         "testConnection": "Testuj połączenie",
         "continue": "Kontynuuj"
@@ -843,7 +842,8 @@
             "noUsersFound": "Nie znaleziono użytkowników",
             "noDmsYet": "Brak wiadomości prywatnych",
             "startConversationHint": "Kliknij +, aby rozpocząć konwersację",
-            "backToChannels": "Powrót do kanałów"
+            "backToChannels": "Powrót do kanałów",
+            "youPrefix": "Ty"
         },
         "userProfile": {
             "unknownUser": "Nieznany użytkownik",

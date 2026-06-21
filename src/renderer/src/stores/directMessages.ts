@@ -90,37 +90,29 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingGroups.value = true;
         try {
             const response = await getDmGroups();
-            const included = response.included ?? [];
             dmGroups.value = response.data.map((resource) => {
                 const attrs = resource.attributes;
 
                 const otherUser = attrs.other_user;
 
-                const lastMsgRel = (
-                    resource.relationships as Record<string, { data?: { id: string; type: string } | null }>
-                )?.lastMessage?.data;
-                let lastMessage: DmGroup['last_message'] = null;
-                if (lastMsgRel) {
-                    const msgInc = included.find((inc) => inc.type === lastMsgRel.type && inc.id === lastMsgRel.id);
-                    if (msgInc) {
-                        const msgAttrs = msgInc.attributes as Record<string, unknown>;
-                        const userRel = (msgInc.relationships as Record<string, { data?: { id: string } | null }>)?.user
-                            ?.data;
-                        lastMessage = {
-                            id: msgInc.id,
-                            content: (msgAttrs.content as string) ?? '',
-                            created_at: (msgAttrs.created_at as string) ?? '',
-                            user_id: userRel?.id ?? '',
-                        };
-                    }
-                }
+                // The backend serializes last_message as an attribute (not a relationship).
+                // Coerce its ids to strings to match the string ids used elsewhere (e.g. authStore.user.id).
+                const lastMsg = attrs.last_message;
+                const lastMessage: DmGroup['last_message'] = lastMsg
+                    ? {
+                          id: String(lastMsg.id),
+                          content: lastMsg.content ?? '',
+                          created_at: lastMsg.created_at ?? '',
+                          user_id: String(lastMsg.user_id),
+                      }
+                    : null;
 
                 return {
                     id: resource.id,
                     name: otherUser?.username ?? 'Unknown',
                     other_user: otherUser ?? null,
                     last_message: lastMessage,
-                    last_message_at: lastMessage?.created_at ?? null,
+                    last_message_at: attrs.last_message_at ?? lastMessage?.created_at ?? null,
                 };
             });
         } catch (error) {

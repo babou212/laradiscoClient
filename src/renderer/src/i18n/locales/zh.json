@@ -655,8 +655,7 @@
         "description": "连接到您的服务器以开始",
         "serverAddress": "服务器地址",
         "placeholder": "chat.example.com",
-        "connectedTo": "已连接到 {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "已连接",
         "connecting": "连接中...",
         "testConnection": "测试连接",
         "continue": "继续"
@@ -843,7 +842,8 @@
             "noUsersFound": "未找到用户",
             "noDmsYet": "暂无私信",
             "startConversationHint": "点击 + 开始对话",
-            "backToChannels": "返回频道"
+            "backToChannels": "返回频道",
+            "youPrefix": "你"
         },
         "userProfile": {
             "unknownUser": "未知用户",

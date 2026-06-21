@@ -657,8 +657,7 @@
         "description": "Verbind met uw server om te beginnen",
         "serverAddress": "Serveradres",
         "placeholder": "chat.voorbeeld.com",
-        "connectedTo": "Verbonden met {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Verbonden",
         "connecting": "Verbinden...",
         "testConnection": "Verbinding testen",
         "continue": "Doorgaan"
@@ -845,7 +844,8 @@
             "noUsersFound": "Geen gebruikers gevonden",
             "noDmsYet": "Nog geen directe berichten",
             "startConversationHint": "Klik op + om een gesprek te starten",
-            "backToChannels": "Terug naar kanalen"
+            "backToChannels": "Terug naar kanalen",
+            "youPrefix": "Jij"
         },
         "userProfile": {
             "unknownUser": "Onbekende gebruiker",

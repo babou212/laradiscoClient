@@ -656,8 +656,7 @@
         "description": "Tilslut din server for at komme i gang",
         "serverAddress": "Serveradresse",
         "placeholder": "chat.eksempel.com",
-        "connectedTo": "Forbundet til {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Forbundet",
         "connecting": "Forbinder...",
         "testConnection": "Test forbindelse",
         "continue": "Fortsæt"
@@ -844,7 +843,8 @@
             "noUsersFound": "Ingen brugere fundet",
             "noDmsYet": "Ingen direkte beskeder endnu",
             "startConversationHint": "Klik på + for at starte en samtale",
-            "backToChannels": "Tilbage til kanaler"
+            "backToChannels": "Tilbage til kanaler",
+            "youPrefix": "Dig"
         },
         "userProfile": {
             "unknownUser": "Ukendt bruger",

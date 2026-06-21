@@ -16,8 +16,6 @@ function captureIpcError(channel: string, err: unknown): string {
     return error.message;
 }
 
-// Only frames loaded from the app's own origins may invoke IPC. Defence-in-depth
-// per https://www.electronjs.org/docs/latest/tutorial/security (validate sender).
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
     const url = event.senderFrame?.url ?? '';
     const devUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -41,9 +39,6 @@ function handle<T extends unknown[], R>(
     });
 }
 
-// Allowlist for outbound fetches initiated via renderer-supplied URLs. Only
-// hosts the user has explicitly connected to (stored in the server DB) are
-// permitted, which blocks SSRF / internal-network probing via these handlers.
 function isAllowedServerUrl(raw: string): boolean {
     let parsed: URL;
     try {
@@ -58,8 +53,7 @@ function isAllowedServerUrl(raw: string): boolean {
     const host = active.host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
     const [hostname, port] = host.split(':');
     if (parsed.hostname !== hostname) return false;
-    // Local dev serves object storage (e.g. Garage/MinIO presigned URLs) on a
-    // different port than the API, so don't enforce the port for loopback hosts.
+
     const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
     if (!isLoopback && port && parsed.port && parsed.port !== port) return false;
     return true;
@@ -69,15 +63,6 @@ const execFileAsync = promisify(execFile);
 
 const SUPPORTED_VIDEO_CODECS = new Set(['h264', 'vp8', 'vp9', 'theora', 'mpeg4', 'mp4v', 'mpeg2video']);
 
-// Prepared (downloaded + maybe transcoded) videos are written to disk so the
-// transcode result can be reused across re-opens without re-running ffmpeg.
-// The renderer reads the bytes back via video:prepare and plays them from a
-// blob: URL. We deliberately do NOT stream them through a custom app-video://
-// protocol: Chromium treats custom-scheme media sources as non-streamed and
-// issues exact partial-range reads that protocol.handle mishandles, producing
-// PIPELINE_ERROR_READ / "Format error" (see electron/electron #38749, #45226).
-// A blob: URL is fully in-memory in the renderer, so it is reliably seekable
-// and format-sniffed with no range handling at all.
 const VIDEO_DIR = join(tmpdir(), 'laradisco-videos');
 
 interface PreparedVideo {
@@ -101,8 +86,6 @@ function videoExtForMime(mimeType: string): string {
     return '.mp4';
 }
 
-// Remove every prepared video and the working directory. Called on quit so the
-// temp dir does not leak across sessions.
 export async function cleanupAllVideos(): Promise<void> {
     videoCache.clear();
     videoPreparing.clear();
@@ -355,9 +338,6 @@ export function registerIpcHandlers(): void {
                 const body = await response.json();
 
                 if (!response.ok) {
-                    // The API returns JSON:API errors: { errors: [{ detail, source: { pointer } }] }.
-                    // Collapse them into a { field: [messages] } map keyed by the attribute name so
-                    // the renderer can surface each reason inline (a weak password yields several).
                     const errors: Record<string, string[]> = {};
                     if (Array.isArray(body.errors)) {
                         for (const err of body.errors) {
@@ -596,10 +576,6 @@ export function registerIpcHandlers(): void {
                         { maxBuffer: 50 * 1024 * 1024 },
                     );
                 } catch (err) {
-                    // Do NOT fall back to serving the original here. The original
-                    // is in an unsupported codec/format (that is why we are
-                    // transcoding), so handing it to the demuxer guarantees a
-                    // playback error. Fail loudly so the UI shows an error.
                     await rm(inputPath, { force: true }).catch(() => {});
                     await rm(outputPath, { force: true }).catch(() => {});
                     throw new Error(`Failed to transcode video (codec=${videoCodec}): ${String(err)}`);

@@ -1,5 +1,3 @@
-<!-- ModerationSettingsView - Ban and jail management -->
-
 <script setup lang="ts">
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
@@ -58,8 +56,6 @@ const { t } = useI18n();
 const queryCache = useQueryCache();
 const usersStore = useUsersStore();
 
-// ─── Bans ──────────────────────────────────────────────────────────────────
-
 const { data: bansData, isLoading: bansLoading, error: bansError } = useQuery(settingsBansQuery);
 
 const bansErrorMsg = computed(() => {
@@ -70,8 +66,6 @@ const bansErrorMsg = computed(() => {
 const activeBans = computed<BanData[]>(() => {
     return bansData.value?.data ?? [];
 });
-
-// ─── Members (for ban/jail actions) ────────────────────────────────────────
 
 const { data: membersData } = useQuery({
     key: SETTINGS_KEYS.members(),
@@ -97,8 +91,6 @@ const filteredMembers = computed(() => {
         (m) => m.username.toLowerCase().includes(q) || m.display_name.toLowerCase().includes(q),
     );
 });
-
-// ─── Ban dialog ────────────────────────────────────────────────────────────
 
 const showBanDialog = ref(false);
 const selectedMember = ref<SimpleMember | null>(null);
@@ -134,7 +126,7 @@ function openBanDialog(member: SimpleMember) {
 
 function formatExpiryForApi(date: DateValue | undefined): string | undefined {
     if (!date) return undefined;
-    // Convert DateValue to ISO string (end of selected day in local timezone)
+
     const jsDate = date.toDate(getLocalTimeZone());
     jsDate.setHours(23, 59, 59);
     return jsDate.toISOString();
@@ -164,8 +156,6 @@ async function handleUnban(ban: BanData) {
         actionError.value = getApiErrorMessage(err);
     }
 }
-
-// ─── Jail / Unjail ─────────────────────────────────────────────────────────
 
 const showJailDialog = ref(false);
 const jailTarget = ref<SimpleMember | null>(null);
@@ -197,8 +187,6 @@ async function confirmJail() {
         actionError.value = getApiErrorMessage(err);
     }
 }
-
-// ─── Delete (permanent) ──────────────────────────────────────────────────────
 
 const showDeleteDialog = ref(false);
 const deleteTarget = ref<SimpleMember | null>(null);
@@ -239,7 +227,6 @@ function formatDate(dateStr: string): string {
 
 <template>
     <div class="space-y-6">
-        <!-- Active Bans -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">{{ t('settings.moderation.bans.title') }}</h2>
@@ -310,7 +297,6 @@ function formatDate(dateStr: string): string {
             </div>
         </div>
 
-        <!-- Member Actions -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">{{ t('settings.moderation.actions.title') }}</h2>
@@ -382,7 +368,6 @@ function formatDate(dateStr: string): string {
             </div>
         </div>
 
-        <!-- Ban Dialog -->
         <Dialog v-model:open="showBanDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -501,7 +486,6 @@ function formatDate(dateStr: string): string {
             </DialogContent>
         </Dialog>
 
-        <!-- Jail Dialog -->
         <Dialog v-model:open="showJailDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -531,7 +515,6 @@ function formatDate(dateStr: string): string {
             </DialogContent>
         </Dialog>
 
-        <!-- Delete Dialog -->
         <Dialog v-model:open="showDeleteDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>

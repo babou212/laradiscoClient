@@ -655,8 +655,7 @@
         "description": "Подключитесь к серверу для начала работы",
         "serverAddress": "Адрес сервера",
         "placeholder": "chat.example.com",
-        "connectedTo": "Подключено к {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Подключено",
         "connecting": "Подключение...",
         "testConnection": "Проверить соединение",
         "continue": "Продолжить"
@@ -843,7 +842,8 @@
             "noUsersFound": "Пользователи не найдены",
             "noDmsYet": "Личных сообщений пока нет",
             "startConversationHint": "Нажмите + чтобы начать беседу",
-            "backToChannels": "Вернуться к каналам"
+            "backToChannels": "Вернуться к каналам",
+            "youPrefix": "Вы"
         },
         "userProfile": {
             "unknownUser": "Неизвестный пользователь",

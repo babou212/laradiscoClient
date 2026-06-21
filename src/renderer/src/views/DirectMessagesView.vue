@@ -37,6 +37,11 @@ onMounted(async () => {
     const threadId = route.params.threadId as string;
     if (threadId) {
         await dmStore.selectDmGroup(threadId);
+    } else if (dmStore.dmGroups.length > 0) {
+        router.replace({
+            name: 'direct-messages',
+            params: { threadId: dmStore.dmGroups[0].id },
+        });
     }
 });
 

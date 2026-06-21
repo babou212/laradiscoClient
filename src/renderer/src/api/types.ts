@@ -129,9 +129,12 @@ export interface DirectMessageGroupAttributes {
         avatar_urls: AvatarUrls | null;
     };
     last_message?: {
-        content: string;
+        id: string | number;
+        content: string | null;
         created_at: string;
+        user_id: string | number;
     } | null;
+    last_message_at?: string | null;
 }
 
 export interface ThreadAttributes {

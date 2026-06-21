@@ -655,8 +655,7 @@
         "description": "Conéctate a tu servidor para empezar",
         "serverAddress": "Dirección del servidor",
         "placeholder": "chat.ejemplo.com",
-        "connectedTo": "Conectado a {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Conectado",
         "connecting": "Conectando...",
         "testConnection": "Probar conexión",
         "continue": "Continuar"
@@ -843,7 +842,8 @@
             "noUsersFound": "No se encontraron usuarios",
             "noDmsYet": "Aún no hay mensajes directos",
             "startConversationHint": "Haz clic en + para iniciar una conversación",
-            "backToChannels": "Volver a los canales"
+            "backToChannels": "Volver a los canales",
+            "youPrefix": "Tú"
         },
         "userProfile": {
             "unknownUser": "Usuario desconocido",
