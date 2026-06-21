@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { startActivityReporter, stopActivityReporter } from '@/composables/useActivityReporter';
 import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePresenceUpdater';
 import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
@@ -88,6 +89,11 @@ const router = createRouter({
                     path: 'notifications',
                     name: 'settings-notifications',
                     component: () => import('@/views/settings/NotificationSettingsView.vue'),
+                },
+                {
+                    path: 'privacy',
+                    name: 'settings-privacy',
+                    component: () => import('@/views/settings/PrivacySettingsView.vue'),
                 },
                 {
                     path: 'language',
@@ -181,6 +187,7 @@ function connectRealtime(userId: number): void {
     // handled by the Echo 'connected' handler in lib/echo.ts).
     void useInboxStore().drain();
     startPresenceUpdater();
+    void startActivityReporter();
 }
 
 function disconnectRealtime(): void {
@@ -194,6 +201,7 @@ function disconnectRealtime(): void {
 
     presenceStore.goOffline();
     stopPresenceUpdater();
+    stopActivityReporter();
 
     chatStore.disconnectUnread();
     notificationsStore.disconnect();

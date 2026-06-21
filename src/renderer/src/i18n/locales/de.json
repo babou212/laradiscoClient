@@ -239,6 +239,14 @@
                 "refresh": "Geräte aktualisieren",
                 "micFallback": "Mikrofon ({id})"
             },
+            "speaker": {
+                "title": "Ausgabegerät",
+                "description": "Wähle den Lautsprecher oder das Headset, über das die Audioausgabe der Sprachkanäle erfolgen soll",
+                "output": "Ausgabegerät",
+                "systemDefault": "Systemstandard",
+                "refresh": "Geräte aktualisieren",
+                "speakerFallback": "Lautsprecher ({id})"
+            },
             "pushToTalk": {
                 "title": "Push-to-Talk",
                 "description": "Halte eine Taste gedrückt, um dein Mikrofon zu aktivieren. Funktioniert fenster- und app-übergreifend.",
@@ -647,8 +655,7 @@
         "description": "Verbinde dich mit deinem Server, um loszulegen",
         "serverAddress": "Serveradresse",
         "placeholder": "chat.beispiel.com",
-        "connectedTo": "Verbunden mit {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Verbunden",
         "connecting": "Verbindung wird hergestellt...",
         "testConnection": "Verbindung testen",
         "continue": "Weiter"
@@ -835,7 +842,8 @@
             "noUsersFound": "Keine Benutzer gefunden",
             "noDmsYet": "Noch keine Direktnachrichten",
             "startConversationHint": "Klicke auf +, um eine Unterhaltung zu starten",
-            "backToChannels": "Zurück zu den Kanälen"
+            "backToChannels": "Zurück zu den Kanälen",
+            "youPrefix": "Du"
         },
         "userProfile": {
             "unknownUser": "Unbekannter Benutzer",

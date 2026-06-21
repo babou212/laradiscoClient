@@ -2,22 +2,6 @@ import { useInfiniteScroll, useResizeObserver, useScroll } from '@vueuse/core';
 import { nextTick, shallowRef, watch } from 'vue';
 import type { Ref } from 'vue';
 
-/**
- * Unified, non-virtualized chat scroll engine for the channel, DM and thread
- * message lists. Every loaded message is real DOM, so the browser owns layout
- * and there are no virtual-scroll estimate/anchor bugs.
- *
- * Behaviour (Discord-style):
- * - newest message sits at the bottom; the view stays pinned there as new
- *   messages arrive while the user is at the bottom;
- * - scrolling up near the top loads older messages and the viewport is kept
- *   visually fixed across the prepend (anchor preservation);
- * - while viewing history, scrolling down near the bottom loads newer messages;
- * - jump-to-message loads a window around the target if needed, then centers it.
- *
- * `containerRef` is the scroll element; `contentRef` is the inner wrapper whose
- * height changes (used to re-pin to the bottom as content grows/measures).
- */
 interface UseChatScrollOptions {
     containerRef: Ref<HTMLElement | null | undefined>;
     contentRef: Ref<HTMLElement | null | undefined>;
@@ -62,10 +46,6 @@ export function useChatScroll(options: UseChatScrollOptions) {
         throttle: 50,
     });
 
-    // Keep the view pinned to the newest message as content height grows — new
-    // messages arriving, images/attachments measuring, reactions toggling.
-    // Instant (not smooth) to avoid jank on every height change. Skipped during
-    // a prepend, which manages its own scroll position.
     useResizeObserver(contentRef, () => {
         if (pinnedToBottom.value && !isLoadingOlder.value) {
             scrollToBottom('auto');
@@ -86,8 +66,6 @@ export function useChatScroll(options: UseChatScrollOptions) {
         },
     );
 
-    // Load older (prepend) near the top, preserving the visual position: record
-    // the scroll geometry before the prepend and restore it after the DOM grows.
     useInfiniteScroll(
         containerRef,
         async () => {
@@ -113,8 +91,6 @@ export function useChatScroll(options: UseChatScrollOptions) {
         },
     );
 
-    // Load newer (append) near the bottom — only meaningful while viewing
-    // history (an `around`/jump window that isn't anchored to the live tail).
     useInfiniteScroll(
         containerRef,
         async () => {
@@ -157,6 +133,26 @@ export function useChatScroll(options: UseChatScrollOptions) {
         return containerRef.value?.querySelector<HTMLElement>(`[data-message-id="${id}"]`) ?? null;
     }
 
+    function distanceFromBottom(el: HTMLElement): number {
+        return el.scrollHeight - el.scrollTop - el.clientHeight;
+    }
+
+    function waitForScrollSettle(el: HTMLElement): Promise<void> {
+        return new Promise((resolve) => {
+            let timer: ReturnType<typeof setTimeout>;
+            const finish = (): void => {
+                el.removeEventListener('scroll', onScroll);
+                resolve();
+            };
+            const onScroll = (): void => {
+                clearTimeout(timer);
+                timer = setTimeout(finish, 100);
+            };
+            el.addEventListener('scroll', onScroll, { passive: true });
+            timer = setTimeout(finish, 100);
+        });
+    }
+
     async function jumpToMessage(messageId: string): Promise<void> {
         let el = findMessageEl(messageId);
         if (!el) {
@@ -166,15 +162,26 @@ export function useChatScroll(options: UseChatScrollOptions) {
         }
         if (!el) return;
 
-        pinnedToBottom.value = false;
+        const container = containerRef.value;
+
+        if (container) {
+            const elTopInContent =
+                container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top);
+            const desired = elTopInContent + el.clientHeight / 2 - container.clientHeight / 2;
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            const finalScrollTop = Math.max(0, Math.min(desired, maxScroll));
+            pinnedToBottom.value = maxScroll - finalScrollTop <= BOTTOM_OFFSET;
+        }
+
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         highlightElement(el);
+
+        if (container) {
+            await waitForScrollSettle(container);
+            pinnedToBottom.value = distanceFromBottom(container) <= BOTTOM_OFFSET;
+        }
     }
 
-    // Reset pin/unread/loading state when switching conversation. The actual
-    // scroll-to-bottom is driven by the resize observer once the new messages
-    // render (pinnedToBottom is true), but we also assert it directly for the
-    // case where height doesn't change between conversations.
     async function resetForNewConversation(): Promise<void> {
         pinnedToBottom.value = true;
         unreadNewCount.value = 0;

@@ -20,8 +20,8 @@ type InviteLink = {
     token: string;
     expires_at: string | null;
     used_at: string | null;
-    creator: { id: string; name: string; username: string } | null;
-    used_by_user: { id: string; name: string; username: string } | null;
+    creator: { id: string; username: string } | null;
+    used_by_user: { id: string; username: string } | null;
     created_at: string;
 };
 
@@ -46,12 +46,8 @@ const inviteLinks = computed<InviteLink[]>(() => {
             token: res.attributes.token,
             expires_at: res.attributes.expires_at,
             used_at: res.attributes.used_at,
-            creator: creator
-                ? { id: creator.id, name: creator.attributes.name ?? '', username: creator.attributes.username }
-                : null,
-            used_by_user: usedBy
-                ? { id: usedBy.id, name: usedBy.attributes.name ?? '', username: usedBy.attributes.username }
-                : null,
+            creator: creator ? { id: creator.id, username: creator.attributes.username } : null,
+            used_by_user: usedBy ? { id: usedBy.id, username: usedBy.attributes.username } : null,
             created_at: res.attributes.created_at,
         };
     });
@@ -171,7 +167,7 @@ function getStatus(link: InviteLink): 'used' | 'expired' | 'active' {
                                     <span>&middot;</span>
                                     <span
                                         >{{ t('settings.inviteLinks.usedBy') }}
-                                        <strong>{{ link.used_by_user.name }}</strong></span
+                                        <strong>{{ link.used_by_user.username }}</strong></span
                                     >
                                 </template>
                             </div>

@@ -2,6 +2,15 @@
 import { Volume2, Monitor, MicOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuLabel,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Slider } from '@/components/ui/slider';
+import { useAuthStore } from '@/stores/auth';
 import { useUsersStore } from '@/stores/users';
 import { useVoiceStore, type VoiceParticipant } from '@/stores/voice';
 
@@ -18,6 +27,10 @@ const props = defineProps<Props>();
 
 const voiceStore = useVoiceStore();
 const usersStore = useUsersStore();
+const authStore = useAuthStore();
+
+const isSelf = (participant: VoiceParticipant): boolean =>
+    !!authStore.user && String(participant.id) === String(authStore.user.id);
 
 const isCurrentChannel = computed(() => {
     return voiceStore.currentChannel?.id === Number(props.channel.id);
@@ -59,51 +72,80 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
         </button>
 
         <div v-if="channelParticipants.length > 0" class="ml-6 space-y-0.5 py-0.5">
-            <div
-                v-for="participant in channelParticipants"
-                :key="participant.id"
-                class="flex items-center gap-2 rounded px-2 py-1"
-            >
-                <Avatar
-                    class="size-6 shrink-0 transition-all duration-200"
-                    :class="participant.isSpeaking ? 'ring-2 ring-green-500' : ''"
-                >
-                    <AvatarImage
-                        v-if="participant.avatarUrls?.thumb"
-                        :src="participant.avatarUrls.thumb"
-                        :alt="participant.displayName"
-                    />
-                    <AvatarFallback
-                        class="text-xs font-semibold"
-                        :class="
-                            participant.isSpeaking ? 'bg-green-600 text-white' : 'bg-primary text-primary-foreground'
-                        "
-                    >
+            <ContextMenu v-for="participant in channelParticipants" :key="participant.id">
+                <ContextMenuTrigger as-child>
+                    <div data-no-context-menu class="flex items-center gap-2 rounded px-2 py-1">
+                        <Avatar
+                            class="size-6 shrink-0 transition-all duration-200"
+                            :class="participant.isSpeaking ? 'ring-2 ring-green-500' : ''"
+                        >
+                            <AvatarImage
+                                v-if="usersStore.avatarUrl(String(participant.id), 'thumb')"
+                                :src="usersStore.avatarUrl(String(participant.id), 'thumb')!"
+                                :alt="participant.displayName"
+                            />
+                            <AvatarFallback
+                                class="text-xs font-semibold"
+                                :class="
+                                    participant.isSpeaking
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-primary text-primary-foreground'
+                                "
+                            >
+                                {{
+                                    usersStore
+                                        .displayName(String(participant.id), participant.displayName)?.[0]
+                                        ?.toUpperCase() || 'U'
+                                }}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span
+                            class="text-sidebar-foreground/70 truncate text-xs"
+                            :class="{ 'text-sidebar-foreground': participant.isSpeaking }"
+                        >
+                            {{
+                                usersStore.displayName(
+                                    String(participant.id),
+                                    participant.displayName || participant.username,
+                                )
+                            }}
+                        </span>
+                        <div class="ml-auto flex shrink-0 items-center gap-1">
+                            <Monitor
+                                v-if="participant.isScreenSharing"
+                                :size="12"
+                                class="cursor-pointer text-green-400 hover:text-green-300"
+                                @click.stop="handleScreenShareClick(participant)"
+                            />
+                            <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
+                        </div>
+                    </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent v-if="!isSelf(participant)" class="w-56">
+                    <ContextMenuLabel class="truncate">
                         {{
-                            usersStore
-                                .displayName(String(participant.id), participant.displayName)?.[0]
-                                ?.toUpperCase() || 'U'
+                            usersStore.displayName(
+                                String(participant.id),
+                                participant.displayName || participant.username,
+                            )
                         }}
-                    </AvatarFallback>
-                </Avatar>
-                <span
-                    class="text-sidebar-foreground/70 truncate text-xs"
-                    :class="{ 'text-sidebar-foreground': participant.isSpeaking }"
-                >
-                    {{
-                        usersStore.displayName(String(participant.id), participant.displayName || participant.username)
-                    }}
-                </span>
-                <div class="ml-auto flex shrink-0 items-center gap-1">
-                    <Monitor
-                        v-if="participant.isScreenSharing"
-                        :size="12"
-                        class="cursor-pointer text-green-400 hover:text-green-300"
-                        @click.stop="handleScreenShareClick(participant)"
-                    />
-                    <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
-                </div>
-            </div>
+                    </ContextMenuLabel>
+                    <ContextMenuSeparator />
+                    <div class="px-2 py-1.5" @pointerdown.stop @keydown.stop>
+                        <div class="text-muted-foreground mb-1.5 flex justify-between text-xs">
+                            <span>User Volume</span>
+                            <span>{{ Math.round(voiceStore.getUserVolume(String(participant.id)) * 100) }}%</span>
+                        </div>
+                        <Slider
+                            :model-value="[voiceStore.getUserVolume(String(participant.id))]"
+                            :min="0"
+                            :max="2"
+                            :step="0.05"
+                            @update:model-value="(v) => voiceStore.setUserVolume(String(participant.id), v?.[0] ?? 1)"
+                        />
+                    </div>
+                </ContextMenuContent>
+            </ContextMenu>
         </div>
     </div>
 </template>

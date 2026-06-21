@@ -7,7 +7,6 @@ import VoiceChannelItem from './VoiceChannelItem.vue';
 import VoiceControlPanel from './VoiceControlPanel.vue';
 import { updatePresence } from '@/api/presence';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { setManualPresenceStatus } from '@/composables/usePresenceUpdater';
 import { useAuthStore } from '@/stores/auth';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
@@ -77,8 +76,6 @@ const selectChannel = (channelId: string) => {
 
 const setStatus = async (status: UserStatusType) => {
     currentStatus.value = status;
-
-    setManualPresenceStatus(status);
 
     if (user.value?.id) {
         presenceStore.updateUserStatus(user.value.id, status, currentCustomStatus.value);
@@ -233,15 +230,15 @@ const statusOptions = computed(() => [
                     <AvatarImage
                         v-if="user && usersStore.avatarUrl(user.id, 'thumb')"
                         :src="usersStore.avatarUrl(user!.id, 'thumb')!"
-                        :alt="user?.name"
+                        :alt="user?.username"
                     />
                     <AvatarFallback class="bg-primary text-primary-foreground text-sm font-semibold">
-                        {{ user ? usersStore.displayName(user.id, user.name)?.[0]?.toUpperCase() : 'U' }}
+                        {{ user ? usersStore.displayName(user.id, user.username)?.[0]?.toUpperCase() : 'U' }}
                     </AvatarFallback>
                 </Avatar>
                 <div class="min-w-0 flex-1 text-left">
                     <div class="text-sidebar-foreground truncate text-sm font-medium">
-                        {{ user ? usersStore.displayName(user.id, user.username || user.name) : '' }}
+                        {{ user ? usersStore.displayName(user.id, user.username) : '' }}
                     </div>
                     <div class="text-sidebar-foreground/60 truncate text-xs">
                         {{ currentCustomStatus || currentStatus }}

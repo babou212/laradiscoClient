@@ -71,12 +71,7 @@ async function connectAndSave(): Promise<void> {
                 class="flex items-start gap-3 rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-500 dark:text-green-400"
             >
                 <CheckCircle2Icon class="mt-0.5 size-4 shrink-0" />
-                <div>
-                    <p class="font-medium">{{ t('serverConnect.connectedTo', { app: serverInfo.app }) }}</p>
-                    <p class="mt-0.5 text-xs opacity-70">
-                        {{ t('serverConnect.laravelVersion', { version: serverInfo.version }) }}
-                    </p>
-                </div>
+                <p class="font-medium">{{ t('serverConnect.connected') }}</p>
             </div>
 
             <div class="flex flex-col gap-3 pt-1">

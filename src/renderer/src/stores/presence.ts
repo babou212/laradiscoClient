@@ -4,7 +4,7 @@ import { useUsersStore } from './users';
 import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import type { OnlineUser, UserStatusType } from '@/types';
 
-const HEARTBEAT_INTERVAL_MS = 60_000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
 const SYNC_INTERVAL_MS = 120_000;
 
 export const usePresenceStore = defineStore('presence', () => {
@@ -56,6 +56,9 @@ export const usePresenceStore = defineStore('presence', () => {
     const startTimers = () => {
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         if (syncTimer) clearInterval(syncTimer);
+        // Beat immediately so a resume (reconnect/visibility) re-registers us with
+        // the server right away instead of waiting a full interval.
+        void sendHeartbeatFn();
         heartbeatTimer = setInterval(sendHeartbeatFn, HEARTBEAT_INTERVAL_MS);
         syncTimer = setInterval(fetchOnlineUsers, SYNC_INTERVAL_MS);
     };
@@ -71,14 +74,28 @@ export const usePresenceStore = defineStore('presence', () => {
         }
     };
 
+    // Fire an immediate heartbeat and refresh the roster. Used when connectivity
+    // is (re)established — tab becomes visible, the OS network comes back, or the
+    // websocket reconnects — so a transient drop that downgraded us to idle is
+    // corrected without waiting for the next scheduled beat.
+    const reconcile = async () => {
+        if (!connected) return;
+        await sendHeartbeatFn();
+        await fetchOnlineUsers();
+    };
+
     const handleVisibilityChange = () => {
         if (!connected) return;
-        if (document.visibilityState === 'hidden') {
-            stopTimers();
-        } else {
-            void fetchOnlineUsers();
-            startTimers();
+        // Deliberately keep heartbeats running while hidden so a minimised desktop
+        // window stays online. On becoming visible we just reconcile, since the OS
+        // may have throttled timers while backgrounded.
+        if (document.visibilityState !== 'hidden') {
+            void reconcile();
         }
+    };
+
+    const handleOnline = () => {
+        void reconcile();
     };
 
     const connect = async () => {
@@ -96,6 +113,7 @@ export const usePresenceStore = defineStore('presence', () => {
 
         if (!visibilityBound) {
             document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('online', handleOnline);
             visibilityBound = true;
         }
     };
@@ -105,6 +123,7 @@ export const usePresenceStore = defineStore('presence', () => {
         stopTimers();
         if (visibilityBound) {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('online', handleOnline);
             visibilityBound = false;
         }
     };
@@ -144,6 +163,7 @@ export const usePresenceStore = defineStore('presence', () => {
         connect,
         disconnect,
         goOffline,
+        reconcile,
         fetchOnlineUsers,
         getUserStatus,
         updateUserStatus,

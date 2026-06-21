@@ -1,9 +1,17 @@
-<!-- ModerationSettingsView - Ban and jail management -->
-
 <script setup lang="ts">
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
-import { Ban, CalendarIcon, ChevronLeft, ChevronRight, Lock, Search, ShieldAlert, Unlock } from 'lucide-vue-next';
+import {
+    Ban,
+    CalendarIcon,
+    ChevronLeft,
+    ChevronRight,
+    Lock,
+    Search,
+    ShieldAlert,
+    Trash2,
+    Unlock,
+} from 'lucide-vue-next';
 import {
     DatePickerAnchor,
     DatePickerCalendar,
@@ -25,7 +33,7 @@ import {
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getApiErrorMessage } from '@/api/errors';
-import { banUser, unbanUser, jailUser, unjailUser, getSettingsMembers } from '@/api/settings';
+import { banUser, unbanUser, jailUser, unjailUser, deleteMember, getSettingsMembers } from '@/api/settings';
 import type { BanData } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,11 +50,11 @@ import { Label } from '@/components/ui/label';
 import { formatLocalizedDateTime } from '@/lib/utils';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsBansQuery } from '@/queries/settings/moderation';
+import { useUsersStore } from '@/stores/users';
 
 const { t } = useI18n();
 const queryCache = useQueryCache();
-
-// ─── Bans ──────────────────────────────────────────────────────────────────
+const usersStore = useUsersStore();
 
 const { data: bansData, isLoading: bansLoading, error: bansError } = useQuery(settingsBansQuery);
 
@@ -59,22 +67,19 @@ const activeBans = computed<BanData[]>(() => {
     return bansData.value?.data ?? [];
 });
 
-// ─── Members (for ban/jail actions) ────────────────────────────────────────
-
 const { data: membersData } = useQuery({
     key: SETTINGS_KEYS.members(),
     query: () => getSettingsMembers(),
 });
 
-type SimpleMember = { id: string; name: string; username: string; display_name: string };
+type SimpleMember = { id: string; username: string; display_name: string };
 
 const members = computed<SimpleMember[]>(() => {
     if (!membersData.value?.data) return [];
     return membersData.value.data.map((res) => ({
         id: res.id,
-        name: res.attributes.name ?? '',
         username: res.attributes.username,
-        display_name: res.attributes.display_name ?? res.attributes.name ?? res.attributes.username,
+        display_name: res.attributes.display_name ?? res.attributes.username,
     }));
 });
 
@@ -82,10 +87,10 @@ const memberSearch = ref('');
 const filteredMembers = computed(() => {
     if (!memberSearch.value) return members.value;
     const q = memberSearch.value.toLowerCase();
-    return members.value.filter((m) => m.username.toLowerCase().includes(q) || m.name.toLowerCase().includes(q));
+    return members.value.filter(
+        (m) => m.username.toLowerCase().includes(q) || m.display_name.toLowerCase().includes(q),
+    );
 });
-
-// ─── Ban dialog ────────────────────────────────────────────────────────────
 
 const showBanDialog = ref(false);
 const selectedMember = ref<SimpleMember | null>(null);
@@ -121,7 +126,7 @@ function openBanDialog(member: SimpleMember) {
 
 function formatExpiryForApi(date: DateValue | undefined): string | undefined {
     if (!date) return undefined;
-    // Convert DateValue to ISO string (end of selected day in local timezone)
+
     const jsDate = date.toDate(getLocalTimeZone());
     jsDate.setHours(23, 59, 59);
     return jsDate.toISOString();
@@ -151,8 +156,6 @@ async function handleUnban(ban: BanData) {
         actionError.value = getApiErrorMessage(err);
     }
 }
-
-// ─── Jail / Unjail ─────────────────────────────────────────────────────────
 
 const showJailDialog = ref(false);
 const jailTarget = ref<SimpleMember | null>(null);
@@ -185,6 +188,38 @@ async function confirmJail() {
     }
 }
 
+const showDeleteDialog = ref(false);
+const deleteTarget = ref<SimpleMember | null>(null);
+
+const { mutateAsync: doDelete, isLoading: deleting } = useMutation({
+    mutation: (userId: string) => deleteMember(userId),
+    onSuccess: (_data, userId) => {
+        // The websocket event updates other clients; reflect it locally at once.
+        const target = members.value.find((m) => m.id === userId);
+        usersStore.applyUserDeleted({ user_id: userId, username: target?.username ?? '' });
+        queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() });
+        queryCache.invalidateQueries({ key: SETTINGS_KEYS.bans() });
+    },
+});
+
+function openDeleteDialog(member: SimpleMember) {
+    deleteTarget.value = member;
+    actionError.value = '';
+    showDeleteDialog.value = true;
+}
+
+async function confirmDelete() {
+    if (!deleteTarget.value) return;
+    actionError.value = '';
+    try {
+        await doDelete(deleteTarget.value.id);
+        showDeleteDialog.value = false;
+        deleteTarget.value = null;
+    } catch (err: unknown) {
+        actionError.value = getApiErrorMessage(err);
+    }
+}
+
 function formatDate(dateStr: string): string {
     return formatLocalizedDateTime(dateStr);
 }
@@ -192,7 +227,6 @@ function formatDate(dateStr: string): string {
 
 <template>
     <div class="space-y-6">
-        <!-- Active Bans -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">{{ t('settings.moderation.bans.title') }}</h2>
@@ -234,8 +268,7 @@ function formatDate(dateStr: string): string {
                     >
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium">{{ ban.user.name }}</span>
-                                <span class="text-muted-foreground text-xs">@{{ ban.user.username }}</span>
+                                <span class="text-sm font-medium">{{ ban.user.username }}</span>
                                 <Badge variant="destructive" class="text-xs">{{
                                     t('settings.moderation.bans.bannedBadge')
                                 }}</Badge>
@@ -264,7 +297,6 @@ function formatDate(dateStr: string): string {
             </div>
         </div>
 
-        <!-- Member Actions -->
         <div class="bg-card rounded-lg border">
             <div class="bg-muted/50 border-b px-6 py-4">
                 <h2 class="text-lg font-semibold">{{ t('settings.moderation.actions.title') }}</h2>
@@ -321,13 +353,21 @@ function formatDate(dateStr: string): string {
                                 <Ban class="mr-1.5 h-3.5 w-3.5" />
                                 {{ t('settings.moderation.actions.ban') }}
                             </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                :disabled="deleting"
+                                @click="openDeleteDialog(member)"
+                            >
+                                <Trash2 class="mr-1.5 h-3.5 w-3.5" />
+                                {{ t('settings.moderation.actions.delete') }}
+                            </Button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Ban Dialog -->
         <Dialog v-model:open="showBanDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -446,7 +486,6 @@ function formatDate(dateStr: string): string {
             </DialogContent>
         </Dialog>
 
-        <!-- Jail Dialog -->
         <Dialog v-model:open="showJailDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
@@ -471,6 +510,43 @@ function formatDate(dateStr: string): string {
                     <Button variant="outline" @click="showJailDialog = false">{{ t('settings.common.cancel') }}</Button>
                     <Button variant="destructive" :disabled="jailing" @click="confirmJail">{{
                         t('settings.moderation.jailDialog.submit')
+                    }}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="showDeleteDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{{ t('settings.moderation.deleteDialog.title') }}</DialogTitle>
+                    <DialogDescription>
+                        {{
+                            t('settings.moderation.deleteDialog.description', {
+                                name: deleteTarget?.display_name ?? '',
+                            })
+                        }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div
+                    class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm font-medium"
+                >
+                    {{ t('settings.moderation.deleteDialog.warning') }}
+                </div>
+
+                <div
+                    v-if="actionError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                >
+                    {{ actionError }}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" @click="showDeleteDialog = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="deleting" @click="confirmDelete">{{
+                        t('settings.moderation.deleteDialog.submit')
                     }}</Button>
                 </DialogFooter>
             </DialogContent>

@@ -2,6 +2,7 @@
 import { MessageSquare } from 'lucide-vue-next';
 import { computed, watch, type CSSProperties } from 'vue';
 import { useI18n } from 'vue-i18n';
+import UserActivityCard from '@/components/chat/UserActivityCard.vue';
 import { formatLocalizedDate } from '@/lib/utils';
 import { useUsersStore } from '@/stores/users';
 import type { OnlineUser } from '@/types/user';
@@ -24,6 +25,7 @@ const { t } = useI18n();
 
 const storedUser = computed(() => (props.user ? usersStore.get(props.user.id) : null));
 const includedRoles = computed(() => storedUser.value?.roles ?? []);
+const activity = computed(() => storedUser.value?.activity ?? props.user?.activity ?? null);
 
 watch(
     () => [props.show, props.user?.id] as const,
@@ -178,6 +180,8 @@ const panelStyle = computed<CSSProperties | undefined>(() => {
                         <span class="text-muted-foreground text-xs">{{ statusLabels[user.status || 'offline'] }}</span>
                     </div>
                 </div>
+
+                <UserActivityCard v-if="activity" :activity="activity" />
 
                 <div class="bg-background/50 rounded-lg p-3">
                     <h3 class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">

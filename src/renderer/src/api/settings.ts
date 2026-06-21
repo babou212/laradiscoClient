@@ -14,7 +14,11 @@ export async function getProfile(): Promise<JsonApiResponse<UserResource>> {
     return r.data;
 }
 
-export async function updateProfile(data: { name?: string; email?: string }): Promise<JsonApiResponse<UserResource>> {
+export async function updateProfile(data: {
+    username?: string;
+    email?: string;
+    show_activity?: boolean;
+}): Promise<JsonApiResponse<UserResource>> {
     const r = await api.patch('/settings/profile', data);
     return r.data;
 }
@@ -89,7 +93,6 @@ export async function updateRole(
 export async function getSettingsMembers(params?: {
     sort?: string;
     'filter[username]'?: string;
-    'filter[name]'?: string;
     include?: string;
     page?: number;
 }): Promise<
@@ -186,8 +189,8 @@ export interface BanData {
     reason: string | null;
     expires_at: string | null;
     created_at: string;
-    user: { id: number; name: string; username: string };
-    banned_by_user: { id: number; name: string; username: string };
+    user: { id: number; username: string };
+    banned_by_user: { id: number; username: string };
 }
 
 export async function getBans(): Promise<{ data: BanData[] }> {
@@ -211,6 +214,14 @@ export function unjailUser(userId: string): Promise<void> {
     return api.delete(`/settings/members/${userId}/jail`);
 }
 
+/**
+ * Permanently delete a member from the server. Their messages are retained but
+ * relabelled as authored by a deleted user.
+ */
+export function deleteMember(userId: string): Promise<void> {
+    return api.delete(`/settings/members/${userId}`);
+}
+
 export interface AuditLogEntry {
     id: number;
     actor_id: number;
@@ -220,8 +231,8 @@ export interface AuditLogEntry {
     target_resource_type: string | null;
     metadata: Record<string, unknown> | null;
     created_at: string;
-    actor: { id: number; name: string; username: string } | null;
-    target_user: { id: number; name: string; username: string } | null;
+    actor: { id: number; username: string } | null;
+    target_user: { id: number; username: string } | null;
 }
 
 export interface AuditLogResponse {

@@ -156,6 +156,9 @@ const joinThread = (threadId: number | string) => {
                     if (idx !== -1) msg.reactions.splice(idx, 1);
                 }
             }
+        })
+        .listen('ThreadDeleted', () => {
+            threadStore.closeThread();
         });
 };
 
@@ -255,7 +258,7 @@ const sendReply = async (content: string) => {
         reply_to_id: null,
         user: {
             id: currentUser.value!.id,
-            username: currentUser.value?.username ?? currentUser.value!.name,
+            username: currentUser.value!.username,
             avatar_urls: null,
         },
         reactions: [],

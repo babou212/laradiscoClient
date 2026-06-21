@@ -83,6 +83,8 @@ watch(
         if (!participant || !video) return;
 
         const mediaTrack = participant.videoTrack.mediaStreamTrack;
+        const current = video.srcObject as MediaStream | null;
+        if (current && current.getVideoTracks()[0] === mediaTrack) return;
         const stream = new MediaStream([mediaTrack]);
         video.srcObject = stream;
         video.play().catch(() => {});

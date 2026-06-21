@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Message from './Message.vue';
 import MessageInput from './MessageInput.vue';
+import MessageListSkeleton from './MessageListSkeleton.vue';
 import NewMessagePill from './NewMessagePill.vue';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import SearchMessages from './SearchMessages.vue';
@@ -148,6 +149,7 @@ const startDmFromProfile = async (userId: string) => {
 
 const activeStore = useActiveStore(isDmRef);
 const activeMessages = activeStore.messages;
+const isLoadingMessages = activeStore.isLoadingMessages;
 
 const containerRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
@@ -530,7 +532,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             : null,
         user: {
             id: currentUser.value!.id,
-            username: currentUser.value!.username ?? currentUser.value!.name,
+            username: currentUser.value!.username,
             avatar_urls: null,
         },
         reactions: [],
@@ -746,7 +748,9 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
             </div>
 
             <div class="relative min-h-0 flex-1">
-                <div v-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
+                <MessageListSkeleton v-if="isLoadingMessages && activeMessages.length === 0" />
+
+                <div v-else-if="activeMessages.length === 0" class="flex h-full items-center justify-center">
                     <div class="text-muted-foreground text-center">
                         <MessageSquare v-if="isDm" :size="48" class="mx-auto mb-2 opacity-50" />
                         <Hash v-else :size="48" class="mx-auto mb-2 opacity-50" />

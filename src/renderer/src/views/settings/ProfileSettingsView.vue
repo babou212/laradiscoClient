@@ -36,7 +36,7 @@ const authStore = useAuthStore();
 const usersStore = useUsersStore();
 const router = useRouter();
 
-const name = ref('');
+const username = ref('');
 const email = ref('');
 const errors = ref<Record<string, string>>({});
 const recentlySuccessful = ref(false);
@@ -49,19 +49,13 @@ const showAvatarDialog = ref(false);
 
 onMounted(() => {
     if (authStore.user) {
-        name.value = authStore.user.name;
+        username.value = authStore.user.username;
         email.value = authStore.user.email;
     }
 });
 
 function userInitials(): string {
-    const n = authStore.user?.name ?? '';
-    return n
-        .split(' ')
-        .map((p) => p[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
+    return (authStore.user?.username ?? '').slice(0, 2).toUpperCase();
 }
 
 const { mutateAsync: doUploadAvatar } = useMutation({
@@ -73,7 +67,7 @@ const { mutateAsync: doDeleteAvatar, isLoading: avatarDeleting } = useMutation({
 });
 
 const { mutateAsync: doUpdateProfile, isLoading: processing } = useMutation({
-    mutation: (data: { name?: string; email?: string }) => updateProfile(data),
+    mutation: (data: { username?: string; email?: string }) => updateProfile(data),
 });
 
 const { mutateAsync: doDeleteAccount, isLoading: deleteProcessing } = useMutation({
@@ -106,6 +100,7 @@ async function deleteAvatar() {
         await doDeleteAvatar();
         if (authStore.user) {
             usersStore.upsert({ id: authStore.user.id, avatar_urls: null });
+            usersStore.forgetAvatar(authStore.user.id);
             authStore.user = { ...authStore.user, avatar_urls: null };
         }
     } catch (err: unknown) {
@@ -117,20 +112,20 @@ async function handleUpdateProfile() {
     errors.value = {};
     try {
         const response = await doUpdateProfile({
-            name: name.value,
+            username: username.value,
             email: email.value,
         });
         if (response.data) {
             const attrs = response.data.attributes;
             authStore.user = {
                 ...authStore.user!,
-                name: attrs.name ?? authStore.user!.name,
+                username: attrs.username ?? authStore.user!.username,
                 email: attrs.email ?? authStore.user!.email,
             };
             usersStore.upsert({
                 id: authStore.user!.id,
-                name: authStore.user!.name ?? null,
-                display_name: authStore.user!.name || authStore.user!.username,
+                username: authStore.user!.username,
+                display_name: authStore.user!.username,
             });
         }
         recentlySuccessful.value = true;
@@ -165,7 +160,7 @@ async function handleDeleteAccount() {
                     <AvatarImage
                         v-if="authStore.user && usersStore.avatarUrl(authStore.user.id, 'medium')"
                         :src="usersStore.avatarUrl(authStore.user!.id, 'medium')!"
-                        :alt="authStore.user?.name"
+                        :alt="authStore.user?.username"
                     />
                     <AvatarFallback class="text-2xl">{{ userInitials() }}</AvatarFallback>
                 </Avatar>
@@ -202,16 +197,16 @@ async function handleDeleteAccount() {
             <div class="p-6">
                 <form @submit.prevent="handleUpdateProfile" class="space-y-5">
                     <div class="grid gap-2">
-                        <Label for="name">{{ t('settings.profile.info.name') }}</Label>
+                        <Label for="username">{{ t('auth.register.username') }}</Label>
                         <Input
-                            id="name"
-                            v-model="name"
+                            id="username"
+                            v-model="username"
                             class="mt-1 block w-full"
                             required
-                            autocomplete="name"
-                            :placeholder="t('settings.profile.info.namePlaceholder')"
+                            autocomplete="username"
+                            :placeholder="t('auth.register.usernamePlaceholder')"
                         />
-                        <InputError :message="errors.name" />
+                        <InputError :message="errors.username" />
                     </div>
 
                     <div class="grid gap-2">

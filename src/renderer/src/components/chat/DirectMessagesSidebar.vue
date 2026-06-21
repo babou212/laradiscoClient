@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { getMembers } from '@/api/members';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import { useAuthStore } from '@/stores/auth';
 import type { DmGroup } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import { useUsersStore } from '@/stores/users';
@@ -24,6 +25,7 @@ const emit = defineEmits<{
 
 const presenceStore = usePresenceStore();
 const usersStore = useUsersStore();
+const authStore = useAuthStore();
 const { t, locale } = useI18n();
 
 const showNewDmSearch = shallowRef(false);
@@ -101,6 +103,13 @@ const formatTime = (dateString: string) => {
 const truncateMessage = (content: string, maxLength: number = 40) => {
     if (content.length <= maxLength) return content;
     return content.substring(0, maxLength) + '...';
+};
+
+const senderLabel = (dm: DmGroup): string => {
+    if (!dm.last_message) return '';
+    return dm.last_message.user_id === authStore.user?.id
+        ? t('chat.dm.youPrefix')
+        : (dm.other_user?.username ?? dm.name);
 };
 
 const selectSearchUser = (userId: string) => {
@@ -238,6 +247,7 @@ const toggleNewDmSearch = () => {
                             </span>
                         </div>
                         <p v-if="dm.last_message?.content" class="text-sidebar-foreground/60 truncate text-xs">
+                            <span class="font-medium">{{ senderLabel(dm) }}:</span>
                             {{ truncateMessage(dm.last_message.content) }}
                         </p>
                     </div>

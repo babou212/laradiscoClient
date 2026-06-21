@@ -4,8 +4,10 @@ import { contextBridge } from 'electron';
 // forward renderer logs to the main-process log file. Sandbox-safe (ipcRenderer only).
 import 'electron-log/preload';
 
+import { activityApi } from './apis/activity';
 import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
+import { avatarApi } from './apis/avatar';
 import { clipboardApi } from './apis/clipboard';
 import { logApi } from './apis/log';
 import { notificationsApi } from './apis/notifications';
@@ -27,9 +29,11 @@ const api = {
     window: windowApi,
     updater: updaterApi,
     attachments: attachmentsApi,
+    avatar: avatarApi,
     clipboard: clipboardApi,
     unfurl: unfurlApi,
     tray: trayApi,
+    activity: activityApi,
 };
 
 if (process.contextIsolated) {

@@ -7,8 +7,7 @@ import { searchMentions } from '@/api/members';
 export interface MentionUser {
     id: number;
     username: string;
-    name: string;
-    nickname: string | null;
+    display_name: string;
     avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
 }
 
@@ -57,7 +56,7 @@ const allItems = computed(() => {
         type: 'user' as const,
         label: `@${u.username}`,
         value: u.username,
-        description: u.nickname || u.name,
+        description: u.display_name,
         avatar_urls: u.avatar_urls,
     }));
     return [...specials, ...userItems];
@@ -88,8 +87,7 @@ const searchUsers = async (query: string) => {
         users.value = response.data.map((u) => ({
             id: Number(u.id),
             username: u.attributes.username,
-            name: u.attributes.name ?? u.attributes.username,
-            nickname: u.attributes.nickname ?? null,
+            display_name: u.attributes.display_name ?? u.attributes.username,
             avatar_urls: u.attributes.avatar_urls ?? null,
         }));
     } catch (err: unknown) {

@@ -148,6 +148,7 @@ export function normalizeMessage(
         thread,
         reply_to: replyTo,
         user: normalizeUser(userRes),
+        deleted_author_name: attrs.deleted_author_name ?? null,
         reactions,
         created_at: attrs.created_at,
         is_pinned: attrs.is_pinned ?? false,

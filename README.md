@@ -1,15 +1,13 @@
 # LaraDisco Desktop Client
 
-A secure, cross-platform desktop communication app built with **Electron**, **Vue 3**, and **TypeScript**. LaraDisco delivers real-time messaging, voice/video calls, screen sharing, and end-to-end encryption.
+A cross-platform desktop communication app built with **Electron**, **Vue 3**, and **TypeScript**. LaraDisco delivers real-time messaging, voice/video calls, and screen sharing.
 
 ## Features
 
 - **Real-time Messaging** — Channels, direct messages, threads, and pinned messages with cursor-based pagination
-- **End-to-End Encryption** — MLS (Messaging Layer Security) via OpenMLS WASM, with PIN-protected key backup/restore
 - **Voice & Video** — WebRTC-powered calls via LiveKit with noise suppression, echo cancellation, and auto gain control
 - **Push-to-Talk** — Configurable global hotkey support via uIOhook
 - **Screen Sharing** — Multiple quality presets (low, medium, high, source)
-- **File Encryption** — AES-based file encryption/decryption for attachments
 - **Rich Text** — Markdown rendering, code syntax highlighting, and emoji picker
 - **User Presence** — Online/offline status, custom status messages, and heartbeat tracking
 - **Multi-Server** — Connect to multiple LaraDisco server instances
@@ -30,7 +28,6 @@ A secure, cross-platform desktop communication app built with **Electron**, **Vu
 | i18n | Vue I18n 11 |
 | Real-time | Laravel Echo, Pusher |
 | Voice/Video | LiveKit Client SDK |
-| Crypto | OpenMLS (WASM), @noble/curves, @noble/hashes, hash-wasm |
 | Database | better-sqlite3, Drizzle ORM |
 | HTTP | Axios |
 | Media | Sharp (thumbnails), Howler (audio), FFmpeg |
@@ -63,9 +60,14 @@ The app will launch with hot-reload enabled for the renderer process.
 |---------|-------------|
 | `npm run dev` | Start the app in development mode |
 | `npm run build` | Build for production |
-| `npm run typecheck` | Run TypeScript type checking |
-| `npm run lint` | Lint with ESLint |
+| `npm run preview` | Preview the production build |
+| `npm run typecheck` | Run TypeScript type checking (node + renderer) |
+| `npm run lint` | Lint with ESLint (auto-fix) |
 | `npm run format` | Format with Prettier |
+| `npm run package` | Build an unpacked app directory |
+| `npm run make` | Build installers for the current platform |
+| `npm run make:win` / `make:mac` / `make:linux` | Build installers for a specific platform |
+| `npm run publish` | Build and publish a release to GitHub |
 
 ## Project Structure
 
@@ -77,20 +79,11 @@ src/
 │   ├── ipc.ts             # IPC handler registration
 │   ├── ptt.ts             # Push-to-talk global hotkeys
 │   ├── updater.ts         # Auto-update logic
-│   ├── crypto/            # AES file encryption
 │   ├── db/                # SQLite schema & setup
 │   ├── media/             # Thumbnail generation
 │   ├── services/          # URL unfurling & normalization
-│   └── mls/               # OpenMLS WASM integration
-│       ├── index.ts       # MLS coordinator & IPC handlers
-│       ├── backup.ts      # Key backup/restore with PIN
-│       ├── state.ts       # MLS state management
-│       ├── storage.ts     # SQLite persistence for MLS
-│       ├── auto-backup.ts # Automatic backup scheduling
-│       ├── wasm-loader.ts # WASM module loader
-│       └── wasm/          # OpenMLS WASM binaries
 ├── preload/               # Context-isolated bridge APIs
-│   ├── apis/              # IPC API modules (auth, mls, window, etc.)
+│   ├── apis/              # IPC API modules (auth, window, etc.)
 │   └── types/             # TypeScript type definitions
 └── renderer/              # Vue 3 frontend
     └── src/
@@ -98,10 +91,10 @@ src/
         ├── assets/        # CSS (Tailwind, themes)
         ├── components/    # Vue components + shadcn-vue UI
         ├── composables/   # Vue composables
-        ├── i18n/          # Internationalization (de, en, es, fr, pl, pt, ru, zh)
+        ├── i18n/          # Internationalization (da, de, en, es, fr, nl, pl, pt, ru, zh)
         ├── layouts/       # Page layouts (app, auth, settings)
         ├── lib/           # Libraries (Echo, markdown, schemas)
-        ├── queries/       # TanStack Query functions
+        ├── queries/       # Pinia Colada query options
         ├── router/        # Vue Router configuration
         ├── stores/        # Pinia stores
         ├── types/         # TypeScript type definitions
@@ -131,8 +124,6 @@ GitHub Actions workflows handle:
 - Context isolation and sandboxing enabled
 - Node integration disabled in renderer
 - HTML sanitization via DOMPurify
-- End-to-end encryption with MLS (Messaging Layer Security)
-- AES file encryption for attachments
 
 ## Translations
 

@@ -12,7 +12,7 @@ import {
 } from '@/api/types';
 import { getUserProfile } from '@/api/users';
 import { getEcho } from '@/lib/echo';
-import type { OnlineUser, UserStatusType } from '@/types';
+import type { OnlineUser, UserActivity, UserStatusType } from '@/types';
 import type { AvatarUrls } from '@/types/chat';
 
 export interface StoredUserRole {
@@ -29,23 +29,23 @@ export interface StoredUser {
     id: string;
     username: string;
     display_name: string;
-    name: string | null;
-    nickname: string | null;
     about_me: string | null;
     avatar_urls: AvatarUrls | null;
     status: UserStatusType;
     custom_status: string | null;
+    activity: UserActivity | null;
     roles: StoredUserRole[];
     permissions: AuthPermissions | null;
     created_at: string | null;
     fetchedAt: number;
+    /** True once the account has been permanently deleted from the server. */
+    deleted?: boolean;
 }
 
 interface ProfileUpdatedPayload {
     user_id: number | string;
     username: string;
     display_name: string | null;
-    nickname?: string | null;
     about_me?: string | null;
     avatar_urls: AvatarUrls | null;
 }
@@ -57,6 +57,11 @@ interface PresenceUpdatedPayload {
     avatar_urls?: AvatarUrls | null;
     status: UserStatusType;
     custom_status: string | null;
+}
+
+interface ActivityUpdatedPayload {
+    user_id: number | string;
+    activity: UserActivity | null;
 }
 
 interface RolesUpdatedPayload {
@@ -71,6 +76,11 @@ interface MemberJoinedPayload {
     display_name?: string | null;
     avatar_urls?: AvatarUrls | null;
     custom_status?: string | null;
+}
+
+interface UserDeletedPayload {
+    user_id: number | string;
+    username: string;
 }
 
 type AvatarSize = keyof AvatarUrls;
@@ -100,7 +110,47 @@ export const useUsersStore = defineStore('users', () => {
     const inFlight = new Map<string, Promise<StoredUser | null>>();
     let channel: ReturnType<ReturnType<typeof getEcho>['private']> | null = null;
 
-    const members = computed(() => Array.from(byId.values()));
+    const resolvedAvatars = reactive(new Map<string, string>());
+    const resolvingAvatars = new Set<string>();
+    // Keys that recently failed to cache, with the timestamp of the last attempt,
+    // so a persistently-failing avatar doesn't re-fire an IPC on every render.
+    const failedAvatars = new Map<string, number>();
+    const FAILED_RETRY_MS = 30_000;
+
+    function avatarPathKey(url: string): string | null {
+        try {
+            return new URL(url).pathname;
+        } catch {
+            return null;
+        }
+    }
+
+    function resolveAvatar(userId: string, url: string): void {
+        const key = avatarPathKey(url);
+        if (!key || resolvedAvatars.has(key) || resolvingAvatars.has(key)) return;
+        const failedAt = failedAvatars.get(key);
+        if (failedAt !== undefined && Date.now() - failedAt < FAILED_RETRY_MS) return;
+        const bridge = window.api?.avatar;
+        if (!bridge) return;
+        resolvingAvatars.add(key);
+        bridge
+            .resolve(userId, url)
+            .then((local) => {
+                if (local) {
+                    resolvedAvatars.set(key, local);
+                    failedAvatars.delete(key);
+                } else {
+                    failedAvatars.set(key, Date.now());
+                }
+            })
+            .catch((error) => {
+                failedAvatars.set(key, Date.now());
+                console.error('Failed to cache avatar', error);
+            })
+            .finally(() => resolvingAvatars.delete(key));
+    }
+
+    const members = computed(() => Array.from(byId.values()).filter((u) => !u.deleted));
     const onlineMembers = computed(() => members.value.filter((u) => u.status !== 'offline'));
 
     function get(id: string): StoredUser | null {
@@ -114,10 +164,20 @@ export const useUsersStore = defineStore('users', () => {
     function avatarUrl(id: string, size: AvatarSize = 'thumb'): string | null {
         const urls = byId.get(id)?.avatar_urls;
         if (!urls) return null;
-        if (urls.original && /\.gif($|\?)/i.test(urls.original)) {
-            return urls.original;
-        }
-        return urls[size];
+        const remote = urls.original && /\.gif($|\?)/i.test(urls.original) ? urls.original : urls[size];
+        if (!remote) return null;
+
+        const key = avatarPathKey(remote);
+        if (!key) return remote;
+        const cached = resolvedAvatars.get(key);
+        if (cached) return cached;
+        resolveAvatar(id, remote);
+        return remote;
+    }
+
+    /** Drop a user's locally-cached avatars (their avatar was removed server-side). */
+    function forgetAvatar(id: string): void {
+        void window.api?.avatar?.forget(id).catch(() => {});
     }
 
     function upsert(patch: Partial<StoredUser> & { id: string }): StoredUser {
@@ -134,16 +194,16 @@ export const useUsersStore = defineStore('users', () => {
             id: patch.id,
             username,
             display_name: pick('display_name', username),
-            name: pick('name', null),
-            nickname: pick('nickname', null),
             about_me: pick('about_me', null),
             avatar_urls: pick('avatar_urls', null),
             status: pick('status', 'offline'),
             custom_status: pick('custom_status', null),
+            activity: pick('activity', null),
             roles: pick('roles', []),
             permissions: pick('permissions', null),
             created_at: pick('created_at', null),
             fetchedAt: pick('fetchedAt', Date.now()),
+            deleted: pick('deleted', false),
         };
         byId.set(patch.id, merged);
         return merged;
@@ -156,9 +216,7 @@ export const useUsersStore = defineStore('users', () => {
             upsert({
                 id: resource.id,
                 username: attrs.username,
-                display_name: attrs.display_name || attrs.nickname || attrs.name || attrs.username,
-                name: attrs.name ?? null,
-                nickname: attrs.nickname ?? null,
+                display_name: attrs.display_name || attrs.username,
                 avatar_urls: attrs.avatar_urls ?? null,
                 status: (attrs as { status?: UserStatusType }).status ?? 'offline',
                 custom_status: attrs.custom_status ?? null,
@@ -175,9 +233,7 @@ export const useUsersStore = defineStore('users', () => {
         return upsert({
             id: resource.id,
             username: attrs.username,
-            display_name: attrs.display_name || attrs.nickname || attrs.name || attrs.username,
-            name: attrs.name ?? null,
-            nickname: attrs.nickname ?? null,
+            display_name: attrs.display_name || attrs.username,
             about_me: attrs.about_me ?? null,
             avatar_urls: attrs.avatar_urls ?? null,
             status: 'offline',
@@ -206,18 +262,23 @@ export const useUsersStore = defineStore('users', () => {
         for (const u of users) {
             const id = String(u.id);
             seenIds.add(id);
+            // Deliberately do NOT write avatar_urls here. Presence is a Redis
+            // registry snapshotted when a user came online, so its avatar_urls are
+            // stale (old version + expired presigned signatures). Avatars come from
+            // members/profile/profile.updated/messages instead. Writing them here
+            // flashes an old avatar on startup before the fresh data arrives.
             upsert({
                 id,
                 username: u.username,
                 display_name: u.display_name ?? u.username,
-                avatar_urls: u.avatar_urls ?? undefined,
                 status: u.status ?? 'online',
                 custom_status: u.custom_status ?? null,
+                activity: u.activity ?? null,
             });
         }
         for (const [id, user] of byId) {
             if (!seenIds.has(id) && user.status !== 'offline') {
-                upsert({ id, status: 'offline' });
+                upsert({ id, status: 'offline', activity: null });
             }
         }
     }
@@ -229,22 +290,35 @@ export const useUsersStore = defineStore('users', () => {
             id,
             username: data.username,
             display_name: display,
-            nickname: data.nickname ?? null,
             about_me: data.about_me ?? null,
             avatar_urls: data.avatar_urls ?? null,
         });
+        // Avatar removed: purge the user's cached files so nothing stale lingers.
+        // (A *changed* avatar is purged automatically when its new version caches.)
+        if (!data.avatar_urls) forgetAvatar(id);
     }
 
     function applyPresenceUpdate(data: PresenceUpdatedPayload): void {
         const id = String(data.user_id);
+        // See applyPresenceBatch: presence carries a stale avatar snapshot, so it
+        // updates status only — avatars are governed by profile/members/messages.
         upsert({
             id,
             username: data.username,
             display_name: data.display_name ?? data.username,
-            avatar_urls: data.avatar_urls ?? undefined,
             status: data.status,
             custom_status: data.custom_status,
+            // An offline user is no longer playing anything; drop stale activity.
+            ...(data.status === 'offline' ? { activity: null } : {}),
         });
+    }
+
+    function applyActivityUpdate(data: ActivityUpdatedPayload): void {
+        const id = String(data.user_id);
+        // Only update an already-known user; activity is presence state and
+        // shouldn't conjure a member we otherwise know nothing about.
+        if (!byId.has(id)) return;
+        upsert({ id, activity: data.activity ?? null });
     }
 
     function applyRolesUpdate(data: RolesUpdatedPayload, currentAuthUserId: string | null): void {
@@ -254,6 +328,22 @@ export const useUsersStore = defineStore('users', () => {
             id,
             roles: data.roles,
             permissions: id === currentAuthUserId ? data.permissions : (existing?.permissions ?? null),
+        });
+    }
+
+    /**
+     * Mark a user as permanently deleted: drop them from the member/presence
+     * lists while keeping a tombstone entry so their authored messages still
+     * resolve a "<username> (deleted)" label without a refetch.
+     */
+    function applyUserDeleted(data: UserDeletedPayload): void {
+        const id = String(data.user_id);
+        upsert({
+            id,
+            username: data.username,
+            display_name: data.username,
+            status: 'offline',
+            deleted: true,
         });
     }
 
@@ -298,10 +388,12 @@ export const useUsersStore = defineStore('users', () => {
             channel = echo.private('presence');
             channel.listen('.user.profile.updated', (data: ProfileUpdatedPayload) => applyProfileUpdate(data));
             channel.listen('.user.presence.updated', (data: PresenceUpdatedPayload) => applyPresenceUpdate(data));
+            channel.listen('.user.activity.updated', (data: ActivityUpdatedPayload) => applyActivityUpdate(data));
             channel.listen('.user.roles.updated', (data: RolesUpdatedPayload) =>
                 applyRolesUpdate(data, currentAuthUserId),
             );
             channel.listen('.server.member.joined', (data: MemberJoinedPayload) => applyMemberJoined(data));
+            channel.listen('.user.deleted', (data: UserDeletedPayload) => applyUserDeleted(data));
         } catch (error) {
             console.error('Failed to subscribe users store to presence channel', error);
         }
@@ -345,6 +437,7 @@ export const useUsersStore = defineStore('users', () => {
         get,
         displayName,
         avatarUrl,
+        forgetAvatar,
         upsert,
         fetch,
         hydrateFromUserResponse,
@@ -352,8 +445,10 @@ export const useUsersStore = defineStore('users', () => {
         applyPresenceBatch,
         applyProfileUpdate,
         applyPresenceUpdate,
+        applyActivityUpdate,
         applyRolesUpdate,
         applyMemberJoined,
+        applyUserDeleted,
         connect,
         disconnect,
         $reset,

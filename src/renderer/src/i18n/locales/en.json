@@ -165,6 +165,13 @@
             "browserDescription": "Show desktop notifications when the app is in the background",
             "save": "Save preferences"
         },
+        "privacy": {
+            "title": "Privacy",
+            "description": "Control what others can see about your activity",
+            "showActivityLabel": "Share my activity",
+            "showActivityDescription": "Let others see what game or app you're currently using on your profile. When off, your activity is hidden and never shared.",
+            "save": "Save preferences"
+        },
         "language": {
             "title": "Language",
             "description": "Choose the language used throughout the application",
@@ -191,6 +198,7 @@
             "voice": "Voice",
             "screenShare": "Screen Share",
             "notifications": "Notifications",
+            "privacy": "Privacy",
             "language": "Language",
             "about": "About",
             "logs": "Logs",
@@ -250,6 +258,14 @@
                 "systemDefault": "System Default",
                 "refresh": "Refresh Devices",
                 "micFallback": "Microphone ({id})"
+            },
+            "speaker": {
+                "title": "Output Device",
+                "description": "Select which speaker or headset to play voice channel audio through",
+                "output": "Output Device",
+                "systemDefault": "System Default",
+                "refresh": "Refresh Devices",
+                "speakerFallback": "Speaker ({id})"
             },
             "pushToTalk": {
                 "title": "Push to Talk",
@@ -511,7 +527,15 @@
                 "searchPlaceholder": "Search members...",
                 "empty": "No members found.",
                 "jail": "Jail",
-                "ban": "Ban"
+                "ban": "Ban",
+                "delete": "Delete"
+            },
+            "deleteDialog": {
+                "title": "Delete Member",
+                "description": "Permanently delete {name} from the server. Their account is removed entirely and cannot be restored. Existing messages remain but will be marked as written by a deleted user.",
+                "warning": "This action is permanent and cannot be undone.",
+                "submit": "Delete User",
+                "success": "{name} has been permanently deleted."
             },
             "banDialog": {
                 "title": "Ban Member",
@@ -551,6 +575,7 @@
                 "unban": "Unbanned",
                 "jail": "Jailed",
                 "unjail": "Unjailed",
+                "delete_user": "Deleted User",
                 "message_delete": "Deleted Message",
                 "thread_message_delete": "Deleted Thread Reply",
                 "role_assign": "Assigned Role",
@@ -570,6 +595,7 @@
                 "unban": "Unbans",
                 "jail": "Jails",
                 "unjail": "Unjails",
+                "delete_user": "User Deletions",
                 "message_delete": "Message Deletions",
                 "role_assign": "Role Assigned",
                 "role_remove": "Role Removed",
@@ -668,8 +694,7 @@
         "description": "Connect to your server to get started",
         "serverAddress": "Server Address",
         "placeholder": "chat.example.com",
-        "connectedTo": "Connected to {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Connected",
         "connecting": "Connecting...",
         "testConnection": "Test Connection",
         "continue": "Continue"
@@ -734,6 +759,7 @@
             "enterTo": "enter to",
             "saveInline": "save",
             "unknownUser": "Unknown",
+            "deletedUserTag": "(deleted)",
             "deleteDialogTitle": "Delete Message",
             "deleteDialogDescription": "Are you sure you want to delete this message? This cannot be undone.",
             "deleteConfirm": "Delete",
@@ -856,7 +882,8 @@
             "noUsersFound": "No users found",
             "noDmsYet": "No direct messages yet",
             "startConversationHint": "Click + to start a conversation",
-            "backToChannels": "Back to Channels"
+            "backToChannels": "Back to Channels",
+            "youPrefix": "You"
         },
         "userProfile": {
             "unknownUser": "Unknown User",
@@ -869,6 +896,12 @@
                 "idle": "Idle",
                 "dnd": "Do Not Disturb",
                 "offline": "Offline"
+            },
+            "activity": {
+                "game": "Playing",
+                "music": "Listening to",
+                "app": "Using",
+                "elapsed": "for {duration}"
             }
         },
         "channelSidebar": {

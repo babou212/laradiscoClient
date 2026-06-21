@@ -76,14 +76,13 @@ export interface ChannelPermissions {
 
 export interface UserAttributes {
     username: string;
-    name?: string;
     email?: string;
     display_name?: string;
     email_verified_at?: string | null;
-    nickname?: string | null;
     avatar_urls?: AvatarUrls | null;
     about_me?: string | null;
     custom_status?: string | null;
+    show_activity?: boolean;
     last_seen_at?: string | null;
     created_at?: string;
     updated_at?: string;
@@ -102,6 +101,7 @@ export interface MessageAttributes {
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
+    deleted_author_name?: string | null;
     reply_to_id: string | null;
     thread_id?: string | null;
     is_pinned?: boolean;
@@ -115,6 +115,7 @@ export interface DirectMessageAttributes {
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;
+    deleted_author_name?: string | null;
     reply_to_id: string | null;
     is_pinned?: boolean;
     pinned_at?: string | null;
@@ -128,9 +129,12 @@ export interface DirectMessageGroupAttributes {
         avatar_urls: AvatarUrls | null;
     };
     last_message?: {
-        content: string;
+        id: string | number;
+        content: string | null;
         created_at: string;
+        user_id: string | number;
     } | null;
+    last_message_at?: string | null;
 }
 
 export interface ThreadAttributes {

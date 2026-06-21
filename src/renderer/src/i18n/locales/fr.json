@@ -239,6 +239,14 @@
                 "refresh": "Actualiser les périphériques",
                 "micFallback": "Microphone ({id})"
             },
+            "speaker": {
+                "title": "Périphérique de sortie",
+                "description": "Sélectionnez le haut-parleur ou le casque par lequel diffuser l'audio des salons vocaux",
+                "output": "Périphérique de sortie",
+                "systemDefault": "Par défaut du système",
+                "refresh": "Actualiser les périphériques",
+                "speakerFallback": "Haut-parleur ({id})"
+            },
             "pushToTalk": {
                 "title": "Appuyer pour parler",
                 "description": "Maintenez une touche enfoncée pour activer votre microphone. Fonctionne dans toutes les fenêtres et applications.",
@@ -647,8 +655,7 @@
         "description": "Connectez-vous à votre serveur pour commencer",
         "serverAddress": "Adresse du serveur",
         "placeholder": "chat.exemple.com",
-        "connectedTo": "Connecté à {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "Connecté",
         "connecting": "Connexion...",
         "testConnection": "Tester la connexion",
         "continue": "Continuer"
@@ -835,7 +842,8 @@
             "noUsersFound": "Aucun utilisateur trouvé",
             "noDmsYet": "Aucun message direct pour le moment",
             "startConversationHint": "Cliquez sur + pour démarrer une conversation",
-            "backToChannels": "Retour aux salons"
+            "backToChannels": "Retour aux salons",
+            "youPrefix": "Vous"
         },
         "userProfile": {
             "unknownUser": "Utilisateur inconnu",

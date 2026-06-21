@@ -239,6 +239,14 @@
                 "refresh": "刷新设备",
                 "micFallback": "麦克风 ({id})"
             },
+            "speaker": {
+                "title": "输出设备",
+                "description": "选择语音频道音频的播放扬声器或耳机",
+                "output": "输出设备",
+                "systemDefault": "系统默认",
+                "refresh": "刷新设备",
+                "speakerFallback": "扬声器 ({id})"
+            },
             "pushToTalk": {
                 "title": "按键说话",
                 "description": "按住按键以取消静音。在所有窗口和应用中均可使用。",
@@ -647,8 +655,7 @@
         "description": "连接到您的服务器以开始",
         "serverAddress": "服务器地址",
         "placeholder": "chat.example.com",
-        "connectedTo": "已连接到 {app}",
-        "laravelVersion": "Laravel {version}",
+        "connected": "已连接",
         "connecting": "连接中...",
         "testConnection": "测试连接",
         "continue": "继续"
@@ -835,7 +842,8 @@
             "noUsersFound": "未找到用户",
             "noDmsYet": "暂无私信",
             "startConversationHint": "点击 + 开始对话",
-            "backToChannels": "返回频道"
+            "backToChannels": "返回频道",
+            "youPrefix": "你"
         },
         "userProfile": {
             "unknownUser": "未知用户",
