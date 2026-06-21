@@ -146,7 +146,7 @@ onMounted(() => {
             </div>
         </div>
 
-        <div class="scrollbar-thin border-border flex gap-1.5 overflow-x-auto border-b px-3 py-2">
+        <div class="border-border flex scrollbar-thin gap-1.5 overflow-x-auto border-b px-3 py-2">
             <button
                 v-for="category in categories"
                 :key="category.id"
@@ -162,7 +162,7 @@ onMounted(() => {
             </button>
         </div>
 
-        <div class="scrollbar-thin flex-1 overflow-y-auto p-2" @scroll="onScroll">
+        <div class="flex-1 scrollbar-thin overflow-y-auto p-2" @scroll="onScroll">
             <div v-if="loading" class="columns-2 gap-2">
                 <div
                     v-for="i in 8"
