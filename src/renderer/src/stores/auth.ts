@@ -1,8 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
+import type { AvatarUrls } from '@/types/chat';
 import { useServerStore } from './server';
 import { useUsersStore } from './users';
-import type { AvatarUrls } from '@/types/chat';
 
 export interface AuthPermissions {
     canInviteMembers: boolean;

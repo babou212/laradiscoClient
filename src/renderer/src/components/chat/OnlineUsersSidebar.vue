@@ -3,13 +3,13 @@ import { ChevronDown, ChevronRight } from 'lucide-vue-next';
 import { computed, reactive, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import UserProfilePanel from './UserProfilePanel.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import { useUsersStore } from '@/stores/users';
 import type { OnlineUser, UserStatusType } from '@/types';
+import UserProfilePanel from './UserProfilePanel.vue';
 
 const presenceStore = usePresenceStore();
 const authStore = useAuthStore();

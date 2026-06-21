@@ -1,6 +1,6 @@
 import { defineQueryOptions } from '@pinia/colada';
-import { THREAD_KEYS } from './keys';
 import { getThread, getThreadMessages } from '@/api/threads';
+import { THREAD_KEYS } from './keys';
 
 export const threadQuery = defineQueryOptions((params: { channelId: string; threadId: string }) => ({
     key: THREAD_KEYS.byId(params.channelId, params.threadId),

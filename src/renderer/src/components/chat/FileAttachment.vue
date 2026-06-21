@@ -2,12 +2,12 @@
 import { Download, File, Image, Loader2, X } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
-import AudioPlayer from './AudioPlayer.vue';
-import PdfViewer from './PdfViewer.vue';
-import VideoPlayer from './VideoPlayer.vue';
 import { getAttachmentDownloadUrl } from '@/api/attachments';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import type { Attachment } from '@/types/chat';
+import AudioPlayer from './AudioPlayer.vue';
+import PdfViewer from './PdfViewer.vue';
+import VideoPlayer from './VideoPlayer.vue';
 
 const props = defineProps<{
     attachment: Attachment;

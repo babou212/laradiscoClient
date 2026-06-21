@@ -1,5 +1,5 @@
-import api from './client';
 import type { MessageData } from '@/types/chat';
+import api from './client';
 
 export type InboxMessageType = 'channel' | 'direct_message';
 

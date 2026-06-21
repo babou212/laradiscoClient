@@ -3,6 +3,7 @@ import { defaultDocument, useEventListener, useMediaQuery, useVModel } from '@vu
 import { TooltipProvider } from 'reka-ui';
 import type { HTMLAttributes, Ref } from 'vue';
 import { computed, ref } from 'vue';
+import { cn } from '@/lib/utils';
 import {
     provideSidebarContext,
     SIDEBAR_COOKIE_MAX_AGE,
@@ -11,7 +12,6 @@ import {
     SIDEBAR_WIDTH,
     SIDEBAR_WIDTH_ICON,
 } from './utils';
-import { cn } from '@/lib/utils';
 
 const props = withDefaults(
     defineProps<{

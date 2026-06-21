@@ -1,3 +1,4 @@
+import type { LinkPreviewData } from '@/types/chat';
 import api from './client';
 import type {
     DirectMessageGroupResource,
@@ -5,7 +6,6 @@ import type {
     JsonApiCollectionResponse,
     JsonApiResponse,
 } from './types';
-import type { LinkPreviewData } from '@/types/chat';
 
 export interface SendDmMessageData {
     content: string;

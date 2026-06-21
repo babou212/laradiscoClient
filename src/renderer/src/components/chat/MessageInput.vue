@@ -3,9 +3,6 @@ import { useEventListener } from '@vueuse/core';
 import { CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
 import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import EmojiPicker from './EmojiPicker.vue';
-import GifPicker from './GifPicker.vue';
-import MentionDropdown from './MentionDropdown.vue';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import {
     FileAddSchema,
@@ -18,6 +15,9 @@ import {
 import type { StagedFile, UploadingFile } from '@/lib/message-schemas';
 import { formatReplyPreview } from '@/lib/replyPreviewText';
 import type { MessageData } from '@/types/chat';
+import EmojiPicker from './EmojiPicker.vue';
+import GifPicker from './GifPicker.vue';
+import MentionDropdown from './MentionDropdown.vue';
 
 export type { StagedFile, UploadingFile };
 

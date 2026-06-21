@@ -1,3 +1,4 @@
+import type { Attachment, MessageData, MessageReaction, MessageUser, ThreadPreview } from '@/types/chat';
 import type {
     AttachmentAttributes,
     JsonApiResource,
@@ -10,7 +11,6 @@ import type {
     UserAttributes,
 } from './types';
 import { findIncluded, relationshipId, relationshipIds } from './types';
-import type { Attachment, MessageData, MessageReaction, MessageUser, ThreadPreview } from '@/types/chat';
 
 function normalizeUser(resource: JsonApiResource<'users', UserAttributes> | undefined): MessageUser {
     if (!resource) {

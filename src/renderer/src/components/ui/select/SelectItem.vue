@@ -4,8 +4,8 @@ import { Check } from 'lucide-vue-next';
 import type { SelectItemProps } from 'reka-ui';
 import { SelectItem, SelectItemIndicator } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
-import SelectItemText from './SelectItemText.vue';
 import { cn } from '@/lib/utils';
+import SelectItemText from './SelectItemText.vue';
 
 defineOptions({
     inheritAttrs: false,

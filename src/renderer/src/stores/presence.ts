@@ -1,8 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed } from 'vue';
-import { useUsersStore } from './users';
 import { getPresence, sendHeartbeat, updatePresence } from '@/api/presence';
 import type { OnlineUser, UserStatusType } from '@/types';
+import { useUsersStore } from './users';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const SYNC_INTERVAL_MS = 120_000;

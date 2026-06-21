@@ -1,8 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { useChatStore } from './chat';
-import { useDirectMessagesStore } from './directMessages';
 import { ackInbox, getInbox, type InboxAckItem } from '@/api/inbox';
 import { coerceBroadcastMessage } from '@/api/normalizers';
+import { useChatStore } from './chat';
+import { useDirectMessagesStore } from './directMessages';
 
 /**
  * Offline-delivery inbox. When the websocket (re)connects, drain() pulls any

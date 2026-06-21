@@ -3,8 +3,6 @@ import { Hash, ChevronDown, ChevronRight, MessageSquare, Settings, LogOut, MoreV
 import { computed, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import VoiceChannelItem from './VoiceChannelItem.vue';
-import VoiceControlPanel from './VoiceControlPanel.vue';
 import { updatePresence } from '@/api/presence';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth';
@@ -13,6 +11,8 @@ import { usePresenceStore } from '@/stores/presence';
 import { useUsersStore } from '@/stores/users';
 import type { UserStatusType } from '@/types';
 import type { Category, Channel } from '@/types/chat';
+import VoiceChannelItem from './VoiceChannelItem.vue';
+import VoiceControlPanel from './VoiceControlPanel.vue';
 
 type Props = {
     categories: Category[];

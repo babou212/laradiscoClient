@@ -4,8 +4,8 @@ import { X } from 'lucide-vue-next';
 import type { DialogContentEmits, DialogContentProps } from 'reka-ui';
 import { DialogClose, DialogContent, DialogPortal, useForwardPropsEmits } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
-import DialogOverlay from './DialogOverlay.vue';
 import { cn } from '@/lib/utils';
+import DialogOverlay from './DialogOverlay.vue';
 
 defineOptions({
     inheritAttrs: false,

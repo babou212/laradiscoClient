@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { CornerDownRight, MessageSquareText, Pencil, Pin, PinOff, SmilePlus, Trash2 } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import EmojiPicker from './EmojiPicker.vue';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import EmojiPicker from './EmojiPicker.vue';
 
 const { t } = useI18n();
 

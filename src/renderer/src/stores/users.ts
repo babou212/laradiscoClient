@@ -1,6 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, reactive } from 'vue';
-import type { AuthPermissions } from './auth';
 import { getMembers } from '@/api/members';
 import { getPresence } from '@/api/presence';
 import {
@@ -14,6 +13,7 @@ import { getUserProfile } from '@/api/users';
 import { getEcho } from '@/lib/echo';
 import type { OnlineUser, UserActivity, UserStatusType } from '@/types';
 import type { AvatarUrls } from '@/types/chat';
+import type { AuthPermissions } from './auth';
 
 export interface StoredUserRole {
     id: string;

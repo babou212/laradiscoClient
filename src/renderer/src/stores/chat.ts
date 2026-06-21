@@ -1,6 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useUsersStore } from './users';
 import { getCategories } from '@/api/categories';
 import { getChannel, markChannelRead as apiMarkChannelRead } from '@/api/channels';
 import { getMessages } from '@/api/messages';
@@ -9,6 +8,7 @@ import { readPageMeta } from '@/api/pagination';
 import type { ChannelAttributes } from '@/api/types';
 import { getEcho } from '@/lib/echo';
 import type { Category, Channel, ChannelPermissions, MessageData } from '@/types/chat';
+import { useUsersStore } from './users';
 
 export const useChatStore = defineStore('chat', () => {
     const currentChannel = ref<Channel | null>(null);

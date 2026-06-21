@@ -12,11 +12,11 @@ import {
 } from 'livekit-client';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useUsersStore } from './users';
 import { getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
+import { useUsersStore } from './users';
 
 export interface VoiceParticipant {
     id: string | number;

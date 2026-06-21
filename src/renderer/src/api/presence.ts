@@ -1,5 +1,5 @@
-import api from './client';
 import type { OnlineUser } from '@/types';
+import api from './client';
 
 /** Activity as sent to the server — `started_at` is stamped server-side. */
 export interface ActivityInput {

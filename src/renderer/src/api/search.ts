@@ -1,5 +1,5 @@
-import api from './client';
 import type { AvatarUrls } from '@/types/chat';
+import api from './client';
 
 export interface MessageSearchResult {
     id: string;

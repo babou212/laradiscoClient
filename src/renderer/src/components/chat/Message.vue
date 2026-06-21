@@ -4,18 +4,18 @@ import { Pin } from 'lucide-vue-next';
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import FileAttachment from './FileAttachment.vue';
-import MessageActions from './MessageActions.vue';
-import MessageLinkPreview from './MessageLinkPreview.vue';
-import MessageReplyPreview from './MessageReplyPreview.vue';
-import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
-import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useUsersStore } from '@/stores/users';
 import type { MessageData } from '@/types/chat';
+import FileAttachment from './FileAttachment.vue';
+import MessageActions from './MessageActions.vue';
+import MessageLinkPreview from './MessageLinkPreview.vue';
+import MessageReplyPreview from './MessageReplyPreview.vue';
+import MessageYoutubeEmbed from './MessageYoutubeEmbed.vue';
+import ThreadPreviewBadge from './ThreadPreviewBadge.vue';
 
 interface Props {
     message: MessageData;
