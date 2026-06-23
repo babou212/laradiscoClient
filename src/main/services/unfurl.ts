@@ -33,7 +33,7 @@ export interface UnfurlFailure {
 
 export type UnfurlResult = UnfurlSuccess | UnfurlFailure;
 
-function isPublicIp(ip: string): boolean {
+export function isPublicIp(ip: string): boolean {
     if (!ipaddr.isValid(ip)) return false;
     const addr = ipaddr.parse(ip);
     const range = addr.range();
@@ -45,7 +45,7 @@ function isPublicIp(ip: string): boolean {
     return range === 'unicast';
 }
 
-async function assertPublicHostname(hostname: string): Promise<void> {
+export async function assertPublicHostname(hostname: string): Promise<void> {
     const lower = hostname.toLowerCase();
     if (
         lower === 'localhost' ||
@@ -182,7 +182,7 @@ async function hardenedFetch(
     throw new Error(`Too many redirects (> ${MAX_REDIRECTS})`);
 }
 
-function decodeHtmlEntities(input: string): string {
+export function decodeHtmlEntities(input: string): string {
     return input
         .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
         .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
@@ -194,7 +194,7 @@ function decodeHtmlEntities(input: string): string {
         .replace(/&amp;/g, '&');
 }
 
-function extractCharset(contentType: string, html: Buffer): string {
+export function extractCharset(contentType: string, html: Buffer): string {
     const ctMatch = contentType.match(/charset=([^;]+)/i);
     if (ctMatch) return ctMatch[1].trim().toLowerCase();
     const head = html.subarray(0, Math.min(html.length, 4096)).toString('ascii');
@@ -212,7 +212,7 @@ function decodeHtml(body: Buffer, contentType: string): string {
     }
 }
 
-function parseMetaTags(html: string): Map<string, string> {
+export function parseMetaTags(html: string): Map<string, string> {
     const result = new Map<string, string>();
     const metaRegex = /<meta\b[^>]*>/gi;
     for (const match of html.matchAll(metaRegex)) {
@@ -230,13 +230,13 @@ function parseMetaTags(html: string): Map<string, string> {
     return result;
 }
 
-function extractTitle(html: string): string | undefined {
+export function extractTitle(html: string): string | undefined {
     const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
     if (!match) return undefined;
     return decodeHtmlEntities(match[1]).trim().replace(/\s+/g, ' ');
 }
 
-function parseOgMetadata(html: string, finalUrl: string): LinkPreviewMetadata {
+export function parseOgMetadata(html: string, finalUrl: string): LinkPreviewMetadata {
     const meta = parseMetaTags(html);
     const title = meta.get('og:title') ?? meta.get('twitter:title') ?? extractTitle(html) ?? new URL(finalUrl).hostname;
     const description =
@@ -290,7 +290,7 @@ const VERIFICATION_TITLE_PATTERNS = [
     /access denied/i,
 ];
 
-function looksLikeAntiBot(title: string): boolean {
+export function looksLikeAntiBot(title: string): boolean {
     return VERIFICATION_TITLE_PATTERNS.some((re) => re.test(title));
 }
 
@@ -303,7 +303,7 @@ function isRedditUrl(rawUrl: string): boolean {
     }
 }
 
-function toRedditJsonUrl(rawUrl: string): string | null {
+export function toRedditJsonUrl(rawUrl: string): string | null {
     try {
         const u = new URL(rawUrl);
         // Gallery links (reddit.com/gallery/<id>) and comment permalinks

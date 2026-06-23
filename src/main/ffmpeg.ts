@@ -7,7 +7,7 @@ import ffprobeStatic from 'ffprobe-static';
 // archive, so electron-builder unpacks them to app.asar.unpacked (see
 // asarUnpack in electron-builder.yml). The *-static packages still hand back a
 // path pointing into app.asar, so rewrite it to the unpacked location.
-function unpacked(p: string | null): string | null {
+export function unpacked(p: string | null): string | null {
     if (!p) return null;
     return p.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`);
 }
@@ -17,7 +17,7 @@ function unpacked(p: string | null): string | null {
 // platform unsupported. Bundling matters because a packaged app's PATH is often
 // stripped (e.g. macOS launched from Finder) — relying on PATH alone meant
 // transcoding silently failed and unplayable files were served to the demuxer.
-function resolveBinary(staticPath: string | null, fallbackCommand: string): string {
+export function resolveBinary(staticPath: string | null, fallbackCommand: string): string {
     if (staticPath && existsSync(staticPath)) return staticPath;
     return fallbackCommand;
 }

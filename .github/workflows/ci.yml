@@ -2,7 +2,7 @@ name: Test & Build
 
 on:
   push:
-    branches: [develop]
+    branches: ['**']
   pull_request:
     branches: [main, develop]
 
@@ -28,7 +28,7 @@ jobs:
         run: npm run format:check
 
       - name: Lint
-        run: npx eslint .
+        run: npm run lint
 
   typecheck:
     name: Type Check
@@ -46,9 +46,37 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxtst-dev libxt-dev libxkbcommon-dev libxinerama-dev libxrandr-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 1
+
   build:
     name: Build (${{ matrix.os }})
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, test]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -79,4 +107,4 @@ jobs:
         with:
           name: packaged-${{ matrix.os }}
           path: dist/
-          retention-days: 5
+          retention-days: 1

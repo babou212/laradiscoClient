@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.renderer.json",
+    "compilerOptions": {
+        "composite": true,
+        "types": ["node", "vitest/globals"],
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "paths": {
+            "@/*": ["./src/renderer/src/*"],
+            "@main/*": ["./src/main/*"]
+        }
+    },
+    "include": ["test/**/*.ts", "vitest.config.ts"]
+}

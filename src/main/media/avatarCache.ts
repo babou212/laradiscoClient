@@ -27,7 +27,7 @@ function cacheDir(): string {
 }
 
 /** The avatar version (Spatie media id) is the first numeric segment of the path. */
-function versionToken(pathname: string): string {
+export function versionToken(pathname: string): string {
     for (const seg of pathname.split('/')) {
         if (/^\d+$/.test(seg)) return seg;
     }
@@ -37,7 +37,7 @@ function versionToken(pathname: string): string {
     return 'x' + createHash('sha1').update(dir).digest('hex');
 }
 
-function keyForUrl(userId: string, rawUrl: string): { key: string; version: string } | null {
+export function keyForUrl(userId: string, rawUrl: string): { key: string; version: string } | null {
     if (!USER_RE.test(userId)) return null;
     try {
         const { pathname } = new URL(rawUrl);
@@ -130,7 +130,7 @@ export async function forgetUser(userId: string): Promise<void> {
     }
 }
 
-function sniffMime(buf: Buffer): string {
+export function sniffMime(buf: Buffer): string {
     if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
     if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
     if (buf.length >= 6 && buf.toString('ascii', 0, 3) === 'GIF') return 'image/gif';

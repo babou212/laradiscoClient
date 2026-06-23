@@ -57,7 +57,7 @@ jobs:
         run: npm run format:check
 
       - name: Lint
-        run: npx eslint .
+        run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
