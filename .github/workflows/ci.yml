@@ -1,11 +1,8 @@
 name: Test & Build
 
 on:
-  # Every branch except main (main is handled by release.yml), plus PRs.
   push:
     branches-ignore: [main]
-  pull_request:
-    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
