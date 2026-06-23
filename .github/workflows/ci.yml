@@ -76,7 +76,6 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     needs: [lint, typecheck, test]
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
