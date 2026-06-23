@@ -85,6 +85,8 @@ interface VoiceChannel {
 
 const MUTED_ATTRIBUTE = 'micMuted';
 
+const PTT_SPEAKING_ATTRIBUTE = 'pttSpeaking';
+
 export const useVoiceStore = defineStore('voice', () => {
     const currentChannel = ref<VoiceChannel | null>(null);
     const isMicMuted = ref(false);
@@ -349,11 +351,14 @@ export const useVoiceStore = defineStore('voice', () => {
                 ? mutedAttr === 'true'
                 : (p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false);
 
+        const pttAttr = p.attributes?.[PTT_SPEAKING_ATTRIBUTE];
+        const isSpeaking = pttAttr === 'true' ? true : pttAttr === 'false' ? false : p.isSpeaking;
+
         return {
             id: p.identity,
             username: p.identity,
             displayName: p.name || p.identity,
-            isSpeaking: p.isSpeaking,
+            isSpeaking,
             isMuted,
             isScreenSharing: p.isScreenShareEnabled,
             avatarUrls: findExistingAvatarUrls(p.identity),
@@ -369,7 +374,7 @@ export const useVoiceStore = defineStore('voice', () => {
             id: local.identity,
             username: local.identity,
             displayName: local.name || local.identity,
-            isSpeaking: local.isSpeaking,
+            isSpeaking: pttEnabled.value ? pttActive && !isMicMuted.value : local.isSpeaking,
             isMuted: isMicMuted.value,
             isScreenSharing: isScreenSharing.value,
             avatarUrls: findExistingAvatarUrls(local.identity),
@@ -582,6 +587,10 @@ export const useVoiceStore = defineStore('voice', () => {
             room.remoteParticipants.forEach((p) => {
                 p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
             });
+
+            if (pttEnabled.value) {
+                syncPttSpeakingAttribute(pttActive && !isMicMuted.value);
+            }
 
             currentChannel.value = { id: channelId, name: channelName };
             refreshParticipants();
@@ -812,6 +821,13 @@ export const useVoiceStore = defineStore('voice', () => {
             .catch((err) => console.warn('[Voice] Failed to broadcast mute state:', err));
     }
 
+    function syncPttSpeakingAttribute(speaking: boolean | null): void {
+        if (!room) return;
+        room.localParticipant
+            .setAttributes({ [PTT_SPEAKING_ATTRIBUTE]: speaking === null ? '' : String(speaking) })
+            .catch((err) => console.warn('[Voice] Failed to broadcast PTT speaking state:', err));
+    }
+
     async function toggleMic() {
         isMicMuted.value = !isMicMuted.value;
         if (room) {
@@ -897,6 +913,13 @@ export const useVoiceStore = defineStore('voice', () => {
     function setPttEnabled(enabled: boolean) {
         pttEnabled.value = enabled;
         window.api.settings.set('voice:pttEnabled', String(enabled));
+
+        if (enabled) {
+            syncPttSpeakingAttribute(pttActive && !isMicMuted.value);
+        } else {
+            syncPttSpeakingAttribute(null);
+        }
+        refreshParticipants();
         syncPttConfig();
     }
 
@@ -980,6 +1003,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         if (!isMicMuted.value) {
             room.localParticipant.setMicrophoneEnabled(true);
+            syncPttSpeakingAttribute(true);
             refreshParticipants();
             if (pttSoundEnabled.value) playPttActivateSound();
         }
@@ -991,6 +1015,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         if (pttEnabled.value) {
             room.localParticipant.setMicrophoneEnabled(false);
+            syncPttSpeakingAttribute(false);
             refreshParticipants();
             if (pttSoundEnabled.value) playPttDeactivateSound();
         }

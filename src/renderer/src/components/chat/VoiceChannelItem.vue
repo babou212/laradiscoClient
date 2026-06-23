@@ -3,12 +3,12 @@ import { Volume2, Monitor, MicOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuLabel,
-    ContextMenuSeparator,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { useAuthStore } from '@/stores/auth';
 import { useUsersStore } from '@/stores/users';
@@ -72,9 +72,11 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
         </button>
 
         <div v-if="channelParticipants.length > 0" class="ml-6 space-y-0.5 py-0.5">
-            <ContextMenu v-for="participant in channelParticipants" :key="participant.id">
-                <ContextMenuTrigger as-child>
-                    <div data-no-context-menu class="flex items-center gap-2 rounded px-2 py-1">
+            <DropdownMenu v-for="participant in channelParticipants" :key="participant.id">
+                <DropdownMenuTrigger as-child>
+                    <div
+                        class="flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors hover:bg-sidebar-accent/50"
+                    >
                         <Avatar
                             class="size-6 shrink-0 transition-all duration-200"
                             :class="participant.isSpeaking ? 'ring-2 ring-green-500' : ''"
@@ -120,17 +122,17 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                             <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
                         </div>
                     </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent v-if="!isSelf(participant)" class="w-56">
-                    <ContextMenuLabel class="truncate">
+                </DropdownMenuTrigger>
+                <DropdownMenuContent v-if="!isSelf(participant)" class="w-56">
+                    <DropdownMenuLabel class="truncate">
                         {{
                             usersStore.displayName(
                                 String(participant.id),
                                 participant.displayName || participant.username,
                             )
                         }}
-                    </ContextMenuLabel>
-                    <ContextMenuSeparator />
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                     <div class="px-2 py-1.5" @pointerdown.stop @keydown.stop>
                         <div class="text-muted-foreground mb-1.5 flex justify-between text-xs">
                             <span>User Volume</span>
@@ -144,8 +146,8 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                             @update:model-value="(v) => voiceStore.setUserVolume(String(participant.id), v?.[0] ?? 1)"
                         />
                     </div>
-                </ContextMenuContent>
-            </ContextMenu>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     </div>
 </template>
