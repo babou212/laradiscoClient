@@ -26,6 +26,19 @@ const stubs = {
     PopoverContent: { template: '<div><slot /></div>' },
     Slider: { name: 'Slider', props: ['modelValue', 'min', 'max', 'step'], template: '<div data-stub="slider" />' },
     SoundUploadDialog: { name: 'SoundUploadDialog', props: ['open'], template: '<div data-stub="upload" />' },
+    // Render dialog content inline and gate it on `open` so the confirm flow is observable.
+    Dialog: { name: 'Dialog', props: ['open'], template: '<div><slot v-if="open" /></div>' },
+    DialogContent: { template: '<div><slot /></div>' },
+    DialogHeader: { template: '<div><slot /></div>' },
+    DialogTitle: { template: '<div><slot /></div>' },
+    DialogDescription: { template: '<div><slot /></div>' },
+    DialogFooter: { template: '<div><slot /></div>' },
+    Button: {
+        name: 'Button',
+        props: ['variant', 'disabled'],
+        emits: ['click'],
+        template: '<button :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>',
+    },
 };
 
 function sound(overrides: Partial<Sound> = {}): Sound {
@@ -86,31 +99,35 @@ describe('SoundboardPopover', () => {
     it('deletes a sound after confirmation when permitted', async () => {
         storeStub.sounds = [sound({ id: '9' })];
         storeStub.canDelete.mockReturnValue(true);
-        vi.stubGlobal(
-            'confirm',
-            vi.fn(() => true),
-        );
         const wrapper = mountPopover();
 
         const deleteBtn = wrapper.find('[title="Delete sound"]');
         expect(deleteBtn.exists()).toBe(true);
 
+        // Clicking the trash icon only opens the in-app confirm dialog.
         await deleteBtn.trigger('click');
+        await flushPromises();
+        expect(storeStub.remove).not.toHaveBeenCalled();
+
+        const confirmBtn = wrapper.findAll('button').find((b) => b.text() === 'Delete');
+        expect(confirmBtn).toBeTruthy();
+        await confirmBtn!.trigger('click');
         await flushPromises();
 
         expect(storeStub.remove).toHaveBeenCalledWith('9');
     });
 
-    it('does not delete when confirmation is declined', async () => {
+    it('does not delete when the confirm dialog is cancelled', async () => {
         storeStub.sounds = [sound({ id: '9' })];
         storeStub.canDelete.mockReturnValue(true);
-        vi.stubGlobal(
-            'confirm',
-            vi.fn(() => false),
-        );
         const wrapper = mountPopover();
 
         await wrapper.find('[title="Delete sound"]').trigger('click');
+        await flushPromises();
+
+        const cancelBtn = wrapper.findAll('button').find((b) => b.text() === 'Cancel');
+        expect(cancelBtn).toBeTruthy();
+        await cancelBtn!.trigger('click');
         await flushPromises();
 
         expect(storeStub.remove).not.toHaveBeenCalled();

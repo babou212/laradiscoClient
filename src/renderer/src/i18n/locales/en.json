@@ -881,7 +881,9 @@
                 "addSound": "Add sound",
                 "volume": "Soundboard volume",
                 "delete": "Delete sound",
-                "deleteConfirm": "Delete this sound?",
+                "deleteConfirm": "Delete",
+                "deleteDialogTitle": "Delete sound",
+                "deleteDialogDescription": "Are you sure you want to delete \"{name}\"? This can't be undone.",
                 "loadError": "Could not load sounds.",
                 "playError": "Could not play sound.",
                 "upload": {
