@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["vue", "typescript", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true,
+    "node": true,
+    "browser": true
+  },
+  "ignorePatterns": [
+    "out",
+    "out2",
+    "dist",
+    "node_modules",
+    "build",
+    "scripts",
+    "coverage",
+    "forge.config.ts",
+    "maker-pacman.ts",
+    "electron.vite.config.dev2.ts",
+    "src/main/mls/wasm/**"
+  ],
+  "rules": {
+    "typescript/no-explicit-any": "off",
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "fixStyle": "separate-type-imports"
+      }
+    ]
+  }
+}
