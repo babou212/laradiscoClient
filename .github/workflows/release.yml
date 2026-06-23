@@ -40,8 +40,6 @@ jobs:
 
   lint:
     name: Lint & Typecheck
-    needs: version
-    if: needs.version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,10 +60,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxtst-dev libxt-dev libxkbcommon-dev libxinerama-dev libxrandr-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
   build-and-publish:
     name: Build & Publish (${{ matrix.os }})
-    needs: [version, lint]
-    if: needs.version.outputs.should_release == 'true'
+    needs: [version, lint, test]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -92,7 +108,10 @@ jobs:
 
       - run: npm ci
 
+      # Only publish when the version was bumped; otherwise this job still runs
+      # green (no skipped jobs) and simply does nothing to release.
       - name: Build & publish to GitHub draft release
+        if: needs.version.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -102,12 +121,12 @@ jobs:
   finalize-release:
     name: Promote Draft to Published
     needs: [version, build-and-publish]
-    if: needs.version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Flip draft → published
+        if: needs.version.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

@@ -1,8 +1,9 @@
 name: Test & Build
 
 on:
+  # Every branch except main (main is handled by release.yml), plus PRs.
   push:
-    branches: ['**']
+    branches-ignore: [main]
   pull_request:
     branches: [main, develop]
 
