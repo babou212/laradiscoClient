@@ -14,6 +14,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { getVoiceChannelKey, getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { IndexedKeyProvider } from '@/lib/voice-key-provider';
+import { registerVoiceStateDump, vlog, vwarn } from '@/lib/voice-logger';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
@@ -204,9 +205,6 @@ export const useVoiceStore = defineStore('voice', () => {
 
     let room: Room | null = null;
 
-    // E2EE: the shared key is rotated by the server when membership changes (so a
-    // leaver can't decrypt subsequent audio). We track the provider and the latest
-    // applied key index to ignore stale/reordered rotation broadcasts.
     let keyProvider: IndexedKeyProvider | null = null;
     let e2eeKeyIndex = 0;
 
@@ -228,19 +226,12 @@ export const useVoiceStore = defineStore('voice', () => {
     } as const;
 
     function getChannelParticipants(channelId: number): VoiceParticipant[] {
-        // LiveKit is the single source of truth for the channel we're connected to
-        // (it carries live speaking/mute/screenshare state); the Echo/REST map only
-        // tracks the OTHER channels we're not in.
         if (currentChannel.value && channelId === currentChannel.value.id) {
             return currentParticipants.value;
         }
         return channelParticipantsMap.value.get(channelId) ?? [];
     }
 
-    // Hand a channel's roster back to the Echo/REST map from LiveKit's live roster
-    // (minus ourselves) when we disconnect from it. While connected, LiveKit owns
-    // that channel and Echo updates for it are ignored, so on the way out we seed
-    // the map from the last known roster; ongoing Echo joined/left events take over.
     function seedChannelMapFromRoster(channelId: number, selfIdentity: string): void {
         const others = currentParticipants.value
             .filter((p) => String(p.id) !== String(selfIdentity))
@@ -282,8 +273,6 @@ export const useVoiceStore = defineStore('voice', () => {
                 );
             }
 
-            // The current channel is owned by LiveKit; don't let the REST snapshot
-            // reintroduce a stale roster for it.
             if (currentChannel.value) rebuilt.delete(currentChannel.value.id);
             channelParticipantsMap.value = rebuilt;
         } catch (error) {
@@ -311,7 +300,6 @@ export const useVoiceStore = defineStore('voice', () => {
                         };
                         channel_id: number;
                     }) => {
-                        // LiveKit owns the current channel's roster; ignore Echo for it.
                         if (currentChannel.value && data.channel_id === currentChannel.value.id) return;
                         const participants = channelParticipantsMap.value.get(data.channel_id) ?? [];
                         if (!participants.some((p) => String(p.id) === String(data.user.id))) {
@@ -341,7 +329,13 @@ export const useVoiceStore = defineStore('voice', () => {
                             channelParticipantsMap.value.delete(data.channel_id);
                         }
                     }
-                });
+                })
+                .listen(
+                    '.voice.key_rotated',
+                    (data: { channel_id: number; e2ee_key: string; e2ee_key_index: number }) => {
+                        void applyRotatedKey(data.channel_id, data.e2ee_key, data.e2ee_key_index);
+                    },
+                );
         }
 
         subscribedChannelIds = voiceChannelIds;
@@ -438,6 +432,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function wireRoomEvents(r: Room): void {
         r.on(RoomEvent.ParticipantConnected, (participant) => {
+            vlog('part', 'participant connected', { id: participant.identity, total: r.remoteParticipants.size + 1 });
             applyRemoteAudioState(participant);
 
             if (pttEnabled.value && pttActive && !isMicMuted.value) {
@@ -446,6 +441,7 @@ export const useVoiceStore = defineStore('voice', () => {
             refreshParticipants();
         });
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
+            vlog('part', 'participant disconnected', { id: participant.identity, total: r.remoteParticipants.size });
             pttSpeakingByIdentity.delete(participant.identity);
             pttSeqByIdentity.delete(participant.identity);
             const vt = vadClearTimers.get(participant.identity);
@@ -463,6 +459,7 @@ export const useVoiceStore = defineStore('voice', () => {
             refreshParticipants();
         });
         r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+            vlog('part', 'track subscribed', { id: participant.identity, kind: track.kind, source: track.source });
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
@@ -497,6 +494,7 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+            vlog('part', 'track unsubscribed', { id: participant.identity, kind: track.kind, source: track.source });
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
                 track.detach().forEach((el) => el.remove());
                 updateParticipantTracks(participant.identity);
@@ -517,6 +515,7 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+            vlog('speak', 'active speakers (VAD)', { speakers: speakers.map((s) => s.identity) });
             applyVadSpeakers(new Set(speakers.map((s) => s.identity)));
             const localId = r.localParticipant.identity;
             currentParticipants.value = currentParticipants.value.map((p) => {
@@ -532,15 +531,18 @@ export const useVoiceStore = defineStore('voice', () => {
                 return { ...p, isSpeaking };
             });
         });
-        r.on(RoomEvent.ParticipantAttributesChanged, (_changed, participant) => {
+        r.on(RoomEvent.ParticipantAttributesChanged, (changed, participant) => {
             if (participant === r.localParticipant) return;
+            vlog('part', 'attributes changed', { id: participant.identity, changed });
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.MediaDevicesChanged, () => {
+            vlog('audio', 'media devices changed');
             void refreshAvailableMics();
         });
         r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
             isAudioPlaybackBlocked.value = !r.canPlaybackAudio;
+            vlog('audio', 'playback status changed', { canPlayback: r.canPlaybackAudio });
         });
         r.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             if (topic === PTT_DATA_TOPIC) {
@@ -549,20 +551,30 @@ export const useVoiceStore = defineStore('voice', () => {
             }
             useSoundboardStore().handleIncoming(payload);
         });
-        r.on(RoomEvent.TrackMuted, (_pub, participant) => updateParticipantTracks(participant.identity));
-        r.on(RoomEvent.TrackUnmuted, (_pub, participant) => updateParticipantTracks(participant.identity));
+        r.on(RoomEvent.TrackMuted, (_pub, participant) => {
+            vlog('part', 'track muted', { id: participant.identity });
+            updateParticipantTracks(participant.identity);
+        });
+        r.on(RoomEvent.TrackUnmuted, (_pub, participant) => {
+            vlog('part', 'track unmuted', { id: participant.identity });
+            updateParticipantTracks(participant.identity);
+        });
         r.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
             if (participant.identity === r.localParticipant.identity) {
+                vlog('conn', 'connection quality', { quality });
                 connectionQuality.value = quality;
             }
         });
 
         r.on(RoomEvent.Reconnecting, () => {
+            vlog('conn', 'reconnecting…');
             if (room === r) isReconnecting.value = true;
         });
         r.on(RoomEvent.Reconnected, () => {
+            vlog('conn', 'reconnected — reconciling state');
             if (room === r) {
                 isReconnecting.value = false;
+                void resyncE2eeKey();
                 void syncMicEnabled();
                 syncMuteAttribute();
                 broadcastPttSpeaking(pttEnabled.value ? desiredMicLive() : null);
@@ -571,6 +583,7 @@ export const useVoiceStore = defineStore('voice', () => {
         });
 
         r.on(RoomEvent.Disconnected, () => {
+            vlog('conn', 'disconnected', { wasCurrentRoom: room === r });
             if (room === r) {
                 if (currentChannel.value) {
                     seedChannelMapFromRoster(currentChannel.value.id, r.localParticipant.identity);
@@ -588,8 +601,12 @@ export const useVoiceStore = defineStore('voice', () => {
     let isJoining = false;
 
     async function joinChannel(channelId: number, channelName: string) {
-        if (isJoining) return;
+        if (isJoining) {
+            vlog('conn', 'join ignored — already joining', { channelId });
+            return;
+        }
         isJoining = true;
+        vlog('conn', 'join start', { channelId, channelName, pttEnabled: pttEnabled.value, micMuted: isMicMuted.value });
 
         try {
             if (room && room.state === ConnectionState.Connected) {
@@ -597,6 +614,7 @@ export const useVoiceStore = defineStore('voice', () => {
             }
 
             const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
+            vlog('conn', 'token received', { url, hasKey: !!e2ee_key, keyIndex: e2ee_key_index });
 
             keyProvider = new IndexedKeyProvider();
             e2eeKeyIndex = e2ee_key_index ?? 0;
@@ -622,7 +640,9 @@ export const useVoiceStore = defineStore('voice', () => {
             wireRoomEvents(room);
 
             await keyProvider.setKeyAt(e2ee_key, e2eeKeyIndex);
+            vlog('e2ee', 'initial key applied', { keyIndex: e2eeKeyIndex });
             await room.connect(url, token);
+            vlog('conn', 'room connected', { state: room.state, remotes: room.remoteParticipants.size });
 
             await publishMicTrack();
 
@@ -640,9 +660,13 @@ export const useVoiceStore = defineStore('voice', () => {
 
             void syncMicEnabled();
             refreshParticipants();
-            console.log(`[Voice] Connected to ${channelName} via LiveKit`);
+            vlog('conn', 'join complete', {
+                channelName,
+                participants: currentParticipants.value.length,
+                desiredMicLive: desiredMicLive(),
+            });
         } catch (err) {
-            console.error('[Voice] Failed to join channel:', err);
+            vwarn('conn', 'join failed', err);
             room = null;
             throw err;
         } finally {
@@ -834,8 +858,11 @@ export const useVoiceStore = defineStore('voice', () => {
     async function leaveChannel() {
         const oldRoom = room;
         const localIdentity = oldRoom?.localParticipant.identity ?? null;
+        vlog('conn', 'leave channel', { channelId: currentChannel.value?.id ?? null });
 
         room = null;
+        keyProvider = null;
+        e2eeKeyIndex = 0;
         pttActive = false;
         isReconnecting.value = false;
         micReacquirePending = false;
@@ -874,10 +901,11 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function broadcastPttSpeaking(speaking: boolean | null, to?: string[]): void {
         if (!room) return;
+        vlog('speak', 'broadcast PTT speaking', { speaking, seq: pttSeq + 1, to: to ?? 'all' });
         const payload = new TextEncoder().encode(JSON.stringify({ s: speaking, n: ++pttSeq }));
         room.localParticipant
             .publishData(payload, { reliable: false, topic: PTT_DATA_TOPIC, destinationIdentities: to })
-            .catch((err) => console.warn('[Voice] Failed to broadcast PTT speaking state:', err));
+            .catch((err) => vwarn('speak', 'failed to broadcast PTT speaking', err));
     }
 
     function handlePttData(payload: Uint8Array, participant?: RemoteParticipant): void {
@@ -892,9 +920,13 @@ export const useVoiceStore = defineStore('voice', () => {
         if (typeof msg.n === 'number') {
             // Ignore stale/reordered lossy packets.
             const last = pttSeqByIdentity.get(id) ?? -1;
-            if (msg.n <= last) return;
+            if (msg.n <= last) {
+                vlog('speak', 'PTT packet dropped (stale)', { id, seq: msg.n, last });
+                return;
+            }
             pttSeqByIdentity.set(id, msg.n);
         }
+        vlog('speak', 'PTT packet received', { id, speaking: msg.s ?? null, seq: msg.n });
         if (msg.s === null || msg.s === undefined) {
             pttSpeakingByIdentity.delete(id);
         } else {
@@ -934,6 +966,30 @@ export const useVoiceStore = defineStore('voice', () => {
         vadSpeaking.clear();
     }
 
+    async function applyRotatedKey(channelId: number, key: string, keyIndex: number): Promise<void> {
+        if (!keyProvider || !currentChannel.value || channelId !== currentChannel.value.id) return;
+        if (keyIndex <= e2eeKeyIndex) {
+            vlog('e2ee', 'rotation ignored (stale index)', { keyIndex, current: e2eeKeyIndex });
+            return;
+        }
+        vlog('e2ee', 'applying rotated key', { from: e2eeKeyIndex, to: keyIndex });
+        e2eeKeyIndex = keyIndex;
+        await keyProvider.setKeyAt(key, keyIndex);
+    }
+
+    async function resyncE2eeKey(): Promise<void> {
+        if (!keyProvider || !currentChannel.value) return;
+        try {
+            const { e2ee_key, e2ee_key_index } = await getVoiceChannelKey(currentChannel.value.id);
+            if (e2ee_key_index < e2eeKeyIndex) return;
+            vlog('e2ee', 'resync key after reconnect', { index: e2ee_key_index, prev: e2eeKeyIndex });
+            e2eeKeyIndex = e2ee_key_index;
+            await keyProvider.setKeyAt(e2ee_key, e2ee_key_index);
+        } catch (err) {
+            vwarn('e2ee', 'failed to resync key', err);
+        }
+    }
+
     function desiredMicLive(): boolean {
         return !isMicMuted.value && (!pttEnabled.value || pttActive);
     }
@@ -947,6 +1003,7 @@ export const useVoiceStore = defineStore('voice', () => {
             .then(async () => {
                 if (!room || room.state !== ConnectionState.Connected) return;
                 const target = desiredMicLive();
+                vlog('mic', 'apply mic state', { target, reacquire: micReacquirePending, muted: isMicMuted.value, pttActive });
                 if (micReacquirePending) {
                     micReacquirePending = false;
                     const defaults = buildAudioCaptureDefaults();
@@ -956,13 +1013,14 @@ export const useVoiceStore = defineStore('voice', () => {
                     await room.localParticipant.setMicrophoneEnabled(target);
                 }
             })
-            .catch((err) => console.warn('[Voice] Failed to apply mic state:', err));
+            .catch((err) => vwarn('mic', 'failed to apply mic state', err));
         return micOpChain;
     }
 
     async function publishMicTrack(): Promise<void> {
         if (!room) return;
         const startMuted = !desiredMicLive();
+        vlog('mic', 'publishing mic track', { startMuted, deviceId: selectedMicDeviceId.value ?? 'default' });
         const tryPublish = async (capture: ReturnType<typeof buildAudioCaptureDefaults>): Promise<void> => {
             const track = await createLocalAudioTrack(capture);
             if (startMuted) await track.mute();
@@ -970,18 +1028,21 @@ export const useVoiceStore = defineStore('voice', () => {
         };
         try {
             await tryPublish(buildAudioCaptureDefaults());
+            vlog('mic', 'mic track published', { muted: startMuted });
         } catch (micErr) {
-            console.warn('[Voice] Selected mic unavailable, retrying without deviceId:', micErr);
+            vwarn('mic', 'selected mic unavailable, retrying without deviceId', micErr);
             try {
                 await tryPublish({ ...buildAudioCaptureDefaults(), deviceId: undefined });
+                vlog('mic', 'mic track published (fallback device)', { muted: startMuted });
             } catch (fallbackErr) {
-                console.warn('[Voice] No microphone available — joining without mic:', fallbackErr);
+                vwarn('mic', 'no microphone available — joining without mic', fallbackErr);
             }
         }
     }
 
     async function toggleMic() {
         isMicMuted.value = !isMicMuted.value;
+        vlog('mic', 'toggle mic (self-mute)', { muted: isMicMuted.value });
         if (room) {
             await syncMicEnabled();
             syncMuteAttribute();
@@ -991,6 +1052,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function toggleSound() {
         isSoundMuted.value = !isSoundMuted.value;
+        vlog('audio', 'toggle deafen', { deafened: isSoundMuted.value, remotes: room?.remoteParticipants.size ?? 0 });
         if (!room) return;
         room.remoteParticipants.forEach((p) => {
             applyRemoteAudioState(p);
@@ -1059,6 +1121,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function setPttEnabled(enabled: boolean) {
         pttEnabled.value = enabled;
+        vlog('ptt', 'PTT mode changed', { enabled, connected: isConnected.value, muted: isMicMuted.value });
         window.api.settings.set('voice:pttEnabled', String(enabled));
 
         void syncMicEnabled();
@@ -1129,6 +1192,12 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function syncPttConfig() {
+        vlog('ptt', 'configure hook (main process)', {
+            enabled: pttEnabled.value,
+            keycode: pttKeycode.value,
+            key: pttKey.value,
+            modifiers: pttModifiers.value,
+        });
         window.api.ptt.configure({
             keycode: pttKeycode.value,
             ctrl: pttModifiers.value.ctrl,
@@ -1140,6 +1209,7 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function handlePttActivated() {
+        vlog('ptt', 'key down (activated)', { pttEnabled: pttEnabled.value, connected: isConnected.value, muted: isMicMuted.value });
         if (!pttEnabled.value) return;
 
         pttActive = true;
@@ -1153,6 +1223,7 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function handlePttDeactivated() {
+        vlog('ptt', 'key up (deactivated)', { pttEnabled: pttEnabled.value, connected: isConnected.value });
         const wasActive = pttActive;
         pttActive = false;
         if (!pttEnabled.value) return;
@@ -1171,6 +1242,7 @@ export const useVoiceStore = defineStore('voice', () => {
         cleanupPttListeners();
         pttDisposers.push(window.api.ptt.onActivated(handlePttActivated));
         pttDisposers.push(window.api.ptt.onDeactivated(handlePttDeactivated));
+        vlog('ptt', 'listeners registered');
 
         syncPttConfig();
     }
@@ -1179,6 +1251,38 @@ export const useVoiceStore = defineStore('voice', () => {
         pttDisposers.forEach((dispose) => dispose());
         pttDisposers = [];
     }
+
+    // Full point-in-time snapshot of the voice/PTT/LiveKit state. Exposed in the
+    // devtools console as `__voiceLog.dump()` for verifying everything is sane.
+    function debugSnapshot(): Record<string, unknown> {
+        const snap = {
+            channel: currentChannel.value,
+            connected: isConnected.value,
+            reconnecting: isReconnecting.value,
+            roomState: room?.state ?? null,
+            connectionQuality: connectionQuality.value,
+            micMuted: isMicMuted.value,
+            soundDeafened: isSoundMuted.value,
+            pttEnabled: pttEnabled.value,
+            pttActive,
+            pttKey: pttKey.value,
+            desiredMicLive: desiredMicLive(),
+            screenSharing: isScreenSharing.value,
+            e2eeKeyIndex,
+            participants: currentParticipants.value.map((p) => ({
+                id: p.id,
+                speaking: p.isSpeaking,
+                muted: p.isMuted,
+                screenSharing: p.isScreenSharing,
+            })),
+            vadSpeaking: [...vadSpeaking],
+            pttSpeakingByIdentity: Object.fromEntries(pttSpeakingByIdentity),
+        };
+        vlog('conn', 'state snapshot', snap);
+        return snap;
+    }
+
+    registerVoiceStateDump(debugSnapshot);
 
     async function $reset(): Promise<void> {
         await leaveChannel();

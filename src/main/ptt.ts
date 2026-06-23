@@ -62,6 +62,7 @@ function onKeyDown(e: UiohookKeyboardEvent): void {
 
     if (!pttIsCurrentlyDown) {
         pttIsCurrentlyDown = true;
+        console.log('[PTT] key down → ptt:activated', { keycode: e.keycode });
         sendToAllWindows('ptt:activated');
     }
 }
@@ -78,6 +79,7 @@ function onKeyUp(e: UiohookKeyboardEvent): void {
             keyUpDebounceTimer = null;
             if (pttIsCurrentlyDown) {
                 pttIsCurrentlyDown = false;
+                console.log('[PTT] key up → ptt:deactivated', { keycode: e.keycode });
                 sendToAllWindows('ptt:deactivated');
             }
         }, 30);
@@ -146,6 +148,12 @@ export function initPushToTalk(): void {
             } else {
                 pttConfig = null;
             }
+
+            console.log('[PTT] configure', {
+                enabled: pttEnabled,
+                keycode: config.keycode,
+                modifiers: { ctrl: config.ctrl, shift: config.shift, alt: config.alt, meta: config.meta },
+            });
 
             if (pttEnabled && pttConfig) {
                 ensureHookStarted();

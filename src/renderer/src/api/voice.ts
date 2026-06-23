@@ -24,9 +24,7 @@ export async function joinVoiceChannel(
 
 // Current shared E2EE key + index for a channel, used to resync after a
 // reconnect in case a rotation was missed while the socket was down.
-export async function getVoiceChannelKey(
-    channelId: number,
-): Promise<{ e2ee_key: string; e2ee_key_index: number }> {
+export async function getVoiceChannelKey(channelId: number): Promise<{ e2ee_key: string; e2ee_key_index: number }> {
     const r = await api.get(`/channels/${channelId}/voice/key`);
     return r.data?.data ?? r.data;
 }
