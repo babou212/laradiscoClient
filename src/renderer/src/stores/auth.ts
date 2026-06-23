@@ -204,6 +204,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function logout(): Promise<void> {
+        // Disconnect any active voice session before clearing auth so the LiveKit
+        // room, mic and screen share don't keep running after logout. Uses
+        // leaveChannel (not $reset) to preserve the app-lifetime PTT listeners.
+        // Dynamic import avoids a circular dependency (voice -> api -> auth).
+        try {
+            const { useVoiceStore } = await import('./voice');
+            await useVoiceStore().leaveChannel();
+        } catch (err) {
+            console.warn('[Auth] Failed to leave voice on logout:', err);
+        }
         const server = getValidServer();
         if (server) {
             await window.api.auth.logout(server.host);

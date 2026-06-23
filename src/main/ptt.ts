@@ -67,6 +67,7 @@ function onKeyDown(e: UiohookKeyboardEvent): void {
 }
 
 function onKeyUp(e: UiohookKeyboardEvent): void {
+    if (keyCaptureResolve) return;
     if (!pttEnabled || !pttConfig) return;
 
     if (e.keycode !== pttConfig.keycode) return;
@@ -121,6 +122,16 @@ export function initPushToTalk(): void {
                 enabled: boolean;
             },
         ) => {
+            // If the key was held when the config changes, the in-flight hold is
+            // abandoned — tell the renderer so its mic/pttActive state can't get
+            // stuck "on" waiting for a key-up that will never be sent.
+            if (keyUpDebounceTimer) {
+                clearTimeout(keyUpDebounceTimer);
+                keyUpDebounceTimer = null;
+            }
+            if (pttIsCurrentlyDown) {
+                sendToAllWindows('ptt:deactivated');
+            }
             pttIsCurrentlyDown = false;
             pttEnabled = config.enabled;
 
@@ -138,6 +149,11 @@ export function initPushToTalk(): void {
 
             if (pttEnabled && pttConfig) {
                 ensureHookStarted();
+            } else if (!keyCaptureResolve) {
+                // Don't keep a global keyboard hook installed when PTT is off and
+                // we're not mid key-capture — it would capture every keystroke
+                // system-wide for no reason.
+                stopHook();
             }
 
             return { success: true };
@@ -158,7 +174,13 @@ export function initPushToTalk(): void {
     });
 
     ipcMain.handle('ptt:cancelCapture', () => {
-        keyCaptureResolve = null;
+        if (keyCaptureResolve) {
+            // Settle the pending captureNextKey() promise (sentinel keycode -1) so
+            // the renderer's invoke() resolves instead of hanging forever.
+            const resolve = keyCaptureResolve;
+            keyCaptureResolve = null;
+            resolve({ keycode: -1, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false });
+        }
         return { success: true };
     });
 }

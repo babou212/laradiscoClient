@@ -17,7 +17,7 @@ export interface PttApi {
     }) => Promise<{ success: boolean }>;
     captureNextKey: () => Promise<PttCapturedKey>;
     cancelCapture: () => Promise<{ success: boolean }>;
-    onActivated: (callback: () => void) => void;
-    onDeactivated: (callback: () => void) => void;
+    onActivated: (callback: () => void) => () => void;
+    onDeactivated: (callback: () => void) => () => void;
     removeAllListeners: () => void;
 }

@@ -19,10 +19,14 @@ export const pttApi = {
         }>,
     cancelCapture: () => ipcRenderer.invoke('ptt:cancelCapture'),
     onActivated: (callback: () => void) => {
-        ipcRenderer.on('ptt:activated', callback);
+        const listener = (): void => callback();
+        ipcRenderer.on('ptt:activated', listener);
+        return () => ipcRenderer.removeListener('ptt:activated', listener);
     },
     onDeactivated: (callback: () => void) => {
-        ipcRenderer.on('ptt:deactivated', callback);
+        const listener = (): void => callback();
+        ipcRenderer.on('ptt:deactivated', listener);
+        return () => ipcRenderer.removeListener('ptt:deactivated', listener);
     },
     removeAllListeners: () => {
         ipcRenderer.removeAllListeners('ptt:activated');

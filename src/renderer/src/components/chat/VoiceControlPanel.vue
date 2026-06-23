@@ -51,6 +51,7 @@ const qualityInfo = computed(() => {
                 <button
                     type="button"
                     class="text-sidebar-foreground/50 hover:text-sidebar-foreground flex size-7 items-center justify-center rounded transition-colors hover:bg-white/10"
+                    tabindex="-1"
                     @click="voiceStore.leaveChannel()"
                 >
                     <PhoneOff :size="15" />
@@ -81,6 +82,7 @@ const qualityInfo = computed(() => {
                             ? 'bg-white/10 text-red-400 hover:bg-white/15'
                             : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                     "
+                    tabindex="-1"
                     @click="voiceStore.toggleMic()"
                 >
                     <MicOff v-if="voiceStore.isMicMuted" :size="15" />
@@ -97,6 +99,7 @@ const qualityInfo = computed(() => {
                             ? 'bg-white/10 text-red-400 hover:bg-white/15'
                             : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                     "
+                    tabindex="-1"
                     @click="voiceStore.toggleSound()"
                 >
                     <VolumeOff v-if="voiceStore.isSoundMuted" :size="15" />
@@ -115,6 +118,7 @@ const qualityInfo = computed(() => {
                             ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
                             : 'text-sidebar-foreground/60 hover:text-sidebar-foreground bg-white/5 hover:bg-white/10'
                     "
+                    tabindex="-1"
                     @click="toggleScreenShare"
                 >
                     <MonitorOff v-if="voiceStore.isScreenSharing" :size="15" />
