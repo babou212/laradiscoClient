@@ -216,9 +216,6 @@ export const useVoiceStore = defineStore('voice', () => {
         return channelParticipantsMap.value.get(channelId) ?? [];
     }
 
-    // When we leave/disconnect we never receive our own `.voice.left` (the server
-    // broadcasts ->toOthers()), so drop only ourselves from the cached roster and
-    // leave the remaining members visible.
     function removeSelfFromChannelMap(channelId: number, identity: string): void {
         const list = channelParticipantsMap.value.get(channelId);
         if (!list) return;
@@ -347,10 +344,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function participantFromRemote(p: RemoteParticipant): VoiceParticipant {
         const mutedAttr = p.attributes?.[MUTED_ATTRIBUTE];
-        const isMuted =
-            mutedAttr !== undefined
-                ? mutedAttr === 'true'
-                : (p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false);
+        const isMuted = mutedAttr === 'true';
 
         const pttAttr = p.attributes?.[PTT_SPEAKING_ATTRIBUTE];
         const isSpeaking = pttAttr === 'true' ? true : pttAttr === 'false' ? false : p.isSpeaking;
@@ -587,10 +581,11 @@ export const useVoiceStore = defineStore('voice', () => {
                 }
             }
 
-            // Apply saved per-user volumes to participants already in the channel
             room.remoteParticipants.forEach((p) => {
                 p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
             });
+
+            syncMuteAttribute();
 
             if (pttEnabled.value) {
                 syncPttSpeakingAttribute(pttActive && !isMicMuted.value);
