@@ -14,6 +14,7 @@ import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
 import { serverApi } from './apis/server';
 import { settingsApi } from './apis/settings';
+import { soundboardApi } from './apis/soundboard';
 import { trayApi } from './apis/tray';
 import { unfurlApi } from './apis/unfurl';
 import { updaterApi } from './apis/updater';
@@ -34,6 +35,7 @@ const api = {
     unfurl: unfurlApi,
     tray: trayApi,
     activity: activityApi,
+    soundboard: soundboardApi,
 };
 
 if (process.contextIsolated) {

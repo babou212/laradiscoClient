@@ -263,7 +263,7 @@ app.whenReady().then(() => {
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
-        "connect-src 'self' http: https: ws: wss:",
+        "connect-src 'self' http: https: ws: wss: blob:",
         "img-src 'self' data: http: https: blob: avatar:",
         "font-src 'self' data:",
         "media-src 'self' blob: data: http: https: app-video:",
