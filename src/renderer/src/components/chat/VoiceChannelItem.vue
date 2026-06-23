@@ -75,7 +75,7 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
             <DropdownMenu v-for="participant in channelParticipants" :key="participant.id">
                 <DropdownMenuTrigger as-child>
                     <div
-                        class="flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors hover:bg-sidebar-accent/50"
+                        class="hover:bg-sidebar-accent/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors"
                     >
                         <Avatar
                             class="size-6 shrink-0 transition-all duration-200"
