@@ -3,6 +3,7 @@ import { Mic, MicOff, Volume2, VolumeOff, PhoneOff, MonitorUp, MonitorOff } from
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import SoundboardPopover from '@/components/voice/SoundboardPopover.vue';
 import { useVoiceStore } from '@/stores/voice';
 
 const voiceStore = useVoiceStore();
@@ -120,6 +121,8 @@ const qualityInfo = computed(() => {
                     <MonitorUp v-else :size="15" />
                 </button>
             </SimpleTooltip>
+
+            <SoundboardPopover />
         </div>
     </div>
 </template>

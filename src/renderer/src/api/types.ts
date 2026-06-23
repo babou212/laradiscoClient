@@ -254,6 +254,17 @@ export type InviteLinkResource = JsonApiResource<
 
 export type AttachmentResource = JsonApiResource<'attachments', AttachmentAttributes>;
 
+export interface SoundAttributes {
+    name: string;
+    duration_ms: number;
+    url: string | null;
+    mime_type: string | null;
+    uploaded_by_id: number | string | null;
+    created_at?: string;
+}
+
+export type SoundResource = JsonApiResource<'sounds', SoundAttributes>;
+
 export function findIncluded<R = JsonApiResource>(
     included: JsonApiResource[] | undefined,
     type: string,

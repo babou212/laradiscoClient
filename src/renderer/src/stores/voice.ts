@@ -16,6 +16,7 @@ import { getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
+import { useSoundboardStore } from './soundboard';
 import { useUsersStore } from './users';
 
 export interface VoiceParticipant {
@@ -492,6 +493,9 @@ export const useVoiceStore = defineStore('voice', () => {
         });
         r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
             isAudioPlaybackBlocked.value = !r.canPlaybackAudio;
+        });
+        r.on(RoomEvent.DataReceived, (payload) => {
+            useSoundboardStore().handleIncoming(payload);
         });
         r.on(RoomEvent.TrackMuted, (_pub, participant) => updateParticipantTracks(participant.identity));
         r.on(RoomEvent.TrackUnmuted, (_pub, participant) => updateParticipantTracks(participant.identity));

@@ -873,7 +873,34 @@
             "undeafen": "Undeafen",
             "shareScreen": "Share Screen",
             "stopSharing": "Stop Sharing",
-            "enableAudio": "Click to enable audio"
+            "enableAudio": "Click to enable audio",
+            "soundboard": {
+                "title": "Soundboard",
+                "open": "Soundboard",
+                "empty": "No sounds yet. Add one to get started.",
+                "addSound": "Add sound",
+                "volume": "Soundboard volume",
+                "delete": "Delete sound",
+                "deleteConfirm": "Delete this sound?",
+                "loadError": "Could not load sounds.",
+                "playError": "Could not play sound.",
+                "upload": {
+                    "title": "Add a sound",
+                    "description": "Upload an audio clip and trim it to the part you want, up to 10 seconds.",
+                    "selectPrompt": "Choose an audio file to get started.",
+                    "chooseFile": "Choose audio file",
+                    "chooseDifferent": "Choose a different file",
+                    "name": "Name",
+                    "namePlaceholder": "Sound name",
+                    "trimHint": "Drag the edges of the highlighted region to trim (max 10s).",
+                    "selection": "Selection: {duration}s",
+                    "preview": "Preview",
+                    "stop": "Stop",
+                    "save": "Upload sound",
+                    "processing": "Processing…",
+                    "uploadError": "Upload failed. Please try again."
+                }
+            }
         },
         "dm": {
             "title": "Direct Messages",
