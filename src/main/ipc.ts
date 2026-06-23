@@ -709,4 +709,58 @@ export function registerIpcHandlers(): void {
             };
         },
     );
+
+    // Trim an uploaded audio clip to the user-selected [start, end] window and
+    // re-encode it to Opus/Ogg. Runs entirely locally via the bundled ffmpeg so
+    // only the final clip is uploaded. The duration is clamped to 10s as a
+    // safety net; the backend independently enforces the same limit.
+    handle(
+        'soundboard:trim',
+        async (
+            _event,
+            params: { fileData: Uint8Array; startSec: number; endSec: number },
+        ): Promise<{ data: Uint8Array; mimeType: string }> => {
+            const start = Math.max(0, params.startSec);
+            const duration = Math.max(0.1, Math.min(params.endSec - start, 10));
+
+            const tmpDir = await mkdtemp(join(tmpdir(), 'laradisco-sbtrim-'));
+            try {
+                const inputPath = join(tmpDir, 'input');
+                await writeFile(inputPath, Buffer.from(params.fileData));
+
+                const outputPath = join(tmpDir, 'clip.ogg');
+                await execFileAsync(
+                    FFMPEG_PATH,
+                    [
+                        '-y',
+                        '-loglevel',
+                        'error',
+                        // Input seeking (-ss before -i) is fast and accurate
+                        // enough since we re-encode; -t bounds the duration on
+                        // the trimmed timeline unambiguously.
+                        '-ss',
+                        String(start),
+                        '-t',
+                        String(duration),
+                        '-i',
+                        inputPath,
+                        '-vn',
+                        '-ac',
+                        '2',
+                        '-c:a',
+                        'libopus',
+                        '-b:a',
+                        '96k',
+                        outputPath,
+                    ],
+                    { maxBuffer: 20 * 1024 * 1024 },
+                );
+
+                const out = await readFile(outputPath);
+                return { data: new Uint8Array(out), mimeType: 'audio/ogg' };
+            } finally {
+                await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+            }
+        },
+    );
 }

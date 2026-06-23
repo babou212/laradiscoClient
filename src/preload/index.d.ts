@@ -14,6 +14,7 @@ export type { UpdaterApi } from './types/updater';
 export type { TrayApi } from './types/tray';
 export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unfurl';
 export type { ClientActivity, ClientActivityType, ActivityApi } from './types/activity';
+export type { SoundboardApi } from './types/soundboard';
 
 import type { ActivityApi } from './types/activity';
 import type { AttachmentsApi } from './types/attachments';
@@ -25,6 +26,7 @@ import type { NotificationsApi } from './types/notifications';
 import type { PttApi } from './types/ptt';
 import type { ServerApi } from './types/server';
 import type { SettingsApi } from './types/settings';
+import type { SoundboardApi } from './types/soundboard';
 import type { TrayApi } from './types/tray';
 import type { UnfurlApi } from './types/unfurl';
 import type { UpdaterApi } from './types/updater';
@@ -45,6 +47,7 @@ interface AppApi {
     unfurl: UnfurlApi;
     tray: TrayApi;
     activity: ActivityApi;
+    soundboard: SoundboardApi;
 }
 
 declare global {

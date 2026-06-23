@@ -39,7 +39,7 @@ function sendToAllWindows(channel: string, ...args: unknown[]): void {
 }
 
 /** Normalise an executable/process name for comparison: lower-case, drop `.exe`. */
-function normalizeExe(name: string): string {
+export function normalizeExe(name: string): string {
     return name
         .trim()
         .toLowerCase()
@@ -78,7 +78,7 @@ async function listProcessNames(): Promise<string[]> {
 }
 
 /** Find the first detectable entry whose executable is currently running. */
-async function detectOnce(): Promise<DetectedActivity | null> {
+export async function detectOnce(): Promise<DetectedActivity | null> {
     // A running Steam game is the most salient status and is detected directly
     // from Steam's own state, so it wins over executable-name matching.
     const steamGame = await detectSteamGame();

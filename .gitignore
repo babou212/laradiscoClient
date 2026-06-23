@@ -5,3 +5,6 @@ dist
 # build output is in dist/ and out/ — keep build/ tracked for electron-builder resources
 *.log
 .DS_Store
+
+# Test coverage
+coverage/
