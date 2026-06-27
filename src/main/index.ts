@@ -161,6 +161,9 @@ function createWindow(): void {
     win.on('ready-to-show', () => {
         win.show();
     });
+    win.webContents.once('did-finish-load', () => {
+        if (!win.isVisible()) win.show();
+    });
 
     win.on('close', (event) => {
         if (!getIsQuitting()) {
