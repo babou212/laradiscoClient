@@ -640,6 +640,10 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoEncoding: VideoPresets.h720.encoding,
                     videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
                     screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 },
+                    // Favor smooth motion over still-frame sharpness under CPU/bandwidth pressure.
+                    // Without this the SDK defaults screen-share / >=1080p tracks to 'maintain-resolution',
+                    // which holds resolution and drops frames (sharp but hitchy). Overridden again per-publish below.
+                    degradationPreference: 'maintain-framerate',
                 },
             });
             wireRoomEvents(room);
@@ -752,13 +756,20 @@ export const useVoiceStore = defineStore('voice', () => {
             const localAudioTrack = tracks.find((t) => t.kind === Track.Kind.Audio) as LocalAudioTrack | undefined;
 
             if (localVideoTrack) {
+                // Tag the capture as motion so the encoder favors temporal smoothness over still detail.
+                localVideoTrack.mediaStreamTrack.contentHint = 'motion';
                 await room.localParticipant.publishTrack(localVideoTrack, {
                     source: Track.Source.ScreenShare,
                     name: 'screen',
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    scalabilityMode: 'L3T3_KEY',
+                    // Temporal-only SVC (was 'L3T3_KEY'): ~1/3 the spatial encode cost, leaving CPU/bitrate
+                    // headroom so the encoder hits target framerate instead of dropping frames. Trades away
+                    // per-subscriber spatial layers, which is the right call given framerate is prioritized.
+                    scalabilityMode: 'L1T3',
+                    // Keep resolution-vs-framerate trade biased toward smooth motion for the screen share.
+                    degradationPreference: 'maintain-framerate',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
                     void stopScreenShare();
