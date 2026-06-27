@@ -718,6 +718,14 @@ export const useVoiceStore = defineStore('voice', () => {
                     remoteJitterMs: typeof s.jitter === 'number' ? Math.round(s.jitter * 1000) : undefined,
                     fractionLost: s.fractionLost,
                 });
+            } else if (s.type === 'media-source' && s.kind === 'video') {
+                // The raw capture rate, BEFORE encode. If captureFps is itself low/unstable
+                // the bottleneck is the screen capturer; if captureFps is a steady 30 but
+                // framesEncoded fps lags, the bottleneck is the encoder.
+                Object.assign(out, {
+                    captureFps: s.framesPerSecond,
+                    captureRes: `${s.width ?? '?'}x${s.height ?? '?'}`,
+                });
             } else if (s.type === 'candidate-pair' && (s.nominated || s.selected)) {
                 pair = s;
             }
