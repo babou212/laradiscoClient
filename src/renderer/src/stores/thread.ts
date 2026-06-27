@@ -1,8 +1,9 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { normalizeMessage, normalizeMessages } from '@/api/normalizers';
+import { normalizeMessage, normalizeMessages, normalizeThreadPreview } from '@/api/normalizers';
 import { readPageMeta } from '@/api/pagination';
 import {
+    getThread,
     getThreadMessages,
     createThreadReply,
     editThreadMessage,
@@ -20,7 +21,6 @@ export const useThreadStore = defineStore('thread', () => {
     const isLoadingThread = ref(false);
     const isLoadingMessages = ref(false);
     const isLoadingMore = ref(false);
-    // Anchor pagination edges (mirrors chat.ts).
     const currentChannelId = ref<string | null>(null);
     const oldestId = ref<string | null>(null);
     const newestId = ref<string | null>(null);
@@ -58,6 +58,24 @@ export const useThreadStore = defineStore('thread', () => {
 
         if (message.thread) {
             await fetchLatest(String(channelId), String(message.thread.id));
+        }
+    }
+
+    async function openThreadById(channelId: string | number, threadId: string | number): Promise<void> {
+        isLoadingThread.value = true;
+        try {
+            const response = await getThread(String(channelId), String(threadId));
+            const parentRes = response.meta?.parent_message;
+            if (!parentRes) return;
+
+            const message = normalizeMessage(parentRes.data, parentRes.included);
+            message.thread = normalizeThreadPreview(response.data, response.included) ?? message.thread;
+
+            await openThread(channelId, message);
+        } catch (error) {
+            console.error('Failed to open thread from notification:', error);
+        } finally {
+            isLoadingThread.value = false;
         }
     }
 
@@ -196,12 +214,6 @@ export const useThreadStore = defineStore('thread', () => {
                 activeThread.value.last_reply = lastReply;
             }
 
-            // Reflect the new/updated thread on the parent message so its
-            // preview badge appears immediately. The server's ThreadUpdated
-            // broadcast excludes the sender, so without this the badge would
-            // only show up after a channel switch refetch. parentMessage is the
-            // same object reference held in the channel's message list, so this
-            // mutation reactively updates the rendered message.
             if (parentMessage.value && activeThread.value) {
                 parentMessage.value.thread = { ...activeThread.value };
                 parentMessage.value.thread_id = activeThread.value.id;
@@ -244,10 +256,6 @@ export const useThreadStore = defineStore('thread', () => {
             const idx = threadMessages.value.findIndex((m) => m.id === String(messageId));
             if (idx !== -1) threadMessages.value.splice(idx, 1);
 
-            // The deleter is excluded from the server's ThreadDeleted broadcast,
-            // so reflect an emptied thread locally: when the last reply is gone the
-            // server deletes the thread, so clear the parent's preview badge (shared
-            // object reference with the channel list) and close the panel.
             if (activeThread.value) {
                 activeThread.value.message_count = Math.max(0, activeThread.value.message_count - 1);
                 if (activeThread.value.message_count === 0) {
@@ -367,6 +375,7 @@ export const useThreadStore = defineStore('thread', () => {
         hasMoreAfter,
         isViewingHistory,
         openThread,
+        openThreadById,
         closeThread,
         loadOlderMessages,
         loadNewerMessages,

@@ -5,6 +5,8 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead } from
 import { t } from '@/i18n';
 import { getEcho } from '@/lib/echo';
 import router from '@/router';
+import { useChatStore } from '@/stores/chat';
+import { useThreadStore } from '@/stores/thread';
 
 export interface AppNotification {
     id: string;
@@ -69,6 +71,24 @@ export function savePreferences(prefs: NotificationPreferences): void {
     localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(prefs));
 }
 
+export async function navigateToNotification(notification: AppNotification): Promise<void> {
+    const { data } = notification;
+
+    if (data.notification_type === 'direct_message') {
+        await router.push({ name: 'direct-messages', params: { threadId: data.dm_group_id } });
+        return;
+    }
+
+    if (data.channel_id == null) return;
+
+    await useChatStore().selectChannel(data.channel_id);
+    await router.push({ name: 'home' });
+
+    if (data.notification_type === 'thread_reply' && data.thread_id != null) {
+        await useThreadStore().openThreadById(data.channel_id, data.thread_id);
+    }
+}
+
 export const useNotificationsStore = defineStore('notifications', () => {
     const notifications = ref<AppNotification[]>([]);
     const unreadCount = ref(0);
@@ -76,7 +96,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const isConnected = ref(false);
     const preferences = ref<NotificationPreferences>(loadPreferences());
 
-    // Push unread count to system tray badge
     watch(unreadCount, (count) => {
         window.api.tray.updateUnreadCount(count);
     });
@@ -136,9 +155,6 @@ export const useNotificationsStore = defineStore('notifications', () => {
             notifications.value.unshift(notification);
             unreadCount.value++;
 
-            // Every buffered inbox row (DM or @user mention) has a matching
-            // notification on this channel — acking here deletes the row server
-            // side so it isn't re-delivered on the next reconnect drain.
             if (notification.data.notification_type === 'direct_message') {
                 void ackInbox([{ message_type: 'direct_message', message_id: notification.data.message_id }]);
             } else if (notification.data.mention_type === 'user' && notification.data.channel_id != null) {
@@ -177,12 +193,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
             if (!notification) return;
 
             markAsRead(notificationId);
-
-            if (notification.data.notification_type === 'direct_message') {
-                router.push({ name: 'direct-messages', params: { threadId: notification.data.dm_group_id } });
-            } else if (notification.data.channel_id) {
-                router.push({ name: 'chat', params: { channelId: notification.data.channel_id } });
-            }
+            void navigateToNotification(notification);
         });
     };
 

@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { AtSign, Bell, MessageSquare, Reply, X } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
-import { useNotificationsStore, type ToastNotification } from '@/stores/notifications';
+import { navigateToNotification, useNotificationsStore, type ToastNotification } from '@/stores/notifications';
 
 const { t } = useI18n();
-const router = useRouter();
 const notificationStore = useNotificationsStore();
 
 const isDmNotification = (notification: ToastNotification): boolean => {
@@ -37,11 +35,7 @@ const getDisplayPreview = (notification: ToastNotification): string => {
 const handleClick = (notification: ToastNotification) => {
     notificationStore.markAsRead(notification.id);
     notificationStore.dismissToast(notification.id);
-    if (isDmNotification(notification)) {
-        router.push({ name: 'direct-messages', params: { threadId: notification.data.dm_group_id } });
-    } else if (notification.data.channel_id) {
-        router.push({ name: 'chat', params: { channelId: notification.data.channel_id } });
-    }
+    void navigateToNotification(notification);
 };
 </script>
 

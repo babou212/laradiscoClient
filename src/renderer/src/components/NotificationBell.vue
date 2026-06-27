@@ -2,13 +2,11 @@
 import { AtSign, Bell, Check, CheckCheck, MessageSquare, Reply } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { formatMessageDate } from '@/lib/utils';
-import { useNotificationsStore, type AppNotification } from '@/stores/notifications';
+import { navigateToNotification, useNotificationsStore, type AppNotification } from '@/stores/notifications';
 
 const { t } = useI18n();
-const router = useRouter();
 const notificationStore = useNotificationsStore();
 const showDropdown = ref(false);
 const dropdownRef = ref<HTMLElement>();
@@ -35,11 +33,7 @@ const getDisplayContent = (notification: AppNotification): string => {
 const handleNotificationClick = async (notification: AppNotification) => {
     showDropdown.value = false;
     await notificationStore.markAsRead(notification.id);
-    if (isDmNotification(notification)) {
-        router.push({ name: 'direct-messages', params: { threadId: notification.data.dm_group_id } });
-    } else if (notification.data.channel_id) {
-        router.push({ name: 'chat', params: { channelId: notification.data.channel_id } });
-    }
+    await navigateToNotification(notification);
 };
 
 const handleClickOutside = (e: MouseEvent) => {
