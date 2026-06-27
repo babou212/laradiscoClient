@@ -12,7 +12,8 @@ export type VoiceLogCategory =
     | 'part' // participants + tracks
     | 'speak' // speaking indicators (VAD + PTT data packets)
     | 'audio' // playback / deafen / per-user volume
-    | 'e2ee'; // encryption key apply / rotation
+    | 'e2ee' // encryption key apply / rotation
+    | 'stats'; // temporary WebRTC stats diagnostics (encoder / network / receiver)
 
 const STORAGE_KEY = 'voice:debugLogging';
 
@@ -24,6 +25,7 @@ const CATEGORY_COLOR: Record<VoiceLogCategory, string> = {
     speak: '#f78c6c',
     audio: '#7fdbca',
     e2ee: '#ff5370',
+    stats: '#c3e88d',
 };
 
 function readInitial(): boolean {

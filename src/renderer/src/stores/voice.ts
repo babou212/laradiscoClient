@@ -130,6 +130,7 @@ export const useVoiceStore = defineStore('voice', () => {
     let screenShareTracks: Array<LocalVideoTrack | LocalAudioTrack> = [];
     let screenShareMonitorTrack: MediaStreamTrack | null = null;
     let isRestartingScreenShare = false;
+    let statsTimer: ReturnType<typeof setInterval> | null = null;
 
     let pttActive = false;
 
@@ -640,10 +641,6 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoEncoding: VideoPresets.h720.encoding,
                     videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
                     screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 },
-                    // Favor smooth motion over still-frame sharpness under CPU/bandwidth pressure.
-                    // Without this the SDK defaults screen-share / >=1080p tracks to 'maintain-resolution',
-                    // which holds resolution and drops frames (sharp but hitchy). Overridden again per-publish below.
-                    degradationPreference: 'maintain-framerate',
                 },
             });
             wireRoomEvents(room);
@@ -652,6 +649,7 @@ export const useVoiceStore = defineStore('voice', () => {
             vlog('e2ee', 'initial key applied', { keyIndex: e2eeKeyIndex });
             await room.connect(url, token);
             vlog('conn', 'room connected', { state: room.state, remotes: room.remoteParticipants.size });
+            startStatsDiagnostics();
 
             await publishMicTrack();
 
@@ -683,7 +681,133 @@ export const useVoiceStore = defineStore('voice', () => {
         }
     }
 
+    // --- Temporary WebRTC stats diagnostics -------------------------------------
+    // Polls sender/receiver RTCStatsReports every 2s while in a channel to tell
+    // apart the three causes of screen-share stutter: encoder-limited (publisher
+    // qualityLimit=cpu, fps drops), network-limited (relay/tcp transport, packet
+    // loss, low availOutBitrate, RTT), or receiver-side (inbound freezeCount /
+    // jitterBuffer growth). Logs under the `stats` category; toggle with the usual
+    // `__voiceLog` console helpers. Remove once the quality issue is diagnosed.
+    function summarizeOutbound(report: RTCStatsReport): Record<string, unknown> | null {
+        const byId = new Map<string, Record<string, unknown>>();
+        const out: Record<string, unknown> = {};
+        let hasVideo = false;
+        let pair: Record<string, unknown> | null = null;
+        report.forEach((raw, id) => {
+            const s = raw as Record<string, unknown>;
+            byId.set(id, s);
+            if (s.type === 'outbound-rtp' && s.kind === 'video') {
+                hasVideo = true;
+                Object.assign(out, {
+                    res: `${s.frameWidth ?? '?'}x${s.frameHeight ?? '?'}`,
+                    fps: s.framesPerSecond,
+                    qualityLimit: s.qualityLimitationReason, // none | cpu | bandwidth | other
+                    qualityLimitDurations: s.qualityLimitationDurations,
+                    targetKbps: typeof s.targetBitrate === 'number' ? Math.round(s.targetBitrate / 1000) : undefined,
+                    framesEncoded: s.framesEncoded,
+                    framesSent: s.framesSent,
+                    nackRecv: s.nackCount,
+                    pliRecv: s.pliCount,
+                    encoder: s.encoderImplementation,
+                    scalabilityMode: s.scalabilityMode,
+                });
+            } else if (s.type === 'remote-inbound-rtp' && s.kind === 'video') {
+                Object.assign(out, {
+                    rttToSfuMs: typeof s.roundTripTime === 'number' ? Math.round(s.roundTripTime * 1000) : undefined,
+                    remotePacketsLost: s.packetsLost,
+                    remoteJitterMs: typeof s.jitter === 'number' ? Math.round(s.jitter * 1000) : undefined,
+                    fractionLost: s.fractionLost,
+                });
+            } else if (s.type === 'candidate-pair' && (s.nominated || s.selected)) {
+                pair = s;
+            }
+        });
+        if (!hasVideo) return null;
+        if (pair) {
+            const p = pair as Record<string, unknown>;
+            const local = byId.get(p.localCandidateId as string);
+            const remote = byId.get(p.remoteCandidateId as string);
+            Object.assign(out, {
+                transport: local
+                    ? `${local.candidateType}/${local.protocol}${local.relayProtocol ? `(${local.relayProtocol})` : ''}`
+                    : undefined,
+                remoteCand: remote ? `${remote.candidateType}/${remote.protocol}` : undefined,
+                availOutKbps:
+                    typeof p.availableOutgoingBitrate === 'number'
+                        ? Math.round(p.availableOutgoingBitrate / 1000)
+                        : undefined,
+                pairRttMs: typeof p.currentRoundTripTime === 'number' ? Math.round(p.currentRoundTripTime * 1000) : undefined,
+            });
+        }
+        return out;
+    }
+
+    function summarizeInbound(report: RTCStatsReport): Record<string, unknown> | null {
+        let out: Record<string, unknown> | null = null;
+        report.forEach((raw) => {
+            const s = raw as Record<string, unknown>;
+            if (s.type === 'inbound-rtp' && s.kind === 'video') {
+                const emitted = s.jitterBufferEmittedCount as number | undefined;
+                const delay = s.jitterBufferDelay as number | undefined;
+                out = {
+                    res: `${s.frameWidth ?? '?'}x${s.frameHeight ?? '?'}`,
+                    fps: s.framesPerSecond,
+                    framesDecoded: s.framesDecoded,
+                    framesDropped: s.framesDropped,
+                    packetsLost: s.packetsLost,
+                    jitterMs: typeof s.jitter === 'number' ? Math.round(s.jitter * 1000) : undefined,
+                    avgJitterBufferMs: emitted && delay != null ? Math.round((delay / emitted) * 1000) : undefined,
+                    freezeCount: s.freezeCount,
+                    totalFreezeSec: s.totalFreezesDuration,
+                    pauseCount: s.pauseCount,
+                    nackSent: s.nackCount,
+                    pliSent: s.pliCount,
+                    decoder: s.decoderImplementation,
+                };
+            }
+        });
+        return out;
+    }
+
+    async function pollVoiceStats(): Promise<void> {
+        const r = room;
+        if (!r) return;
+        try {
+            const localVideo = screenShareTracks.find((t) => t.kind === Track.Kind.Video) as LocalVideoTrack | undefined;
+            if (localVideo) {
+                const report = await localVideo.getRTCStatsReport();
+                const out = report ? summarizeOutbound(report) : null;
+                if (out) vlog('stats', 'screen-share OUT (publisher)', out);
+            }
+            for (const participant of r.remoteParticipants.values()) {
+                for (const pub of participant.trackPublications.values()) {
+                    if (pub.source !== Track.Source.ScreenShare) continue;
+                    const track = pub.track;
+                    if (!track || track.kind !== Track.Kind.Video) continue;
+                    const report = await track.getRTCStatsReport();
+                    const inb = report ? summarizeInbound(report) : null;
+                    if (inb) vlog('stats', `screen-share IN (viewing ${participant.identity})`, inb);
+                }
+            }
+        } catch (err) {
+            vwarn('stats', 'poll failed', err);
+        }
+    }
+
+    function startStatsDiagnostics(): void {
+        stopStatsDiagnostics();
+        statsTimer = setInterval(() => void pollVoiceStats(), 2000);
+    }
+
+    function stopStatsDiagnostics(): void {
+        if (statsTimer) {
+            clearInterval(statsTimer);
+            statsTimer = null;
+        }
+    }
+
     function cleanupScreenShare(): void {
+        stopStatsDiagnostics();
         for (const t of screenShareTracks) {
             try {
                 t.stop();
@@ -756,20 +880,13 @@ export const useVoiceStore = defineStore('voice', () => {
             const localAudioTrack = tracks.find((t) => t.kind === Track.Kind.Audio) as LocalAudioTrack | undefined;
 
             if (localVideoTrack) {
-                // Tag the capture as motion so the encoder favors temporal smoothness over still detail.
-                localVideoTrack.mediaStreamTrack.contentHint = 'motion';
                 await room.localParticipant.publishTrack(localVideoTrack, {
                     source: Track.Source.ScreenShare,
                     name: 'screen',
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    // Temporal-only SVC (was 'L3T3_KEY'): ~1/3 the spatial encode cost, leaving CPU/bitrate
-                    // headroom so the encoder hits target framerate instead of dropping frames. Trades away
-                    // per-subscriber spatial layers, which is the right call given framerate is prioritized.
-                    scalabilityMode: 'L1T3',
-                    // Keep resolution-vs-framerate trade biased toward smooth motion for the screen share.
-                    degradationPreference: 'maintain-framerate',
+                    scalabilityMode: 'L3T3_KEY',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
                     void stopScreenShare();
