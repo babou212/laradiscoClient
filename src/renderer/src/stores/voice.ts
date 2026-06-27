@@ -606,7 +606,12 @@ export const useVoiceStore = defineStore('voice', () => {
             return;
         }
         isJoining = true;
-        vlog('conn', 'join start', { channelId, channelName, pttEnabled: pttEnabled.value, micMuted: isMicMuted.value });
+        vlog('conn', 'join start', {
+            channelId,
+            channelName,
+            pttEnabled: pttEnabled.value,
+            micMuted: isMicMuted.value,
+        });
 
         try {
             if (room && room.state === ConnectionState.Connected) {
@@ -1003,7 +1008,12 @@ export const useVoiceStore = defineStore('voice', () => {
             .then(async () => {
                 if (!room || room.state !== ConnectionState.Connected) return;
                 const target = desiredMicLive();
-                vlog('mic', 'apply mic state', { target, reacquire: micReacquirePending, muted: isMicMuted.value, pttActive });
+                vlog('mic', 'apply mic state', {
+                    target,
+                    reacquire: micReacquirePending,
+                    muted: isMicMuted.value,
+                    pttActive,
+                });
                 if (micReacquirePending) {
                     micReacquirePending = false;
                     const defaults = buildAudioCaptureDefaults();
@@ -1209,7 +1219,11 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function handlePttActivated() {
-        vlog('ptt', 'key down (activated)', { pttEnabled: pttEnabled.value, connected: isConnected.value, muted: isMicMuted.value });
+        vlog('ptt', 'key down (activated)', {
+            pttEnabled: pttEnabled.value,
+            connected: isConnected.value,
+            muted: isMicMuted.value,
+        });
         if (!pttEnabled.value) return;
 
         pttActive = true;
