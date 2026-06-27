@@ -14,6 +14,7 @@ const enableToastNotifications = ref(true);
 const enableBrowserNotifications = ref(true);
 const enableDmNotifications = ref(true);
 const enableMentionNotifications = ref(true);
+const enableThreadNotifications = ref(true);
 
 const notificationsStore = useNotificationsStore();
 
@@ -22,6 +23,7 @@ const originalValues = ref({
     browser: true,
     dm: true,
     mention: true,
+    thread: true,
 });
 
 const processing = ref(false);
@@ -32,7 +34,8 @@ const isDirty = computed(() => {
         enableToastNotifications.value !== originalValues.value.toast ||
         enableBrowserNotifications.value !== originalValues.value.browser ||
         enableDmNotifications.value !== originalValues.value.dm ||
-        enableMentionNotifications.value !== originalValues.value.mention
+        enableMentionNotifications.value !== originalValues.value.mention ||
+        enableThreadNotifications.value !== originalValues.value.thread
     );
 });
 
@@ -42,11 +45,13 @@ onMounted(() => {
     enableBrowserNotifications.value = prefs.enable_browser_notifications;
     enableDmNotifications.value = prefs.enable_dm_notifications;
     enableMentionNotifications.value = prefs.enable_mention_notifications;
+    enableThreadNotifications.value = prefs.enable_thread_notifications;
     originalValues.value = {
         toast: prefs.enable_toast_notifications,
         browser: prefs.enable_browser_notifications,
         dm: prefs.enable_dm_notifications,
         mention: prefs.enable_mention_notifications,
+        thread: prefs.enable_thread_notifications,
     };
 });
 
@@ -57,6 +62,7 @@ function submit() {
         enable_browser_notifications: enableBrowserNotifications.value,
         enable_dm_notifications: enableDmNotifications.value,
         enable_mention_notifications: enableMentionNotifications.value,
+        enable_thread_notifications: enableThreadNotifications.value,
     };
     notificationsStore.updatePreferences(newPrefs);
     originalValues.value = {
@@ -64,6 +70,7 @@ function submit() {
         browser: enableBrowserNotifications.value,
         dm: enableDmNotifications.value,
         mention: enableMentionNotifications.value,
+        thread: enableThreadNotifications.value,
     };
     recentlySuccessful.value = true;
     setTimeout(() => (recentlySuccessful.value = false), 3000);
@@ -96,6 +103,22 @@ function submit() {
                                 </Label>
                                 <p class="text-muted-foreground text-sm">
                                     {{ t('settings.notifications.mentionDescription') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3">
+                            <Checkbox
+                                id="enable_thread_notifications"
+                                :model-value="enableThreadNotifications"
+                                @update:model-value="enableThreadNotifications = !!$event"
+                            />
+                            <div class="space-y-1">
+                                <Label for="enable_thread_notifications" class="cursor-pointer">
+                                    {{ t('settings.notifications.threadLabel') }}
+                                </Label>
+                                <p class="text-muted-foreground text-sm">
+                                    {{ t('settings.notifications.threadDescription') }}
                                 </p>
                             </div>
                         </div>

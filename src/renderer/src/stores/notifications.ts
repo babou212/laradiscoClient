@@ -22,7 +22,10 @@ export interface AppNotification {
 
         dm_group_id?: number;
         dm_group_name?: string | null;
-        notification_type?: 'direct_message';
+        notification_type?: 'direct_message' | 'thread_reply';
+
+        thread_id?: number;
+        thread_name?: string;
     };
     read_at: string | null;
     created_at: string;
@@ -37,6 +40,7 @@ export interface NotificationPreferences {
     enable_browser_notifications: boolean;
     enable_dm_notifications: boolean;
     enable_mention_notifications: boolean;
+    enable_thread_notifications: boolean;
 }
 
 const PREFERENCES_STORAGE_KEY = 'notification_preferences';
@@ -46,6 +50,7 @@ const defaultPreferences: NotificationPreferences = {
     enable_browser_notifications: true,
     enable_dm_notifications: true,
     enable_mention_notifications: true,
+    enable_thread_notifications: true,
 };
 
 function loadPreferences(): NotificationPreferences {
@@ -120,7 +125,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
                     mention_type: raw.mention_type as 'user' | 'everyone' | 'here' | undefined,
                     dm_group_id: raw.dm_group_id as number | undefined,
                     dm_group_name: raw.dm_group_name as string | null | undefined,
-                    notification_type: raw.notification_type as 'direct_message' | undefined,
+                    notification_type: raw.notification_type as 'direct_message' | 'thread_reply' | undefined,
+                    thread_id: raw.thread_id as number | undefined,
+                    thread_name: raw.thread_name as string | undefined,
                 },
                 read_at: null,
                 created_at: new Date().toISOString(),
@@ -140,9 +147,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
             const prefs = preferences.value;
             const isDm = notification.data.notification_type === 'direct_message';
+            const isThread = notification.data.notification_type === 'thread_reply';
 
             if (isDm && !prefs.enable_dm_notifications) return;
-            if (!isDm && !prefs.enable_mention_notifications) return;
+            if (isThread && !prefs.enable_thread_notifications) return;
+            if (!isDm && !isThread && !prefs.enable_mention_notifications) return;
 
             if (prefs.enable_browser_notifications) {
                 showNativeNotification(notification);
@@ -222,6 +231,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
         if (data.notification_type === 'direct_message') {
             title = t('notifications.messageFrom', { user: data.sender_username });
+        } else if (data.notification_type === 'thread_reply') {
+            title = t('notifications.threadReply', {
+                user: data.sender_username,
+                thread: data.thread_name ?? '',
+            });
         } else {
             const mentionLabel =
                 data.mention_type === 'everyone'

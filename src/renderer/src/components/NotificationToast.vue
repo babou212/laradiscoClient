@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AtSign, Bell, MessageSquare, X } from 'lucide-vue-next';
+import { AtSign, Bell, MessageSquare, Reply, X } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useNotificationsStore, type ToastNotification } from '@/stores/notifications';
@@ -12,8 +12,13 @@ const isDmNotification = (notification: ToastNotification): boolean => {
     return notification.data.notification_type === 'direct_message';
 };
 
+const isThreadNotification = (notification: ToastNotification): boolean => {
+    return notification.data.notification_type === 'thread_reply';
+};
+
 const getNotificationIcon = (notification: ToastNotification) => {
     if (isDmNotification(notification)) return MessageSquare;
+    if (isThreadNotification(notification)) return Reply;
     return notification.data.mention_type === 'user' ? AtSign : Bell;
 };
 
@@ -73,6 +78,14 @@ const handleClick = (notification: ToastNotification) => {
                                     {{ toast.data.sender_username }}
                                 </span>
                                 <span class="text-muted-foreground"> {{ t('notifications.sentMessage') }} </span>
+                            </template>
+                            <template v-else-if="isThreadNotification(toast)">
+                                <span class="text-primary">
+                                    {{ toast.data.sender_username }}
+                                </span>
+                                <span class="text-muted-foreground">
+                                    {{ t('notifications.repliedInThread', { thread: toast.data.thread_name }) }}
+                                </span>
                             </template>
                             <template v-else>
                                 <span class="text-primary">

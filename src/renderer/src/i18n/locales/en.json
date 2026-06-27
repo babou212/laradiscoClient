@@ -157,6 +157,8 @@
             "deliveryHeading": "Delivery Methods",
             "mentionLabel": "Mention notifications",
             "mentionDescription": "Get notified when someone mentions you with {'@'}username, {'@'}everyone, or {'@'}here",
+            "threadLabel": "Thread reply notifications",
+            "threadDescription": "Get notified when someone replies to a thread you follow",
             "dmLabel": "Direct message notifications",
             "dmDescription": "Get notified when someone sends you a direct message",
             "toastLabel": "In-app pop-ups",
@@ -675,7 +677,9 @@
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} in #{channel}",
         "sentMessage": "sent a message",
-        "inChannelPrefix": "in #{channel}"
+        "inChannelPrefix": "in #{channel}",
+        "threadReply": "{user} replied in {thread}",
+        "repliedInThread": "replied in {thread}"
     },
     "dates": {
         "todayAt": "Today at {time}",
@@ -978,7 +982,8 @@
         "markAsRead": "Mark as read",
         "empty": "No new notifications",
         "sentMessage": "sent a message",
-        "inChannel": "in #{channel}"
+        "inChannel": "in #{channel}",
+        "repliedInThread": "replied in {thread}"
     },
     "sidebar": {
         "toggleSidebar": "Toggle Sidebar"
