@@ -785,7 +785,11 @@ export const useVoiceStore = defineStore('voice', () => {
             if (localVideo) {
                 const report = await localVideo.getRTCStatsReport();
                 const out = report ? summarizeOutbound(report) : null;
-                if (out) vlog('stats', 'screen-share OUT (publisher)', out);
+                if (out) {
+                    // Key numbers inline so they're readable in the collapsed console line.
+                    const tag = `OUT cap=${out.captureFps ?? '?'} enc=${out.fps ?? '?'} qLim=${out.qualityLimit ?? '?'} ${out.transport ?? ''}`;
+                    vlog('stats', tag, out);
+                }
             }
             for (const participant of r.remoteParticipants.values()) {
                 for (const pub of participant.trackPublications.values()) {
@@ -794,7 +798,10 @@ export const useVoiceStore = defineStore('voice', () => {
                     if (!track || track.kind !== Track.Kind.Video) continue;
                     const report = await track.getRTCStatsReport();
                     const inb = report ? summarizeInbound(report) : null;
-                    if (inb) vlog('stats', `screen-share IN (viewing ${participant.identity})`, inb);
+                    if (inb) {
+                        const tag = `IN(${participant.identity}) fps=${inb.fps ?? '?'} drop=${inb.framesDropped ?? '?'} freeze=${inb.freezeCount ?? '?'}`;
+                        vlog('stats', tag, inb);
+                    }
                 }
             }
         } catch (err) {
