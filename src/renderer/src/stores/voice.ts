@@ -898,10 +898,13 @@ export const useVoiceStore = defineStore('voice', () => {
                 await room.localParticipant.publishTrack(localVideoTrack, {
                     source: Track.Source.ScreenShare,
                     name: 'screen',
-                    videoCodec: 'vp9' as VideoCodec,
+                    // H.264 instead of VP9. VP9 was encoded AND decoded in software (libvpx), and
+                    // software VP9 *decode* on viewers was dropping frames in bursts (the hitching),
+                    // with a clean network and a steady sender. H.264 decodes far cheaper and engages
+                    // hardware decode (VAAPI) far more reliably; no backup codec is needed since every
+                    // client supports H.264, and scalabilityMode (VP9/AV1 SVC) no longer applies.
+                    videoCodec: 'h264' as VideoCodec,
                     videoEncoding: preset.encoding,
-                    backupCodec: { codec: 'vp8' },
-                    scalabilityMode: 'L3T3_KEY',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
                     void stopScreenShare();
