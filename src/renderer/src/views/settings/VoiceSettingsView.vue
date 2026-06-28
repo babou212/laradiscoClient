@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceStore } from '@/stores/voice';
+import type { PttCapture, PttLinuxInputStatus } from '@/types/ptt';
 
 const { t } = useI18n();
 const voiceStore = useVoiceStore();
@@ -11,18 +12,49 @@ const voiceStore = useVoiceStore();
 const isRecordingKey = ref(false);
 const recordError = ref<string | null>(null);
 
-let capturedKeyPromise: Promise<{
-    keycode: number;
-    ctrlKey: boolean;
-    shiftKey: boolean;
-    altKey: boolean;
-    metaKey: boolean;
-}> | null = null;
+const linuxInput = ref<PttLinuxInputStatus | null>(null);
+const isSettingUpInputAccess = ref(false);
+const inputAccessMessage = ref<{ kind: 'success' | 'error'; text: string } | null>(null);
+
+let capturedKeyPromise: Promise<PttCapture> | null = null;
 
 onMounted(async () => {
     await voiceStore.loadSettings();
     await voiceStore.refreshAvailableMics();
+    await refreshLinuxInputStatus();
 });
+
+async function refreshLinuxInputStatus() {
+    const status = await window.api.ptt.linuxInputStatus();
+    linuxInput.value = status.supported ? status : null;
+}
+
+async function setupLinuxInputAccess() {
+    isSettingUpInputAccess.value = true;
+    inputAccessMessage.value = null;
+    try {
+        const result = await window.api.ptt.setupLinuxInputAccess();
+        await refreshLinuxInputStatus();
+
+        if (result.hasAccess) {
+            inputAccessMessage.value = { kind: 'success', text: t('settings.voice.pushToTalk.linuxAccess.granted') };
+        } else if (result.status === 'cancelled') {
+            inputAccessMessage.value = { kind: 'error', text: t('settings.voice.pushToTalk.linuxAccess.cancelled') };
+        } else if (result.status === 'installed') {
+            // Rule installed but ACL not yet effective — a stubborn session may need a relog.
+            inputAccessMessage.value = {
+                kind: 'error',
+                text: t('settings.voice.pushToTalk.linuxAccess.ruleInstalledNeedsRelog'),
+            };
+        } else {
+            inputAccessMessage.value = { kind: 'error', text: t('settings.voice.pushToTalk.linuxAccess.failed') };
+        }
+    } catch {
+        inputAccessMessage.value = { kind: 'error', text: t('settings.voice.pushToTalk.linuxAccess.failed') };
+    } finally {
+        isSettingUpInputAccess.value = false;
+    }
+}
 
 onBeforeUnmount(() => {
     if (isRecordingKey.value) {
@@ -146,16 +178,47 @@ async function onKeyDown(e: KeyboardEvent) {
 
     try {
         const captured = await capturedKeyPromise;
+        if (captured.device !== 'keyboard') return; // a mouse button — handled by handleCapturedMouse
+        if (captured.keycode < 0) return; // capture cancelled
         recordError.value = null;
-        voiceStore.setPttKey(displayName, captured.keycode, {
-            ctrl: captured.ctrlKey,
-            shift: captured.shiftKey,
-            alt: captured.altKey,
-            meta: captured.metaKey,
+        voiceStore.setPttKey(displayName, {
+            device: 'keyboard',
+            keycode: captured.keycode,
+            modifiers: {
+                ctrl: captured.ctrlKey,
+                shift: captured.shiftKey,
+                alt: captured.altKey,
+                meta: captured.metaKey,
+            },
         });
         stopRecording();
     } catch {
         recordError.value = t('settings.voice.pushToTalk.errors.captureFailed');
+    }
+}
+
+function formatMouseButton(button: number): string {
+    switch (button) {
+        case 1:
+            return 'Mouse Left';
+        case 2:
+            return 'Mouse Right';
+        case 3:
+            return 'Mouse Middle';
+        default:
+            return `Mouse ${button}`;
+    }
+}
+
+async function handleCapturedMouse(promise: Promise<PttCapture>) {
+    try {
+        const captured = await promise;
+        if (captured.device !== 'mouse') return; // a key — handled by onKeyDown
+        recordError.value = null;
+        voiceStore.setPttKey(formatMouseButton(captured.button), { device: 'mouse', button: captured.button });
+        stopRecording();
+    } catch {
+        // keyboard path surfaces capture errors to the user; nothing to do here
     }
 }
 
@@ -164,6 +227,7 @@ function startRecordingKey() {
     isRecordingKey.value = true;
 
     capturedKeyPromise = window.api.ptt.captureNextKey();
+    void handleCapturedMouse(capturedKeyPromise);
     window.addEventListener('keydown', onKeyDown, true);
 }
 
@@ -234,7 +298,6 @@ function startMicTest() {
             analyser.smoothingTimeConstant = 0.4;
             micTestSource.connect(analyser);
 
-            // Loopback: let the user hear themselves
             micTestGain = micTestAudioCtx.createGain();
             micTestGain.gain.value = 1;
             analyser.connect(micTestGain);
@@ -247,13 +310,11 @@ function startMicTest() {
                 analyser.getByteTimeDomainData(new Uint8Array(analyser.fftSize));
                 analyser.getFloatTimeDomainData(dataArray);
 
-                // RMS level calculation
                 let sumSquares = 0;
                 for (let i = 0; i < dataArray.length; i++) {
                     sumSquares += dataArray[i] * dataArray[i];
                 }
                 const rms = Math.sqrt(sumSquares / dataArray.length);
-                // Map RMS to 0-100 (typical speech RMS is ~0.05-0.2)
                 micLevel.value = Math.min(100, Math.round(rms * 350));
                 micTestAnimFrame = requestAnimationFrame(updateLevel);
             }
@@ -378,6 +439,46 @@ function formatAccelerator(accel: string): string {
                     />
                     <span class="text-sm font-medium">{{ t('settings.voice.pushToTalk.enable') }}</span>
                 </label>
+
+                <div
+                    v-if="voiceStore.pttEnabled && linuxInput && (!linuxInput.hasAccess || inputAccessMessage)"
+                    class="rounded-md border p-4"
+                    :class="
+                        linuxInput.hasAccess
+                            ? 'border-green-500/40 bg-green-500/5'
+                            : 'border-yellow-500/40 bg-yellow-500/5'
+                    "
+                >
+                    <template v-if="!linuxInput.hasAccess">
+                        <p class="text-sm font-medium">{{ t('settings.voice.pushToTalk.linuxAccess.title') }}</p>
+                        <p class="text-muted-foreground mt-1 text-xs">
+                            {{ t('settings.voice.pushToTalk.linuxAccess.description') }}
+                        </p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            class="mt-3"
+                            :disabled="isSettingUpInputAccess"
+                            @click="setupLinuxInputAccess"
+                        >
+                            {{
+                                isSettingUpInputAccess
+                                    ? t('settings.voice.pushToTalk.linuxAccess.working')
+                                    : t('settings.voice.pushToTalk.linuxAccess.enableButton')
+                            }}
+                        </Button>
+                    </template>
+                    <p
+                        v-if="inputAccessMessage"
+                        class="text-xs"
+                        :class="[
+                            inputAccessMessage.kind === 'success' ? 'text-green-600' : 'text-destructive',
+                            !linuxInput.hasAccess ? 'mt-2' : '',
+                        ]"
+                    >
+                        {{ inputAccessMessage.text }}
+                    </p>
+                </div>
 
                 <div v-if="voiceStore.pttEnabled">
                     <label class="mb-2 block text-sm font-medium">{{ t('settings.voice.pushToTalk.keybind') }}</label>

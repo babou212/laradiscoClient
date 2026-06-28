@@ -20,6 +20,12 @@ export interface AuthUser {
     permissions?: AuthPermissions;
 }
 
+export interface BanInfo {
+    reason: string | null;
+    expires_at: string | null;
+    permanent: boolean;
+}
+
 export interface AuthSession {
     user_id: number;
     user_name: string;
@@ -41,13 +47,22 @@ export interface AuthApi {
         error?: string;
         twoFactor?: boolean;
         challengeToken?: string;
+        banned?: boolean;
+        ban?: BanInfo;
     }>;
     twoFactorChallenge: (
         host: string,
         challengeToken: string,
         code: string | null,
         recoveryCode: string | null,
-    ) => Promise<{ success: boolean; user?: AuthUser; token?: string; error?: string }>;
+    ) => Promise<{
+        success: boolean;
+        user?: AuthUser;
+        token?: string;
+        error?: string;
+        banned?: boolean;
+        ban?: BanInfo;
+    }>;
     getSession: () => Promise<AuthSession | null>;
     logout: (host: string) => Promise<{ success: boolean }>;
     validate: (host: string, token: string) => Promise<{ valid: boolean; user?: AuthUser }>;

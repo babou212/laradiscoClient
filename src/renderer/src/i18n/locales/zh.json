@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "切换音频",
             "expand": "展开",
+            "exitFullscreen": "退出全屏",
             "fullscreen": "全屏",
             "popOut": "弹出",
             "close": "关闭"

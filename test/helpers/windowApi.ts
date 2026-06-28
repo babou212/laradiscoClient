@@ -33,10 +33,17 @@ export function createWindowApiMock(overrides: DeepPartial<AppApi> = {}): AppApi
         },
         ptt: {
             configure: vi.fn().mockResolvedValue({ success: true }),
-            captureNextKey: vi
-                .fn()
-                .mockResolvedValue({ keycode: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false }),
+            captureNextKey: vi.fn().mockResolvedValue({
+                device: 'keyboard',
+                keycode: 0,
+                ctrlKey: false,
+                shiftKey: false,
+                altKey: false,
+                metaKey: false,
+            }),
             cancelCapture: vi.fn().mockResolvedValue({ success: true }),
+            linuxInputStatus: vi.fn().mockResolvedValue({ supported: false, hasAccess: true, ruleInstalled: false }),
+            setupLinuxInputAccess: vi.fn().mockResolvedValue({ status: 'installed', hasAccess: true }),
             onActivated: vi.fn(),
             onDeactivated: vi.fn(),
             removeAllListeners: vi.fn(),

@@ -40,4 +40,23 @@ export class ExternalE2EEKeyProvider {
     setKey = vi.fn();
 }
 
-export default { Room, RoomEvent, TrackEvent, Track, VideoPresets, AudioPresets, ConnectionQuality, ConnectionState };
+export class BaseKeyProvider {
+    onSetEncryptionKey = vi.fn();
+    on = vi.fn();
+    emit = vi.fn();
+}
+
+export const createKeyMaterialFromString = vi.fn(async () => ({}) as CryptoKey);
+
+export default {
+    Room,
+    RoomEvent,
+    TrackEvent,
+    Track,
+    VideoPresets,
+    AudioPresets,
+    ConnectionQuality,
+    ConnectionState,
+    BaseKeyProvider,
+    createKeyMaterialFromString,
+};

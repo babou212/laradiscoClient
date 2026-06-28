@@ -2,7 +2,7 @@ import type { LocalAudioTrack, LocalVideoTrack, RemoteParticipant, VideoCodec, V
 import {
     AudioPresets,
     ConnectionQuality,
-    ExternalE2EEKeyProvider,
+    createLocalAudioTrack,
     Room,
     RoomEvent,
     ConnectionState,
@@ -12,10 +12,12 @@ import {
 } from 'livekit-client';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
+import { getVoiceChannelKey, getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
+import { IndexedKeyProvider } from '@/lib/voice-key-provider';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
+import type { PttBinding } from '@/types/ptt';
 import { useSoundboardStore } from './soundboard';
 import { useUsersStore } from './users';
 
@@ -86,7 +88,34 @@ interface VoiceChannel {
 
 const MUTED_ATTRIBUTE = 'micMuted';
 
-const PTT_SPEAKING_ATTRIBUTE = 'pttSpeaking';
+const PTT_DATA_TOPIC = 'ptt';
+
+function parsePttBinding(
+    stored: string | null,
+    legacyKeycode: string | null,
+    legacyModifiers: string | null,
+): PttBinding | null {
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored) as PttBinding;
+            if (parsed?.device === 'keyboard' || parsed?.device === 'mouse') return parsed;
+        } catch {
+            // fall through to legacy migration
+        }
+    }
+    if (legacyKeycode) {
+        let modifiers = { ctrl: false, shift: false, alt: false, meta: false };
+        if (legacyModifiers) {
+            try {
+                modifiers = { ...modifiers, ...JSON.parse(legacyModifiers) };
+            } catch {
+                // ignore malformed stored modifiers
+            }
+        }
+        return { device: 'keyboard', keycode: Number(legacyKeycode), modifiers };
+    }
+    return null;
+}
 
 export const useVoiceStore = defineStore('voice', () => {
     const currentChannel = ref<VoiceChannel | null>(null);
@@ -101,13 +130,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     const pttEnabled = ref(false);
     const pttKey = ref<string | null>(null);
-    const pttKeycode = ref<number | null>(null);
-    const pttModifiers = ref<{ ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }>({
-        ctrl: false,
-        shift: false,
-        alt: false,
-        meta: false,
-    });
+    const pttBinding = ref<PttBinding | null>(null);
     const pttSoundEnabled = ref(true);
     const selectedMicDeviceId = ref<string | undefined>(undefined);
     const availableMics = ref<MediaDeviceInfo[]>([]);
@@ -131,11 +154,20 @@ export const useVoiceStore = defineStore('voice', () => {
 
     let pttActive = false;
 
+    const pttSpeakingByIdentity = new Map<string, boolean>();
+    const pttSeqByIdentity = new Map<string, number>();
+    let pttSeq = 0;
+
+    const VAD_TRAILING_HOLD_MS = 400;
+    const vadSpeaking = new Set<string>();
+    const vadClearTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality, volumes] =
+        const [enabled, key, binding, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality, volumes] =
             await Promise.all([
                 window.api.settings.get('voice:pttEnabled'),
                 window.api.settings.get('voice:pttKey'),
+                window.api.settings.get('voice:pttBinding'),
                 window.api.settings.get('voice:pttKeycode'),
                 window.api.settings.get('voice:pttModifiers'),
                 window.api.settings.get('voice:pttSoundEnabled'),
@@ -150,14 +182,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         pttEnabled.value = enabled === 'true';
         pttKey.value = key;
-        pttKeycode.value = keycode ? Number(keycode) : null;
-        if (modifiers) {
-            try {
-                pttModifiers.value = JSON.parse(modifiers);
-            } catch (error) {
-                console.error(error);
-            }
-        }
+        pttBinding.value = parsePttBinding(binding, keycode, modifiers);
         pttSoundEnabled.value = sound !== 'false';
         selectedMicDeviceId.value = micId && micId !== 'default' ? micId : undefined;
         selectedSpeakerDeviceId.value = speakerId && speakerId !== 'default' ? speakerId : undefined;
@@ -173,8 +198,8 @@ export const useVoiceStore = defineStore('voice', () => {
                 userVolumes.value = new Map(
                     Object.entries(parsed).map(([id, v]) => [id, Math.min(2, Math.max(0, Number(v)))]),
                 );
-            } catch (error) {
-                console.error('[Voice] Failed to parse saved user volumes:', error);
+            } catch {
+                // ignore malformed stored volumes
             }
         }
     }
@@ -195,6 +220,9 @@ export const useVoiceStore = defineStore('voice', () => {
 
     let room: Room | null = null;
 
+    let keyProvider: IndexedKeyProvider | null = null;
+    let e2eeKeyIndex = 0;
+
     const isConnected = computed(() => currentChannel.value !== null);
 
     function buildAudioCaptureDefaults() {
@@ -209,22 +237,22 @@ export const useVoiceStore = defineStore('voice', () => {
     const micPublishOptions = {
         audioPreset: AudioPresets.speech,
         dtx: true,
-        red: true,
+        red: false,
     } as const;
 
     function getChannelParticipants(channelId: number): VoiceParticipant[] {
+        if (currentChannel.value && channelId === currentChannel.value.id) {
+            return currentParticipants.value;
+        }
         return channelParticipantsMap.value.get(channelId) ?? [];
     }
 
-    // When we leave/disconnect we never receive our own `.voice.left` (the server
-    // broadcasts ->toOthers()), so drop only ourselves from the cached roster and
-    // leave the remaining members visible.
-    function removeSelfFromChannelMap(channelId: number, identity: string): void {
-        const list = channelParticipantsMap.value.get(channelId);
-        if (!list) return;
-        const filtered = list.filter((p) => String(p.id) !== String(identity));
-        if (filtered.length > 0) {
-            channelParticipantsMap.value.set(channelId, filtered);
+    function seedChannelMapFromRoster(channelId: number, selfIdentity: string): void {
+        const others = currentParticipants.value
+            .filter((p) => String(p.id) !== String(selfIdentity))
+            .map((p) => ({ ...p, isSpeaking: false, isMuted: false, isScreenSharing: false }));
+        if (others.length > 0) {
+            channelParticipantsMap.value.set(channelId, others);
         } else {
             channelParticipantsMap.value.delete(channelId);
         }
@@ -234,8 +262,6 @@ export const useVoiceStore = defineStore('voice', () => {
         try {
             const data = await getVoiceParticipants();
 
-            // Rebuild the map wholesale so channels that emptied (e.g. while the
-            // websocket was disconnected) are cleared rather than left stale.
             const rebuilt = new Map<number, VoiceParticipant[]>();
             const usersStore = useUsersStore();
 
@@ -262,9 +288,10 @@ export const useVoiceStore = defineStore('voice', () => {
                 );
             }
 
+            if (currentChannel.value) rebuilt.delete(currentChannel.value.id);
             channelParticipantsMap.value = rebuilt;
-        } catch (error) {
-            console.error('Failed to fetch voice participants:', error);
+        } catch {
+            // ignore — keep the previous participant map
         }
     }
 
@@ -288,8 +315,9 @@ export const useVoiceStore = defineStore('voice', () => {
                         };
                         channel_id: number;
                     }) => {
+                        if (currentChannel.value && data.channel_id === currentChannel.value.id) return;
                         const participants = channelParticipantsMap.value.get(data.channel_id) ?? [];
-                        if (!participants.some((p) => p.id === data.user.id)) {
+                        if (!participants.some((p) => String(p.id) === String(data.user.id))) {
                             channelParticipantsMap.value.set(data.channel_id, [
                                 ...participants,
                                 {
@@ -306,16 +334,23 @@ export const useVoiceStore = defineStore('voice', () => {
                     },
                 )
                 .listen('.voice.left', (data: { user_id: number; channel_id: number }) => {
+                    if (currentChannel.value && data.channel_id === currentChannel.value.id) return;
                     const participants = channelParticipantsMap.value.get(data.channel_id);
                     if (participants) {
-                        const filtered = participants.filter((p) => p.id !== data.user_id);
+                        const filtered = participants.filter((p) => String(p.id) !== String(data.user_id));
                         if (filtered.length > 0) {
                             channelParticipantsMap.value.set(data.channel_id, filtered);
                         } else {
                             channelParticipantsMap.value.delete(data.channel_id);
                         }
                     }
-                });
+                })
+                .listen(
+                    '.voice.key_rotated',
+                    (data: { channel_id: number; e2ee_key: string; e2ee_key_index: number }) => {
+                        void applyRotatedKey(data.channel_id, data.e2ee_key, data.e2ee_key_index);
+                    },
+                );
         }
 
         subscribedChannelIds = voiceChannelIds;
@@ -347,13 +382,10 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function participantFromRemote(p: RemoteParticipant): VoiceParticipant {
         const mutedAttr = p.attributes?.[MUTED_ATTRIBUTE];
-        const isMuted =
-            mutedAttr !== undefined
-                ? mutedAttr === 'true'
-                : (p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? false);
+        const isMuted = mutedAttr === 'true';
 
-        const pttAttr = p.attributes?.[PTT_SPEAKING_ATTRIBUTE];
-        const isSpeaking = pttAttr === 'true' ? true : pttAttr === 'false' ? false : p.isSpeaking;
+        const pttState = pttSpeakingByIdentity.get(p.identity);
+        const isSpeaking = pttState !== undefined ? pttState : vadSpeaking.has(p.identity);
 
         return {
             id: p.identity,
@@ -375,7 +407,7 @@ export const useVoiceStore = defineStore('voice', () => {
             id: local.identity,
             username: local.identity,
             displayName: local.name || local.identity,
-            isSpeaking: pttEnabled.value ? pttActive && !isMicMuted.value : local.isSpeaking,
+            isSpeaking: pttEnabled.value ? pttActive && !isMicMuted.value : vadSpeaking.has(local.identity),
             isMuted: isMicMuted.value,
             isScreenSharing: isScreenSharing.value,
             avatarUrls: findExistingAvatarUrls(local.identity),
@@ -400,6 +432,7 @@ export const useVoiceStore = defineStore('voice', () => {
         if (identity === localId) {
             currentParticipants.value[idx] = {
                 ...currentParticipants.value[idx],
+                isSpeaking: pttEnabled.value ? pttActive && !isMicMuted.value : room.localParticipant.isSpeaking,
                 isMuted: isMicMuted.value,
                 isScreenSharing: isScreenSharing.value,
             };
@@ -414,10 +447,22 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function wireRoomEvents(r: Room): void {
         r.on(RoomEvent.ParticipantConnected, (participant) => {
-            participant.setVolume(isSoundMuted.value ? 0 : getUserVolume(participant.identity));
+            applyRemoteAudioState(participant);
+
+            if (pttEnabled.value && pttActive && !isMicMuted.value) {
+                broadcastPttSpeaking(true, [participant.identity]);
+            }
             refreshParticipants();
         });
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
+            pttSpeakingByIdentity.delete(participant.identity);
+            pttSeqByIdentity.delete(participant.identity);
+            const vt = vadClearTimers.get(participant.identity);
+            if (vt) {
+                clearTimeout(vt);
+                vadClearTimers.delete(participant.identity);
+            }
+            vadSpeaking.delete(participant.identity);
             screenShareParticipants.value = screenShareParticipants.value.filter(
                 (s) => s.identity !== participant.identity,
             );
@@ -431,7 +476,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
                 document.body.appendChild(el);
-                participant.setVolume(isSoundMuted.value ? 0 : getUserVolume(participant.identity));
+                applyRemoteAudioState(participant);
                 updateParticipantTracks(participant.identity);
                 return;
             }
@@ -481,12 +526,24 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-            const speakerIds = new Set(speakers.map((s) => s.identity));
+            applyVadSpeakers(new Set(speakers.map((s) => s.identity)));
             const localId = r.localParticipant.identity;
-            currentParticipants.value = currentParticipants.value.map((p) => ({
-                ...p,
-                isSpeaking: String(p.id) === localId ? speakerIds.has(localId) : speakerIds.has(String(p.id)),
-            }));
+            currentParticipants.value = currentParticipants.value.map((p) => {
+                const idStr = String(p.id);
+                if (idStr === localId) {
+                    return {
+                        ...p,
+                        isSpeaking: pttEnabled.value ? pttActive && !isMicMuted.value : vadSpeaking.has(localId),
+                    };
+                }
+                const pttState = pttSpeakingByIdentity.get(idStr);
+                const isSpeaking = pttState !== undefined ? pttState : vadSpeaking.has(idStr);
+                return { ...p, isSpeaking };
+            });
+        });
+        r.on(RoomEvent.ParticipantAttributesChanged, (changed, participant) => {
+            if (participant === r.localParticipant) return;
+            updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.MediaDevicesChanged, () => {
             void refreshAvailableMics();
@@ -494,11 +551,19 @@ export const useVoiceStore = defineStore('voice', () => {
         r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
             isAudioPlaybackBlocked.value = !r.canPlaybackAudio;
         });
-        r.on(RoomEvent.DataReceived, (payload) => {
+        r.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+            if (topic === PTT_DATA_TOPIC) {
+                handlePttData(payload, participant);
+                return;
+            }
             useSoundboardStore().handleIncoming(payload);
         });
-        r.on(RoomEvent.TrackMuted, (_pub, participant) => updateParticipantTracks(participant.identity));
-        r.on(RoomEvent.TrackUnmuted, (_pub, participant) => updateParticipantTracks(participant.identity));
+        r.on(RoomEvent.TrackMuted, (_pub, participant) => {
+            updateParticipantTracks(participant.identity);
+        });
+        r.on(RoomEvent.TrackUnmuted, (_pub, participant) => {
+            updateParticipantTracks(participant.identity);
+        });
         r.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
             if (participant.identity === r.localParticipant.identity) {
                 connectionQuality.value = quality;
@@ -511,6 +576,10 @@ export const useVoiceStore = defineStore('voice', () => {
         r.on(RoomEvent.Reconnected, () => {
             if (room === r) {
                 isReconnecting.value = false;
+                void resyncE2eeKey();
+                void syncMicEnabled();
+                syncMuteAttribute();
+                broadcastPttSpeaking(pttEnabled.value ? desiredMicLive() : null);
                 refreshParticipants();
             }
         });
@@ -518,7 +587,7 @@ export const useVoiceStore = defineStore('voice', () => {
         r.on(RoomEvent.Disconnected, () => {
             if (room === r) {
                 if (currentChannel.value) {
-                    removeSelfFromChannelMap(currentChannel.value.id, r.localParticipant.identity);
+                    seedChannelMapFromRoster(currentChannel.value.id, r.localParticipant.identity);
                 }
                 currentChannel.value = null;
                 currentParticipants.value = [];
@@ -533,7 +602,9 @@ export const useVoiceStore = defineStore('voice', () => {
     let isJoining = false;
 
     async function joinChannel(channelId: number, channelName: string) {
-        if (isJoining) return;
+        if (isJoining) {
+            return;
+        }
         isJoining = true;
 
         try {
@@ -541,18 +612,25 @@ export const useVoiceStore = defineStore('voice', () => {
                 await leaveChannel();
             }
 
-            const { token, url, e2ee_key } = await joinVoiceChannel(channelId);
+            const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
 
-            const keyProvider = new ExternalE2EEKeyProvider();
+            const E2EE_ENABLED = false;
+
+            keyProvider = E2EE_ENABLED ? new IndexedKeyProvider() : null;
+            e2eeKeyIndex = e2ee_key_index ?? 0;
 
             room = new Room({
                 adaptiveStream: true,
                 dynacast: true,
-                webAudioMix: true, // route remote audio through Web Audio GainNode so per-user volume can boost >100%
-                e2ee: {
-                    keyProvider,
-                    worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
-                },
+                webAudioMix: true,
+                ...(keyProvider
+                    ? {
+                          e2ee: {
+                              keyProvider,
+                              worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
+                          },
+                      }
+                    : {}),
                 audioCaptureDefaults: buildAudioCaptureDefaults(),
                 audioOutput: { deviceId: selectedSpeakerDeviceId.value },
                 publishDefaults: {
@@ -565,42 +643,28 @@ export const useVoiceStore = defineStore('voice', () => {
             });
             wireRoomEvents(room);
 
-            await keyProvider.setKey(e2ee_key);
+            if (keyProvider) {
+                await keyProvider.setKeyAt(e2ee_key, e2eeKeyIndex);
+            }
             await room.connect(url, token);
 
-            try {
-                await room.localParticipant.setMicrophoneEnabled(
-                    !pttEnabled.value,
-                    buildAudioCaptureDefaults(),
-                    micPublishOptions,
-                );
-            } catch (micErr) {
-                console.warn('[Voice] Selected mic unavailable, retrying without deviceId:', micErr);
-                try {
-                    await room.localParticipant.setMicrophoneEnabled(
-                        !pttEnabled.value,
-                        { ...buildAudioCaptureDefaults(), deviceId: undefined },
-                        micPublishOptions,
-                    );
-                } catch (fallbackErr) {
-                    console.warn('[Voice] No microphone available — joining without mic:', fallbackErr);
-                }
-            }
+            await publishMicTrack();
 
-            // Apply saved per-user volumes to participants already in the channel
             room.remoteParticipants.forEach((p) => {
-                p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
+                applyRemoteAudioState(p);
             });
 
+            syncMuteAttribute();
+
             if (pttEnabled.value) {
-                syncPttSpeakingAttribute(pttActive && !isMicMuted.value);
+                broadcastPttSpeaking(pttActive && !isMicMuted.value);
             }
 
             currentChannel.value = { id: channelId, name: channelName };
+
+            void syncMicEnabled();
             refreshParticipants();
-            console.log(`[Voice] Connected to ${channelName} via LiveKit`);
         } catch (err) {
-            console.error('[Voice] Failed to join channel:', err);
             room = null;
             throw err;
         } finally {
@@ -635,17 +699,8 @@ export const useVoiceStore = defineStore('voice', () => {
             const devices = await navigator.mediaDevices.enumerateDevices();
             const monitors = devices.filter((d) => d.kind === 'audioinput' && /monitor/i.test(d.label));
             if (monitors.length === 0) {
-                console.warn(
-                    '[Voice] No monitor audio source found for screen-share audio. ' +
-                        'Available audio inputs: ' +
-                        devices
-                            .filter((d) => d.kind === 'audioinput')
-                            .map((d) => `"${d.label}"`)
-                            .join(', '),
-                );
                 return null;
             }
-            console.log('[Voice] Using monitor source for screen-share audio:', monitors[0].label);
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     deviceId: { exact: monitors[0].deviceId },
@@ -655,8 +710,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 },
             });
             return stream.getAudioTracks()[0] ?? null;
-        } catch (err) {
-            console.error('[Voice] Failed to capture system audio monitor:', err);
+        } catch {
             return null;
         }
     }
@@ -666,10 +720,11 @@ export const useVoiceStore = defineStore('voice', () => {
         if (isScreenSharing.value) return;
 
         const preset = SCREEN_SHARE_PRESETS[screenShareQuality.value];
+
         const resolution =
             preset.width > 0
                 ? { width: preset.width, height: preset.height, frameRate: preset.frameRate }
-                : { width: 3840, height: 2160, frameRate: preset.frameRate };
+                : { width: 2560, height: 1440, frameRate: preset.frameRate };
 
         try {
             const tracks = await room.localParticipant.createScreenTracks({
@@ -687,7 +742,8 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    scalabilityMode: 'L3T3_KEY',
+                    scalabilityMode: 'L1T1',
+                    degradationPreference: 'maintain-framerate',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
                     void stopScreenShare();
@@ -729,9 +785,8 @@ export const useVoiceStore = defineStore('voice', () => {
             ];
 
             refreshParticipants();
-            console.log('[Voice] Screen share started');
-        } catch (err) {
-            console.error('[Voice] Failed to start screen share:', err);
+        } catch {
+            // ignore — screen share failed to start
         }
     }
 
@@ -744,16 +799,16 @@ export const useVoiceStore = defineStore('voice', () => {
         for (const track of screenShareTracks) {
             try {
                 await room.localParticipant.unpublishTrack(track, true);
-            } catch (err) {
-                console.warn('[Voice] Failed to unpublish screen share track:', err);
+            } catch {
+                // ignore
             }
         }
         screenShareTracks = [];
         if (screenShareMonitorTrack) {
             try {
                 await room.localParticipant.unpublishTrack(screenShareMonitorTrack, true);
-            } catch (err) {
-                console.warn('[Voice] Failed to unpublish screen share monitor track:', err);
+            } catch {
+                // ignore
             }
             try {
                 screenShareMonitorTrack.stop();
@@ -771,7 +826,6 @@ export const useVoiceStore = defineStore('voice', () => {
         }
 
         refreshParticipants();
-        console.log('[Voice] Screen share stopped');
     }
 
     async function setScreenShareQuality(preset: ScreenShareQualityPreset): Promise<void> {
@@ -794,7 +848,14 @@ export const useVoiceStore = defineStore('voice', () => {
         const localIdentity = oldRoom?.localParticipant.identity ?? null;
 
         room = null;
+        keyProvider = null;
+        e2eeKeyIndex = 0;
         pttActive = false;
+        isReconnecting.value = false;
+        micReacquirePending = false;
+        pttSpeakingByIdentity.clear();
+        pttSeqByIdentity.clear();
+        clearVadSpeaking();
         cleanupScreenShare();
 
         if (oldRoom) {
@@ -803,12 +864,12 @@ export const useVoiceStore = defineStore('voice', () => {
             }
             try {
                 await oldRoom.disconnect();
-            } catch (err) {
-                console.warn('[Voice] Error during disconnect:', err);
+            } catch {
+                // ignore
             }
         }
         if (currentChannel.value && localIdentity) {
-            removeSelfFromChannelMap(currentChannel.value.id, localIdentity);
+            seedChannelMapFromRoster(currentChannel.value.id, localIdentity);
         }
         currentChannel.value = null;
         currentParticipants.value = [];
@@ -820,27 +881,143 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function syncMuteAttribute(): void {
         if (!room) return;
-        room.localParticipant
-            .setAttributes({ [MUTED_ATTRIBUTE]: String(isMicMuted.value) })
-            .catch((err) => console.warn('[Voice] Failed to broadcast mute state:', err));
+        room.localParticipant.setAttributes({ [MUTED_ATTRIBUTE]: String(isMicMuted.value) }).catch(() => {});
     }
 
-    function syncPttSpeakingAttribute(speaking: boolean | null): void {
+    function broadcastPttSpeaking(speaking: boolean | null, to?: string[]): void {
         if (!room) return;
+        const payload = new TextEncoder().encode(JSON.stringify({ s: speaking, n: ++pttSeq }));
         room.localParticipant
-            .setAttributes({ [PTT_SPEAKING_ATTRIBUTE]: speaking === null ? '' : String(speaking) })
-            .catch((err) => console.warn('[Voice] Failed to broadcast PTT speaking state:', err));
+            .publishData(payload, { reliable: false, topic: PTT_DATA_TOPIC, destinationIdentities: to })
+            .catch(() => {});
+    }
+
+    function handlePttData(payload: Uint8Array, participant?: RemoteParticipant): void {
+        if (!participant) return;
+        let msg: { s?: boolean | null; n?: number };
+        try {
+            msg = JSON.parse(new TextDecoder().decode(payload));
+        } catch {
+            return;
+        }
+        const id = participant.identity;
+        if (typeof msg.n === 'number') {
+            // Ignore stale/reordered lossy packets.
+            const last = pttSeqByIdentity.get(id) ?? -1;
+            if (msg.n <= last) {
+                return;
+            }
+            pttSeqByIdentity.set(id, msg.n);
+        }
+        if (msg.s === null || msg.s === undefined) {
+            pttSpeakingByIdentity.delete(id);
+        } else {
+            pttSpeakingByIdentity.set(id, msg.s);
+        }
+        updateParticipantTracks(id);
+    }
+
+    function applyRemoteAudioState(p: RemoteParticipant): void {
+        p.getTrackPublication(Track.Source.Microphone)?.setEnabled(!isSoundMuted.value);
+        p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
+    }
+
+    function applyVadSpeakers(activeIds: Set<string>): void {
+        activeIds.forEach((id) => {
+            const pending = vadClearTimers.get(id);
+            if (pending) {
+                clearTimeout(pending);
+                vadClearTimers.delete(id);
+            }
+            vadSpeaking.add(id);
+        });
+        vadSpeaking.forEach((id) => {
+            if (activeIds.has(id) || vadClearTimers.has(id)) return;
+            const timer = setTimeout(() => {
+                vadClearTimers.delete(id);
+                vadSpeaking.delete(id);
+                if (room) updateParticipantTracks(id);
+            }, VAD_TRAILING_HOLD_MS);
+            vadClearTimers.set(id, timer);
+        });
+    }
+
+    function clearVadSpeaking(): void {
+        vadClearTimers.forEach((t) => clearTimeout(t));
+        vadClearTimers.clear();
+        vadSpeaking.clear();
+    }
+
+    async function applyRotatedKey(channelId: number, key: string, keyIndex: number): Promise<void> {
+        if (!keyProvider || !currentChannel.value || channelId !== currentChannel.value.id) return;
+        if (keyIndex <= e2eeKeyIndex) {
+            return;
+        }
+        e2eeKeyIndex = keyIndex;
+        await keyProvider.setKeyAt(key, keyIndex);
+    }
+
+    async function resyncE2eeKey(): Promise<void> {
+        if (!keyProvider || !currentChannel.value) return;
+        try {
+            const { e2ee_key, e2ee_key_index } = await getVoiceChannelKey(currentChannel.value.id);
+            if (e2ee_key_index < e2eeKeyIndex) return;
+            e2eeKeyIndex = e2ee_key_index;
+            await keyProvider.setKeyAt(e2ee_key, e2ee_key_index);
+        } catch {
+            // ignore — will retry on the next rotation
+        }
+    }
+
+    function desiredMicLive(): boolean {
+        return !isMicMuted.value && (!pttEnabled.value || pttActive);
+    }
+
+    let micOpChain: Promise<void> = Promise.resolve();
+    let micReacquirePending = false;
+
+    function syncMicEnabled(reacquire = false): Promise<void> {
+        if (reacquire) micReacquirePending = true;
+        micOpChain = micOpChain
+            .then(async () => {
+                if (!room || room.state !== ConnectionState.Connected) return;
+                const target = desiredMicLive();
+                if (micReacquirePending) {
+                    micReacquirePending = false;
+                    const defaults = buildAudioCaptureDefaults();
+                    await room.localParticipant.setMicrophoneEnabled(false);
+                    await room.localParticipant.setMicrophoneEnabled(target, defaults, micPublishOptions);
+                } else {
+                    await room.localParticipant.setMicrophoneEnabled(target);
+                }
+            })
+            .catch(() => {});
+        return micOpChain;
+    }
+
+    async function publishMicTrack(): Promise<void> {
+        if (!room) return;
+        const startMuted = !desiredMicLive();
+        const tryPublish = async (capture: ReturnType<typeof buildAudioCaptureDefaults>): Promise<void> => {
+            const track = await createLocalAudioTrack(capture);
+            if (startMuted) await track.mute();
+            await room!.localParticipant.publishTrack(track, micPublishOptions);
+        };
+        try {
+            await tryPublish(buildAudioCaptureDefaults());
+        } catch {
+            try {
+                await tryPublish({ ...buildAudioCaptureDefaults(), deviceId: undefined });
+            } catch {
+                // ignore — no microphone available, join without mic
+            }
+        }
     }
 
     async function toggleMic() {
         isMicMuted.value = !isMicMuted.value;
         if (room) {
-            if (isMicMuted.value) {
-                await room.localParticipant.setMicrophoneEnabled(false);
-            } else if (!pttEnabled.value || pttActive) {
-                await room.localParticipant.setMicrophoneEnabled(true);
-            }
-
+            await syncMicEnabled();
             syncMuteAttribute();
             refreshParticipants();
         }
@@ -850,7 +1027,7 @@ export const useVoiceStore = defineStore('voice', () => {
         isSoundMuted.value = !isSoundMuted.value;
         if (!room) return;
         room.remoteParticipants.forEach((p) => {
-            p.setVolume(isSoundMuted.value ? 0 : getUserVolume(p.identity));
+            applyRemoteAudioState(p);
         });
     }
 
@@ -898,8 +1075,8 @@ export const useVoiceStore = defineStore('voice', () => {
         if (room && room.state === ConnectionState.Connected) {
             try {
                 await room.switchActiveDevice('audiooutput', deviceId ?? 'default');
-            } catch (err) {
-                console.warn('[Voice] Failed to switch audio output device:', err);
+            } catch {
+                // ignore
             }
         }
     }
@@ -909,8 +1086,8 @@ export const useVoiceStore = defineStore('voice', () => {
         try {
             await room.startAudio();
             isAudioPlaybackBlocked.value = !room.canPlaybackAudio;
-        } catch (err) {
-            console.warn('[Voice] Failed to start audio playback:', err);
+        } catch {
+            // ignore
         }
     }
 
@@ -918,35 +1095,22 @@ export const useVoiceStore = defineStore('voice', () => {
         pttEnabled.value = enabled;
         window.api.settings.set('voice:pttEnabled', String(enabled));
 
+        void syncMicEnabled();
         if (enabled) {
-            syncPttSpeakingAttribute(pttActive && !isMicMuted.value);
+            broadcastPttSpeaking(pttActive && !isMicMuted.value);
         } else {
-            syncPttSpeakingAttribute(null);
+            broadcastPttSpeaking(null);
         }
         refreshParticipants();
         syncPttConfig();
     }
 
-    function setPttKey(
-        displayName: string | null,
-        keycode: number | null = null,
-        modifiers?: { ctrl: boolean; shift: boolean; alt: boolean; meta: boolean },
-    ) {
+    function setPttKey(displayName: string | null, binding: PttBinding | null = null) {
         pttKey.value = displayName;
-        pttKeycode.value = keycode;
-        if (modifiers) pttModifiers.value = modifiers;
+        pttBinding.value = binding;
 
-        if (displayName) {
-            window.api.settings.set('voice:pttKey', displayName);
-        } else {
-            window.api.settings.set('voice:pttKey', '');
-        }
-        if (keycode !== null) {
-            window.api.settings.set('voice:pttKeycode', String(keycode));
-        } else {
-            window.api.settings.set('voice:pttKeycode', '');
-        }
-        window.api.settings.set('voice:pttModifiers', JSON.stringify(pttModifiers.value));
+        window.api.settings.set('voice:pttKey', displayName ?? '');
+        window.api.settings.set('voice:pttBinding', binding ? JSON.stringify(binding) : '');
         syncPttConfig();
     }
 
@@ -981,59 +1145,60 @@ export const useVoiceStore = defineStore('voice', () => {
             room.options.audioCaptureDefaults = { ...room.options.audioCaptureDefaults, ...defaults };
         }
 
-        const shouldEnable = !isMicMuted.value && (!pttEnabled.value || pttActive);
-        try {
-            await room.localParticipant.setMicrophoneEnabled(false);
-            await room.localParticipant.setMicrophoneEnabled(shouldEnable, defaults, micPublishOptions);
-        } catch (err) {
-            console.warn('[Voice] Failed to re-acquire mic with new constraints:', err);
-        }
+        await syncMicEnabled(true);
     }
 
     function syncPttConfig() {
-        window.api.ptt.configure({
-            keycode: pttKeycode.value,
-            ctrl: pttModifiers.value.ctrl,
-            shift: pttModifiers.value.shift,
-            alt: pttModifiers.value.alt,
-            meta: pttModifiers.value.meta,
-            enabled: pttEnabled.value,
-        });
+        const b = pttBinding.value;
+
+        const binding: PttBinding | null =
+            b == null
+                ? null
+                : b.device === 'mouse'
+                  ? { device: 'mouse', button: b.button }
+                  : { device: 'keyboard', keycode: b.keycode, modifiers: { ...b.modifiers } };
+        window.api.ptt.configure({ enabled: pttEnabled.value, binding });
     }
 
     function handlePttActivated() {
-        if (!room || !isConnected.value) return;
+        if (!pttEnabled.value) return;
+
         pttActive = true;
 
-        if (!isMicMuted.value) {
-            room.localParticipant.setMicrophoneEnabled(true);
-            syncPttSpeakingAttribute(true);
+        if (room && isConnected.value) {
+            syncMicEnabled();
+            broadcastPttSpeaking(desiredMicLive());
             refreshParticipants();
-            if (pttSoundEnabled.value) playPttActivateSound();
+            if (!isMicMuted.value && pttSoundEnabled.value) playPttActivateSound();
         }
     }
 
     function handlePttDeactivated() {
-        if (!room || !isConnected.value) return;
+        const wasActive = pttActive;
         pttActive = false;
+        if (!pttEnabled.value) return;
 
-        if (pttEnabled.value) {
-            room.localParticipant.setMicrophoneEnabled(false);
-            syncPttSpeakingAttribute(false);
+        if (room && isConnected.value) {
+            syncMicEnabled();
+            broadcastPttSpeaking(false);
             refreshParticipants();
-            if (pttSoundEnabled.value) playPttDeactivateSound();
+            if (wasActive && pttSoundEnabled.value) playPttDeactivateSound();
         }
     }
 
+    let pttDisposers: Array<() => void> = [];
+
     function initPttListeners() {
-        window.api.ptt.onActivated(handlePttActivated);
-        window.api.ptt.onDeactivated(handlePttDeactivated);
+        cleanupPttListeners();
+        pttDisposers.push(window.api.ptt.onActivated(handlePttActivated));
+        pttDisposers.push(window.api.ptt.onDeactivated(handlePttDeactivated));
 
         syncPttConfig();
     }
 
     function cleanupPttListeners() {
-        window.api.ptt.removeAllListeners();
+        pttDisposers.forEach((dispose) => dispose());
+        pttDisposers = [];
     }
 
     async function $reset(): Promise<void> {
@@ -1043,8 +1208,7 @@ export const useVoiceStore = defineStore('voice', () => {
         channelParticipantsMap.value = new Map();
         pttEnabled.value = false;
         pttKey.value = null;
-        pttKeycode.value = null;
-        pttModifiers.value = { ctrl: false, shift: false, alt: false, meta: false };
+        pttBinding.value = null;
         pttSoundEnabled.value = true;
         selectedMicDeviceId.value = undefined;
         availableMics.value = [];
@@ -1068,8 +1232,7 @@ export const useVoiceStore = defineStore('voice', () => {
         isConnected,
         pttEnabled,
         pttKey,
-        pttKeycode,
-        pttModifiers,
+        pttBinding,
         pttSoundEnabled,
         selectedMicDeviceId,
         availableMics,

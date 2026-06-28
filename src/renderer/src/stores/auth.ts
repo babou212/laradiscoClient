@@ -26,6 +26,13 @@ export interface AuthUser {
     permissions?: AuthPermissions;
 }
 
+/** Details of an active ban, used to render the banned screen. */
+export interface BanInfo {
+    reason: string | null;
+    expires_at: string | null;
+    permanent: boolean;
+}
+
 /** Outcome of a registration attempt. On failure, `fieldErrors` maps form field
  *  names to a human-readable reason (multiple backend messages joined). */
 export interface RegisterResult {
@@ -39,6 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isLoggingIn = ref(false);
     const loginError = ref<string | null>(null);
     const challengeToken = ref<string | null>(null);
+    const banInfo = ref<BanInfo | null>(null);
 
     const isAuthenticated = computed(() => !!user.value && !!token.value);
 
@@ -83,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
         return false;
     }
 
-    async function login(email: string, password: string): Promise<boolean | 'two-factor'> {
+    async function login(email: string, password: string): Promise<boolean | 'two-factor' | 'banned'> {
         const server = getValidServer();
         if (!server) {
             loginError.value = 'No server connection';
@@ -95,6 +103,12 @@ export const useAuthStore = defineStore('auth', () => {
 
         try {
             const result = await window.api.auth.login(server.host, email, password);
+
+            if (result.banned) {
+                banInfo.value = result.ban ?? { reason: null, expires_at: null, permanent: true };
+                loginError.value = result.error ?? 'Your account has been banned.';
+                return 'banned';
+            }
 
             if (result.twoFactor && result.challengeToken) {
                 challengeToken.value = result.challengeToken;
@@ -117,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function verifyTwoFactor(code: string | null, recoveryCode: string | null): Promise<boolean> {
+    async function verifyTwoFactor(code: string | null, recoveryCode: string | null): Promise<boolean | 'banned'> {
         const server = getValidServer();
         if (!server || !challengeToken.value) {
             loginError.value = 'No active challenge. Please log in again.';
@@ -134,6 +148,13 @@ export const useAuthStore = defineStore('auth', () => {
                 code,
                 recoveryCode,
             );
+
+            if (result.banned) {
+                banInfo.value = result.ban ?? { reason: null, expires_at: null, permanent: true };
+                loginError.value = result.error ?? 'Your account has been banned.';
+                challengeToken.value = null;
+                return 'banned';
+            }
 
             if (result.success && result.user && result.token) {
                 user.value = result.user;
@@ -184,8 +205,6 @@ export const useAuthStore = defineStore('auth', () => {
                 return { success: true };
             }
 
-            // Map the backend's per-field messages onto the form field names so the
-            // caller can render each reason inline (e.g. every failed password rule).
             const fieldErrors: Record<string, string> = {};
             for (const [field, messages] of Object.entries(result.errors ?? {})) {
                 if (!messages?.length) continue;
@@ -204,6 +223,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function logout(): Promise<void> {
+        try {
+            const { useVoiceStore } = await import('./voice');
+            await useVoiceStore().leaveChannel();
+        } catch (err) {
+            console.warn('[Auth] Failed to leave voice on logout:', err);
+        }
         const server = getValidServer();
         if (server) {
             await window.api.auth.logout(server.host);
@@ -216,12 +241,18 @@ export const useAuthStore = defineStore('auth', () => {
         loginError.value = null;
     }
 
+    function clearBan(): void {
+        banInfo.value = null;
+        loginError.value = null;
+    }
+
     function $reset(): void {
         user.value = null;
         token.value = null;
         isLoggingIn.value = false;
         loginError.value = null;
         challengeToken.value = null;
+        banInfo.value = null;
     }
 
     return {
@@ -230,6 +261,7 @@ export const useAuthStore = defineStore('auth', () => {
         isLoggingIn,
         loginError,
         challengeToken,
+        banInfo,
         isAuthenticated,
         restoreSession,
         login,
@@ -237,6 +269,7 @@ export const useAuthStore = defineStore('auth', () => {
         verifyTwoFactor,
         logout,
         clearError,
+        clearBan,
         $reset,
     };
 });

@@ -48,7 +48,7 @@ function normalizeAttachment(resource: JsonApiResource<'attachments', Attachment
     };
 }
 
-function normalizeThreadPreview(
+export function normalizeThreadPreview(
     resource: JsonApiResource<'threads', ThreadAttributes> | undefined,
     included: JsonApiResource[] | undefined,
 ): ThreadPreview | null {

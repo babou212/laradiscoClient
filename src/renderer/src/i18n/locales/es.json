@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "Alternar audio",
             "expand": "Expandir",
+            "exitFullscreen": "Salir de pantalla completa",
             "fullscreen": "Pantalla completa",
             "popOut": "Ventana flotante",
             "close": "Cerrar"

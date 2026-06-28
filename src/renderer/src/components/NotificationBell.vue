@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { AtSign, Bell, Check, CheckCheck, MessageSquare } from 'lucide-vue-next';
+import { AtSign, Bell, Check, CheckCheck, MessageSquare, Reply } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { formatMessageDate } from '@/lib/utils';
-import { useNotificationsStore, type AppNotification } from '@/stores/notifications';
+import { navigateToNotification, useNotificationsStore, type AppNotification } from '@/stores/notifications';
 
 const { t } = useI18n();
-const router = useRouter();
 const notificationStore = useNotificationsStore();
 const showDropdown = ref(false);
 const dropdownRef = ref<HTMLElement>();
 
 const isDmNotification = (notification: AppNotification): boolean => {
     return notification.data.notification_type === 'direct_message';
+};
+
+const isThreadNotification = (notification: AppNotification): boolean => {
+    return notification.data.notification_type === 'thread_reply';
 };
 
 const getMentionLabel = (notification: AppNotification): string => {
@@ -31,11 +33,7 @@ const getDisplayContent = (notification: AppNotification): string => {
 const handleNotificationClick = async (notification: AppNotification) => {
     showDropdown.value = false;
     await notificationStore.markAsRead(notification.id);
-    if (isDmNotification(notification)) {
-        router.push({ name: 'direct-messages', params: { threadId: notification.data.dm_group_id } });
-    } else if (notification.data.channel_id) {
-        router.push({ name: 'chat', params: { channelId: notification.data.channel_id } });
-    }
+    await navigateToNotification(notification);
 };
 
 const handleClickOutside = (e: MouseEvent) => {
@@ -110,6 +108,7 @@ onUnmounted(() => {
                         class="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full"
                     >
                         <MessageSquare v-if="isDmNotification(notification)" :size="14" />
+                        <Reply v-else-if="isThreadNotification(notification)" :size="14" />
                         <AtSign v-else :size="14" />
                     </div>
                     <div class="min-w-0 flex-1">
@@ -120,6 +119,20 @@ onUnmounted(() => {
                                 </span>
                                 <span class="text-muted-foreground">
                                     {{ ' ' + t('notificationBell.sentMessage') + ' ' }}
+                                </span>
+                            </template>
+                            <template v-else-if="isThreadNotification(notification)">
+                                <span class="text-primary font-semibold">
+                                    {{ notification.data.sender_username }}
+                                </span>
+                                <span class="text-muted-foreground">
+                                    {{
+                                        ' ' +
+                                        t('notificationBell.repliedInThread', {
+                                            thread: notification.data.thread_name,
+                                        }) +
+                                        ' '
+                                    }}
                                 </span>
                             </template>
                             <template v-else>

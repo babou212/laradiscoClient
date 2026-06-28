@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "Przełącz audio",
             "expand": "Rozwiń",
+            "exitFullscreen": "Wyjdź z pełnego ekranu",
             "fullscreen": "Pełny ekran",
             "popOut": "Wysuń",
             "close": "Zamknij"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2, Music, Plus, Trash2 } from 'lucide-vue-next';
+import { Loader2, Music, Plus, Trash2, Volume2, VolumeX } from 'lucide-vue-next';
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -121,7 +121,7 @@ const volumeModel = computed<number[]>({
                     {{ t('chat.voice.soundboard.empty') }}
                 </p>
 
-                <div v-else class="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto">
+                <div v-else class="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto p-1.5">
                     <div v-for="sound in soundboard.sounds" :key="sound.id" class="group relative">
                         <button
                             type="button"
@@ -150,9 +150,24 @@ const volumeModel = computed<number[]>({
                 <p v-if="errorMsg" class="text-destructive mt-2 text-xs">{{ errorMsg }}</p>
 
                 <div class="mt-3 border-t pt-3">
-                    <label class="text-muted-foreground mb-1.5 block text-xs">
-                        {{ t('chat.voice.soundboard.volume') }}
-                    </label>
+                    <div class="mb-1.5 flex items-center justify-between">
+                        <label class="text-muted-foreground block text-xs">
+                            {{ t('chat.voice.soundboard.volume') }}
+                        </label>
+                        <button
+                            type="button"
+                            class="flex items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors hover:bg-white/5"
+                            :class="soundboard.muted ? 'text-primary' : 'text-muted-foreground hover:text-foreground'"
+                            :title="
+                                soundboard.muted ? t('chat.voice.soundboard.unmute') : t('chat.voice.soundboard.mute')
+                            "
+                            @click="soundboard.toggleMute()"
+                        >
+                            <VolumeX v-if="soundboard.muted" :size="13" />
+                            <Volume2 v-else :size="13" />
+                            {{ soundboard.muted ? t('chat.voice.soundboard.unmute') : t('chat.voice.soundboard.mute') }}
+                        </button>
+                    </div>
                     <Slider v-model="volumeModel" :min="0" :max="100" :step="1" />
                 </div>
             </PopoverContent>

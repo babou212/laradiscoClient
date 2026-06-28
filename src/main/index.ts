@@ -23,23 +23,34 @@ if (process.env.USER_DATA_DIR) {
 
 initLogger();
 
-app.commandLine.appendSwitch(
-    'enable-features',
-    [
-        'VaapiVideoDecodeLinuxGL',
+const enableFeatures = ['PlatformHEVCDecoderSupport'];
+const disableFeatures = ['Vulkan', 'UseSkiaGraphite', 'VulkanFromANGLE'];
+
+if (process.platform === 'linux') {
+    enableFeatures.push(
+        'AcceleratedVideoDecodeLinuxGL',
+        'AcceleratedVideoDecodeLinuxZeroCopyGL',
         'VaapiVideoDecoder',
-        'PlatformHEVCDecoderSupport',
-        'VideoToolboxVideoDecoder',
         'WaylandWindowDecorations',
         'PulseaudioLoopbackForScreenShare',
+    );
+
+    disableFeatures.push('UseChromeOSDirectVideoDecoder');
+    app.commandLine.appendSwitch('use-gl', 'angle');
+    app.commandLine.appendSwitch('use-angle', 'gl');
+    app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+
+    app.commandLine.appendSwitch('ignore-gpu-blocklist');
+} else if (process.platform === 'darwin') {
+    enableFeatures.push(
+        'VideoToolboxVideoDecoder',
         'MacLoopbackAudioForScreenShare',
         'MacSckSystemAudioLoopbackOverride',
-    ].join(','),
-);
-app.commandLine.appendSwitch('disable-features', 'Vulkan,UseSkiaGraphite,VulkanFromANGLE');
-app.commandLine.appendSwitch('use-gl', 'angle');
-app.commandLine.appendSwitch('use-angle', 'gl');
-app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+    );
+}
+
+app.commandLine.appendSwitch('enable-features', enableFeatures.join(','));
+app.commandLine.appendSwitch('disable-features', disableFeatures.join(','));
 app.commandLine.appendSwitch('enable-accelerated-video-decode');
 
 const widevinePath = join(
@@ -160,6 +171,9 @@ function createWindow(): void {
 
     win.on('ready-to-show', () => {
         win.show();
+    });
+    win.webContents.once('did-finish-load', () => {
+        if (!win.isVisible()) win.show();
     });
 
     win.on('close', (event) => {

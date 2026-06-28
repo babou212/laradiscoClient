@@ -128,6 +128,17 @@
             "useRecoveryInstead": "Use a recovery code instead",
             "useAuthInstead": "Use authentication code instead",
             "backToLogin": "Back to login"
+        },
+        "banned": {
+            "title": "You have been banned",
+            "description": "Your access to {server} has been revoked.",
+            "reasonLabel": "Reason",
+            "noReason": "No reason was provided.",
+            "permanent": "This ban is permanent.",
+            "temporary": "Your ban will be lifted on {date}.",
+            "timeRemaining": "Time remaining: {duration}",
+            "expired": "Your ban has expired. You can sign in again.",
+            "backToLogin": "Back to login"
         }
     },
     "settings": {
@@ -157,6 +168,8 @@
             "deliveryHeading": "Delivery Methods",
             "mentionLabel": "Mention notifications",
             "mentionDescription": "Get notified when someone mentions you with {'@'}username, {'@'}everyone, or {'@'}here",
+            "threadLabel": "Thread reply notifications",
+            "threadDescription": "Get notified when someone replies to a thread you follow",
             "dmLabel": "Direct message notifications",
             "dmDescription": "Get notified when someone sends you a direct message",
             "toastLabel": "In-app pop-ups",
@@ -272,14 +285,24 @@
                 "description": "Hold a key to unmute your microphone. Works across all windows and apps.",
                 "enable": "Enable Push to Talk",
                 "keybind": "Keybind",
-                "pressAnyKey": "Press any key or combo…",
+                "pressAnyKey": "Press any key or mouse button…",
                 "notSet": "Not set",
                 "setKey": "Set Key",
                 "changeKey": "Change Key",
                 "cancel": "Cancel",
                 "clear": "Clear",
-                "hint": "Press any key or key combination (e.g. F5, Space, Alt + Z, Ctrl + Shift + M). Hold the key to talk — release to mute.",
+                "hint": "Press any key, key combination, or mouse button (e.g. F5, Space, Alt + Z, or a mouse side button). Hold it to talk — release to mute. Binding left or right click won't stop it from clicking normally.",
                 "playSound": "Play sound on push-to-talk",
+                "linuxAccess": {
+                    "title": "Enable global push-to-talk",
+                    "description": "Push-to-talk needs permission to read your keyboard and mouse system-wide. Granting it adds a system rule and asks for your administrator password once.",
+                    "enableButton": "Enable global push-to-talk",
+                    "working": "Setting up…",
+                    "granted": "Global push-to-talk is enabled.",
+                    "cancelled": "Setup was cancelled — no changes were made.",
+                    "failed": "Setup failed. Please try again.",
+                    "ruleInstalledNeedsRelog": "The system rule is installed, but access hasn't taken effect yet. Try logging out and back in."
+                },
                 "errors": {
                     "unsupportedGlobal": "\"{key}\" cannot be used as a global shortcut.",
                     "keyNotSupported": "That key is not supported.",
@@ -542,9 +565,15 @@
                 "description": "Ban {name} from the server. They will not be able to access any channels.",
                 "reason": "Reason (optional)",
                 "reasonPlaceholder": "Why is this user being banned?",
+                "duration": "Duration",
                 "expires": "Expires at (optional)",
-                "pickDate": "Pick a date",
+                "pickDate": "Pick a custom date",
                 "permanentHint": "Leave empty for a permanent ban.",
+                "presetHour": "1 hour",
+                "presetDay": "1 day",
+                "presetWeek": "7 days",
+                "presetMonth": "30 days",
+                "presetPermanent": "Permanent",
                 "submit": "Ban User"
             },
             "jailDialog": {
@@ -675,7 +704,9 @@
         "mentionUser": "{'@'}{user}",
         "mentionInChannel": "{mention} in #{channel}",
         "sentMessage": "sent a message",
-        "inChannelPrefix": "in #{channel}"
+        "inChannelPrefix": "in #{channel}",
+        "threadReply": "{user} replied in {thread}",
+        "repliedInThread": "replied in {thread}"
     },
     "dates": {
         "todayAt": "Today at {time}",
@@ -880,6 +911,8 @@
                 "empty": "No sounds yet. Add one to get started.",
                 "addSound": "Add sound",
                 "volume": "Soundboard volume",
+                "mute": "Mute",
+                "unmute": "Unmute",
                 "delete": "Delete sound",
                 "deleteConfirm": "Delete",
                 "deleteDialogTitle": "Delete sound",
@@ -894,7 +927,7 @@
                     "chooseDifferent": "Choose a different file",
                     "name": "Name",
                     "namePlaceholder": "Sound name",
-                    "trimHint": "Drag the edges of the highlighted region to trim (max 10s).",
+                    "trimHint": "Drag the region to move it, or its edges to resize (max 20s).",
                     "selection": "Selection: {duration}s",
                     "preview": "Preview",
                     "stop": "Stop",
@@ -956,6 +989,7 @@
         "screenShareViewer": {
             "toggleAudio": "Toggle audio",
             "expand": "Expand",
+            "exitFullscreen": "Exit fullscreen",
             "fullscreen": "Fullscreen",
             "popOut": "Pop out",
             "close": "Close"
@@ -978,7 +1012,8 @@
         "markAsRead": "Mark as read",
         "empty": "No new notifications",
         "sentMessage": "sent a message",
-        "inChannel": "in #{channel}"
+        "inChannel": "in #{channel}",
+        "repliedInThread": "replied in {thread}"
     },
     "sidebar": {
         "toggleSidebar": "Toggle Sidebar"

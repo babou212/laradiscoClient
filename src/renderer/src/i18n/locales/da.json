@@ -882,6 +882,7 @@
         "screenShareViewer": {
             "toggleAudio": "Slå lyd til/fra",
             "expand": "Udvid",
+            "exitFullscreen": "Afslut fuldskærm",
             "fullscreen": "Fuldskærm",
             "popOut": "Pop ud",
             "close": "Luk"

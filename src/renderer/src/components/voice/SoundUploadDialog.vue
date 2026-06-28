@@ -15,7 +15,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { useSoundboardStore } from '@/stores/soundboard';
 
-const MAX_SECONDS = 10;
+const MAX_SECONDS = 20;
+// Slack added to the region's maxLength so a full-length (10s) selection can
+// still be dragged without the move being rejected at the floating-point boundary.
+const DRAG_HEADROOM = 0.1;
 
 const { t } = useI18n();
 const soundboard = useSoundboardStore();
@@ -106,7 +109,12 @@ async function initWave(audioFile: File): Promise<void> {
             drag: true,
             resize: true,
             minLength: 0.2,
-            maxLength: MAX_SECONDS,
+            // A bit of headroom above MAX_SECONDS: the default window is exactly
+            // MAX_SECONDS long, and the plugin rejects a drag whenever the moved
+            // length would exceed maxLength. Without slack, floating-point error
+            // pushes the recomputed length just over 10s and the body won't drag.
+            // The true 10s cap is enforced in save().
+            maxLength: MAX_SECONDS + DRAG_HEADROOM,
         });
     });
 
@@ -146,7 +154,10 @@ async function save(): Promise<void> {
 
     try {
         const buffer = new Uint8Array(await file.value.arrayBuffer());
-        const { data, mimeType } = await window.api.soundboard.trim(buffer, regionStart.value, regionEnd.value);
+        // Enforce the hard 10s cap here (the region's maxLength carries a little
+        // slack so a full-length window stays draggable).
+        const end = Math.min(regionEnd.value, regionStart.value + MAX_SECONDS);
+        const { data, mimeType } = await window.api.soundboard.trim(buffer, regionStart.value, end);
         // Copy into a fresh ArrayBuffer-backed view so it satisfies BlobPart.
         const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         const finalName = (name.value.trim() || file.value.name.replace(/\.[^/.]+$/, '')).slice(0, 100);
@@ -200,7 +211,7 @@ const selectionSeconds = () => Math.max(0, regionEnd.value - regionStart.value).
                 </div>
 
                 <div class="bg-muted/40 rounded-lg p-3">
-                    <div ref="waveContainer" class="min-h-[96px] w-full"></div>
+                    <div ref="waveContainer" class="sb-wave min-h-[96px] w-full"></div>
                 </div>
 
                 <div class="flex items-center justify-between gap-2">
@@ -241,3 +252,34 @@ const selectionSeconds = () => Math.max(0, regionEnd.value - regionStart.value).
         </DialogContent>
     </Dialog>
 </template>
+
+<!--
+    Not scoped on purpose: WaveSurfer renders the region + its resize handles inside a
+    shadow root, so the trim handles can only be reached through ::part().
+
+    Two things matter here:
+    1. The plugin's default handles are a 2px rgba(0,0,0,0.5) line, invisible on our
+       dark theme. We give them a bright, visible grip.
+    2. The handles sit INSIDE the region at its edges, so on a narrow selection two
+       fat handles cover the whole box and there's no body left to grab/drag. We keep
+       them thin and pull them outward (negative margin) so they straddle the edges,
+       always leaving a draggable body in the middle.
+-->
+<style>
+.sb-wave > div::part(region-handle) {
+    width: 6px !important;
+    background-color: rgba(255, 255, 255, 0.55) !important;
+    transition: background-color 0.15s ease;
+}
+.sb-wave > div::part(region-handle):hover {
+    background-color: rgba(255, 255, 255, 0.85) !important;
+}
+.sb-wave > div::part(region-handle-left) {
+    margin-left: -3px !important;
+    border-radius: 3px !important;
+}
+.sb-wave > div::part(region-handle-right) {
+    margin-right: -3px !important;
+    border-radius: 3px !important;
+}
+</style>

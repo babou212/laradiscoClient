@@ -58,6 +58,8 @@ async function handleLogin(): Promise<void> {
 
     if (loginResult === 'two-factor') {
         router.push({ name: 'two-factor-challenge' });
+    } else if (loginResult === 'banned') {
+        router.push({ name: 'banned' });
     } else if (loginResult === true) {
         router.push({ name: 'home' });
     }

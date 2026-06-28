@@ -39,6 +39,69 @@ describe('user volume', () => {
     });
 });
 
+describe('push to talk binding', () => {
+    it('persists a keyboard binding and pushes it to the main process', () => {
+        const voice = useVoiceStore();
+        const binding = {
+            device: 'keyboard' as const,
+            keycode: 63,
+            modifiers: { ctrl: false, shift: true, alt: false, meta: false },
+        };
+        voice.setPttKey('Shift + F5', binding);
+
+        expect(voice.pttBinding).toEqual(binding);
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:pttKey', 'Shift + F5');
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:pttBinding', JSON.stringify(binding));
+        expect(window.api.ptt.configure).toHaveBeenCalledWith({ enabled: false, binding });
+    });
+
+    it('persists a mouse-button binding', () => {
+        const voice = useVoiceStore();
+        const binding = { device: 'mouse' as const, button: 4 };
+        voice.setPttKey('Mouse 4', binding);
+
+        expect(voice.pttBinding).toEqual(binding);
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:pttBinding', JSON.stringify(binding));
+        expect(window.api.ptt.configure).toHaveBeenCalledWith({ enabled: false, binding });
+    });
+
+    it('clears the binding when set to null', () => {
+        const voice = useVoiceStore();
+        voice.setPttKey(null, null);
+
+        expect(voice.pttBinding).toBeNull();
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:pttKey', '');
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:pttBinding', '');
+    });
+
+    it('loads a stored mouse binding from voice:pttBinding', async () => {
+        const stored: Record<string, string> = { 'voice:pttBinding': JSON.stringify({ device: 'mouse', button: 5 }) };
+        window.api.settings.get = vi.fn((key: string) => Promise.resolve(stored[key] ?? null)) as never;
+
+        const voice = useVoiceStore();
+        await voice.loadSettings();
+
+        expect(voice.pttBinding).toEqual({ device: 'mouse', button: 5 });
+    });
+
+    it('migrates a legacy keyboard bind when voice:pttBinding is absent', async () => {
+        const stored: Record<string, string> = {
+            'voice:pttKeycode': '63',
+            'voice:pttModifiers': JSON.stringify({ ctrl: true, shift: false, alt: false, meta: false }),
+        };
+        window.api.settings.get = vi.fn((key: string) => Promise.resolve(stored[key] ?? null)) as never;
+
+        const voice = useVoiceStore();
+        await voice.loadSettings();
+
+        expect(voice.pttBinding).toEqual({
+            device: 'keyboard',
+            keycode: 63,
+            modifiers: { ctrl: true, shift: false, alt: false, meta: false },
+        });
+    });
+});
+
 describe('mute toggles', () => {
     it('toggles mic and sound mute flags when not in a room', async () => {
         const voice = useVoiceStore();

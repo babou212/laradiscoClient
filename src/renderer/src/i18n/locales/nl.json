@@ -883,6 +883,7 @@
         "screenShareViewer": {
             "toggleAudio": "Audio aan/uit",
             "expand": "Uitvouwen",
+            "exitFullscreen": "Volledig scherm verlaten",
             "fullscreen": "Volledig scherm",
             "popOut": "Loskoppelen",
             "close": "Sluiten"
