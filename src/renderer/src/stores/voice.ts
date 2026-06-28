@@ -14,7 +14,6 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { getVoiceChannelKey, getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { IndexedKeyProvider } from '@/lib/voice-key-provider';
-import { registerVoiceStateDump, vlog, vwarn } from '@/lib/voice-logger';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
@@ -130,7 +129,6 @@ export const useVoiceStore = defineStore('voice', () => {
     let screenShareTracks: Array<LocalVideoTrack | LocalAudioTrack> = [];
     let screenShareMonitorTrack: MediaStreamTrack | null = null;
     let isRestartingScreenShare = false;
-    let statsTimer: ReturnType<typeof setInterval> | null = null;
 
     let pttActive = false;
 
@@ -165,8 +163,8 @@ export const useVoiceStore = defineStore('voice', () => {
         if (modifiers) {
             try {
                 pttModifiers.value = JSON.parse(modifiers);
-            } catch (error) {
-                console.error(error);
+            } catch {
+                // ignore malformed stored modifiers
             }
         }
         pttSoundEnabled.value = sound !== 'false';
@@ -184,8 +182,8 @@ export const useVoiceStore = defineStore('voice', () => {
                 userVolumes.value = new Map(
                     Object.entries(parsed).map(([id, v]) => [id, Math.min(2, Math.max(0, Number(v)))]),
                 );
-            } catch (error) {
-                console.error('[Voice] Failed to parse saved user volumes:', error);
+            } catch {
+                // ignore malformed stored volumes
             }
         }
     }
@@ -276,8 +274,8 @@ export const useVoiceStore = defineStore('voice', () => {
 
             if (currentChannel.value) rebuilt.delete(currentChannel.value.id);
             channelParticipantsMap.value = rebuilt;
-        } catch (error) {
-            console.error('Failed to fetch voice participants:', error);
+        } catch {
+            // ignore — keep the previous participant map
         }
     }
 
@@ -433,7 +431,6 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function wireRoomEvents(r: Room): void {
         r.on(RoomEvent.ParticipantConnected, (participant) => {
-            vlog('part', 'participant connected', { id: participant.identity, total: r.remoteParticipants.size + 1 });
             applyRemoteAudioState(participant);
 
             if (pttEnabled.value && pttActive && !isMicMuted.value) {
@@ -442,7 +439,6 @@ export const useVoiceStore = defineStore('voice', () => {
             refreshParticipants();
         });
         r.on(RoomEvent.ParticipantDisconnected, (participant) => {
-            vlog('part', 'participant disconnected', { id: participant.identity, total: r.remoteParticipants.size });
             pttSpeakingByIdentity.delete(participant.identity);
             pttSeqByIdentity.delete(participant.identity);
             const vt = vadClearTimers.get(participant.identity);
@@ -460,7 +456,6 @@ export const useVoiceStore = defineStore('voice', () => {
             refreshParticipants();
         });
         r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
-            vlog('part', 'track subscribed', { id: participant.identity, kind: track.kind, source: track.source });
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
@@ -495,7 +490,6 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
-            vlog('part', 'track unsubscribed', { id: participant.identity, kind: track.kind, source: track.source });
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
                 track.detach().forEach((el) => el.remove());
                 updateParticipantTracks(participant.identity);
@@ -516,7 +510,6 @@ export const useVoiceStore = defineStore('voice', () => {
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-            vlog('speak', 'active speakers (VAD)', { speakers: speakers.map((s) => s.identity) });
             applyVadSpeakers(new Set(speakers.map((s) => s.identity)));
             const localId = r.localParticipant.identity;
             currentParticipants.value = currentParticipants.value.map((p) => {
@@ -534,16 +527,13 @@ export const useVoiceStore = defineStore('voice', () => {
         });
         r.on(RoomEvent.ParticipantAttributesChanged, (changed, participant) => {
             if (participant === r.localParticipant) return;
-            vlog('part', 'attributes changed', { id: participant.identity, changed });
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.MediaDevicesChanged, () => {
-            vlog('audio', 'media devices changed');
             void refreshAvailableMics();
         });
         r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
             isAudioPlaybackBlocked.value = !r.canPlaybackAudio;
-            vlog('audio', 'playback status changed', { canPlayback: r.canPlaybackAudio });
         });
         r.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             if (topic === PTT_DATA_TOPIC) {
@@ -553,26 +543,21 @@ export const useVoiceStore = defineStore('voice', () => {
             useSoundboardStore().handleIncoming(payload);
         });
         r.on(RoomEvent.TrackMuted, (_pub, participant) => {
-            vlog('part', 'track muted', { id: participant.identity });
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.TrackUnmuted, (_pub, participant) => {
-            vlog('part', 'track unmuted', { id: participant.identity });
             updateParticipantTracks(participant.identity);
         });
         r.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
             if (participant.identity === r.localParticipant.identity) {
-                vlog('conn', 'connection quality', { quality });
                 connectionQuality.value = quality;
             }
         });
 
         r.on(RoomEvent.Reconnecting, () => {
-            vlog('conn', 'reconnecting…');
             if (room === r) isReconnecting.value = true;
         });
         r.on(RoomEvent.Reconnected, () => {
-            vlog('conn', 'reconnected — reconciling state');
             if (room === r) {
                 isReconnecting.value = false;
                 void resyncE2eeKey();
@@ -584,7 +569,6 @@ export const useVoiceStore = defineStore('voice', () => {
         });
 
         r.on(RoomEvent.Disconnected, () => {
-            vlog('conn', 'disconnected', { wasCurrentRoom: room === r });
             if (room === r) {
                 if (currentChannel.value) {
                     seedChannelMapFromRoster(currentChannel.value.id, r.localParticipant.identity);
@@ -603,16 +587,9 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function joinChannel(channelId: number, channelName: string) {
         if (isJoining) {
-            vlog('conn', 'join ignored — already joining', { channelId });
             return;
         }
         isJoining = true;
-        vlog('conn', 'join start', {
-            channelId,
-            channelName,
-            pttEnabled: pttEnabled.value,
-            micMuted: isMicMuted.value,
-        });
 
         try {
             if (room && room.state === ConnectionState.Connected) {
@@ -620,16 +597,8 @@ export const useVoiceStore = defineStore('voice', () => {
             }
 
             const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
-            vlog('conn', 'token received', { url, hasKey: !!e2ee_key, keyIndex: e2ee_key_index });
 
-            // E2EE TEMPORARILY DISABLED. LiveKit E2EE (insertable streams) forces viewers
-            // onto software VP9 decode (decoder: "libvpx"); turning it off lets the GPU
-            // decoder engage. NOTE: LiveKit E2EE is room-wide — there is no per-track
-            // opt-out — so this disables encryption for the mic as well as the screen
-            // share. Transport DTLS-SRTP to the self-hosted SFU (voidserver) still applies.
-            // Flip back to true to restore end-to-end encryption.
             const E2EE_ENABLED = false;
-            if (!E2EE_ENABLED) vwarn('e2ee', 'E2EE DISABLED (E2EE_ENABLED=false) — room-wide, mic + screen share');
 
             keyProvider = E2EE_ENABLED ? new IndexedKeyProvider() : null;
             e2eeKeyIndex = e2ee_key_index ?? 0;
@@ -660,11 +629,8 @@ export const useVoiceStore = defineStore('voice', () => {
 
             if (keyProvider) {
                 await keyProvider.setKeyAt(e2ee_key, e2eeKeyIndex);
-                vlog('e2ee', 'initial key applied', { keyIndex: e2eeKeyIndex });
             }
             await room.connect(url, token);
-            vlog('conn', 'room connected', { state: room.state, remotes: room.remoteParticipants.size });
-            startStatsDiagnostics();
 
             await publishMicTrack();
 
@@ -682,13 +648,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
             void syncMicEnabled();
             refreshParticipants();
-            vlog('conn', 'join complete', {
-                channelName,
-                participants: currentParticipants.value.length,
-                desiredMicLive: desiredMicLive(),
-            });
         } catch (err) {
-            vwarn('conn', 'join failed', err);
             room = null;
             throw err;
         } finally {
@@ -696,151 +656,7 @@ export const useVoiceStore = defineStore('voice', () => {
         }
     }
 
-    // --- Temporary WebRTC stats diagnostics -------------------------------------
-    // Polls sender/receiver RTCStatsReports every 2s while in a channel to tell
-    // apart the three causes of screen-share stutter: encoder-limited (publisher
-    // qualityLimit=cpu, fps drops), network-limited (relay/tcp transport, packet
-    // loss, low availOutBitrate, RTT), or receiver-side (inbound freezeCount /
-    // jitterBuffer growth). Logs under the `stats` category; toggle with the usual
-    // `__voiceLog` console helpers. Remove once the quality issue is diagnosed.
-    function summarizeOutbound(report: RTCStatsReport): Record<string, unknown> | null {
-        const byId = new Map<string, Record<string, unknown>>();
-        const out: Record<string, unknown> = {};
-        let hasVideo = false;
-        let pair: Record<string, unknown> | null = null;
-        report.forEach((raw, id) => {
-            const s = raw as Record<string, unknown>;
-            byId.set(id, s);
-            if (s.type === 'outbound-rtp' && s.kind === 'video') {
-                hasVideo = true;
-                Object.assign(out, {
-                    res: `${s.frameWidth ?? '?'}x${s.frameHeight ?? '?'}`,
-                    fps: s.framesPerSecond,
-                    qualityLimit: s.qualityLimitationReason, // none | cpu | bandwidth | other
-                    qualityLimitDurations: s.qualityLimitationDurations,
-                    targetKbps: typeof s.targetBitrate === 'number' ? Math.round(s.targetBitrate / 1000) : undefined,
-                    framesEncoded: s.framesEncoded,
-                    framesSent: s.framesSent,
-                    nackRecv: s.nackCount,
-                    pliRecv: s.pliCount,
-                    encoder: s.encoderImplementation,
-                    scalabilityMode: s.scalabilityMode,
-                });
-            } else if (s.type === 'remote-inbound-rtp' && s.kind === 'video') {
-                Object.assign(out, {
-                    rttToSfuMs: typeof s.roundTripTime === 'number' ? Math.round(s.roundTripTime * 1000) : undefined,
-                    remotePacketsLost: s.packetsLost,
-                    remoteJitterMs: typeof s.jitter === 'number' ? Math.round(s.jitter * 1000) : undefined,
-                    fractionLost: s.fractionLost,
-                });
-            } else if (s.type === 'media-source' && s.kind === 'video') {
-                // The raw capture rate, BEFORE encode. If captureFps is itself low/unstable
-                // the bottleneck is the screen capturer; if captureFps is a steady 30 but
-                // framesEncoded fps lags, the bottleneck is the encoder.
-                Object.assign(out, {
-                    captureFps: s.framesPerSecond,
-                    captureRes: `${s.width ?? '?'}x${s.height ?? '?'}`,
-                });
-            } else if (s.type === 'candidate-pair' && (s.nominated || s.selected)) {
-                pair = s;
-            }
-        });
-        if (!hasVideo) return null;
-        if (pair) {
-            const p = pair as Record<string, unknown>;
-            const local = byId.get(p.localCandidateId as string);
-            const remote = byId.get(p.remoteCandidateId as string);
-            Object.assign(out, {
-                transport: local
-                    ? `${local.candidateType}/${local.protocol}${local.relayProtocol ? `(${local.relayProtocol})` : ''}`
-                    : undefined,
-                remoteCand: remote ? `${remote.candidateType}/${remote.protocol}` : undefined,
-                availOutKbps:
-                    typeof p.availableOutgoingBitrate === 'number'
-                        ? Math.round(p.availableOutgoingBitrate / 1000)
-                        : undefined,
-                pairRttMs:
-                    typeof p.currentRoundTripTime === 'number' ? Math.round(p.currentRoundTripTime * 1000) : undefined,
-            });
-        }
-        return out;
-    }
-
-    function summarizeInbound(report: RTCStatsReport): Record<string, unknown> | null {
-        let out: Record<string, unknown> | null = null;
-        report.forEach((raw) => {
-            const s = raw as Record<string, unknown>;
-            if (s.type === 'inbound-rtp' && s.kind === 'video') {
-                const emitted = s.jitterBufferEmittedCount as number | undefined;
-                const delay = s.jitterBufferDelay as number | undefined;
-                out = {
-                    res: `${s.frameWidth ?? '?'}x${s.frameHeight ?? '?'}`,
-                    fps: s.framesPerSecond,
-                    framesDecoded: s.framesDecoded,
-                    framesDropped: s.framesDropped,
-                    packetsLost: s.packetsLost,
-                    jitterMs: typeof s.jitter === 'number' ? Math.round(s.jitter * 1000) : undefined,
-                    avgJitterBufferMs: emitted && delay != null ? Math.round((delay / emitted) * 1000) : undefined,
-                    freezeCount: s.freezeCount,
-                    totalFreezeSec: s.totalFreezesDuration,
-                    pauseCount: s.pauseCount,
-                    nackSent: s.nackCount,
-                    pliSent: s.pliCount,
-                    decoder: s.decoderImplementation,
-                };
-            }
-        });
-        return out;
-    }
-
-    async function pollVoiceStats(): Promise<void> {
-        const r = room;
-        if (!r) return;
-        try {
-            const localVideo = screenShareTracks.find((t) => t.kind === Track.Kind.Video) as
-                | LocalVideoTrack
-                | undefined;
-            if (localVideo) {
-                const report = await localVideo.getRTCStatsReport();
-                const out = report ? summarizeOutbound(report) : null;
-                if (out) {
-                    // Key numbers inline so they're readable in the collapsed console line.
-                    const tag = `OUT cap=${out.captureFps ?? '?'} enc=${out.fps ?? '?'} qLim=${out.qualityLimit ?? '?'} ${out.transport ?? ''}`;
-                    vlog('stats', tag, out);
-                }
-            }
-            for (const participant of r.remoteParticipants.values()) {
-                for (const pub of participant.trackPublications.values()) {
-                    if (pub.source !== Track.Source.ScreenShare) continue;
-                    const track = pub.track;
-                    if (!track || track.kind !== Track.Kind.Video) continue;
-                    const report = await track.getRTCStatsReport();
-                    const inb = report ? summarizeInbound(report) : null;
-                    if (inb) {
-                        const tag = `IN(${participant.identity}) dec=${inb.decoder ?? '?'} fps=${inb.fps ?? '?'} drop=${inb.framesDropped ?? '?'} freeze=${inb.freezeCount ?? '?'}`;
-                        vlog('stats', tag, inb);
-                    }
-                }
-            }
-        } catch (err) {
-            vwarn('stats', 'poll failed', err);
-        }
-    }
-
-    function startStatsDiagnostics(): void {
-        stopStatsDiagnostics();
-        statsTimer = setInterval(() => void pollVoiceStats(), 2000);
-    }
-
-    function stopStatsDiagnostics(): void {
-        if (statsTimer) {
-            clearInterval(statsTimer);
-            statsTimer = null;
-        }
-    }
-
     function cleanupScreenShare(): void {
-        stopStatsDiagnostics();
         for (const t of screenShareTracks) {
             try {
                 t.stop();
@@ -867,17 +683,8 @@ export const useVoiceStore = defineStore('voice', () => {
             const devices = await navigator.mediaDevices.enumerateDevices();
             const monitors = devices.filter((d) => d.kind === 'audioinput' && /monitor/i.test(d.label));
             if (monitors.length === 0) {
-                console.warn(
-                    '[Voice] No monitor audio source found for screen-share audio. ' +
-                        'Available audio inputs: ' +
-                        devices
-                            .filter((d) => d.kind === 'audioinput')
-                            .map((d) => `"${d.label}"`)
-                            .join(', '),
-                );
                 return null;
             }
-            console.log('[Voice] Using monitor source for screen-share audio:', monitors[0].label);
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     deviceId: { exact: monitors[0].deviceId },
@@ -887,8 +694,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 },
             });
             return stream.getAudioTracks()[0] ?? null;
-        } catch (err) {
-            console.error('[Voice] Failed to capture system audio monitor:', err);
+        } catch {
             return null;
         }
     }
@@ -920,7 +726,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    scalabilityMode: 'L3T3_KEY',
+                    scalabilityMode: 'L1T1',
                     degradationPreference: 'maintain-framerate',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
@@ -963,9 +769,8 @@ export const useVoiceStore = defineStore('voice', () => {
             ];
 
             refreshParticipants();
-            console.log('[Voice] Screen share started');
-        } catch (err) {
-            console.error('[Voice] Failed to start screen share:', err);
+        } catch {
+            // ignore — screen share failed to start
         }
     }
 
@@ -978,16 +783,16 @@ export const useVoiceStore = defineStore('voice', () => {
         for (const track of screenShareTracks) {
             try {
                 await room.localParticipant.unpublishTrack(track, true);
-            } catch (err) {
-                console.warn('[Voice] Failed to unpublish screen share track:', err);
+            } catch {
+                // ignore
             }
         }
         screenShareTracks = [];
         if (screenShareMonitorTrack) {
             try {
                 await room.localParticipant.unpublishTrack(screenShareMonitorTrack, true);
-            } catch (err) {
-                console.warn('[Voice] Failed to unpublish screen share monitor track:', err);
+            } catch {
+                // ignore
             }
             try {
                 screenShareMonitorTrack.stop();
@@ -1005,7 +810,6 @@ export const useVoiceStore = defineStore('voice', () => {
         }
 
         refreshParticipants();
-        console.log('[Voice] Screen share stopped');
     }
 
     async function setScreenShareQuality(preset: ScreenShareQualityPreset): Promise<void> {
@@ -1026,7 +830,6 @@ export const useVoiceStore = defineStore('voice', () => {
     async function leaveChannel() {
         const oldRoom = room;
         const localIdentity = oldRoom?.localParticipant.identity ?? null;
-        vlog('conn', 'leave channel', { channelId: currentChannel.value?.id ?? null });
 
         room = null;
         keyProvider = null;
@@ -1045,8 +848,8 @@ export const useVoiceStore = defineStore('voice', () => {
             }
             try {
                 await oldRoom.disconnect();
-            } catch (err) {
-                console.warn('[Voice] Error during disconnect:', err);
+            } catch {
+                // ignore
             }
         }
         if (currentChannel.value && localIdentity) {
@@ -1062,18 +865,15 @@ export const useVoiceStore = defineStore('voice', () => {
 
     function syncMuteAttribute(): void {
         if (!room) return;
-        room.localParticipant
-            .setAttributes({ [MUTED_ATTRIBUTE]: String(isMicMuted.value) })
-            .catch((err) => console.warn('[Voice] Failed to broadcast mute state:', err));
+        room.localParticipant.setAttributes({ [MUTED_ATTRIBUTE]: String(isMicMuted.value) }).catch(() => {});
     }
 
     function broadcastPttSpeaking(speaking: boolean | null, to?: string[]): void {
         if (!room) return;
-        vlog('speak', 'broadcast PTT speaking', { speaking, seq: pttSeq + 1, to: to ?? 'all' });
         const payload = new TextEncoder().encode(JSON.stringify({ s: speaking, n: ++pttSeq }));
         room.localParticipant
             .publishData(payload, { reliable: false, topic: PTT_DATA_TOPIC, destinationIdentities: to })
-            .catch((err) => vwarn('speak', 'failed to broadcast PTT speaking', err));
+            .catch(() => {});
     }
 
     function handlePttData(payload: Uint8Array, participant?: RemoteParticipant): void {
@@ -1089,12 +889,10 @@ export const useVoiceStore = defineStore('voice', () => {
             // Ignore stale/reordered lossy packets.
             const last = pttSeqByIdentity.get(id) ?? -1;
             if (msg.n <= last) {
-                vlog('speak', 'PTT packet dropped (stale)', { id, seq: msg.n, last });
                 return;
             }
             pttSeqByIdentity.set(id, msg.n);
         }
-        vlog('speak', 'PTT packet received', { id, speaking: msg.s ?? null, seq: msg.n });
         if (msg.s === null || msg.s === undefined) {
             pttSpeakingByIdentity.delete(id);
         } else {
@@ -1137,10 +935,8 @@ export const useVoiceStore = defineStore('voice', () => {
     async function applyRotatedKey(channelId: number, key: string, keyIndex: number): Promise<void> {
         if (!keyProvider || !currentChannel.value || channelId !== currentChannel.value.id) return;
         if (keyIndex <= e2eeKeyIndex) {
-            vlog('e2ee', 'rotation ignored (stale index)', { keyIndex, current: e2eeKeyIndex });
             return;
         }
-        vlog('e2ee', 'applying rotated key', { from: e2eeKeyIndex, to: keyIndex });
         e2eeKeyIndex = keyIndex;
         await keyProvider.setKeyAt(key, keyIndex);
     }
@@ -1150,11 +946,10 @@ export const useVoiceStore = defineStore('voice', () => {
         try {
             const { e2ee_key, e2ee_key_index } = await getVoiceChannelKey(currentChannel.value.id);
             if (e2ee_key_index < e2eeKeyIndex) return;
-            vlog('e2ee', 'resync key after reconnect', { index: e2ee_key_index, prev: e2eeKeyIndex });
             e2eeKeyIndex = e2ee_key_index;
             await keyProvider.setKeyAt(e2ee_key, e2ee_key_index);
-        } catch (err) {
-            vwarn('e2ee', 'failed to resync key', err);
+        } catch {
+            // ignore — will retry on the next rotation
         }
     }
 
@@ -1171,12 +966,6 @@ export const useVoiceStore = defineStore('voice', () => {
             .then(async () => {
                 if (!room || room.state !== ConnectionState.Connected) return;
                 const target = desiredMicLive();
-                vlog('mic', 'apply mic state', {
-                    target,
-                    reacquire: micReacquirePending,
-                    muted: isMicMuted.value,
-                    pttActive,
-                });
                 if (micReacquirePending) {
                     micReacquirePending = false;
                     const defaults = buildAudioCaptureDefaults();
@@ -1186,14 +975,13 @@ export const useVoiceStore = defineStore('voice', () => {
                     await room.localParticipant.setMicrophoneEnabled(target);
                 }
             })
-            .catch((err) => vwarn('mic', 'failed to apply mic state', err));
+            .catch(() => {});
         return micOpChain;
     }
 
     async function publishMicTrack(): Promise<void> {
         if (!room) return;
         const startMuted = !desiredMicLive();
-        vlog('mic', 'publishing mic track', { startMuted, deviceId: selectedMicDeviceId.value ?? 'default' });
         const tryPublish = async (capture: ReturnType<typeof buildAudioCaptureDefaults>): Promise<void> => {
             const track = await createLocalAudioTrack(capture);
             if (startMuted) await track.mute();
@@ -1201,21 +989,17 @@ export const useVoiceStore = defineStore('voice', () => {
         };
         try {
             await tryPublish(buildAudioCaptureDefaults());
-            vlog('mic', 'mic track published', { muted: startMuted });
-        } catch (micErr) {
-            vwarn('mic', 'selected mic unavailable, retrying without deviceId', micErr);
+        } catch {
             try {
                 await tryPublish({ ...buildAudioCaptureDefaults(), deviceId: undefined });
-                vlog('mic', 'mic track published (fallback device)', { muted: startMuted });
-            } catch (fallbackErr) {
-                vwarn('mic', 'no microphone available — joining without mic', fallbackErr);
+            } catch {
+                // ignore — no microphone available, join without mic
             }
         }
     }
 
     async function toggleMic() {
         isMicMuted.value = !isMicMuted.value;
-        vlog('mic', 'toggle mic (self-mute)', { muted: isMicMuted.value });
         if (room) {
             await syncMicEnabled();
             syncMuteAttribute();
@@ -1225,7 +1009,6 @@ export const useVoiceStore = defineStore('voice', () => {
 
     async function toggleSound() {
         isSoundMuted.value = !isSoundMuted.value;
-        vlog('audio', 'toggle deafen', { deafened: isSoundMuted.value, remotes: room?.remoteParticipants.size ?? 0 });
         if (!room) return;
         room.remoteParticipants.forEach((p) => {
             applyRemoteAudioState(p);
@@ -1276,8 +1059,8 @@ export const useVoiceStore = defineStore('voice', () => {
         if (room && room.state === ConnectionState.Connected) {
             try {
                 await room.switchActiveDevice('audiooutput', deviceId ?? 'default');
-            } catch (err) {
-                console.warn('[Voice] Failed to switch audio output device:', err);
+            } catch {
+                // ignore
             }
         }
     }
@@ -1287,14 +1070,13 @@ export const useVoiceStore = defineStore('voice', () => {
         try {
             await room.startAudio();
             isAudioPlaybackBlocked.value = !room.canPlaybackAudio;
-        } catch (err) {
-            console.warn('[Voice] Failed to start audio playback:', err);
+        } catch {
+            // ignore
         }
     }
 
     function setPttEnabled(enabled: boolean) {
         pttEnabled.value = enabled;
-        vlog('ptt', 'PTT mode changed', { enabled, connected: isConnected.value, muted: isMicMuted.value });
         window.api.settings.set('voice:pttEnabled', String(enabled));
 
         void syncMicEnabled();
@@ -1365,12 +1147,6 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function syncPttConfig() {
-        vlog('ptt', 'configure hook (main process)', {
-            enabled: pttEnabled.value,
-            keycode: pttKeycode.value,
-            key: pttKey.value,
-            modifiers: pttModifiers.value,
-        });
         window.api.ptt.configure({
             keycode: pttKeycode.value,
             ctrl: pttModifiers.value.ctrl,
@@ -1382,11 +1158,6 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function handlePttActivated() {
-        vlog('ptt', 'key down (activated)', {
-            pttEnabled: pttEnabled.value,
-            connected: isConnected.value,
-            muted: isMicMuted.value,
-        });
         if (!pttEnabled.value) return;
 
         pttActive = true;
@@ -1400,7 +1171,6 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function handlePttDeactivated() {
-        vlog('ptt', 'key up (deactivated)', { pttEnabled: pttEnabled.value, connected: isConnected.value });
         const wasActive = pttActive;
         pttActive = false;
         if (!pttEnabled.value) return;
@@ -1419,7 +1189,6 @@ export const useVoiceStore = defineStore('voice', () => {
         cleanupPttListeners();
         pttDisposers.push(window.api.ptt.onActivated(handlePttActivated));
         pttDisposers.push(window.api.ptt.onDeactivated(handlePttDeactivated));
-        vlog('ptt', 'listeners registered');
 
         syncPttConfig();
     }
@@ -1428,38 +1197,6 @@ export const useVoiceStore = defineStore('voice', () => {
         pttDisposers.forEach((dispose) => dispose());
         pttDisposers = [];
     }
-
-    // Full point-in-time snapshot of the voice/PTT/LiveKit state. Exposed in the
-    // devtools console as `__voiceLog.dump()` for verifying everything is sane.
-    function debugSnapshot(): Record<string, unknown> {
-        const snap = {
-            channel: currentChannel.value,
-            connected: isConnected.value,
-            reconnecting: isReconnecting.value,
-            roomState: room?.state ?? null,
-            connectionQuality: connectionQuality.value,
-            micMuted: isMicMuted.value,
-            soundDeafened: isSoundMuted.value,
-            pttEnabled: pttEnabled.value,
-            pttActive,
-            pttKey: pttKey.value,
-            desiredMicLive: desiredMicLive(),
-            screenSharing: isScreenSharing.value,
-            e2eeKeyIndex,
-            participants: currentParticipants.value.map((p) => ({
-                id: p.id,
-                speaking: p.isSpeaking,
-                muted: p.isMuted,
-                screenSharing: p.isScreenSharing,
-            })),
-            vadSpeaking: [...vadSpeaking],
-            pttSpeakingByIdentity: Object.fromEntries(pttSpeakingByIdentity),
-        };
-        vlog('conn', 'state snapshot', snap);
-        return snap;
-    }
-
-    registerVoiceStateDump(debugSnapshot);
 
     async function $reset(): Promise<void> {
         await leaveChannel();
