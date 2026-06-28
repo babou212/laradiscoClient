@@ -736,7 +736,7 @@ export function registerIpcHandlers(): void {
 
     // Trim an uploaded audio clip to the user-selected [start, end] window and
     // re-encode it to Opus/Ogg. Runs entirely locally via the bundled ffmpeg so
-    // only the final clip is uploaded. The duration is clamped to 10s as a
+    // only the final clip is uploaded. The duration is clamped to 20s as a
     // safety net; the backend independently enforces the same limit.
     handle(
         'soundboard:trim',
@@ -745,7 +745,7 @@ export function registerIpcHandlers(): void {
             params: { fileData: Uint8Array; startSec: number; endSec: number },
         ): Promise<{ data: Uint8Array; mimeType: string }> => {
             const start = Math.max(0, params.startSec);
-            const duration = Math.max(0.1, Math.min(params.endSec - start, 10));
+            const duration = Math.max(0.1, Math.min(params.endSec - start, 20));
 
             const tmpDir = await mkdtemp(join(tmpdir(), 'laradisco-sbtrim-'));
             try {

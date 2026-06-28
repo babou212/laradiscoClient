@@ -925,7 +925,7 @@
                     "chooseDifferent": "Choose a different file",
                     "name": "Name",
                     "namePlaceholder": "Sound name",
-                    "trimHint": "Drag the edges of the highlighted region to trim (max 10s).",
+                    "trimHint": "Drag the region to move it, or its edges to resize (max 20s).",
                     "selection": "Selection: {duration}s",
                     "preview": "Preview",
                     "stop": "Stop",
