@@ -129,7 +129,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
         userId = currentUserId;
 
         const echo = getEcho();
-        echo.private(`App.Models.User.${currentUserId}`).notification((raw: Record<string, unknown>) => {
+        const userChannel = echo.private(`App.Models.User.${currentUserId}`);
+        userChannel.notification((raw: Record<string, unknown>) => {
             const notification: AppNotification = {
                 id: raw.id as string,
                 type: typeof raw.type === 'string' ? raw.type.split('\\').pop()! : String(raw.type),
@@ -178,10 +179,42 @@ export const useNotificationsStore = defineStore('notifications', () => {
             }
         });
 
+        userChannel.listen(
+            '.user.banned',
+            (data: { reason?: string | null; expires_at?: string | null; permanent?: boolean }) => {
+                void handleBanned(data);
+            },
+        );
+
         isConnected.value = true;
         fetchNotifications();
         fetchPreferences();
         setupNativeClickListener();
+    };
+
+    const handleBanned = async (data: {
+        reason?: string | null;
+        expires_at?: string | null;
+        permanent?: boolean;
+    }): Promise<void> => {
+        // Lazy imports avoid a circular dependency (auth/voice -> api -> ... -> notifications).
+        const { useAuthStore } = await import('@/stores/auth');
+        const { useVoiceStore } = await import('@/stores/voice');
+
+        useAuthStore().banInfo = {
+            reason: data.reason ?? null,
+            expires_at: data.expires_at ?? null,
+            permanent: data.permanent ?? data.expires_at == null,
+        };
+
+        try {
+            await useVoiceStore().leaveChannel();
+        } catch (err) {
+            console.warn('[Ban] Failed to leave voice on ban:', err);
+        }
+
+        await useAuthStore().logout();
+        void router.push({ name: 'banned' });
     };
 
     const setupNativeClickListener = () => {

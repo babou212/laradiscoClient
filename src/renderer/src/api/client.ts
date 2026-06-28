@@ -57,6 +57,18 @@ api.interceptors.response.use(
 
             const { default: router } = await import('@/router');
             router.push({ name: 'login' });
+        } else if (error.response?.status === 403 && error.response.data?.code === 'account_banned') {
+            const authStore = useAuthStore();
+            const data = error.response.data;
+            authStore.banInfo = {
+                reason: data.reason ?? null,
+                expires_at: data.expires_at ?? null,
+                permanent: data.permanent ?? data.expires_at == null,
+            };
+            await authStore.logout();
+
+            const { default: router } = await import('@/router');
+            router.push({ name: 'banned' });
         }
         return Promise.reject(error);
     },

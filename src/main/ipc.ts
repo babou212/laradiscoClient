@@ -205,6 +205,18 @@ export function registerIpcHandlers(): void {
             const body = await response.json();
 
             if (!response.ok) {
+                if (body.code === 'account_banned') {
+                    return {
+                        success: false,
+                        banned: true,
+                        ban: {
+                            reason: body.reason ?? null,
+                            expires_at: body.expires_at ?? null,
+                            permanent: !!body.permanent,
+                        },
+                        error: body.message || 'Your account has been banned.',
+                    };
+                }
                 return {
                     success: false,
                     error: body.message || body.errors?.email?.[0] || 'Login failed',
@@ -258,6 +270,18 @@ export function registerIpcHandlers(): void {
                 const body = await response.json();
 
                 if (!response.ok) {
+                    if (body.code === 'account_banned') {
+                        return {
+                            success: false,
+                            banned: true,
+                            ban: {
+                                reason: body.reason ?? null,
+                                expires_at: body.expires_at ?? null,
+                                permanent: !!body.permanent,
+                            },
+                            error: body.message || 'Your account has been banned.',
+                        };
+                    }
                     return {
                         success: false,
                         error:
@@ -735,9 +759,6 @@ export function registerIpcHandlers(): void {
                         '-y',
                         '-loglevel',
                         'error',
-                        // Input seeking (-ss before -i) is fast and accurate
-                        // enough since we re-encode; -t bounds the duration on
-                        // the trimmed timeline unambiguously.
                         '-ss',
                         String(start),
                         '-t',

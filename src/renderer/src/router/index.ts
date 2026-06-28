@@ -46,6 +46,12 @@ const router = createRouter({
             meta: { requiresServer: true },
         },
         {
+            path: '/banned',
+            name: 'banned',
+            component: () => import('@/views/auth/BannedView.vue'),
+            meta: { requiresServer: true },
+        },
+        {
             path: '/',
             name: 'home',
             component: () => import('@/views/HomeView.vue'),

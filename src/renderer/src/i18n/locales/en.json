@@ -128,6 +128,17 @@
             "useRecoveryInstead": "Use a recovery code instead",
             "useAuthInstead": "Use authentication code instead",
             "backToLogin": "Back to login"
+        },
+        "banned": {
+            "title": "You have been banned",
+            "description": "Your access to {server} has been revoked.",
+            "reasonLabel": "Reason",
+            "noReason": "No reason was provided.",
+            "permanent": "This ban is permanent.",
+            "temporary": "Your ban will be lifted on {date}.",
+            "timeRemaining": "Time remaining: {duration}",
+            "expired": "Your ban has expired. You can sign in again.",
+            "backToLogin": "Back to login"
         }
     },
     "settings": {
@@ -554,9 +565,15 @@
                 "description": "Ban {name} from the server. They will not be able to access any channels.",
                 "reason": "Reason (optional)",
                 "reasonPlaceholder": "Why is this user being banned?",
+                "duration": "Duration",
                 "expires": "Expires at (optional)",
-                "pickDate": "Pick a date",
+                "pickDate": "Pick a custom date",
                 "permanentHint": "Leave empty for a permanent ban.",
+                "presetHour": "1 hour",
+                "presetDay": "1 day",
+                "presetWeek": "7 days",
+                "presetMonth": "30 days",
+                "presetPermanent": "Permanent",
                 "submit": "Ban User"
             },
             "jailDialog": {

@@ -99,6 +99,27 @@ const banExpiry = ref<DateValue | undefined>();
 const actionError = ref('');
 const minDate = today(getLocalTimeZone());
 
+type BanPreset = { key: string; labelKey: string; hours: number | null };
+const banPresets: BanPreset[] = [
+    { key: 'hour', labelKey: 'settings.moderation.banDialog.presetHour', hours: 1 },
+    { key: 'day', labelKey: 'settings.moderation.banDialog.presetDay', hours: 24 },
+    { key: 'week', labelKey: 'settings.moderation.banDialog.presetWeek', hours: 24 * 7 },
+    { key: 'month', labelKey: 'settings.moderation.banDialog.presetMonth', hours: 24 * 30 },
+    { key: 'permanent', labelKey: 'settings.moderation.banDialog.presetPermanent', hours: null },
+];
+const presetHours = ref<number | null | undefined>(undefined);
+
+function selectPreset(preset: BanPreset): void {
+    presetHours.value = preset.hours;
+    banExpiry.value = undefined;
+}
+
+function onCalendarExpiry(value: DateValue | undefined): void {
+    banExpiry.value = value;
+    // Choosing a custom date supersedes any preset selection.
+    presetHours.value = undefined;
+}
+
 const { mutateAsync: doBan, isLoading: banning } = useMutation({
     mutation: (params: { userId: string; reason?: string; expires_at?: string }) =>
         banUser(params.userId, { reason: params.reason, expires_at: params.expires_at }),
@@ -120,6 +141,7 @@ function openBanDialog(member: SimpleMember) {
     selectedMember.value = member;
     banReason.value = '';
     banExpiry.value = undefined;
+    presetHours.value = undefined;
     actionError.value = '';
     showBanDialog.value = true;
 }
@@ -132,6 +154,15 @@ function formatExpiryForApi(date: DateValue | undefined): string | undefined {
     return jsDate.toISOString();
 }
 
+/** Resolve the chosen expiry to an ISO timestamp (or undefined = permanent). */
+function resolveExpiry(): string | undefined {
+    if (presetHours.value === null) return undefined; // explicit permanent
+    if (typeof presetHours.value === 'number') {
+        return new Date(Date.now() + presetHours.value * 3600 * 1000).toISOString();
+    }
+    return formatExpiryForApi(banExpiry.value);
+}
+
 async function confirmBan() {
     if (!selectedMember.value) return;
     actionError.value = '';
@@ -139,7 +170,7 @@ async function confirmBan() {
         await doBan({
             userId: selectedMember.value.id,
             reason: banReason.value || undefined,
-            expires_at: formatExpiryForApi(banExpiry.value),
+            expires_at: resolveExpiry(),
         });
         showBanDialog.value = false;
         selectedMember.value = null;
@@ -398,8 +429,27 @@ function formatDate(dateStr: string): string {
                         />
                     </div>
                     <div class="space-y-2">
+                        <Label>{{ t('settings.moderation.banDialog.duration') }}</Label>
+                        <div class="flex flex-wrap gap-2">
+                            <Button
+                                v-for="preset in banPresets"
+                                :key="preset.key"
+                                type="button"
+                                size="sm"
+                                :variant="presetHours === preset.hours ? 'default' : 'outline'"
+                                @click="selectPreset(preset)"
+                            >
+                                {{ t(preset.labelKey) }}
+                            </Button>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
                         <Label>{{ t('settings.moderation.banDialog.expires') }}</Label>
-                        <DatePickerRoot v-model="banExpiry" :min-value="minDate">
+                        <DatePickerRoot
+                            :model-value="banExpiry"
+                            :min-value="minDate"
+                            @update:model-value="onCalendarExpiry"
+                        >
                             <DatePickerAnchor>
                                 <DatePickerTrigger
                                     class="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 w-full items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xs"

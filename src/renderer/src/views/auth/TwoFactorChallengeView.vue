@@ -33,12 +33,14 @@ onMounted(() => {
 async function handleSubmit(): Promise<void> {
     if (!canSubmit.value || !authStore.challengeToken) return;
 
-    const success = await authStore.verifyTwoFactor(
+    const result = await authStore.verifyTwoFactor(
         useRecoveryCode.value ? null : code.value.trim(),
         useRecoveryCode.value ? recoveryCode.value.trim() : null,
     );
 
-    if (success) {
+    if (result === 'banned') {
+        router.push({ name: 'banned' });
+    } else if (result) {
         router.push({ name: 'home' });
     }
 }
