@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "Alternar áudio",
             "expand": "Expandir",
+            "exitFullscreen": "Sair da tela cheia",
             "fullscreen": "Tela cheia",
             "popOut": "Janela flutuante",
             "close": "Fechar"

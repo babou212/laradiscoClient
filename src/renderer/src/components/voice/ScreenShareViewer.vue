@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
                             <Volume2 v-else :size="18" />
                         </button>
                     </SimpleTooltip>
-                    <SimpleTooltip :content="t('chat.screenShareViewer.expand')">
+                    <SimpleTooltip :content="t('chat.screenShareViewer.exitFullscreen')">
                         <button
                             type="button"
                             class="rounded p-1.5 text-[#b5bac1] transition-colors hover:bg-[#393c41] hover:text-[#f2f3f5]"

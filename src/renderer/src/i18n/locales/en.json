@@ -960,6 +960,7 @@
         "screenShareViewer": {
             "toggleAudio": "Toggle audio",
             "expand": "Expand",
+            "exitFullscreen": "Exit fullscreen",
             "fullscreen": "Fullscreen",
             "popOut": "Pop out",
             "close": "Close"

@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "Переключить звук",
             "expand": "Развернуть",
+            "exitFullscreen": "Выйти из полноэкранного режима",
             "fullscreen": "Полный экран",
             "popOut": "Открыть в окне",
             "close": "Закрыть"

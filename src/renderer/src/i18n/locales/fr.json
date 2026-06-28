@@ -881,6 +881,7 @@
         "screenShareViewer": {
             "toggleAudio": "Activer/désactiver l'audio",
             "expand": "Agrandir",
+            "exitFullscreen": "Quitter le plein écran",
             "fullscreen": "Plein écran",
             "popOut": "Détacher",
             "close": "Fermer"
