@@ -628,7 +628,7 @@ export const useVoiceStore = defineStore('voice', () => {
             room = new Room({
                 adaptiveStream: true,
                 dynacast: true,
-                webAudioMix: true, // route remote audio through Web Audio GainNode so per-user volume can boost >100%
+                webAudioMix: true,
                 e2ee: {
                     keyProvider,
                     worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
@@ -880,10 +880,11 @@ export const useVoiceStore = defineStore('voice', () => {
         if (isScreenSharing.value) return;
 
         const preset = SCREEN_SHARE_PRESETS[screenShareQuality.value];
+
         const resolution =
             preset.width > 0
                 ? { width: preset.width, height: preset.height, frameRate: preset.frameRate }
-                : { width: 3840, height: 2160, frameRate: preset.frameRate };
+                : { width: 2560, height: 1440, frameRate: preset.frameRate };
 
         try {
             const tracks = await room.localParticipant.createScreenTracks({
@@ -898,13 +899,11 @@ export const useVoiceStore = defineStore('voice', () => {
                 await room.localParticipant.publishTrack(localVideoTrack, {
                     source: Track.Source.ScreenShare,
                     name: 'screen',
-                    // H.264 instead of VP9. VP9 was encoded AND decoded in software (libvpx), and
-                    // software VP9 *decode* on viewers was dropping frames in bursts (the hitching),
-                    // with a clean network and a steady sender. H.264 decodes far cheaper and engages
-                    // hardware decode (VAAPI) far more reliably; no backup codec is needed since every
-                    // client supports H.264, and scalabilityMode (VP9/AV1 SVC) no longer applies.
-                    videoCodec: 'h264' as VideoCodec,
+                    videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
+                    backupCodec: { codec: 'vp8' },
+                    scalabilityMode: 'L3T3_KEY',
+                    degradationPreference: 'maintain-framerate',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
                     void stopScreenShare();
