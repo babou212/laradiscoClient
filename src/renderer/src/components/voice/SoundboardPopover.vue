@@ -157,25 +157,15 @@ const volumeModel = computed<number[]>({
                         <button
                             type="button"
                             class="flex items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors hover:bg-white/5"
-                            :class="
-                                soundboard.muted
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground hover:text-foreground'
-                            "
+                            :class="soundboard.muted ? 'text-primary' : 'text-muted-foreground hover:text-foreground'"
                             :title="
-                                soundboard.muted
-                                    ? t('chat.voice.soundboard.unmute')
-                                    : t('chat.voice.soundboard.mute')
+                                soundboard.muted ? t('chat.voice.soundboard.unmute') : t('chat.voice.soundboard.mute')
                             "
                             @click="soundboard.toggleMute()"
                         >
                             <VolumeX v-if="soundboard.muted" :size="13" />
                             <Volume2 v-else :size="13" />
-                            {{
-                                soundboard.muted
-                                    ? t('chat.voice.soundboard.unmute')
-                                    : t('chat.voice.soundboard.mute')
-                            }}
+                            {{ soundboard.muted ? t('chat.voice.soundboard.unmute') : t('chat.voice.soundboard.mute') }}
                         </button>
                     </div>
                     <Slider v-model="volumeModel" :min="0" :max="100" :step="1" />

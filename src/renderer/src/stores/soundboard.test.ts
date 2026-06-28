@@ -128,7 +128,7 @@ describe('volume', () => {
 });
 
 describe('mute', () => {
-    function play(store: ReturnType<typeof useSoundboardStore>): Promise<void> {
+    function play(store: ReturnType<typeof useSoundboardStore>): Promise<unknown> {
         store.handleIncoming(
             new TextEncoder().encode(JSON.stringify({ type: 'play_sound', url: 'https://cdn.test/a.ogg' })),
         );
