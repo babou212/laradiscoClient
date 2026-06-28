@@ -113,6 +113,62 @@ describe('volume', () => {
         await store.loadSettings();
         expect(store.volume).toBe(0.5);
     });
+
+    it('applies a volume change to clips already playing', async () => {
+        const store = useSoundboardStore();
+        store.handleIncoming(
+            new TextEncoder().encode(JSON.stringify({ type: 'play_sound', url: 'https://cdn.test/a.ogg' })),
+        );
+        await flush();
+        expect(FakeAudio.instances).toHaveLength(1);
+
+        store.setVolume(0.25);
+        expect(FakeAudio.instances[0].volume).toBe(0.25);
+    });
+});
+
+describe('mute', () => {
+    function play(store: ReturnType<typeof useSoundboardStore>): Promise<void> {
+        store.handleIncoming(
+            new TextEncoder().encode(JSON.stringify({ type: 'play_sound', url: 'https://cdn.test/a.ogg' })),
+        );
+        return flush();
+    }
+
+    it('toggles, persists, and silences playing clips, then restores volume', async () => {
+        const store = useSoundboardStore();
+        store.setVolume(0.8);
+        await play(store);
+        expect(FakeAudio.instances[0].volume).toBe(0.8);
+
+        store.toggleMute();
+        expect(store.muted).toBe(true);
+        expect(FakeAudio.instances[0].volume).toBe(0);
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:soundboardMuted', 'true');
+
+        store.toggleMute();
+        expect(store.muted).toBe(false);
+        expect(FakeAudio.instances[0].volume).toBe(0.8);
+        expect(window.api.settings.set).toHaveBeenCalledWith('voice:soundboardMuted', 'false');
+    });
+
+    it('starts new clips silent while muted', async () => {
+        const store = useSoundboardStore();
+        store.setMuted(true);
+
+        await play(store);
+        expect(FakeAudio.instances[0].volume).toBe(0);
+    });
+
+    it('loads a persisted mute state', async () => {
+        vi.mocked(window.api.settings.get).mockImplementation((key: string) =>
+            Promise.resolve(key === 'voice:soundboardMuted' ? 'true' : null),
+        );
+        const store = useSoundboardStore();
+
+        await store.loadSettings();
+        expect(store.muted).toBe(true);
+    });
 });
 
 describe('library mutations', () => {

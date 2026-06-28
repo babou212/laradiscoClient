@@ -911,6 +911,8 @@
                 "empty": "No sounds yet. Add one to get started.",
                 "addSound": "Add sound",
                 "volume": "Soundboard volume",
+                "mute": "Mute",
+                "unmute": "Unmute",
                 "delete": "Delete sound",
                 "deleteConfirm": "Delete",
                 "deleteDialogTitle": "Delete sound",
