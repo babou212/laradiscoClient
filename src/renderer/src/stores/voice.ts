@@ -744,7 +744,8 @@ export const useVoiceStore = defineStore('voice', () => {
                     typeof p.availableOutgoingBitrate === 'number'
                         ? Math.round(p.availableOutgoingBitrate / 1000)
                         : undefined,
-                pairRttMs: typeof p.currentRoundTripTime === 'number' ? Math.round(p.currentRoundTripTime * 1000) : undefined,
+                pairRttMs:
+                    typeof p.currentRoundTripTime === 'number' ? Math.round(p.currentRoundTripTime * 1000) : undefined,
             });
         }
         return out;
@@ -781,7 +782,9 @@ export const useVoiceStore = defineStore('voice', () => {
         const r = room;
         if (!r) return;
         try {
-            const localVideo = screenShareTracks.find((t) => t.kind === Track.Kind.Video) as LocalVideoTrack | undefined;
+            const localVideo = screenShareTracks.find((t) => t.kind === Track.Kind.Video) as
+                | LocalVideoTrack
+                | undefined;
             if (localVideo) {
                 const report = await localVideo.getRTCStatsReport();
                 const out = report ? summarizeOutbound(report) : null;
