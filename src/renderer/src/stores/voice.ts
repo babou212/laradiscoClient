@@ -622,17 +622,16 @@ export const useVoiceStore = defineStore('voice', () => {
             const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
             vlog('conn', 'token received', { url, hasKey: !!e2ee_key, keyIndex: e2ee_key_index });
 
-            // TEMP DIAGNOSTIC: E2EE (insertable streams) is the prime suspect for forcing
-            // viewers onto software VP9 decode (decoder: "libvpx"). To test, run BOTH the
-            // publisher and the viewer with E2EE off and watch the `stats` poller's
-            // `decoderImplementation`: if it flips to a hardware decoder, E2EE is the blocker.
-            // Toggle per-client in devtools (no rebuild needed), then rejoin the channel:
-            //   localStorage.setItem('voice:disableE2EE', 'true')   // re-enable: removeItem
-            // Remove this block once the diagnosis is done.
-            const e2eeDisabled = localStorage.getItem('voice:disableE2EE') === 'true';
-            if (e2eeDisabled) vwarn('e2ee', 'E2EE DISABLED via localStorage voice:disableE2EE (debug only)');
+            // E2EE TEMPORARILY DISABLED. LiveKit E2EE (insertable streams) forces viewers
+            // onto software VP9 decode (decoder: "libvpx"); turning it off lets the GPU
+            // decoder engage. NOTE: LiveKit E2EE is room-wide — there is no per-track
+            // opt-out — so this disables encryption for the mic as well as the screen
+            // share. Transport DTLS-SRTP to the self-hosted SFU (voidserver) still applies.
+            // Flip back to true to restore end-to-end encryption.
+            const E2EE_ENABLED = false;
+            if (!E2EE_ENABLED) vwarn('e2ee', 'E2EE DISABLED (E2EE_ENABLED=false) — room-wide, mic + screen share');
 
-            keyProvider = e2eeDisabled ? null : new IndexedKeyProvider();
+            keyProvider = E2EE_ENABLED ? new IndexedKeyProvider() : null;
             e2eeKeyIndex = e2ee_key_index ?? 0;
 
             room = new Room({
