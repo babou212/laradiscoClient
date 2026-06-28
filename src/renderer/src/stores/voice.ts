@@ -17,6 +17,7 @@ import { IndexedKeyProvider } from '@/lib/voice-key-provider';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
+import type { PttBinding } from '@/types/ptt';
 import { useSoundboardStore } from './soundboard';
 import { useUsersStore } from './users';
 
@@ -89,6 +90,33 @@ const MUTED_ATTRIBUTE = 'micMuted';
 
 const PTT_DATA_TOPIC = 'ptt';
 
+function parsePttBinding(
+    stored: string | null,
+    legacyKeycode: string | null,
+    legacyModifiers: string | null,
+): PttBinding | null {
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored) as PttBinding;
+            if (parsed?.device === 'keyboard' || parsed?.device === 'mouse') return parsed;
+        } catch {
+            // fall through to legacy migration
+        }
+    }
+    if (legacyKeycode) {
+        let modifiers = { ctrl: false, shift: false, alt: false, meta: false };
+        if (legacyModifiers) {
+            try {
+                modifiers = { ...modifiers, ...JSON.parse(legacyModifiers) };
+            } catch {
+                // ignore malformed stored modifiers
+            }
+        }
+        return { device: 'keyboard', keycode: Number(legacyKeycode), modifiers };
+    }
+    return null;
+}
+
 export const useVoiceStore = defineStore('voice', () => {
     const currentChannel = ref<VoiceChannel | null>(null);
     const isMicMuted = ref(false);
@@ -102,13 +130,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
     const pttEnabled = ref(false);
     const pttKey = ref<string | null>(null);
-    const pttKeycode = ref<number | null>(null);
-    const pttModifiers = ref<{ ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }>({
-        ctrl: false,
-        shift: false,
-        alt: false,
-        meta: false,
-    });
+    const pttBinding = ref<PttBinding | null>(null);
     const pttSoundEnabled = ref(true);
     const selectedMicDeviceId = ref<string | undefined>(undefined);
     const availableMics = ref<MediaDeviceInfo[]>([]);
@@ -141,10 +163,11 @@ export const useVoiceStore = defineStore('voice', () => {
     const vadClearTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     async function loadSettings(): Promise<void> {
-        const [enabled, key, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality, volumes] =
+        const [enabled, key, binding, keycode, modifiers, sound, micId, speakerId, ns, ec, agc, ssQuality, volumes] =
             await Promise.all([
                 window.api.settings.get('voice:pttEnabled'),
                 window.api.settings.get('voice:pttKey'),
+                window.api.settings.get('voice:pttBinding'),
                 window.api.settings.get('voice:pttKeycode'),
                 window.api.settings.get('voice:pttModifiers'),
                 window.api.settings.get('voice:pttSoundEnabled'),
@@ -159,14 +182,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
         pttEnabled.value = enabled === 'true';
         pttKey.value = key;
-        pttKeycode.value = keycode ? Number(keycode) : null;
-        if (modifiers) {
-            try {
-                pttModifiers.value = JSON.parse(modifiers);
-            } catch {
-                // ignore malformed stored modifiers
-            }
-        }
+        pttBinding.value = parsePttBinding(binding, keycode, modifiers);
         pttSoundEnabled.value = sound !== 'false';
         selectedMicDeviceId.value = micId && micId !== 'default' ? micId : undefined;
         selectedSpeakerDeviceId.value = speakerId && speakerId !== 'default' ? speakerId : undefined;
@@ -1089,26 +1105,12 @@ export const useVoiceStore = defineStore('voice', () => {
         syncPttConfig();
     }
 
-    function setPttKey(
-        displayName: string | null,
-        keycode: number | null = null,
-        modifiers?: { ctrl: boolean; shift: boolean; alt: boolean; meta: boolean },
-    ) {
+    function setPttKey(displayName: string | null, binding: PttBinding | null = null) {
         pttKey.value = displayName;
-        pttKeycode.value = keycode;
-        if (modifiers) pttModifiers.value = modifiers;
+        pttBinding.value = binding;
 
-        if (displayName) {
-            window.api.settings.set('voice:pttKey', displayName);
-        } else {
-            window.api.settings.set('voice:pttKey', '');
-        }
-        if (keycode !== null) {
-            window.api.settings.set('voice:pttKeycode', String(keycode));
-        } else {
-            window.api.settings.set('voice:pttKeycode', '');
-        }
-        window.api.settings.set('voice:pttModifiers', JSON.stringify(pttModifiers.value));
+        window.api.settings.set('voice:pttKey', displayName ?? '');
+        window.api.settings.set('voice:pttBinding', binding ? JSON.stringify(binding) : '');
         syncPttConfig();
     }
 
@@ -1147,14 +1149,15 @@ export const useVoiceStore = defineStore('voice', () => {
     }
 
     function syncPttConfig() {
-        window.api.ptt.configure({
-            keycode: pttKeycode.value,
-            ctrl: pttModifiers.value.ctrl,
-            shift: pttModifiers.value.shift,
-            alt: pttModifiers.value.alt,
-            meta: pttModifiers.value.meta,
-            enabled: pttEnabled.value,
-        });
+        const b = pttBinding.value;
+
+        const binding: PttBinding | null =
+            b == null
+                ? null
+                : b.device === 'mouse'
+                  ? { device: 'mouse', button: b.button }
+                  : { device: 'keyboard', keycode: b.keycode, modifiers: { ...b.modifiers } };
+        window.api.ptt.configure({ enabled: pttEnabled.value, binding });
     }
 
     function handlePttActivated() {
@@ -1205,8 +1208,7 @@ export const useVoiceStore = defineStore('voice', () => {
         channelParticipantsMap.value = new Map();
         pttEnabled.value = false;
         pttKey.value = null;
-        pttKeycode.value = null;
-        pttModifiers.value = { ctrl: false, shift: false, alt: false, meta: false };
+        pttBinding.value = null;
         pttSoundEnabled.value = true;
         selectedMicDeviceId.value = undefined;
         availableMics.value = [];
@@ -1230,8 +1232,7 @@ export const useVoiceStore = defineStore('voice', () => {
         isConnected,
         pttEnabled,
         pttKey,
-        pttKeycode,
-        pttModifiers,
+        pttBinding,
         pttSoundEnabled,
         selectedMicDeviceId,
         availableMics,

@@ -5,7 +5,7 @@ export type { AvatarApi } from './types/avatar';
 export type { ClipboardApi } from './types/clipboard';
 export type { ServerConnection, ServerApi } from './types/server';
 export type { AuthPermissions, AuthUser, AuthSession, AuthApi } from './types/auth';
-export type { PttCapturedKey, PttApi } from './types/ptt';
+export type { PttBinding, PttModifiers, PttCapture, PttApi } from './types/ptt';
 export type { NotificationsApi } from './types/notifications';
 export type { SettingsApi } from './types/settings';
 export type { LogApi, LogSaveResult } from './types/log';

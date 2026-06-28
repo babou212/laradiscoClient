@@ -21,8 +21,15 @@ const handleBeforeQuit = () => {
     voiceStore.leaveChannel();
 };
 
+const suppressMouseNavButtons = (e: MouseEvent) => {
+    if (e.button === 3 || e.button === 4) e.preventDefault();
+};
+
 onMounted(async () => {
     window.api?.window?.onBeforeQuit(handleBeforeQuit);
+    window.addEventListener('mousedown', suppressMouseNavButtons, true);
+    window.addEventListener('mouseup', suppressMouseNavButtons, true);
+    window.addEventListener('auxclick', suppressMouseNavButtons, true);
 
     await voiceStore.loadSettings();
     voiceStore.initPttListeners();
@@ -30,6 +37,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
     window.api?.window?.removeBeforeQuitListener();
+    window.removeEventListener('mousedown', suppressMouseNavButtons, true);
+    window.removeEventListener('mouseup', suppressMouseNavButtons, true);
+    window.removeEventListener('auxclick', suppressMouseNavButtons, true);
     voiceStore.cleanupPttListeners();
 });
 </script>
