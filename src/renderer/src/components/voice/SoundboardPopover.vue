@@ -121,7 +121,7 @@ const volumeModel = computed<number[]>({
                     {{ t('chat.voice.soundboard.empty') }}
                 </p>
 
-                <div v-else class="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto">
+                <div v-else class="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto p-1.5">
                     <div v-for="sound in soundboard.sounds" :key="sound.id" class="group relative">
                         <button
                             type="button"
