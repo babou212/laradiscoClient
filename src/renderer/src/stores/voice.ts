@@ -622,17 +622,31 @@ export const useVoiceStore = defineStore('voice', () => {
             const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
             vlog('conn', 'token received', { url, hasKey: !!e2ee_key, keyIndex: e2ee_key_index });
 
-            keyProvider = new IndexedKeyProvider();
+            // TEMP DIAGNOSTIC: E2EE (insertable streams) is the prime suspect for forcing
+            // viewers onto software VP9 decode (decoder: "libvpx"). To test, run BOTH the
+            // publisher and the viewer with E2EE off and watch the `stats` poller's
+            // `decoderImplementation`: if it flips to a hardware decoder, E2EE is the blocker.
+            // Toggle per-client in devtools (no rebuild needed), then rejoin the channel:
+            //   localStorage.setItem('voice:disableE2EE', 'true')   // re-enable: removeItem
+            // Remove this block once the diagnosis is done.
+            const e2eeDisabled = localStorage.getItem('voice:disableE2EE') === 'true';
+            if (e2eeDisabled) vwarn('e2ee', 'E2EE DISABLED via localStorage voice:disableE2EE (debug only)');
+
+            keyProvider = e2eeDisabled ? null : new IndexedKeyProvider();
             e2eeKeyIndex = e2ee_key_index ?? 0;
 
             room = new Room({
                 adaptiveStream: true,
                 dynacast: true,
                 webAudioMix: true,
-                e2ee: {
-                    keyProvider,
-                    worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
-                },
+                ...(keyProvider
+                    ? {
+                          e2ee: {
+                              keyProvider,
+                              worker: new Worker(new URL('livekit-client/e2ee-worker', import.meta.url)),
+                          },
+                      }
+                    : {}),
                 audioCaptureDefaults: buildAudioCaptureDefaults(),
                 audioOutput: { deviceId: selectedSpeakerDeviceId.value },
                 publishDefaults: {
@@ -645,8 +659,10 @@ export const useVoiceStore = defineStore('voice', () => {
             });
             wireRoomEvents(room);
 
-            await keyProvider.setKeyAt(e2ee_key, e2eeKeyIndex);
-            vlog('e2ee', 'initial key applied', { keyIndex: e2eeKeyIndex });
+            if (keyProvider) {
+                await keyProvider.setKeyAt(e2ee_key, e2eeKeyIndex);
+                vlog('e2ee', 'initial key applied', { keyIndex: e2eeKeyIndex });
+            }
             await room.connect(url, token);
             vlog('conn', 'room connected', { state: room.state, remotes: room.remoteParticipants.size });
             startStatsDiagnostics();
@@ -802,7 +818,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     const report = await track.getRTCStatsReport();
                     const inb = report ? summarizeInbound(report) : null;
                     if (inb) {
-                        const tag = `IN(${participant.identity}) fps=${inb.fps ?? '?'} drop=${inb.framesDropped ?? '?'} freeze=${inb.freezeCount ?? '?'}`;
+                        const tag = `IN(${participant.identity}) dec=${inb.decoder ?? '?'} fps=${inb.fps ?? '?'} drop=${inb.framesDropped ?? '?'} freeze=${inb.freezeCount ?? '?'}`;
                         vlog('stats', tag, inb);
                     }
                 }
