@@ -52,8 +52,8 @@ function scheduleDeactivate(reason: Record<string, unknown>): void {
 
 function handleRawKeyDown(code: number, mods: Modifiers, isModifier: boolean, eventEpochMs: number): void {
     if (keyCaptureResolve) {
-        if (isModifier) return; 
-        if (eventEpochMs < captureArmedAtMs) return; 
+        if (isModifier) return;
+        if (eventEpochMs < captureArmedAtMs) return;
         const resolve = keyCaptureResolve;
         keyCaptureResolve = null;
         resolve({

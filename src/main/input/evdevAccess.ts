@@ -2,7 +2,6 @@ import { spawn } from 'child_process';
 import { closeSync, constants, existsSync, openSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
-
 const INPUT_DIR = '/dev/input';
 
 export const RULE_PATH = '/etc/udev/rules.d/70-laradisco-ptt.rules';

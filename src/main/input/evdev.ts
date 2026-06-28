@@ -28,25 +28,25 @@ const TV_SIZE = IS_64BIT ? 16 : 8;
 const EVENT_SIZE = TV_SIZE + 8;
 
 const MODIFIER_CODES: Record<number, keyof Modifiers> = {
-    29: 'ctrl', 
-    97: 'ctrl', 
-    42: 'shift', 
-    54: 'shift', 
-    56: 'alt', 
-    100: 'alt', 
+    29: 'ctrl',
+    97: 'ctrl',
+    42: 'shift',
+    54: 'shift',
+    56: 'alt',
+    100: 'alt',
     125: 'meta',
-    126: 'meta', 
+    126: 'meta',
 };
 
 const MOUSE_BUTTONS: Record<number, number> = {
-    0x110: 1, 
-    0x111: 2, 
-    0x112: 3, 
-    0x113: 4, 
-    0x114: 5, 
-    0x115: 6, 
-    0x116: 7, 
-    0x117: 8, 
+    0x110: 1,
+    0x111: 2,
+    0x112: 3,
+    0x113: 4,
+    0x114: 5,
+    0x115: 6,
+    0x116: 7,
+    0x117: 8,
 };
 
 export class EvdevSource {
@@ -114,7 +114,7 @@ export class EvdevSource {
         try {
             fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
         } catch {
-            return; 
+            return;
         }
         this.fds.set(path, fd);
     }
