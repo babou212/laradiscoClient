@@ -4,7 +4,7 @@ import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { useMessageSearch } from '@/composables/useMessageSearch';
+import { useMessageSearch, type SearchResult } from '@/composables/useMessageSearch';
 
 type Props = {
     conversationType: 'channel' | 'dm';
@@ -16,7 +16,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
     close: [];
-    navigateToMessage: [messageId: number];
+    navigateToMessage: [payload: { messageId: number; threadId: string | null }];
 }>();
 
 const { isSearching, searchResults, searchError, hasMore, searchInConversation, loadMoreResults, clearSearch } =
@@ -51,8 +51,8 @@ function handleLoadMore() {
     loadMoreResults(props.conversationType, props.conversationId, searchQuery.value);
 }
 
-function handleNavigate(messageId: number) {
-    emit('navigateToMessage', messageId);
+function handleNavigate(result: SearchResult) {
+    emit('navigateToMessage', { messageId: result.messageId, threadId: result.raw.thread_id ?? null });
 }
 
 function handleClose() {
@@ -151,7 +151,7 @@ onMounted(() => {
                             v-for="result in searchResults"
                             :key="result.messageId"
                             class="hover:bg-muted/50 flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors"
-                            @click="handleNavigate(result.messageId)"
+                            @click="handleNavigate(result)"
                         >
                             <div class="flex items-center gap-2">
                                 <span class="text-foreground text-xs font-medium">

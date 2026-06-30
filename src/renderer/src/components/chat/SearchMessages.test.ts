@@ -165,13 +165,34 @@ describe('SearchMessages pagination', () => {
 });
 
 describe('SearchMessages emits', () => {
-    it('emits navigateToMessage with the message id when a result is clicked', async () => {
+    it('emits navigateToMessage with the message id and no thread when a channel result is clicked', async () => {
         searchChannelMessages.mockResolvedValue(response());
         const wrapper = mountSearch();
         await typeAndDebounce('cats');
         buttonWithText('first hit about cats')!.click();
         await flushPromises();
-        expect(wrapper.emitted('navigateToMessage')?.[0]).toEqual([11]);
+        expect(wrapper.emitted('navigateToMessage')?.[0]).toEqual([{ messageId: 11, threadId: null }]);
+    });
+
+    it('emits navigateToMessage with the thread id when a thread reply result is clicked', async () => {
+        searchChannelMessages.mockResolvedValue(
+            response({
+                data: [
+                    {
+                        id: '11',
+                        content: 'first hit about cats',
+                        user: { id: '7', username: 'alice', avatar_urls: null },
+                        thread_id: '99',
+                        created_at: '2026-06-23T10:00:00Z',
+                    },
+                ],
+            }),
+        );
+        const wrapper = mountSearch();
+        await typeAndDebounce('cats');
+        buttonWithText('first hit about cats')!.click();
+        await flushPromises();
+        expect(wrapper.emitted('navigateToMessage')?.[0]).toEqual([{ messageId: 11, threadId: '99' }]);
     });
 
     it('emits close when the overlay is clicked', async () => {

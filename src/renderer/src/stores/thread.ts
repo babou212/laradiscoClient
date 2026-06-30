@@ -26,6 +26,7 @@ export const useThreadStore = defineStore('thread', () => {
     const newestId = ref<string | null>(null);
     const hasMoreBefore = ref(false);
     const hasMoreAfter = ref(false);
+    const pendingScrollMessageId = ref<string | null>(null);
 
     const isViewingHistory = computed(() => hasMoreAfter.value);
 
@@ -61,7 +62,11 @@ export const useThreadStore = defineStore('thread', () => {
         }
     }
 
-    async function openThreadById(channelId: string | number, threadId: string | number): Promise<void> {
+    async function openThreadById(
+        channelId: string | number,
+        threadId: string | number,
+        scrollToMessageId?: string | number,
+    ): Promise<void> {
         isLoadingThread.value = true;
         try {
             const response = await getThread(String(channelId), String(threadId));
@@ -71,6 +76,10 @@ export const useThreadStore = defineStore('thread', () => {
             const message = normalizeMessage(parentRes.data, parentRes.included);
             message.thread = normalizeThreadPreview(response.data, response.included) ?? message.thread;
 
+            // Set before openThread() so the flag is already in place when openThread's
+            // fetchLatest flips isLoadingMessages back to false (which is what ThreadPanel
+            // watches to perform the scroll).
+            pendingScrollMessageId.value = scrollToMessageId != null ? String(scrollToMessageId) : null;
             await openThread(channelId, message);
         } catch (error) {
             console.error('Failed to open thread from notification:', error);
@@ -88,6 +97,7 @@ export const useThreadStore = defineStore('thread', () => {
         newestId.value = null;
         hasMoreBefore.value = false;
         hasMoreAfter.value = false;
+        pendingScrollMessageId.value = null;
     }
 
     async function loadOlderMessages(): Promise<void> {
@@ -360,6 +370,7 @@ export const useThreadStore = defineStore('thread', () => {
         newestId.value = null;
         hasMoreBefore.value = false;
         hasMoreAfter.value = false;
+        pendingScrollMessageId.value = null;
     }
 
     return {
@@ -373,6 +384,7 @@ export const useThreadStore = defineStore('thread', () => {
         newestId,
         hasMoreBefore,
         hasMoreAfter,
+        pendingScrollMessageId,
         isViewingHistory,
         openThread,
         openThreadById,
