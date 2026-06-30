@@ -237,7 +237,7 @@ export const useVoiceStore = defineStore('voice', () => {
     const micPublishOptions = {
         audioPreset: AudioPresets.speech,
         dtx: true,
-        red:true,
+        red: true,
     } as const;
 
     function getChannelParticipants(channelId: number): VoiceParticipant[] {
