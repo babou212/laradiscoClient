@@ -96,8 +96,7 @@ const joinThread = (threadId: number | string) => {
         .listen('ThreadMessageSent', (data: { message: MessageData }) => {
             coerceBroadcastMessage(data.message);
             if (threadStore.threadMessages.some((m) => m.id === data.message.id)) return;
-            // While viewing an older window, don't splice in a non-contiguous
-            // message — surface it via the pill; it loads on return to live.
+
             if (threadStore.isViewingHistory) {
                 notifyNewMessage();
                 return;
@@ -175,18 +174,25 @@ const canLoadOlder = computed(() => threadStore.hasMoreBefore);
 const canLoadNewer = computed(() => threadStore.hasMoreAfter);
 const isViewingHistoryThread = computed(() => threadStore.isViewingHistory);
 
-const { pinnedToBottom, unreadNewCount, isLoadingOlder, jumpToBottom, notifyNewMessage, resetForNewConversation } =
-    useChatScroll({
-        containerRef: messagesContainer,
-        contentRef: messagesContent,
-        canLoadOlder,
-        canLoadNewer,
-        isViewingHistory: isViewingHistoryThread,
-        onLoadOlder: () => threadStore.loadOlderMessages(),
-        onLoadNewer: () => threadStore.loadNewerMessages(),
-        onLoadAround: (messageId: string) => threadStore.loadMessagesAround(messageId),
-        onResetToLive: () => threadStore.resetToLive(),
-    });
+const {
+    pinnedToBottom,
+    unreadNewCount,
+    isLoadingOlder,
+    jumpToBottom,
+    jumpToMessage,
+    notifyNewMessage,
+    resetForNewConversation,
+} = useChatScroll({
+    containerRef: messagesContainer,
+    contentRef: messagesContent,
+    canLoadOlder,
+    canLoadNewer,
+    isViewingHistory: isViewingHistoryThread,
+    onLoadOlder: () => threadStore.loadOlderMessages(),
+    onLoadNewer: () => threadStore.loadNewerMessages(),
+    onLoadAround: (messageId: string) => threadStore.loadMessagesAround(messageId),
+    onResetToLive: () => threadStore.resetToLive(),
+});
 
 function resetThreadScroll(): void {
     resetForNewConversation();
@@ -223,6 +229,12 @@ watch(
     (loading, wasLoading) => {
         if (wasLoading && !loading) {
             resetThreadScroll();
+
+            const targetId = threadStore.pendingScrollMessageId;
+            if (targetId) {
+                threadStore.pendingScrollMessageId = null;
+                void nextTick(() => jumpToMessage(targetId));
+            }
         }
     },
 );
@@ -265,8 +277,6 @@ const sendReply = async (content: string) => {
         created_at: new Date().toISOString(),
     };
 
-    // Snap back to the live tail if viewing history, so the reply lands
-    // contiguously rather than after a gap.
     if (threadStore.isViewingHistory) {
         await threadStore.resetToLive();
         await nextTick();

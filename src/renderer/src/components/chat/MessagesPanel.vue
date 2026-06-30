@@ -585,6 +585,15 @@ const openThread = (message: MessageData) => {
     threadStore.openThread(props.channel.id, message);
 };
 
+const onSearchNavigate = ({ messageId, threadId }: { messageId: number; threadId: string | null }) => {
+    showSearch.value = false;
+    if (threadId && !props.isDm && props.channel?.id) {
+        threadStore.openThreadById(props.channel.id, threadId, messageId);
+    } else {
+        jumpToMessage(String(messageId));
+    }
+};
+
 const startReply = (message: MessageData) => {
     replyingToMessage.value = message;
 };
@@ -861,7 +870,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 :conversation-id="Number(channel.id)"
                 :conversation-name="isDm ? (channel.name ?? '') : `#${channel.name}`"
                 @close="showSearch = false"
-                @navigate-to-message="(id: number) => jumpToMessage(String(id))"
+                @navigate-to-message="onSearchNavigate"
             />
         </div>
 
