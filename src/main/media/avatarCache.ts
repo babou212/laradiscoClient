@@ -4,19 +4,7 @@ import { mkdir, readdir, readFile, rm, stat, utimes, writeFile } from 'fs/promis
 import { join } from 'path';
 import { app, net } from 'electron';
 import { logger } from '../logger';
-
-// Avatars are cached to disk so they survive the backend's short-lived (15 min)
-// presigned URLs without a re-download. A cache entry is named:
-//
-//     <userId>__<version>__<fileHash>
-//
-//   userId    – the owning user (lets us purge a user's whole avatar on change)
-//   version   – the Spatie media id from the URL path; the SAME for every size of
-//               one avatar and DIFFERENT after a new upload
-//   fileHash  – sha256 of the URL path (identifies the specific size/conversion)
-//
-// When a new version is cached for a user, every older-version file for that user
-// is deleted immediately, so a stale avatar can never be served after an update.
+import { getAuthSession } from '../auth-storage';
 
 const MAX_ENTRIES = 1000;
 const KEY_RE = /^\d+__[A-Za-z0-9]+__[a-f0-9]{64}$/;
@@ -26,13 +14,16 @@ function cacheDir(): string {
     return join(app.getPath('userData'), 'avatar-cache');
 }
 
-/** The avatar version (Spatie media id) is the first numeric segment of the path. */
+/** The avatar version is the Spatie media id embedded in the URL path. */
 export function versionToken(pathname: string): string {
-    for (const seg of pathname.split('/')) {
+    const segs = pathname.split('/');
+    const ai = segs.indexOf('avatar');
+    if (ai >= 0 && /^\d+$/.test(segs[ai + 1] ?? '')) return segs[ai + 1];
+
+    for (const seg of segs) {
         if (/^\d+$/.test(seg)) return seg;
     }
-    // No media id in the path (unexpected layout): fall back to hashing the
-    // directory so different avatars still get different version tokens.
+
     const dir = pathname.replace(/[^/]+$/, '');
     return 'x' + createHash('sha1').update(dir).digest('hex');
 }
@@ -68,7 +59,14 @@ async function purgeOldVersions(userId: string, keepVersion: string): Promise<vo
 
 async function download(key: string, url: string): Promise<boolean> {
     try {
-        const response = await net.fetch(url);
+        const headers: Record<string, string> = {};
+        try {
+            const token = getAuthSession()?.token;
+            if (token) headers.Authorization = `Bearer ${token}`;
+        } catch {
+            // OS keychain unavailable — fall through unauthenticated.
+        }
+        const response = await net.fetch(url, { headers });
         if (!response.ok) {
             logger.error('[avatarCache] download failed', { status: response.status });
             return false;
@@ -95,8 +93,7 @@ export async function ensureAvatarCached(userId: string, url: string): Promise<s
     const file = join(cacheDir(), key);
     if (existsSync(file)) {
         void utimes(file, new Date(), new Date()).catch(() => {});
-        // A previously-cached entry may pre-date an update on another size; make
-        // sure we still drop any older versions left lying around.
+
         void purgeOldVersions(userId, version);
         return key;
     }

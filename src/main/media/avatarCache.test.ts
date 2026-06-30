@@ -20,7 +20,6 @@ let dir: string;
 
 beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'avatar-cache-test-'));
-    // cacheDir() = join(userData, 'avatar-cache'); point userData at our temp dir.
     vi.mocked(app.getPath).mockReturnValue(dir);
 });
 
@@ -29,6 +28,10 @@ afterEach(() => {
 });
 
 describe('versionToken', () => {
+    it('uses the media id after `avatar`, not the earlier user id', () => {
+        expect(versionToken('/api/v1/users/7/avatar/12/thumb')).toBe('12');
+    });
+
     it('uses the first numeric path segment as the version', () => {
         expect(versionToken('/media/42/conversions/avatar.png')).toBe('42');
     });
