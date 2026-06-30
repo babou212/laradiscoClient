@@ -38,7 +38,6 @@ export interface StoredUser {
     permissions: AuthPermissions | null;
     created_at: string | null;
     fetchedAt: number;
-    /** True once the account has been permanently deleted from the server. */
     deleted?: boolean;
 }
 
@@ -112,8 +111,6 @@ export const useUsersStore = defineStore('users', () => {
 
     const resolvedAvatars = reactive(new Map<string, string>());
     const resolvingAvatars = new Set<string>();
-    // Keys that recently failed to cache, with the timestamp of the last attempt,
-    // so a persistently-failing avatar doesn't re-fire an IPC on every render.
     const failedAvatars = new Map<string, number>();
     const FAILED_RETRY_MS = 30_000;
 
@@ -168,11 +165,12 @@ export const useUsersStore = defineStore('users', () => {
         if (!remote) return null;
 
         const key = avatarPathKey(remote);
-        if (!key) return remote;
+        if (!key) return null;
         const cached = resolvedAvatars.get(key);
         if (cached) return cached;
+
         resolveAvatar(id, remote);
-        return remote;
+        return null;
     }
 
     /** Drop a user's locally-cached avatars (their avatar was removed server-side). */
@@ -262,11 +260,7 @@ export const useUsersStore = defineStore('users', () => {
         for (const u of users) {
             const id = String(u.id);
             seenIds.add(id);
-            // Deliberately do NOT write avatar_urls here. Presence is a Redis
-            // registry snapshotted when a user came online, so its avatar_urls are
-            // stale (old version + expired presigned signatures). Avatars come from
-            // members/profile/profile.updated/messages instead. Writing them here
-            // flashes an old avatar on startup before the fresh data arrives.
+
             upsert({
                 id,
                 username: u.username,
@@ -293,30 +287,26 @@ export const useUsersStore = defineStore('users', () => {
             about_me: data.about_me ?? null,
             avatar_urls: data.avatar_urls ?? null,
         });
-        // Avatar removed: purge the user's cached files so nothing stale lingers.
-        // (A *changed* avatar is purged automatically when its new version caches.)
+
         if (!data.avatar_urls) forgetAvatar(id);
     }
 
     function applyPresenceUpdate(data: PresenceUpdatedPayload): void {
         const id = String(data.user_id);
-        // See applyPresenceBatch: presence carries a stale avatar snapshot, so it
-        // updates status only — avatars are governed by profile/members/messages.
+
         upsert({
             id,
             username: data.username,
             display_name: data.display_name ?? data.username,
             status: data.status,
             custom_status: data.custom_status,
-            // An offline user is no longer playing anything; drop stale activity.
             ...(data.status === 'offline' ? { activity: null } : {}),
         });
     }
 
     function applyActivityUpdate(data: ActivityUpdatedPayload): void {
         const id = String(data.user_id);
-        // Only update an already-known user; activity is presence state and
-        // shouldn't conjure a member we otherwise know nothing about.
+
         if (!byId.has(id)) return;
         upsert({ id, activity: data.activity ?? null });
     }

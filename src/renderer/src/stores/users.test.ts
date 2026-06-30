@@ -56,13 +56,15 @@ describe('hydrateFromUsers', () => {
 });
 
 describe('avatarUrl resolution', () => {
-    it('returns the remote URL first, then the locally-cached path once resolved', async () => {
+    it('returns null until the locally-cached path resolves, then returns it', async () => {
         window.api.avatar.resolve = vi.fn().mockResolvedValue('app://avatar/local.png');
         const users = useUsersStore();
         users.upsert({ id: '9', username: 'alice', avatar_urls: AVATARS });
 
+        // The remote URL is authenticated and can't be loaded by a bare <img>, so
+        // the getter returns null (fallback initials show) while caching kicks off.
         const first = users.avatarUrl('9', 'thumb');
-        expect(first).toBe(AVATARS.thumb);
+        expect(first).toBeNull();
         expect(window.api.avatar.resolve).toHaveBeenCalledWith('9', AVATARS.thumb);
 
         await flushPromises();
