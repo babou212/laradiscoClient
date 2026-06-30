@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { useUsersStore } from '@/stores/users';
-import type { MessageData } from '@/types/chat';
+import type { Attachment, MessageData } from '@/types/chat';
 import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 
 const stubs = {
@@ -66,6 +66,46 @@ describe('PinnedMessagesPanel rendering', () => {
         const wrapper = mountPanel({ pinnedMessages: messages });
         expect(wrapper.html()).toContain('first');
         expect(wrapper.html()).toContain('second');
+    });
+
+    it('falls back to the attachment file name when a pinned message has no text content', () => {
+        const wrapper = mountPanel({
+            pinnedMessages: [
+                message({
+                    content: null,
+                    attachments: [{ id: 'a1', file_name: 'report.pdf' } as Attachment],
+                }),
+            ],
+        });
+        expect(wrapper.text()).toContain('report.pdf');
+    });
+
+    it('joins multiple attachment file names in the fallback', () => {
+        const wrapper = mountPanel({
+            pinnedMessages: [
+                message({
+                    content: '   ',
+                    attachments: [
+                        { id: 'a1', file_name: 'one.png' },
+                        { id: 'a2', file_name: 'two.png' },
+                    ] as Attachment[],
+                }),
+            ],
+        });
+        expect(wrapper.text()).toContain('one.png, two.png');
+    });
+
+    it('prefers text content over the attachment fallback', () => {
+        const wrapper = mountPanel({
+            pinnedMessages: [
+                message({
+                    content: 'see attached',
+                    attachments: [{ id: 'a1', file_name: 'secret.pdf' } as Attachment],
+                }),
+            ],
+        });
+        expect(wrapper.html()).toContain('see attached');
+        expect(wrapper.text()).not.toContain('secret.pdf');
     });
 });
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
-import { Pin, PinOff, X } from 'lucide-vue-next';
+import { Paperclip, Pin, PinOff, X } from 'lucide-vue-next';
 import { onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -44,8 +44,16 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
     }
 });
 
+const hasTextContent = (message: MessageData): boolean => {
+    return !!message.content?.trim();
+};
+
 const renderedContent = (message: MessageData): string => {
     return renderMarkdownWithMentions(message.content ?? '');
+};
+
+const attachmentNames = (message: MessageData): string => {
+    return (message.attachments ?? []).map((attachment) => attachment.file_name).join(', ');
 };
 </script>
 
@@ -112,7 +120,18 @@ const renderedContent = (message: MessageData): string => {
                                     {{ formatMessageDate(message.created_at) }}
                                 </span>
                             </div>
-                            <div class="prose-chat mt-0.5 text-xs wrap-break-word" v-html="renderedContent(message)" />
+                            <div
+                                v-if="hasTextContent(message)"
+                                class="prose-chat mt-0.5 text-xs wrap-break-word"
+                                v-html="renderedContent(message)"
+                            />
+                            <div
+                                v-else-if="message.attachments?.length"
+                                class="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs"
+                            >
+                                <Paperclip :size="12" class="shrink-0" />
+                                <span class="truncate">{{ attachmentNames(message) }}</span>
+                            </div>
                         </div>
                         <SimpleTooltip v-if="canUnpin" :content="t('chat.pinned.unpinTooltip')">
                             <button

@@ -6,7 +6,7 @@ export async function getChannelPins(
     params?: { sort?: string; include?: string },
 ): Promise<JsonApiCollectionResponse<MessageResource>> {
     const r = await api.get(`/channels/${channelId}/pins`, {
-        params: { sort: '-created_at', include: 'user,reactions', ...params },
+        params: { sort: '-created_at', include: 'user,reactions,attachments', ...params },
     });
     return r.data;
 }
@@ -24,7 +24,7 @@ export async function getDmPins(
     params?: { sort?: string; include?: string },
 ): Promise<JsonApiCollectionResponse<DirectMessageResource>> {
     const r = await api.get(`/direct-messages/${groupId}/pins`, {
-        params: { sort: '-created_at', include: 'user,reactions', ...params },
+        params: { sort: '-created_at', include: 'user,reactions,attachments', ...params },
     });
     return r.data;
 }
