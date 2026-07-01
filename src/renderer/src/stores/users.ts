@@ -161,11 +161,7 @@ export const useUsersStore = defineStore('users', () => {
 
     function avatarUrl(id: string, size: AvatarSize = 'thumb'): string | null {
         const urls = byId.get(id)?.avatar_urls;
-        const remote = urls
-            ? urls.original && /\.gif($|\?)/i.test(urls.original)
-                ? urls.original
-                : urls[size]
-            : null;
+        const remote = urls ? (urls.original && /\.gif($|\?)/i.test(urls.original) ? urls.original : urls[size]) : null;
 
         if (remote) {
             const key = avatarPathKey(remote);

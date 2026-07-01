@@ -53,10 +53,7 @@ const renderedBody = computed(() => renderMarkdownWithMentions(content.value));
 </script>
 
 <template>
-    <button
-        class="hover:bg-muted/50 flex w-full gap-3 px-3 py-2.5 text-left transition-colors"
-        @click="emit('jump')"
-    >
+    <button class="hover:bg-muted/50 flex w-full gap-3 px-3 py-2.5 text-left transition-colors" @click="emit('jump')">
         <Avatar class="size-8 shrink-0">
             <AvatarImage v-if="avatarSrc" :src="avatarSrc" :alt="authorName" />
             <AvatarFallback class="bg-primary text-primary-foreground text-xs font-semibold">

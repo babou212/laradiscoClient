@@ -147,7 +147,13 @@ describe('SearchMessages pagination', () => {
 
         searchChannelMessages.mockResolvedValueOnce(
             response({
-                data: [msg({ id: '22', content: 'second page hit', user: { id: '8', username: 'bob', avatar_urls: null } })],
+                data: [
+                    msg({
+                        id: '22',
+                        content: 'second page hit',
+                        user: { id: '8', username: 'bob', avatar_urls: null },
+                    }),
+                ],
                 meta: { current_page: 2, last_page: 2, total: 2, query: 'cats' },
             }),
         );

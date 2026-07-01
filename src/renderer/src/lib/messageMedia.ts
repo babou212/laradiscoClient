@@ -39,9 +39,7 @@ export function stripYoutubeUrl(content: string): string {
 
 export function isGifUrl(content: string): boolean {
     return (
-        /^https?:\/\/.*\.gif$/i.test(content) ||
-        content.includes('tenor.com') ||
-        content.includes('media.tenor.com')
+        /^https?:\/\/.*\.gif$/i.test(content) || content.includes('tenor.com') || content.includes('media.tenor.com')
     );
 }
 
