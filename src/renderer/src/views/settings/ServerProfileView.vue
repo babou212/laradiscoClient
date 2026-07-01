@@ -6,13 +6,7 @@ import { deleteServerLogo, updateServerSettings, uploadServerLogo } from '@/api/
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarCropDialog from '@/components/ui/AvatarCropDialog.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useChatStore } from '@/stores/chat';
 import { useServerStore } from '@/stores/server';
 
@@ -34,7 +28,10 @@ const voiceChannels = computed(() =>
 
 const serverInitials = computed(() => {
     const host = serverStore.activeHost ?? 'S';
-    return host.replace(/^https?:\/\//, '').charAt(0).toUpperCase();
+    return host
+        .replace(/^https?:\/\//, '')
+        .charAt(0)
+        .toUpperCase();
 });
 
 async function resolveLogoUrl(url: string): Promise<void> {
@@ -68,8 +65,7 @@ const { mutateAsync: doDeleteLogo, isLoading: logoDeleting } = useMutation({
 });
 
 const { mutateAsync: doUpdateSettings, isLoading: settingsSaving } = useMutation({
-    mutation: (data: { afk_channel_id?: number | null; afk_timeout?: number }) =>
-        updateServerSettings(data),
+    mutation: (data: { afk_channel_id?: number | null; afk_timeout?: number }) => updateServerSettings(data),
 });
 
 async function onLogoSave(blob: Blob) {
@@ -171,11 +167,7 @@ async function saveAfkSettings() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="none">{{ t('settings.serverProfile.afk.noChannel') }}</SelectItem>
-                            <SelectItem
-                                v-for="ch in voiceChannels"
-                                :key="ch.id"
-                                :value="ch.id"
-                            >
+                            <SelectItem v-for="ch in voiceChannels" :key="ch.id" :value="ch.id">
                                 {{ ch.name }}
                             </SelectItem>
                         </SelectContent>
@@ -185,10 +177,7 @@ async function saveAfkSettings() {
                 <div class="grid gap-2">
                     <label class="text-sm font-medium">{{ t('settings.serverProfile.afk.timeout') }}</label>
                     <div class="flex items-center gap-3">
-                        <Select
-                            :model-value="String(afkTimeout)"
-                            @update:model-value="afkTimeout = Number($event)"
-                        >
+                        <Select :model-value="String(afkTimeout)" @update:model-value="afkTimeout = Number($event)">
                             <SelectTrigger class="w-40">
                                 <SelectValue />
                             </SelectTrigger>

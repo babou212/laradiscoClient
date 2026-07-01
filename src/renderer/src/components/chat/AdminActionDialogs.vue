@@ -427,7 +427,11 @@ useEventListener(document, 'chat-user-action', handleUserAdminAction);
                 </div>
                 <div class="space-y-2">
                     <Label>{{ t('settings.moderation.banDialog.expires') }}</Label>
-                    <DatePickerRoot :model-value="banExpiry" :min-value="minDate" @update:model-value="onCalendarExpiry">
+                    <DatePickerRoot
+                        :model-value="banExpiry"
+                        :min-value="minDate"
+                        @update:model-value="onCalendarExpiry"
+                    >
                         <DatePickerAnchor>
                             <DatePickerTrigger
                                 class="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 w-full items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xs"

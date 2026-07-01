@@ -722,7 +722,10 @@ function dispatchDeleteChannel() {
                     <ContextMenuItem v-if="canJailMembers && !isTargetJailed" @select="dispatchUserAdminAction('jail')">
                         <Lock /> {{ t('appContextMenu.jail') }}
                     </ContextMenuItem>
-                    <ContextMenuItem v-if="canJailMembers && isTargetJailed" @select="dispatchUserAdminAction('release')">
+                    <ContextMenuItem
+                        v-if="canJailMembers && isTargetJailed"
+                        @select="dispatchUserAdminAction('release')"
+                    >
                         <Lock /> {{ t('appContextMenu.release') }}
                     </ContextMenuItem>
                     <ContextMenuItem
@@ -732,7 +735,11 @@ function dispatchDeleteChannel() {
                     >
                         <UserX /> {{ t('appContextMenu.kick') }}
                     </ContextMenuItem>
-                    <ContextMenuItem v-if="canBanMembers" variant="destructive" @select="dispatchUserAdminAction('ban')">
+                    <ContextMenuItem
+                        v-if="canBanMembers"
+                        variant="destructive"
+                        @select="dispatchUserAdminAction('ban')"
+                    >
                         <Ban /> {{ t('appContextMenu.ban') }}
                     </ContextMenuItem>
                 </template>

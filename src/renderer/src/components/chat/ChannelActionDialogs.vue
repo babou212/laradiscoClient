@@ -184,13 +184,11 @@ async function confirmDeleteChannel() {
 
 // --- Event wiring ---
 function handleChannelAction(e: Event) {
-    const detail = (
-        e as CustomEvent<{ action: string; categoryId?: string; channelId?: string; channelType?: string }>
-    ).detail;
+    const detail = (e as CustomEvent<{ action: string; categoryId?: string; channelId?: string; channelType?: string }>)
+        .detail;
     if (!detail) return;
     if (detail.action === 'create-channel' && detail.categoryId) {
-        const fixedType =
-            detail.channelType === 'voice' ? 'voice' : detail.channelType === 'text' ? 'text' : undefined;
+        const fixedType = detail.channelType === 'voice' ? 'voice' : detail.channelType === 'text' ? 'text' : undefined;
         openCreateChannelDialog(detail.categoryId, fixedType);
     } else if (detail.action === 'edit-channel' && detail.channelId) {
         openEditChannelDialog(detail.channelId);
@@ -311,9 +309,7 @@ useEventListener(document, 'chat-channel-action', handleChannelAction);
                         :model-value="editChannelForm.is_private"
                         @update:model-value="editChannelForm.is_private = !!$event"
                     />
-                    <Label for="ctx-ech-private" class="text-sm">{{
-                        t('settings.channels.edit.privateLabel')
-                    }}</Label>
+                    <Label for="ctx-ech-private" class="text-sm">{{ t('settings.channels.edit.privateLabel') }}</Label>
                 </div>
 
                 <DialogFooter>

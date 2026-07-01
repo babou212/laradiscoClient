@@ -33,9 +33,7 @@ export function useAfkMonitor() {
             if (!targetId || !voiceStore.currentChannel) return;
             if (voiceStore.currentChannel.id === targetId) return;
 
-            const afkChannel = chatStore.categories
-                .flatMap((c) => c.channels)
-                .find((ch) => Number(ch.id) === targetId);
+            const afkChannel = chatStore.categories.flatMap((c) => c.channels).find((ch) => Number(ch.id) === targetId);
 
             voiceStore.joinChannel(targetId, afkChannel?.name ?? 'AFK');
         }, timeoutMs);

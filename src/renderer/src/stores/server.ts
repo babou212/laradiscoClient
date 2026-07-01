@@ -1,11 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import {
-    getServerSettings,
-    uploadServerLogo,
-    deleteServerLogo,
-    type ServerSettings,
-} from '@/api/settings';
+import { getServerSettings, uploadServerLogo, deleteServerLogo, type ServerSettings } from '@/api/settings';
 
 export interface ReverbConfig {
     key: string;

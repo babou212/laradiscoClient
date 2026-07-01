@@ -83,7 +83,10 @@ const adminNavItems = computed(() => {
 
 const serverInitials = computed(() => {
     const host = serverStore.activeHost ?? props.serverName ?? 'S';
-    return host.replace(/^https?:\/\//, '').charAt(0).toUpperCase();
+    return host
+        .replace(/^https?:\/\//, '')
+        .charAt(0)
+        .toUpperCase();
 });
 
 async function resolveServerLogo(url: string): Promise<void> {
@@ -193,7 +196,12 @@ const statusOptions = computed(() => [
                     @click="showServerMenu = !showServerMenu"
                 >
                     <Avatar class="size-7 shrink-0 rounded-md">
-                        <AvatarImage v-if="serverLogoCached" :src="serverLogoCached" alt="Server logo" class="object-cover" />
+                        <AvatarImage
+                            v-if="serverLogoCached"
+                            :src="serverLogoCached"
+                            alt="Server logo"
+                            class="object-cover"
+                        />
                         <AvatarFallback class="bg-primary text-primary-foreground rounded-md text-xs font-bold">
                             {{ serverInitials }}
                         </AvatarFallback>
@@ -216,7 +224,10 @@ const statusOptions = computed(() => [
                             :key="item.routeName"
                             type="button"
                             class="text-popover-foreground hover:bg-accent flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors"
-                            @click="router.push({ name: item.routeName }); showServerMenu = false"
+                            @click="
+                                router.push({ name: item.routeName });
+                                showServerMenu = false;
+                            "
                         >
                             <span>{{ item.label }}</span>
                             <component :is="item.icon" :size="15" class="text-muted-foreground" />
