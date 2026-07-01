@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MessageSearchResponse } from '@/api/search';
+import type { MessageData } from '@/types/chat';
 import SearchMessages from './SearchMessages.vue';
 
 const searchChannelMessages = vi.fn();
@@ -14,16 +15,24 @@ const stubs = {
     SimpleTooltip: { template: '<div><slot /></div>' },
 };
 
+function msg(overrides: Partial<MessageData> = {}): MessageData {
+    return {
+        id: '11',
+        content: 'first hit about cats',
+        is_edited: false,
+        edited_at: null,
+        deleted_at: null,
+        reply_to_id: null,
+        user: { id: '7', username: 'alice', avatar_urls: null },
+        reactions: [],
+        created_at: '2026-06-23T10:00:00Z',
+        ...overrides,
+    };
+}
+
 function response(overrides: Partial<MessageSearchResponse> = {}): MessageSearchResponse {
     return {
-        data: [
-            {
-                id: '11',
-                content: 'first hit about cats',
-                user: { id: '7', username: 'alice', avatar_urls: null },
-                created_at: '2026-06-23T10:00:00Z',
-            },
-        ],
+        data: [msg()],
         meta: { current_page: 1, last_page: 1, total: 1, query: 'cats' },
         ...overrides,
     };
@@ -100,7 +109,7 @@ describe('SearchMessages querying', () => {
         expect(searchChannelMessages).not.toHaveBeenCalled();
     });
 
-    it('renders the results with author name and snippet', async () => {
+    it('renders each result with author name and rendered message body', async () => {
         searchChannelMessages.mockResolvedValue(response());
         mountSearch();
         await typeAndDebounce('cats');
@@ -138,14 +147,7 @@ describe('SearchMessages pagination', () => {
 
         searchChannelMessages.mockResolvedValueOnce(
             response({
-                data: [
-                    {
-                        id: '22',
-                        content: 'second page hit',
-                        user: { id: '8', username: 'bob', avatar_urls: null },
-                        created_at: '2026-06-23T11:00:00Z',
-                    },
-                ],
+                data: [msg({ id: '22', content: 'second page hit', user: { id: '8', username: 'bob', avatar_urls: null } })],
                 meta: { current_page: 2, last_page: 2, total: 2, query: 'cats' },
             }),
         );
@@ -175,19 +177,7 @@ describe('SearchMessages emits', () => {
     });
 
     it('emits navigateToMessage with the thread id when a thread reply result is clicked', async () => {
-        searchChannelMessages.mockResolvedValue(
-            response({
-                data: [
-                    {
-                        id: '11',
-                        content: 'first hit about cats',
-                        user: { id: '7', username: 'alice', avatar_urls: null },
-                        thread_id: '99',
-                        created_at: '2026-06-23T10:00:00Z',
-                    },
-                ],
-            }),
-        );
+        searchChannelMessages.mockResolvedValue(response({ data: [msg({ thread_id: '99' })] }));
         const wrapper = mountSearch();
         await typeAndDebounce('cats');
         buttonWithText('first hit about cats')!.click();
