@@ -62,7 +62,12 @@ describe('visibleAttachments', () => {
         has_thumbnail: false,
     });
     it('excludes the link-preview image attachment', () => {
-        const preview = { url: 'u', title: 't', fetched_at: 0, image: { id: 'p1', mime_type: 'image/png', size: 1 } } as LinkPreviewData;
+        const preview = {
+            url: 'u',
+            title: 't',
+            fetched_at: 0,
+            image: { id: 'p1', mime_type: 'image/png', size: 1 },
+        } as LinkPreviewData;
         const result = visibleAttachments([att('a1'), att('p1')], preview);
         expect(result.map((a) => a.id)).toEqual(['a1']);
     });

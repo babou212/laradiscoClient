@@ -47,7 +47,10 @@ describe('SearchResultItem', () => {
 
     it('renders a link preview card when present', () => {
         const w = mountItem(
-            msg({ content: 'see https://ex.com/a', link_preview: { url: 'https://ex.com/a', title: 't', fetched_at: 0 } }),
+            msg({
+                content: 'see https://ex.com/a',
+                link_preview: { url: 'https://ex.com/a', title: 't', fetched_at: 0 },
+            }),
         );
         expect(w.find('[data-test="link-preview"]').exists()).toBe(true);
     });
@@ -56,7 +59,9 @@ describe('SearchResultItem', () => {
         const w = mountItem(
             msg({
                 content: '',
-                attachments: [{ id: 'a1', file_name: 'doc.pdf', mime_type: 'application/pdf', size: 1, has_thumbnail: false }],
+                attachments: [
+                    { id: 'a1', file_name: 'doc.pdf', mime_type: 'application/pdf', size: 1, has_thumbnail: false },
+                ],
             }),
         );
         expect(w.find('[data-test="attachment"]').text()).toContain('doc.pdf');
