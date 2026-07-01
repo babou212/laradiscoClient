@@ -113,6 +113,7 @@ export const useUsersStore = defineStore('users', () => {
     const resolvingAvatars = new Set<string>();
     const failedAvatars = new Map<string, number>();
     const FAILED_RETRY_MS = 30_000;
+    const lastGoodAvatar = reactive(new Map<string, string>());
 
     function avatarPathKey(url: string): string | null {
         try {
@@ -160,21 +161,30 @@ export const useUsersStore = defineStore('users', () => {
 
     function avatarUrl(id: string, size: AvatarSize = 'thumb'): string | null {
         const urls = byId.get(id)?.avatar_urls;
-        if (!urls) return null;
-        const remote = urls.original && /\.gif($|\?)/i.test(urls.original) ? urls.original : urls[size];
-        if (!remote) return null;
+        const remote = urls
+            ? urls.original && /\.gif($|\?)/i.test(urls.original)
+                ? urls.original
+                : urls[size]
+            : null;
 
-        const key = avatarPathKey(remote);
-        if (!key) return null;
-        const cached = resolvedAvatars.get(key);
-        if (cached) return cached;
+        if (remote) {
+            const key = avatarPathKey(remote);
+            if (key) {
+                const cached = resolvedAvatars.get(key);
+                if (cached) {
+                    lastGoodAvatar.set(id, cached);
+                    return cached;
+                }
+                resolveAvatar(id, remote);
+            }
+        }
 
-        resolveAvatar(id, remote);
-        return null;
+        return lastGoodAvatar.get(id) ?? null;
     }
 
     /** Drop a user's locally-cached avatars (their avatar was removed server-side). */
     function forgetAvatar(id: string): void {
+        lastGoodAvatar.delete(id);
         void window.api?.avatar?.forget(id).catch(() => {});
     }
 
@@ -418,6 +428,12 @@ export const useUsersStore = defineStore('users', () => {
         disconnect();
         byId.clear();
         inFlight.clear();
+        // Avatar state is keyed by user/url, not account — clear it on reset so a
+        // different login can't briefly show the previous user's cached avatars.
+        resolvedAvatars.clear();
+        resolvingAvatars.clear();
+        failedAvatars.clear();
+        lastGoodAvatar.clear();
     }
 
     return {
