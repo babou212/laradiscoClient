@@ -29,7 +29,7 @@ import {
     Volume2,
 } from 'lucide-vue-next';
 import { useQuery } from '@pinia/colada';
-import { computed, shallowRef } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { findIncluded, relationshipIds } from '@/api/types';
 import type { RoleResource } from '@/api/types';
@@ -552,7 +552,12 @@ function usernameDm() {
     );
 }
 
-const { data: membersQueryData } = useQuery({ ...settingsMembersQuery, enabled: canJailMembers });
+const membersQueryEnabled = shallowRef(false);
+// Trigger the fetch the first time an admin right-clicks a username; stays true after that.
+watch(usernameCtx, (ctx) => {
+    if (ctx && canJailMembers.value) membersQueryEnabled.value = true;
+});
+const { data: membersQueryData } = useQuery({ ...settingsMembersQuery, enabled: membersQueryEnabled });
 
 const isTargetJailed = computed(() => {
     const ctx = usernameCtx.value;

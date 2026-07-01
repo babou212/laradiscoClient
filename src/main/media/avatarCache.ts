@@ -60,15 +60,17 @@ async function purgeOldVersions(userId: string, keepVersion: string): Promise<vo
 async function download(key: string, url: string, authToken: string | null): Promise<boolean> {
     try {
         const headers: Record<string, string> = {};
-        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-        const headers: Record<string, string> = {};
-        try {
-            const token = getAuthSession()?.token;
-            if (token) headers.Authorization = `Bearer ${token}`;
-        } catch {
-            // OS keychain unavailable — fall through unauthenticated.
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        } else {
+            try {
+                const token = getAuthSession()?.token;
+                if (token) headers.Authorization = `Bearer ${token}`;
+            } catch {
+                // OS keychain unavailable — fall through unauthenticated.
+            }
         }
-        const response = await net.fetch(url, { headers }, { headers });
+        const response = await net.fetch(url, { headers });
         if (!response.ok) {
             logger.error('[avatarCache] download failed', { status: response.status });
             return false;
