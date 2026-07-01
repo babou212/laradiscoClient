@@ -38,6 +38,9 @@ const adminNavItems = computed<SettingsNavItem[]>(() => {
     const perms = permissions.value;
     if (!perms) return items;
 
+    if (perms.canManageServer || perms.isAdministrator) {
+        items.push({ titleKey: 'settings.nav.serverProfile', routeName: 'settings-server-profile' });
+    }
     if (perms.canInviteMembers || perms.isAdministrator) {
         items.push({ titleKey: 'settings.nav.inviteLinks', routeName: 'settings-invite-links' });
     }

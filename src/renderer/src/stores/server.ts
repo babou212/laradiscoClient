@@ -1,5 +1,11 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import {
+    getServerSettings,
+    uploadServerLogo,
+    deleteServerLogo,
+    type ServerSettings,
+} from '@/api/settings';
 
 export interface ReverbConfig {
     key: string;
@@ -25,6 +31,10 @@ export const useServerStore = defineStore('server', () => {
 
     const isConnected = computed(() => !!activeServer.value);
     const activeHost = computed(() => activeServer.value?.host ?? null);
+
+    const serverLogoUrls = ref<ServerSettings['logo_urls']>(null);
+    const afkChannelId = ref<number | null>(null);
+    const afkTimeout = ref<number>(5);
 
     async function loadActiveServer(): Promise<void> {
         activeServer.value = await window.api.server.getActive();
@@ -79,6 +89,28 @@ export const useServerStore = defineStore('server', () => {
         await loadAllServers();
     }
 
+    async function loadServerSettings(): Promise<void> {
+        try {
+            const s = await getServerSettings();
+            serverLogoUrls.value = s.logo_urls;
+            afkChannelId.value = s.afk_channel_id;
+            afkTimeout.value = s.afk_timeout;
+        } catch {
+            // non-fatal — sidebar renders with initials fallback
+        }
+    }
+
+    async function uploadLogo(blob: Blob): Promise<void> {
+        const result = await uploadServerLogo(blob);
+        serverLogoUrls.value = result.logo_urls;
+    }
+
+    async function removeLogo(): Promise<void> {
+        await deleteServerLogo();
+        serverLogoUrls.value = null;
+        void window.api?.avatar?.forget('0').catch(() => {});
+    }
+
     function clearError(): void {
         connectionError.value = null;
     }
@@ -89,6 +121,9 @@ export const useServerStore = defineStore('server', () => {
         isConnecting.value = false;
         connectionError.value = null;
         reverbConfig.value = null;
+        serverLogoUrls.value = null;
+        afkChannelId.value = null;
+        afkTimeout.value = 5;
     }
 
     return {
@@ -99,8 +134,14 @@ export const useServerStore = defineStore('server', () => {
         isConnected,
         activeHost,
         reverbConfig,
+        serverLogoUrls,
+        afkChannelId,
+        afkTimeout,
         loadActiveServer,
         loadAllServers,
+        loadServerSettings,
+        uploadLogo,
+        removeLogo,
         pingServer,
         saveConnection,
         switchServer,

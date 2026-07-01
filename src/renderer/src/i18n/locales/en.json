@@ -216,6 +216,7 @@
             "about": "About",
             "logs": "Logs",
             "server": "Server",
+            "serverProfile": "Server Profile",
             "inviteLinks": "Invite Links",
             "roles": "Roles",
             "members": "Members",
@@ -226,12 +227,35 @@
         "common": {
             "cancel": "Cancel",
             "save": "Save",
+            "saved": "Saved!",
             "saveChanges": "Save Changes",
             "delete": "Delete",
             "loading": "Loading...",
             "unknown": "Unknown",
             "none": "None",
             "processing": "Processing..."
+        },
+        "serverProfile": {
+            "title": "Server Profile",
+            "description": "Customize how your server appears to members.",
+            "icon": {
+                "title": "Server Icon",
+                "description": "We recommend an image of at least 512×512.",
+                "upload": "Upload Icon",
+                "change": "Change Icon",
+                "remove": "Remove Icon",
+                "hint": "At least 512×512 recommended. JPEG, PNG, GIF, or WebP."
+            },
+            "afk": {
+                "title": "AFK Channel",
+                "description": "Members who are inactive in a voice channel for the set time will be moved here automatically.",
+                "channel": "AFK Channel",
+                "noChannel": "No AFK Channel",
+                "timeout": "AFK Timeout",
+                "minute": "minute",
+                "minutes": "minutes",
+                "inactivity": "of inactivity"
+            }
         },
         "profile": {
             "avatar": {
@@ -484,6 +508,12 @@
                 "title": "Remove Role",
                 "description": "Are you sure you want to remove the role {role} from {name}?",
                 "submit": "Remove Role"
+            },
+            "manage": {
+                "title": "Manage Roles",
+                "description": "Manage roles for {name}.",
+                "currentRoles": "Current roles",
+                "noRoles": "No roles assigned."
             }
         },
         "roles": {
@@ -763,11 +793,30 @@
         "mention": "Mention",
         "viewProfile": "View profile",
         "sendMessage": "Send message",
+        "manageRoles": "Manage Roles",
+        "jail": "Jail",
+        "kick": "Kick",
+        "ban": "Ban",
+        "createTextChannel": "Create Text Channel",
+        "createVoiceChannel": "Create Voice Channel",
+        "editChannel": "Edit Channel",
+        "deleteChannel": "Delete Channel",
         "copyImage": "Copy image",
         "copyImageAddress": "Copy image address",
         "saveImageAs": "Save image as…",
         "openLink": "Open link",
-        "copyLink": "Copy link"
+        "copyLink": "Copy link",
+        "kickDialog": {
+            "title": "Kick Member",
+            "description": "Kick {name} from the server? They will lose access but their account is not deleted — they can rejoin with an invite link.",
+            "submit": "Kick"
+        },
+        "release": "Release",
+        "releaseDialog": {
+            "title": "Release Member",
+            "description": "Remove {name} from jail and restore their normal access.",
+            "submit": "Release"
+        }
     },
     "userMenu": {
         "settings": "Settings",

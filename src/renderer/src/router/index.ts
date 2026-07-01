@@ -122,6 +122,11 @@ const router = createRouter({
                     component: () => import('@/views/settings/TwoFactorSettingsView.vue'),
                 },
                 {
+                    path: 'server-profile',
+                    name: 'settings-server-profile',
+                    component: () => import('@/views/settings/ServerProfileView.vue'),
+                },
+                {
                     path: 'channels',
                     name: 'settings-channels',
                     component: () => import('@/views/settings/ChannelSettingsView.vue'),

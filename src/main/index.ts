@@ -353,6 +353,13 @@ app.whenReady().then(() => {
 
     app.on('browser-window-created', (_, window) => {
         optimizer.watchWindowShortcuts(window);
+        if (is.dev) {
+            window.webContents.on('before-input-event', (_event, input) => {
+                if (input.type === 'keyDown' && input.key === 'F12') {
+                    window.webContents.openDevTools();
+                }
+            });
+        }
     });
 
     createWindow();

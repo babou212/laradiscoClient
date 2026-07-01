@@ -2,27 +2,37 @@
 import { useClipboard, useEventListener } from '@vueuse/core';
 import {
     AtSign,
+    Ban,
     Code2,
     Copy,
     CornerDownRight,
     Download,
     ExternalLink,
+    Hash,
     ImageIcon,
     Link2,
+    Lock,
     MessageSquare,
     MessageSquareText,
     Pencil,
     Pin,
     PinOff,
+    Plus,
     Reply,
     Scissors,
+    Shield,
     SmilePlus,
     SquareDashedMousePointer,
     Trash2,
     UserRound,
+    UserX,
+    Volume2,
 } from 'lucide-vue-next';
+import { useQuery } from '@pinia/colada';
 import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { findIncluded, relationshipIds } from '@/api/types';
+import type { RoleResource } from '@/api/types';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -34,8 +44,34 @@ import {
     ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { settingsMembersQuery } from '@/queries/settings/members';
+import { useAuthStore } from '@/stores/auth';
+import { useChatStore } from '@/stores/chat';
 
 const { t } = useI18n();
+const authStore = useAuthStore();
+const chatStore = useChatStore();
+
+const permissions = computed(() => authStore.user?.permissions);
+const canKickMembers = computed(() => !!permissions.value?.canKickMembers || !!permissions.value?.isAdministrator);
+const canBanMembers = computed(() => !!permissions.value?.canBanMembers || !!permissions.value?.isAdministrator);
+const canJailMembers = computed(() => canKickMembers.value || canBanMembers.value);
+const canManageRoles = computed(() => !!permissions.value?.canManageRoles || !!permissions.value?.isAdministrator);
+const canManageChannels = computed(
+    () => !!permissions.value?.canManageChannels || !!permissions.value?.isAdministrator,
+);
+
+// 'text' | 'voice' | 'both' — derived from the channels already in the category
+const categoryChannelType = computed(() => {
+    if (!categoryCtx.value) return 'both';
+    const cat = chatStore.categories.find((c) => c.id === categoryCtx.value!.categoryId);
+    if (!cat || cat.channels.length === 0) return 'both';
+    const hasVoice = cat.channels.some((c) => c.type === 'voice');
+    const hasText = cat.channels.some((c) => c.type !== 'voice');
+    if (hasVoice && !hasText) return 'voice';
+    if (hasText && !hasVoice) return 'text';
+    return 'both';
+});
 
 type EditableEl = HTMLInputElement | HTMLTextAreaElement;
 
@@ -68,6 +104,20 @@ interface UsernameContext {
     username: string;
 }
 
+interface CategoryContext {
+    type: 'category';
+    el: HTMLElement;
+    categoryId: string;
+}
+
+interface ChannelContext {
+    type: 'channel';
+    el: HTMLElement;
+    channelId: string;
+    categoryId: string;
+    channelType: string;
+}
+
 interface LinkContext {
     type: 'link';
     href: string;
@@ -84,7 +134,15 @@ interface GenericContext {
     hasSelection: boolean;
 }
 
-type MenuContext = MessageContext | InputContext | UsernameContext | LinkContext | ImageContext | GenericContext;
+type MenuContext =
+    | MessageContext
+    | InputContext
+    | UsernameContext
+    | CategoryContext
+    | ChannelContext
+    | LinkContext
+    | ImageContext
+    | GenericContext;
 
 const context = shallowRef<MenuContext | null>(null);
 
@@ -126,6 +184,8 @@ const codeLanguageLabel = (lang: { id: string; label: string }): string =>
 const messageCtx = computed(() => (context.value?.type === 'message' ? context.value : null));
 const inputCtx = computed(() => (context.value?.type === 'input' ? context.value : null));
 const usernameCtx = computed(() => (context.value?.type === 'username' ? context.value : null));
+const categoryCtx = computed(() => (context.value?.type === 'category' ? context.value : null));
+const channelCtx = computed(() => (context.value?.type === 'channel' ? context.value : null));
 const linkCtx = computed(() => (context.value?.type === 'link' ? context.value : null));
 const imageCtx = computed(() => (context.value?.type === 'image' ? context.value : null));
 const genericCtx = computed(() => (context.value?.type === 'generic' ? context.value : null));
@@ -169,6 +229,34 @@ function buildContext(target: HTMLElement): MenuContext {
             el: usernameEl,
             userId: usernameEl.dataset.userId,
             username: usernameEl.dataset.username ?? '',
+        };
+    }
+
+    // Only intercept as a channel/category context when the user can actually
+    // manage channels — otherwise fall through so e.g. text selection still works.
+    const channelEl = target.closest<HTMLElement>('[data-context-channel]');
+    if (
+        channelEl &&
+        channelEl.dataset.channelId &&
+        channelEl.dataset.categoryId &&
+        channelEl.dataset.channelType &&
+        canManageChannels.value
+    ) {
+        return {
+            type: 'channel',
+            el: channelEl,
+            channelId: channelEl.dataset.channelId,
+            categoryId: channelEl.dataset.categoryId,
+            channelType: channelEl.dataset.channelType,
+        };
+    }
+
+    const categoryEl = target.closest<HTMLElement>('[data-context-category]');
+    if (categoryEl && categoryEl.dataset.categoryId && canManageChannels.value) {
+        return {
+            type: 'category',
+            el: categoryEl,
+            categoryId: categoryEl.dataset.categoryId,
         };
     }
 
@@ -463,6 +551,72 @@ function usernameDm() {
         }),
     );
 }
+
+const { data: membersQueryData } = useQuery({ ...settingsMembersQuery, enabled: canJailMembers });
+
+const isTargetJailed = computed(() => {
+    const ctx = usernameCtx.value;
+    if (!ctx || !membersQueryData.value?.data) return false;
+    const member = membersQueryData.value.data.find((m) => m.id === ctx.userId);
+    if (!member) return false;
+    const roleIds = relationshipIds(member.relationships?.roles);
+    return roleIds.some((rid) => {
+        const role = findIncluded<RoleResource>(membersQueryData.value!.included, 'roles', rid);
+        return role?.attributes.name === 'Jailed';
+    });
+});
+
+const showUsernameAdminActions = computed(() => {
+    const ctx = usernameCtx.value;
+    if (!ctx || ctx.userId === authStore.user?.id) return false;
+    return canKickMembers.value || canBanMembers.value || canJailMembers.value || canManageRoles.value;
+});
+
+function dispatchUserAdminAction(action: 'kick' | 'ban' | 'jail' | 'release' | 'manage-roles') {
+    const ctx = usernameCtx.value;
+    if (!ctx) return;
+    setTimeout(() => {
+        document.dispatchEvent(
+            new CustomEvent('chat-user-action', {
+                detail: { action, userId: ctx.userId, username: ctx.username },
+            }),
+        );
+    }, 0);
+}
+
+function dispatchCreateChannel(categoryId: string, channelType?: string) {
+    setTimeout(() => {
+        document.dispatchEvent(
+            new CustomEvent('chat-channel-action', {
+                detail: { action: 'create-channel', categoryId, channelType },
+            }),
+        );
+    }, 0);
+}
+
+function dispatchEditChannel() {
+    const ctx = channelCtx.value;
+    if (!ctx) return;
+    setTimeout(() => {
+        document.dispatchEvent(
+            new CustomEvent('chat-channel-action', {
+                detail: { action: 'edit-channel', channelId: ctx.channelId },
+            }),
+        );
+    }, 0);
+}
+
+function dispatchDeleteChannel() {
+    const ctx = channelCtx.value;
+    if (!ctx) return;
+    setTimeout(() => {
+        document.dispatchEvent(
+            new CustomEvent('chat-channel-action', {
+                detail: { action: 'delete-channel', channelId: ctx.channelId },
+            }),
+        );
+    }, 0);
+}
 </script>
 
 <template>
@@ -553,6 +707,53 @@ function usernameDm() {
                 </ContextMenuItem>
                 <ContextMenuItem @select="usernameDm">
                     <MessageSquare /> {{ t('appContextMenu.sendMessage') }}
+                </ContextMenuItem>
+
+                <template v-if="showUsernameAdminActions">
+                    <ContextMenuSeparator />
+                    <ContextMenuItem v-if="canManageRoles" @select="dispatchUserAdminAction('manage-roles')">
+                        <Shield /> {{ t('appContextMenu.manageRoles') }}
+                    </ContextMenuItem>
+                    <ContextMenuItem v-if="canJailMembers && !isTargetJailed" @select="dispatchUserAdminAction('jail')">
+                        <Lock /> {{ t('appContextMenu.jail') }}
+                    </ContextMenuItem>
+                    <ContextMenuItem v-if="canJailMembers && isTargetJailed" @select="dispatchUserAdminAction('release')">
+                        <Lock /> {{ t('appContextMenu.release') }}
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                        v-if="canKickMembers"
+                        variant="destructive"
+                        @select="dispatchUserAdminAction('kick')"
+                    >
+                        <UserX /> {{ t('appContextMenu.kick') }}
+                    </ContextMenuItem>
+                    <ContextMenuItem v-if="canBanMembers" variant="destructive" @select="dispatchUserAdminAction('ban')">
+                        <Ban /> {{ t('appContextMenu.ban') }}
+                    </ContextMenuItem>
+                </template>
+            </template>
+
+            <template v-else-if="categoryCtx">
+                <ContextMenuItem
+                    v-if="categoryChannelType !== 'voice'"
+                    @select="dispatchCreateChannel(categoryCtx.categoryId, 'text')"
+                >
+                    <Hash /> {{ t('appContextMenu.createTextChannel') }}
+                </ContextMenuItem>
+                <ContextMenuItem
+                    v-if="categoryChannelType !== 'text'"
+                    @select="dispatchCreateChannel(categoryCtx.categoryId, 'voice')"
+                >
+                    <Volume2 /> {{ t('appContextMenu.createVoiceChannel') }}
+                </ContextMenuItem>
+            </template>
+
+            <template v-else-if="channelCtx">
+                <ContextMenuItem @select="dispatchEditChannel">
+                    <Pencil /> {{ t('appContextMenu.editChannel') }}
+                </ContextMenuItem>
+                <ContextMenuItem variant="destructive" @select="dispatchDeleteChannel">
+                    <Trash2 /> {{ t('appContextMenu.deleteChannel') }}
                 </ContextMenuItem>
             </template>
 

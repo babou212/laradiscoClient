@@ -57,8 +57,10 @@ async function purgeOldVersions(userId: string, keepVersion: string): Promise<vo
     }
 }
 
-async function download(key: string, url: string): Promise<boolean> {
+async function download(key: string, url: string, authToken: string | null): Promise<boolean> {
     try {
+        const headers: Record<string, string> = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         const headers: Record<string, string> = {};
         try {
             const token = getAuthSession()?.token;
@@ -66,7 +68,7 @@ async function download(key: string, url: string): Promise<boolean> {
         } catch {
             // OS keychain unavailable — fall through unauthenticated.
         }
-        const response = await net.fetch(url, { headers });
+        const response = await net.fetch(url, { headers }, { headers });
         if (!response.ok) {
             logger.error('[avatarCache] download failed', { status: response.status });
             return false;
@@ -85,7 +87,11 @@ async function download(key: string, url: string): Promise<boolean> {
  * Ensure the avatar at `url` (owned by `userId`) is cached on disk and return its
  * cache key, purging any older-version avatars for that user. Returns null on failure.
  */
-export async function ensureAvatarCached(userId: string, url: string): Promise<string | null> {
+export async function ensureAvatarCached(
+    userId: string,
+    url: string,
+    authToken: string | null = null,
+): Promise<string | null> {
     const resolved = keyForUrl(userId, url);
     if (!resolved) return null;
     const { key, version } = resolved;
@@ -102,7 +108,7 @@ export async function ensureAvatarCached(userId: string, url: string): Promise<s
     if (existing) return existing;
 
     const promise = (async () => {
-        const ok = await download(key, url);
+        const ok = await download(key, url, authToken);
         if (!ok) return null;
         await purgeOldVersions(userId, version);
         return key;

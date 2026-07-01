@@ -21,6 +21,7 @@ type Props = {
         topic: string | null;
         type: string;
     };
+    categoryId: string;
 };
 
 const props = defineProps<Props>();
@@ -63,6 +64,10 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
     <div>
         <button
             type="button"
+            data-context-channel
+            :data-channel-id="channel.id"
+            :data-category-id="categoryId"
+            :data-channel-type="channel.type"
             class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
             :class="buttonClasses"
             @click="handleClick"
