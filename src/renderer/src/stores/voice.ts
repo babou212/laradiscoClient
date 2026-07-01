@@ -1,4 +1,11 @@
-import type { LocalAudioTrack, LocalVideoTrack, RemoteParticipant, VideoCodec, VideoEncoding } from 'livekit-client';
+import type {
+    LocalAudioTrack,
+    LocalVideoTrack,
+    RemoteParticipant,
+    RemoteTrackPublication,
+    VideoCodec,
+    VideoEncoding,
+} from 'livekit-client';
 import {
     AudioPresets,
     ConnectionQuality,
@@ -11,7 +18,7 @@ import {
     VideoPresets,
 } from 'livekit-client';
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { getVoiceChannelKey, getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
 import { IndexedKeyProvider } from '@/lib/voice-key-provider';
 import { getEcho } from '@/lib/echo';
@@ -151,6 +158,14 @@ export const useVoiceStore = defineStore('voice', () => {
     let screenShareTracks: Array<LocalVideoTrack | LocalAudioTrack> = [];
     let screenShareMonitorTrack: MediaStreamTrack | null = null;
     let isRestartingScreenShare = false;
+
+    const screenShareVideoPubs = new Map<string, RemoteTrackPublication>();
+
+    watch(activeScreenShareView, (id) => {
+        for (const [identity, pub] of screenShareVideoPubs) {
+            pub.setEnabled(identity === id);
+        }
+    });
 
     let pttActive = false;
 
@@ -463,6 +478,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 vadClearTimers.delete(participant.identity);
             }
             vadSpeaking.delete(participant.identity);
+            screenShareVideoPubs.delete(participant.identity);
             screenShareParticipants.value = screenShareParticipants.value.filter(
                 (s) => s.identity !== participant.identity,
             );
@@ -471,7 +487,7 @@ export const useVoiceStore = defineStore('voice', () => {
             }
             refreshParticipants();
         });
-        r.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+        r.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             if (track.kind === Track.Kind.Audio && track.source === Track.Source.Microphone) {
                 const el = track.attach();
                 el.dataset.participantAudio = participant.identity;
@@ -481,6 +497,9 @@ export const useVoiceStore = defineStore('voice', () => {
                 return;
             }
             if (track.source === Track.Source.ScreenShare) {
+                // Only download this video while its viewer is open (see screenShareVideoPubs).
+                screenShareVideoPubs.set(participant.identity, publication);
+                publication.setEnabled(activeScreenShareView.value === participant.identity);
                 const wrappedTrack = { mediaStreamTrack: track.mediaStreamTrack };
                 const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
                 if (existing) {
@@ -512,6 +531,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 return;
             }
             if (track.source === Track.Source.ScreenShare) {
+                screenShareVideoPubs.delete(participant.identity);
                 screenShareParticipants.value = screenShareParticipants.value.filter(
                     (s) => s.identity !== participant.identity,
                 );
@@ -690,6 +710,7 @@ export const useVoiceStore = defineStore('voice', () => {
             screenShareMonitorTrack = null;
         }
         isScreenSharing.value = false;
+        screenShareVideoPubs.clear();
         screenShareParticipants.value = [];
         activeScreenShareView.value = null;
     }
@@ -742,7 +763,7 @@ export const useVoiceStore = defineStore('voice', () => {
                     videoCodec: 'vp9' as VideoCodec,
                     videoEncoding: preset.encoding,
                     backupCodec: { codec: 'vp8' },
-                    scalabilityMode: 'L1T1',
+                    scalabilityMode: 'L3T3_KEY',
                     degradationPreference: 'maintain-framerate',
                 });
                 localVideoTrack.on(TrackEvent.Ended, () => {
