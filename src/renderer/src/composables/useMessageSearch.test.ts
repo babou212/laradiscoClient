@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MessageData } from '@/types/chat';
 import { useMessageSearch } from './useMessageSearch';
 
 const searchChannelMessages = vi.fn();
@@ -8,8 +9,18 @@ vi.mock('@/api/search', () => ({
     searchDmMessages: (...a: unknown[]) => searchDmMessages(...a),
 }));
 
-function result(id: number, content: string) {
-    return { id, content, user: { username: 'alice' } };
+function result(id: number, content: string): MessageData {
+    return {
+        id: String(id),
+        content,
+        is_edited: false,
+        edited_at: null,
+        deleted_at: null,
+        reply_to_id: null,
+        user: { id: '7', username: 'alice', avatar_urls: null },
+        reactions: [],
+        created_at: '2026-06-23T10:00:00Z',
+    };
 }
 
 beforeEach(() => {
@@ -18,7 +29,7 @@ beforeEach(() => {
 });
 
 describe('searchInConversation', () => {
-    it('maps results and sets hasMore from pagination meta', async () => {
+    it('stores the returned messages and sets hasMore from pagination meta', async () => {
         searchChannelMessages.mockResolvedValue({
             data: [result(1, 'hello world'), result(2, 'another')],
             meta: { current_page: 1, last_page: 3 },
@@ -27,18 +38,9 @@ describe('searchInConversation', () => {
         await s.searchInConversation('channel', 10, 'hello');
 
         expect(s.searchResults.value).toHaveLength(2);
-        expect(s.searchResults.value[0]).toMatchObject({ messageId: 1, userName: 'alice' });
+        expect(s.searchResults.value[0]).toMatchObject({ id: '1', user: { username: 'alice' } });
         expect(s.hasMore.value).toBe(true);
         expect(s.isSearching.value).toBe(false);
-    });
-
-    it('produces a truncated snippet for long content', async () => {
-        const long = 'x'.repeat(50) + ' needle ' + 'y'.repeat(200);
-        searchDmMessages.mockResolvedValue({ data: [result(1, long)], meta: { current_page: 1, last_page: 1 } });
-        const s = useMessageSearch();
-        await s.searchInConversation('dm', 5, 'needle');
-        expect(s.searchResults.value[0].snippet.length).toBeLessThan(long.length);
-        expect(s.searchResults.value[0].snippet).toContain('…');
     });
 
     it('records an error and clears results on failure', async () => {
@@ -60,7 +62,7 @@ describe('loadMoreResults', () => {
         await s.searchInConversation('channel', 1, 'q');
         await s.loadMoreResults('channel', 1, 'q');
 
-        expect(s.searchResults.value.map((r) => r.messageId)).toEqual([1, 2]);
+        expect(s.searchResults.value.map((r) => r.id)).toEqual(['1', '2']);
         expect(s.hasMore.value).toBe(false);
     });
 

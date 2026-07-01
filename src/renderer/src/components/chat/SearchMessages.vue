@@ -4,7 +4,9 @@ import { Search, X, Loader2, AlertCircle, ChevronDown } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SimpleTooltip } from '@/components/ui/tooltip';
-import { useMessageSearch, type SearchResult } from '@/composables/useMessageSearch';
+import { useMessageSearch } from '@/composables/useMessageSearch';
+import type { MessageData } from '@/types/chat';
+import SearchResultItem from './SearchResultItem.vue';
 
 type Props = {
     conversationType: 'channel' | 'dm';
@@ -51,8 +53,8 @@ function handleLoadMore() {
     loadMoreResults(props.conversationType, props.conversationId, searchQuery.value);
 }
 
-function handleNavigate(result: SearchResult) {
-    emit('navigateToMessage', { messageId: result.messageId, threadId: result.raw.thread_id ?? null });
+function handleNavigate(message: MessageData) {
+    emit('navigateToMessage', { messageId: Number(message.id), threadId: message.thread_id ?? null });
 }
 
 function handleClose() {
@@ -80,7 +82,7 @@ onMounted(() => {
             <div class="absolute inset-0 bg-black/50" @mousedown="handleClose" />
 
             <div
-                class="border-border bg-background relative z-10 flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border shadow-2xl"
+                class="border-border bg-background relative z-10 flex max-h-[80vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border shadow-2xl"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="search-modal-title"
@@ -147,19 +149,12 @@ onMounted(() => {
                     </div>
 
                     <div v-else class="divide-border divide-y">
-                        <button
-                            v-for="result in searchResults"
-                            :key="result.messageId"
-                            class="hover:bg-muted/50 flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors"
-                            @click="handleNavigate(result)"
-                        >
-                            <div class="flex items-center gap-2">
-                                <span class="text-foreground text-xs font-medium">
-                                    {{ result.userName || t('chat.search.unknownUser') }}
-                                </span>
-                            </div>
-                            <p class="text-muted-foreground line-clamp-2 text-xs">{{ result.snippet }}</p>
-                        </button>
+                        <SearchResultItem
+                            v-for="message in searchResults"
+                            :key="message.id"
+                            :message="message"
+                            @jump="handleNavigate(message)"
+                        />
 
                         <div v-if="hasMore" class="flex justify-center py-3">
                             <button
