@@ -9,6 +9,7 @@ import { attachmentsApi } from './apis/attachments';
 import { authApi } from './apis/auth';
 import { avatarApi } from './apis/avatar';
 import { clipboardApi } from './apis/clipboard';
+import { idleApi } from './apis/idle';
 import { logApi } from './apis/log';
 import { notificationsApi } from './apis/notifications';
 import { pttApi } from './apis/ptt';
@@ -36,6 +37,7 @@ const api = {
     tray: trayApi,
     activity: activityApi,
     soundboard: soundboardApi,
+    idle: idleApi,
 };
 
 if (process.contextIsolated) {

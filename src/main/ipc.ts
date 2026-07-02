@@ -484,7 +484,8 @@ export function registerIpcHandlers(): void {
             // Not a host the user has connected to — refuse rather than fetch it.
             return null;
         }
-        const key = await ensureAvatarCached(String(userId), url);
+        const session = getAuthSession();
+        const key = await ensureAvatarCached(String(userId), url, session?.token ?? null);
         return key ? `avatar://img/${key}` : null;
     });
 

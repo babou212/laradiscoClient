@@ -42,7 +42,7 @@ function participant(overrides: Partial<VoiceParticipant> = {}): VoiceParticipan
 const channel = { id: '5', name: 'Lounge', topic: null, type: 'voice' };
 
 function mountItem() {
-    return mount(VoiceChannelItem, { props: { channel }, global: { stubs } });
+    return mount(VoiceChannelItem, { props: { channel, categoryId: '3' }, global: { stubs } });
 }
 
 /** Seed cached participants for a not-yet-joined channel (the map is store-private). */

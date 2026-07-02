@@ -138,6 +138,9 @@ const statusSections = computed(() => {
                         v-for="user in section.users"
                         :key="user.id"
                         type="button"
+                        data-context-username
+                        :data-user-id="user.id"
+                        :data-username="user.display_name"
                         class="group hover:bg-sidebar-accent flex w-full cursor-pointer items-center gap-x-2 rounded px-2 py-1 text-left transition-colors"
                         :class="section.opacity"
                         @click="openUserProfile(user)"

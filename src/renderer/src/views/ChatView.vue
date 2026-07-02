@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AdminActionDialogs from '@/components/chat/AdminActionDialogs.vue';
+import ChannelActionDialogs from '@/components/chat/ChannelActionDialogs.vue';
 import ChannelSidebar from '@/components/chat/ChannelSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import OnlineUsersSidebar from '@/components/chat/OnlineUsersSidebar.vue';
@@ -81,5 +83,8 @@ const handleSwitchToDms = () => {
         <div v-if="!usersCollapsed" class="shrink-0" :style="{ width: usersWidth + 'px' }">
             <OnlineUsersSidebar />
         </div>
+
+        <AdminActionDialogs />
+        <ChannelActionDialogs />
     </div>
 </template>

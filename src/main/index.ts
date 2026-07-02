@@ -131,6 +131,13 @@ function registerClipboardIpcHandlers(): void {
     });
 }
 
+function registerIdleIpcHandlers(): void {
+    ipcMain.handle('idle:getSystemIdleTime', (event) => {
+        if (!isTrustedFrame(event.senderFrame?.url ?? '')) throw new Error('untrusted sender');
+        return powerMonitor.getSystemIdleTime();
+    });
+}
+
 function createWindow(): void {
     const isMac = process.platform === 'darwin';
 
@@ -150,8 +157,6 @@ function createWindow(): void {
             sandbox: true,
             contextIsolation: true,
             nodeIntegration: false,
-            // Keep timers (notably the presence heartbeat) running at full rate
-            // when the window is minimised/backgrounded so the user stays online.
             backgroundThrottling: false,
         },
     });
@@ -221,6 +226,7 @@ app.whenReady().then(() => {
     registerIpcHandlers();
     registerWindowIpcHandlers();
     registerClipboardIpcHandlers();
+    registerIdleIpcHandlers();
     registerLogIpcHandlers();
 
     session.defaultSession.protocol.handle('app', (request) => {
@@ -353,6 +359,13 @@ app.whenReady().then(() => {
 
     app.on('browser-window-created', (_, window) => {
         optimizer.watchWindowShortcuts(window);
+        if (is.dev) {
+            window.webContents.on('before-input-event', (_event, input) => {
+                if (input.type === 'keyDown' && input.key === 'F12') {
+                    window.webContents.openDevTools();
+                }
+            });
+        }
     });
 
     createWindow();

@@ -243,6 +243,38 @@ export interface AuditLogResponse {
     current_page: number;
 }
 
+export interface ServerSettings {
+    logo_urls: { thumb: string | null; medium: string | null; original: string } | null;
+    afk_channel_id: number | null;
+    afk_timeout: number;
+}
+
+export async function getServerSettings(): Promise<ServerSettings> {
+    const r = await api.get('/settings/server');
+    return r.data;
+}
+
+export async function updateServerSettings(data: {
+    afk_channel_id?: number | null;
+    afk_timeout?: number;
+}): Promise<ServerSettings> {
+    const r = await api.put('/settings/server', data);
+    return r.data;
+}
+
+export async function uploadServerLogo(blob: Blob): Promise<{ logo_urls: ServerSettings['logo_urls'] }> {
+    const formData = new FormData();
+    formData.append('logo', blob, 'logo.png');
+    const r = await api.post('/settings/server/logo', formData, {
+        headers: { 'Content-Type': undefined },
+    });
+    return r.data;
+}
+
+export function deleteServerLogo(): Promise<void> {
+    return api.delete('/settings/server/logo');
+}
+
 export async function getAuditLog(params?: {
     action?: string;
     actor_id?: number;

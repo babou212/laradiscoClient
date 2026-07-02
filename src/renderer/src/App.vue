@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
+import AdminActionDialogs from '@/components/chat/AdminActionDialogs.vue';
+import ChannelActionDialogs from '@/components/chat/ChannelActionDialogs.vue';
 import AppContextMenu from '@/components/AppContextMenu.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import UpdateToast from '@/components/UpdateToast.vue';
 import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
+import { useAfkMonitor } from '@/composables/useAfkMonitor';
 import { usePresenceStore } from '@/stores/presence';
 import { useVoiceStore } from '@/stores/voice';
 
@@ -15,6 +18,8 @@ const isSettingsPage = computed(() => route.path.startsWith('/settings'));
 
 const presenceStore = usePresenceStore();
 const voiceStore = useVoiceStore();
+
+useAfkMonitor();
 
 const handleBeforeQuit = () => {
     presenceStore.goOffline();
@@ -57,5 +62,7 @@ onUnmounted(() => {
                 <ScreenShareViewer />
             </div>
         </AppContextMenu>
+        <AdminActionDialogs />
+        <ChannelActionDialogs />
     </TooltipProvider>
 </template>
