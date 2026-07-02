@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Volume2, Monitor, MicOff, VolumeOff } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { moveVoiceMember } from '@/api/voice';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -41,6 +42,55 @@ const isCurrentChannel = computed(() => {
 
 const isAfkChannel = computed(() => Number(props.channel.id) === serverStore.afkChannelId);
 
+const canMoveMembers = computed(
+    () => !!authStore.user?.permissions?.canMoveMembers || !!authStore.user?.permissions?.isAdministrator,
+);
+
+const isDragOver = ref(false);
+
+type VoiceMoveDragPayload = { userId: string | number; fromChannelId: string };
+
+const handleParticipantDragStart = (event: DragEvent, participant: VoiceParticipant): void => {
+    if (!canMoveMembers.value || isAfkChannel.value) return;
+    const payload: VoiceMoveDragPayload = { userId: participant.id, fromChannelId: props.channel.id };
+    event.dataTransfer?.setData('application/json', JSON.stringify(payload));
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+};
+
+const handleChannelDragOver = (event: DragEvent): void => {
+    if (!canMoveMembers.value || isAfkChannel.value) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+};
+
+const handleChannelDragEnter = (): void => {
+    if (!canMoveMembers.value || isAfkChannel.value) return;
+    isDragOver.value = true;
+};
+
+const handleChannelDragLeave = (): void => {
+    isDragOver.value = false;
+};
+
+const handleChannelDrop = (event: DragEvent): void => {
+    isDragOver.value = false;
+    if (!canMoveMembers.value || isAfkChannel.value) return;
+
+    const raw = event.dataTransfer?.getData('application/json');
+    if (!raw) return;
+
+    let payload: VoiceMoveDragPayload;
+    try {
+        payload = JSON.parse(raw);
+    } catch {
+        return;
+    }
+
+    if (payload.fromChannelId === props.channel.id) return;
+
+    moveVoiceMember(Number(payload.fromChannelId), Number(props.channel.id), payload.userId).catch(() => {});
+};
+
 const channelParticipants = computed<VoiceParticipant[]>(() => {
     if (isCurrentChannel.value) {
         return voiceStore.currentParticipants;
@@ -74,9 +124,13 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
             :data-channel-id="channel.id"
             :data-category-id="categoryId"
             :data-channel-type="channel.type"
-            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
-            :class="buttonClasses"
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors select-none"
+            :class="[buttonClasses, isDragOver ? 'ring-primary ring-2' : '']"
             @click="handleClick"
+            @dragover="handleChannelDragOver"
+            @dragenter="handleChannelDragEnter"
+            @dragleave="handleChannelDragLeave"
+            @drop="handleChannelDrop"
         >
             <Volume2 :size="16" class="shrink-0" />
             <span class="truncate">{{ channel.name }}</span>
@@ -86,7 +140,9 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
             <DropdownMenu v-for="participant in channelParticipants" :key="participant.id">
                 <DropdownMenuTrigger as-child>
                     <div
-                        class="hover:bg-sidebar-accent/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors"
+                        class="hover:bg-sidebar-accent/50 flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors select-none"
+                        :draggable="canMoveMembers && !isAfkChannel"
+                        @dragstart="(e) => handleParticipantDragStart(e, participant)"
                     >
                         <Avatar
                             class="size-6 shrink-0 transition-all duration-200"

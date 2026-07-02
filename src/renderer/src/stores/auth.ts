@@ -12,6 +12,7 @@ export interface AuthPermissions {
     canManageMessages: boolean;
     canBanMembers: boolean;
     canKickMembers: boolean;
+    canMoveMembers: boolean;
     canViewAuditLog: boolean;
     isAdministrator: boolean;
     isBanned: boolean;
