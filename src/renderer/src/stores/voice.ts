@@ -139,7 +139,6 @@ export const useVoiceStore = defineStore('voice', () => {
     const isReconnecting = ref(false);
     const currentParticipants = ref<VoiceParticipant[]>([]);
     const channelParticipantsMap = ref<Map<number, VoiceParticipant[]>>(new Map());
-    const channelStartedAt = ref<Map<number, number>>(new Map());
     const parkedAfkChannelId = ref<number | null>(null);
     const userVolumes = ref<Map<string, number>>(new Map());
 
@@ -272,10 +271,6 @@ export const useVoiceStore = defineStore('voice', () => {
         return channelParticipantsMap.value.get(channelId) ?? [];
     }
 
-    function getChannelStartedAt(channelId: number): number | null {
-        return channelStartedAt.value.get(channelId) ?? null;
-    }
-
     function getLocalMicTrack(): MediaStreamTrack | null {
         if (!room) return null;
         const pub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
@@ -298,10 +293,9 @@ export const useVoiceStore = defineStore('voice', () => {
             const data = await getVoiceParticipants();
 
             const rebuilt = new Map<number, VoiceParticipant[]>();
-            const rebuiltStartedAt = new Map<number, number>();
             const usersStore = useUsersStore();
 
-            for (const [channelIdStr, participants] of Object.entries(data.participants)) {
+            for (const [channelIdStr, participants] of Object.entries(data)) {
                 const channelId = Number(channelIdStr);
                 const mapped: VoiceParticipant[] = participants.map((p) => ({
                     id: p.id,
@@ -324,13 +318,8 @@ export const useVoiceStore = defineStore('voice', () => {
                 );
             }
 
-            for (const [channelIdStr, startedAt] of Object.entries(data.started_at)) {
-                if (startedAt !== null) rebuiltStartedAt.set(Number(channelIdStr), startedAt);
-            }
-
             if (currentChannel.value) rebuilt.delete(currentChannel.value.id);
             channelParticipantsMap.value = rebuilt;
-            channelStartedAt.value = rebuiltStartedAt;
         } catch {
             // ignore — keep the previous participant map
         }
@@ -355,14 +344,7 @@ export const useVoiceStore = defineStore('voice', () => {
                             avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
                         };
                         channel_id: number;
-                        started_at: number | null;
                     }) => {
-                        if (data.started_at !== null) {
-                            channelStartedAt.value.set(data.channel_id, data.started_at);
-                        } else {
-                            channelStartedAt.value.delete(data.channel_id);
-                        }
-
                         if (currentChannel.value && data.channel_id === currentChannel.value.id) return;
                         const participants = channelParticipantsMap.value.get(data.channel_id) ?? [];
                         if (!participants.some((p) => String(p.id) === String(data.user.id))) {
@@ -381,13 +363,7 @@ export const useVoiceStore = defineStore('voice', () => {
                         }
                     },
                 )
-                .listen('.voice.left', (data: { user_id: number; channel_id: number; started_at: number | null }) => {
-                    if (data.started_at !== null) {
-                        channelStartedAt.value.set(data.channel_id, data.started_at);
-                    } else {
-                        channelStartedAt.value.delete(data.channel_id);
-                    }
-
+                .listen('.voice.left', (data: { user_id: number; channel_id: number }) => {
                     if (currentChannel.value && data.channel_id === currentChannel.value.id) return;
                     const participants = channelParticipantsMap.value.get(data.channel_id);
                     if (participants) {
@@ -676,9 +652,7 @@ export const useVoiceStore = defineStore('voice', () => {
                 await leaveChannel();
             }
 
-            const { token, url, e2ee_key, e2ee_key_index, started_at } = await joinVoiceChannel(channelId);
-
-            if (started_at !== null) channelStartedAt.value.set(channelId, started_at);
+            const { token, url, e2ee_key, e2ee_key_index } = await joinVoiceChannel(channelId);
 
             const E2EE_ENABLED = false;
 
@@ -1328,7 +1302,6 @@ export const useVoiceStore = defineStore('voice', () => {
         cleanupPttListeners();
         unsubscribeFromVoiceChannels();
         channelParticipantsMap.value = new Map();
-        channelStartedAt.value = new Map();
         pttEnabled.value = false;
         pttKey.value = null;
         pttBinding.value = null;
@@ -1368,7 +1341,6 @@ export const useVoiceStore = defineStore('voice', () => {
         echoCancellation,
         autoGainControl,
         getChannelParticipants,
-        getChannelStartedAt,
         getLocalMicTrack,
         userVolumes,
         getUserVolume,
