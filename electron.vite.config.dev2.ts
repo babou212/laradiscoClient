@@ -8,9 +8,11 @@ function copyWasmPlugin() {
     return {
         name: 'copy-wasm',
         closeBundle() {
+            const srcDir = resolve('src/main/mls/wasm');
+            if (!existsSync(srcDir)) return;
+
             const outDir = resolve('out2/main/wasm');
             if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-            const srcDir = resolve('src/main/mls/wasm');
             for (const file of ['openmls_wasm.js', 'openmls_wasm_bg.wasm', 'package.json']) {
                 copyFileSync(resolve(srcDir, file), resolve(outDir, file));
             }
