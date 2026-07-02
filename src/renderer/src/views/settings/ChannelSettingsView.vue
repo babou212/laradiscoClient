@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
-import { ChevronDown, ChevronRight, Folder, Hash, Lock, Pencil, Plus, Shield, Trash2, Volume2 } from 'lucide-vue-next';
+import {
+    ChevronDown,
+    ChevronRight,
+    Folder,
+    GripVertical,
+    Hash,
+    Lock,
+    Pencil,
+    Plus,
+    Shield,
+    Trash2,
+    Volume2,
+} from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import draggable from 'vuedraggable';
 import { extractValidationErrors } from '@/api/errors';
 import {
     createSettingsChannel,
     updateSettingsChannel,
     deleteSettingsChannel,
+    reorderSettingsChannels,
+    reorderSettingsCategories,
     createSettingsCategory,
     updateSettingsCategory,
     deleteSettingsCategory,
@@ -99,6 +114,15 @@ const categories = computed<Category[]>(() => {
         };
     });
 });
+
+const orderedCategories = ref<Category[]>([]);
+watch(
+    categories,
+    (cats) => {
+        orderedCategories.value = cats.map((c) => ({ ...c, channels: c.channels.map((ch) => ({ ...ch })) }));
+    },
+    { immediate: true },
+);
 
 const roles = computed<Role[]>(() => {
     const metaRoles = rawData.value?.meta?.roles;
@@ -208,7 +232,6 @@ function toggleCategory(id: string) {
     }
 }
 
-// Expand all categories when data loads
 watch(
     categories,
     (cats) => {
@@ -261,6 +284,29 @@ const { mutateAsync: doDeleteCategory } = useMutation({
     mutation: (id: string) => deleteSettingsCategory(id),
     onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
 });
+
+const { mutate: doReorderChannels } = useMutation({
+    mutation: (payload: { categories: { id: string; channel_ids: string[] }[] }) => reorderSettingsChannels(payload),
+    onSettled: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+const { mutate: doReorderCategories } = useMutation({
+    mutation: (ids: string[]) => reorderSettingsCategories(ids),
+    onSettled: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+function persistCategoryOrder() {
+    doReorderCategories(orderedCategories.value.map((c) => c.id));
+}
+
+function persistChannelOrder() {
+    doReorderChannels({
+        categories: orderedCategories.value.map((c) => ({
+            id: c.id,
+            channel_ids: c.channels.map((ch) => ch.id),
+        })),
+    });
+}
 
 function openCreateChannel(categoryId: string | null = null) {
     channelForm.value = {
@@ -506,77 +552,60 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                 </div>
 
                 <!-- Category list -->
-                <div v-else class="space-y-4">
-                    <div v-for="category in categories" :key="category.id" class="border-border rounded-lg border">
-                        <!-- Category Header -->
-                        <div
-                            class="bg-muted/30 flex cursor-pointer items-center justify-between px-4 py-3"
-                            @click="toggleCategory(category.id)"
-                        >
-                            <div class="flex items-center gap-2">
-                                <component
-                                    :is="expandedCategories.has(category.id) ? ChevronDown : ChevronRight"
-                                    class="text-muted-foreground h-4 w-4"
-                                />
-                                <span class="text-sm font-semibold tracking-wider uppercase">
-                                    {{ category.name }}
-                                </span>
-                                <span class="text-muted-foreground text-xs"> ({{ category.channels.length }}) </span>
-                            </div>
-                            <div class="flex items-center gap-1" @click.stop>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    class="h-7 w-7"
-                                    @click="openCreateChannel(category.id)"
-                                >
-                                    <Plus class="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" class="h-7 w-7" @click="openEditCategory(category)">
-                                    <Pencil class="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    class="text-destructive hover:text-destructive h-7 w-7"
-                                    @click="openDeleteCategory(category)"
-                                >
-                                    <Trash2 class="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-
-                        <!-- Channels -->
-                        <div v-show="expandedCategories.has(category.id)" class="divide-y">
+                <draggable
+                    v-else
+                    v-model="orderedCategories"
+                    item-key="id"
+                    handle=".category-drag-handle"
+                    :group="{ name: 'categories' }"
+                    :animation="150"
+                    :force-fallback="true"
+                    ghost-class="category-ghost"
+                    drag-class="category-dragging"
+                    class="space-y-4"
+                    @end="persistCategoryOrder"
+                >
+                    <template #item="{ element: category }">
+                        <div class="border-border rounded-lg border">
+                            <!-- Category Header -->
                             <div
-                                v-for="channel in category.channels"
-                                :key="channel.id"
-                                class="flex items-center justify-between px-4 py-3"
+                                class="bg-muted/30 flex cursor-pointer items-center justify-between px-4 py-3"
+                                @click="toggleCategory(category.id)"
                             >
-                                <div class="flex items-center gap-3">
-                                    <component :is="channelIcon(channel.type)" class="text-muted-foreground h-4 w-4" />
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-sm font-medium">{{ channel.name }}</span>
-                                            <Lock v-if="channel.is_private" class="text-muted-foreground h-3 w-3" />
-                                            <Badge v-if="channel.is_private" variant="secondary" class="text-xs">{{
-                                                t('settings.channels.privateBadge')
-                                            }}</Badge>
-                                        </div>
-                                        <p v-if="channel.topic" class="text-muted-foreground text-xs">
-                                            {{ channel.topic }}
-                                        </p>
-                                    </div>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="category-drag-handle text-muted-foreground/50 hover:text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing"
+                                        :aria-label="t('settings.channels.dragCategory')"
+                                        @click.stop
+                                    >
+                                        <GripVertical class="h-4 w-4" />
+                                    </button>
+                                    <component
+                                        :is="expandedCategories.has(category.id) ? ChevronDown : ChevronRight"
+                                        class="text-muted-foreground h-4 w-4"
+                                    />
+                                    <span class="text-sm font-semibold tracking-wider uppercase">
+                                        {{ category.name }}
+                                    </span>
+                                    <span class="text-muted-foreground text-xs">
+                                        ({{ category.channels.length }})
+                                    </span>
                                 </div>
-                                <div class="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" class="h-7 w-7" @click="openOverrides(channel)">
-                                        <Shield class="h-3.5 w-3.5" />
+                                <div class="flex items-center gap-1" @click.stop>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        class="h-7 w-7"
+                                        @click="openCreateChannel(category.id)"
+                                    >
+                                        <Plus class="h-3.5 w-3.5" />
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         class="h-7 w-7"
-                                        @click="openEditChannel(channel)"
+                                        @click="openEditCategory(category)"
                                     >
                                         <Pencil class="h-3.5 w-3.5" />
                                     </Button>
@@ -584,22 +613,100 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                                         variant="ghost"
                                         size="icon"
                                         class="text-destructive hover:text-destructive h-7 w-7"
-                                        @click="openDeleteChannel(channel)"
+                                        @click="openDeleteCategory(category)"
                                     >
                                         <Trash2 class="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </div>
 
-                            <div
-                                v-if="category.channels.length === 0"
-                                class="text-muted-foreground px-4 py-4 text-center text-xs"
-                            >
-                                {{ t('settings.channels.emptyCategory') }}
+                            <!-- Channels -->
+                            <div v-show="expandedCategories.has(category.id)">
+                                <draggable
+                                    v-model="category.channels"
+                                    item-key="id"
+                                    handle=".channel-drag-handle"
+                                    :group="{ name: 'channels' }"
+                                    :animation="150"
+                                    :force-fallback="true"
+                                    ghost-class="channel-ghost"
+                                    drag-class="channel-dragging"
+                                    class="divide-y"
+                                    @end="persistChannelOrder"
+                                >
+                                    <template #item="{ element: channel }">
+                                        <div class="flex items-center justify-between px-4 py-3">
+                                            <div class="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    class="channel-drag-handle text-muted-foreground/50 hover:text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing"
+                                                    :aria-label="t('settings.channels.dragChannel')"
+                                                >
+                                                    <GripVertical class="h-4 w-4" />
+                                                </button>
+                                                <component
+                                                    :is="channelIcon(channel.type)"
+                                                    class="text-muted-foreground h-4 w-4"
+                                                />
+                                                <div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-sm font-medium">{{ channel.name }}</span>
+                                                        <Lock
+                                                            v-if="channel.is_private"
+                                                            class="text-muted-foreground h-3 w-3"
+                                                        />
+                                                        <Badge
+                                                            v-if="channel.is_private"
+                                                            variant="secondary"
+                                                            class="text-xs"
+                                                            >{{ t('settings.channels.privateBadge') }}</Badge
+                                                        >
+                                                    </div>
+                                                    <p v-if="channel.topic" class="text-muted-foreground text-xs">
+                                                        {{ channel.topic }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    class="h-7 w-7"
+                                                    @click="openOverrides(channel)"
+                                                >
+                                                    <Shield class="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    class="h-7 w-7"
+                                                    @click="openEditChannel(channel)"
+                                                >
+                                                    <Pencil class="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    class="text-destructive hover:text-destructive h-7 w-7"
+                                                    @click="openDeleteChannel(channel)"
+                                                >
+                                                    <Trash2 class="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </draggable>
+
+                                <div
+                                    v-if="category.channels.length === 0"
+                                    class="text-muted-foreground px-4 py-4 text-center text-xs"
+                                >
+                                    {{ t('settings.channels.emptyCategory') }}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </template>
+                </draggable>
             </div>
         </div>
 
@@ -1010,3 +1117,23 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+.channel-dragging {
+    background-color: var(--card);
+    opacity: 1;
+}
+
+.channel-ghost {
+    opacity: 0.4;
+}
+
+.category-dragging {
+    background-color: var(--card);
+    opacity: 1;
+}
+
+.category-ghost {
+    opacity: 0.4;
+}
+</style>

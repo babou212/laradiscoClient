@@ -428,6 +428,8 @@
             "emptyDescription": "Create a category and add channels to get started.",
             "emptyCategory": "No channels in this category.",
             "privateBadge": "Private",
+            "dragCategory": "Drag to reorder category",
+            "dragChannel": "Drag to reorder channel",
             "unknown": "Unknown",
             "roleLabel": "Role",
             "userLabel": "User",
