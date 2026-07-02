@@ -193,7 +193,10 @@ const statusOptions = computed(() => [
                 <button
                     type="button"
                     class="text-sidebar-foreground flex w-full items-center gap-3 px-4 py-3 font-semibold transition-colors"
-                    :class="{ 'hover:bg-sidebar-accent cursor-pointer': adminNavItems.length > 0, 'cursor-default': adminNavItems.length === 0 }"
+                    :class="{
+                        'hover:bg-sidebar-accent cursor-pointer': adminNavItems.length > 0,
+                        'cursor-default': adminNavItems.length === 0,
+                    }"
                     @click="adminNavItems.length > 0 && (showServerMenu = !showServerMenu)"
                 >
                     <Avatar class="size-7 shrink-0 rounded-md">
