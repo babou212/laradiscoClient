@@ -32,3 +32,11 @@ export async function getVoiceChannelKey(channelId: number): Promise<{ e2ee_key:
 export function leaveVoiceMembership(channelId: number): Promise<void> {
     return api.delete(`/channels/${channelId}/voice/membership`);
 }
+
+export async function parkAfk(): Promise<void> {
+    await api.post('/voice/afk');
+}
+
+export async function unparkAfk(): Promise<void> {
+    await api.delete('/voice/afk');
+}

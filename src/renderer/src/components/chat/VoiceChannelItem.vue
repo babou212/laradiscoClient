@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Slider } from '@/components/ui/slider';
 import { useAuthStore } from '@/stores/auth';
+import { useServerStore } from '@/stores/server';
 import { useUsersStore } from '@/stores/users';
 import { useVoiceStore, type VoiceParticipant } from '@/stores/voice';
 
@@ -29,6 +30,7 @@ const props = defineProps<Props>();
 const voiceStore = useVoiceStore();
 const usersStore = useUsersStore();
 const authStore = useAuthStore();
+const serverStore = useServerStore();
 
 const isSelf = (participant: VoiceParticipant): boolean =>
     !!authStore.user && String(participant.id) === String(authStore.user.id);
@@ -36,6 +38,8 @@ const isSelf = (participant: VoiceParticipant): boolean =>
 const isCurrentChannel = computed(() => {
     return voiceStore.currentChannel?.id === Number(props.channel.id);
 });
+
+const isAfkChannel = computed(() => Number(props.channel.id) === serverStore.afkChannelId);
 
 const channelParticipants = computed<VoiceParticipant[]>(() => {
     if (isCurrentChannel.value) {
@@ -52,6 +56,8 @@ const buttonClasses = computed(() =>
 
 const handleClick = () => {
     if (isCurrentChannel.value) return;
+
+    if (isAfkChannel.value) return;
     voiceStore.joinChannel(Number(props.channel.id), props.channel.name);
 };
 
@@ -124,7 +130,7 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                                 class="cursor-pointer text-green-400 hover:text-green-300"
                                 @click.stop="handleScreenShareClick(participant)"
                             />
-                            <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
+                            <MicOff v-if="participant.isMuted || isAfkChannel" :size="12" class="text-red-400" />
                         </div>
                     </div>
                 </DropdownMenuTrigger>

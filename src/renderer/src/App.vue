@@ -9,6 +9,7 @@ import TitleBar from '@/components/TitleBar.vue';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import UpdateToast from '@/components/UpdateToast.vue';
 import ScreenShareViewer from '@/components/voice/ScreenShareViewer.vue';
+import { useAfkMonitor } from '@/composables/useAfkMonitor';
 import { usePresenceStore } from '@/stores/presence';
 import { useVoiceStore } from '@/stores/voice';
 
@@ -17,6 +18,8 @@ const isSettingsPage = computed(() => route.path.startsWith('/settings'));
 
 const presenceStore = usePresenceStore();
 const voiceStore = useVoiceStore();
+
+useAfkMonitor();
 
 const handleBeforeQuit = () => {
     presenceStore.goOffline();

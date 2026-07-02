@@ -7,14 +7,11 @@ import ChannelSidebar from '@/components/chat/ChannelSidebar.vue';
 import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import OnlineUsersSidebar from '@/components/chat/OnlineUsersSidebar.vue';
 import ResizeHandle from '@/components/ui/ResizeHandle.vue';
-import { useAfkMonitor } from '@/composables/useAfkMonitor';
 import { useChatStore } from '@/stores/chat';
 
 const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
-
-useAfkMonitor();
 
 const USERS_MIN = 180;
 const USERS_MAX = 400;

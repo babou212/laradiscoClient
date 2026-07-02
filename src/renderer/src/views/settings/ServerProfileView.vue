@@ -7,24 +7,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarCropDialog from '@/components/ui/AvatarCropDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useChatStore } from '@/stores/chat';
 import { useServerStore } from '@/stores/server';
 
 const { t } = useI18n();
 const serverStore = useServerStore();
-const chatStore = useChatStore();
 
 const showLogoDialog = ref(false);
 const logoSrc = ref<string | null>(null);
 const logoResolving = ref(false);
 
-const afkChannelId = ref<string>('');
 const afkTimeout = ref<number>(5);
 const settingsSaved = ref(false);
-
-const voiceChannels = computed(() =>
-    chatStore.categories.flatMap((cat) => cat.channels.filter((ch) => ch.type === 'voice')),
-);
 
 const serverInitials = computed(() => {
     const host = serverStore.activeHost ?? 'S';
@@ -50,7 +43,6 @@ async function resolveLogoUrl(url: string): Promise<void> {
 
 onMounted(async () => {
     await serverStore.loadServerSettings();
-    afkChannelId.value = serverStore.afkChannelId ? String(serverStore.afkChannelId) : 'none';
     afkTimeout.value = serverStore.afkTimeout ?? 5;
     const thumb = serverStore.serverLogoUrls?.thumb ?? serverStore.serverLogoUrls?.original ?? null;
     if (thumb) await resolveLogoUrl(thumb);
@@ -65,7 +57,7 @@ const { mutateAsync: doDeleteLogo, isLoading: logoDeleting } = useMutation({
 });
 
 const { mutateAsync: doUpdateSettings, isLoading: settingsSaving } = useMutation({
-    mutation: (data: { afk_channel_id?: number | null; afk_timeout?: number }) => updateServerSettings(data),
+    mutation: (data: { afk_timeout?: number }) => updateServerSettings(data),
 });
 
 async function onLogoSave(blob: Blob) {
@@ -89,10 +81,8 @@ async function removeLogo() {
 
 async function saveAfkSettings() {
     const result = await doUpdateSettings({
-        afk_channel_id: afkChannelId.value && afkChannelId.value !== 'none' ? Number(afkChannelId.value) : null,
         afk_timeout: afkTimeout.value,
     });
-    serverStore.afkChannelId = result.afk_channel_id;
     serverStore.afkTimeout = result.afk_timeout;
     settingsSaved.value = true;
     setTimeout(() => (settingsSaved.value = false), 2000);
@@ -159,21 +149,6 @@ async function saveAfkSettings() {
                 </p>
             </div>
             <div class="space-y-4 px-6 py-5">
-                <div class="grid gap-2">
-                    <label class="text-sm font-medium">{{ t('settings.serverProfile.afk.channel') }}</label>
-                    <Select v-model="afkChannelId">
-                        <SelectTrigger class="w-72">
-                            <SelectValue :placeholder="t('settings.serverProfile.afk.noChannel')" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">{{ t('settings.serverProfile.afk.noChannel') }}</SelectItem>
-                            <SelectItem v-for="ch in voiceChannels" :key="ch.id" :value="ch.id">
-                                {{ ch.name }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
                 <div class="grid gap-2">
                     <label class="text-sm font-medium">{{ t('settings.serverProfile.afk.timeout') }}</label>
                     <div class="flex items-center gap-3">

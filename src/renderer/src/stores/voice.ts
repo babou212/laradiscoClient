@@ -19,12 +19,20 @@ import {
 } from 'livekit-client';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { getVoiceChannelKey, getVoiceParticipants, joinVoiceChannel, leaveVoiceMembership } from '@/api/voice';
+import {
+    getVoiceChannelKey,
+    getVoiceParticipants,
+    joinVoiceChannel,
+    leaveVoiceMembership,
+    parkAfk,
+    unparkAfk,
+} from '@/api/voice';
 import { IndexedKeyProvider } from '@/lib/voice-key-provider';
 import { getEcho } from '@/lib/echo';
 import { playPttActivateSound, playPttDeactivateSound } from '@/lib/ptt-sounds';
 import type { AvatarUrls } from '@/types/chat';
 import type { PttBinding } from '@/types/ptt';
+import { useAuthStore } from './auth';
 import { useSoundboardStore } from './soundboard';
 import { useUsersStore } from './users';
 
@@ -131,7 +139,8 @@ export const useVoiceStore = defineStore('voice', () => {
     const isReconnecting = ref(false);
     const currentParticipants = ref<VoiceParticipant[]>([]);
     const channelParticipantsMap = ref<Map<number, VoiceParticipant[]>>(new Map());
-    const userVolumes = ref<Map<string, number>>(new Map()); // userId -> 0..2 (1 = 100%)
+    const parkedAfkChannelId = ref<number | null>(null);
+    const userVolumes = ref<Map<string, number>>(new Map());
 
     const connectionQuality = ref<ConnectionQuality>(ConnectionQuality.Unknown);
 
@@ -260,6 +269,12 @@ export const useVoiceStore = defineStore('voice', () => {
             return currentParticipants.value;
         }
         return channelParticipantsMap.value.get(channelId) ?? [];
+    }
+
+    function getLocalMicTrack(): MediaStreamTrack | null {
+        if (!room) return null;
+        const pub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+        return pub?.track?.mediaStreamTrack ?? null;
     }
 
     function seedChannelMapFromRoster(channelId: number, selfIdentity: string): void {
@@ -497,11 +512,12 @@ export const useVoiceStore = defineStore('voice', () => {
                 return;
             }
             if (track.source === Track.Source.ScreenShare) {
-                // Only download this video while its viewer is open (see screenShareVideoPubs).
                 screenShareVideoPubs.set(participant.identity, publication);
                 publication.setEnabled(activeScreenShareView.value === participant.identity);
+
                 const wrappedTrack = { mediaStreamTrack: track.mediaStreamTrack };
                 const existing = screenShareParticipants.value.find((s) => s.identity === participant.identity);
+
                 if (existing) {
                     existing.videoTrack = wrappedTrack;
                 } else {
@@ -628,6 +644,10 @@ export const useVoiceStore = defineStore('voice', () => {
         isJoining = true;
 
         try {
+            if (parkedAfkChannelId.value !== null) {
+                await leaveAfk();
+            }
+
             if (room && room.state === ConnectionState.Connected) {
                 await leaveChannel();
             }
@@ -898,6 +918,61 @@ export const useVoiceStore = defineStore('voice', () => {
         isSoundMuted.value = false;
         connectionQuality.value = ConnectionQuality.Unknown;
         isAudioPlaybackBlocked.value = false;
+    }
+
+    async function goAfk(afkChannelId: number): Promise<void> {
+        if (!currentChannel.value) return;
+
+        await leaveChannel();
+        parkedAfkChannelId.value = afkChannelId;
+
+        const self = useAuthStore().user;
+        if (self) {
+            const existing = channelParticipantsMap.value.get(afkChannelId) ?? [];
+            if (!existing.some((p) => String(p.id) === String(self.id))) {
+                channelParticipantsMap.value.set(afkChannelId, [
+                    ...existing,
+                    {
+                        id: self.id,
+                        username: self.username,
+                        displayName: self.username,
+                        isSpeaking: false,
+                        isMuted: false,
+                        isScreenSharing: false,
+                        avatarUrls: self.avatar_urls ?? null,
+                    },
+                ]);
+            }
+        }
+
+        try {
+            await parkAfk();
+        } catch {
+            // best-effort — AFK presence is cosmetic
+        }
+    }
+
+    async function leaveAfk(): Promise<void> {
+        const afkChannelId = parkedAfkChannelId.value;
+        if (afkChannelId === null) return;
+        parkedAfkChannelId.value = null;
+
+        const existing = channelParticipantsMap.value.get(afkChannelId);
+        if (existing) {
+            const selfId = useAuthStore().user?.id;
+            const filtered = existing.filter((p) => String(p.id) !== String(selfId));
+            if (filtered.length > 0) {
+                channelParticipantsMap.value.set(afkChannelId, filtered);
+            } else {
+                channelParticipantsMap.value.delete(afkChannelId);
+            }
+        }
+
+        try {
+            await unparkAfk();
+        } catch {
+            // best-effort — AFK presence is cosmetic
+        }
     }
 
     function syncMuteAttribute(): void {
@@ -1241,6 +1316,7 @@ export const useVoiceStore = defineStore('voice', () => {
         screenShareQuality.value = 'high';
         screenShareViewMode.value = 'pip';
         screenShareAudioMuted.value = true;
+        parkedAfkChannelId.value = null;
     }
 
     return {
@@ -1250,6 +1326,7 @@ export const useVoiceStore = defineStore('voice', () => {
         isSoundMuted,
         isReconnecting,
         currentParticipants,
+        parkedAfkChannelId,
         isConnected,
         pttEnabled,
         pttKey,
@@ -1264,6 +1341,7 @@ export const useVoiceStore = defineStore('voice', () => {
         echoCancellation,
         autoGainControl,
         getChannelParticipants,
+        getLocalMicTrack,
         userVolumes,
         getUserVolume,
         setUserVolume,
@@ -1273,6 +1351,8 @@ export const useVoiceStore = defineStore('voice', () => {
         unsubscribeFromVoiceChannels,
         joinChannel,
         leaveChannel,
+        goAfk,
+        leaveAfk,
         toggleMic,
         toggleSound,
         refreshAvailableMics,
