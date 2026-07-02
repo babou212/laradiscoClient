@@ -361,6 +361,8 @@
             "emptyDescription": "Créez une catégorie et ajoutez des salons pour commencer.",
             "emptyCategory": "Aucun salon dans cette catégorie.",
             "privateBadge": "Privé",
+            "dragCategory": "Glisser pour réorganiser la catégorie",
+            "dragChannel": "Glisser pour réorganiser le canal",
             "unknown": "Inconnu",
             "roleLabel": "Rôle",
             "userLabel": "Utilisateur",

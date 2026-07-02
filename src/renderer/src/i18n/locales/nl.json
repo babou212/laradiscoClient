@@ -363,6 +363,8 @@
             "emptyDescription": "Maak een categorie aan en voeg kanalen toe om te beginnen.",
             "emptyCategory": "Geen kanalen in deze categorie.",
             "privateBadge": "Privé",
+            "dragCategory": "Sleep om categorie te herordenen",
+            "dragChannel": "Sleep om kanaal te herordenen",
             "unknown": "Onbekend",
             "roleLabel": "Rol",
             "userLabel": "Gebruiker",
