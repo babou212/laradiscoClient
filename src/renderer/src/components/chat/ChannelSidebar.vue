@@ -120,6 +120,10 @@ const currentCustomStatus = shallowRef<string | null>(null);
 const getTextChannels = (channels: Channel[]) => channels.filter((c) => c.type !== 'voice');
 const getVoiceChannels = (channels: Channel[]) => channels.filter((c) => c.type === 'voice');
 
+const afkChannel = computed<Channel | null>(() =>
+    serverStore.afkChannelId ? { id: String(serverStore.afkChannelId), name: 'afk', topic: null, type: 'voice' } : null,
+);
+
 watch(
     () => (user.value?.id ? presenceStore.getUserStatus(user.value.id) : undefined),
     (userStatus) => {
@@ -305,6 +309,8 @@ const statusOptions = computed(() => [
                         </div>
                     </div>
                 </div>
+
+                <VoiceChannelItem v-if="afkChannel" :channel="afkChannel" category-id="afk" class="-mt-3.5" />
             </div>
         </div>
 

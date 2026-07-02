@@ -7,12 +7,14 @@ import MessagesPanel from '@/components/chat/MessagesPanel.vue';
 import OnlineUsersSidebar from '@/components/chat/OnlineUsersSidebar.vue';
 import ThreadPanel from '@/components/chat/ThreadPanel.vue';
 import { useChatStore } from '@/stores/chat';
+import { useServerStore } from '@/stores/server';
 import { useThreadStore } from '@/stores/thread';
 import { useVoiceStore } from '@/stores/voice';
 
 const { t } = useI18n();
 const router = useRouter();
 const chatStore = useChatStore();
+const serverStore = useServerStore();
 const threadStore = useThreadStore();
 const voiceStore = useVoiceStore();
 
@@ -24,12 +26,17 @@ const toggleUsersCollapsed = () => {
 
 onMounted(async () => {
     await chatStore.fetchCategories();
+    await serverStore.loadServerSettings();
     voiceStore.fetchVoiceParticipants();
 
     const voiceChannelIds = chatStore.categories
         .flatMap((cat) => cat.channels)
         .filter((ch) => ch.type === 'voice')
         .map((ch) => ch.id);
+
+    if (serverStore.afkChannelId) {
+        voiceChannelIds.push(String(serverStore.afkChannelId));
+    }
     voiceStore.subscribeToVoiceChannels(voiceChannelIds);
 
     if (!chatStore.currentChannel) {
