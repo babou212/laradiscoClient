@@ -192,8 +192,9 @@ const statusOptions = computed(() => [
                 <div v-if="showServerMenu" class="fixed inset-0 z-10" @click="showServerMenu = false" />
                 <button
                     type="button"
-                    class="text-sidebar-foreground hover:bg-sidebar-accent flex w-full items-center gap-3 px-4 py-3 font-semibold transition-colors"
-                    @click="showServerMenu = !showServerMenu"
+                    class="text-sidebar-foreground flex w-full items-center gap-3 px-4 py-3 font-semibold transition-colors"
+                    :class="{ 'hover:bg-sidebar-accent cursor-pointer': adminNavItems.length > 0, 'cursor-default': adminNavItems.length === 0 }"
+                    @click="adminNavItems.length > 0 && (showServerMenu = !showServerMenu)"
                 >
                     <Avatar class="size-7 shrink-0 rounded-md">
                         <AvatarImage
@@ -208,6 +209,7 @@ const statusOptions = computed(() => [
                     </Avatar>
                     <span class="min-w-0 flex-1 truncate text-left">{{ serverStore.activeHost ?? serverName }}</span>
                     <ChevronDown
+                        v-if="adminNavItems.length > 0"
                         :size="14"
                         class="text-sidebar-foreground/60 shrink-0 transition-transform duration-200"
                         :class="{ 'rotate-180': showServerMenu }"
