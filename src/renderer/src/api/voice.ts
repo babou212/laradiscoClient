@@ -1,7 +1,7 @@
 import api from './client';
 
-export async function getVoiceParticipants(): Promise<
-    Record<
+export async function getVoiceParticipants(): Promise<{
+    participants: Record<
         string,
         Array<{
             id: number;
@@ -9,15 +9,16 @@ export async function getVoiceParticipants(): Promise<
             display_name: string;
             avatar_urls: { thumb: string; small: string; medium: string; original: string } | null;
         }>
-    >
-> {
+    >;
+    started_at: Record<string, number | null>;
+}> {
     const r = await api.get('/voice/participants');
-    return r.data?.data ?? {};
+    return r.data?.data ?? { participants: {}, started_at: {} };
 }
 
 export async function joinVoiceChannel(
     channelId: number,
-): Promise<{ token: string; url: string; e2ee_key: string; e2ee_key_index: number }> {
+): Promise<{ token: string; url: string; e2ee_key: string; e2ee_key_index: number; started_at: number | null }> {
     const r = await api.post(`/channels/${channelId}/voice/join`);
     return r.data?.data ?? r.data;
 }

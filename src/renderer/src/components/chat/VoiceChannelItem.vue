@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Volume2, Monitor, MicOff, VolumeOff } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
-import { moveVoiceMember } from '@/api/voice';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -33,6 +32,33 @@ const usersStore = useUsersStore();
 const authStore = useAuthStore();
 const serverStore = useServerStore();
 
+// Hidden entirely under a minute; mm:ss once a minute has passed; hh:mm:ss once an hour has.
+function formatElapsed(totalSeconds: number): string | null {
+    const seconds = Math.max(0, Math.floor(totalSeconds));
+    if (seconds < 60) return null;
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
+}
+
+// Live elapsed-time counter — re-evaluated each tick via the `now` ref.
+const now = ref(Date.now());
+let timer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+    timer = setInterval(() => {
+        now.value = Date.now();
+    }, 1000);
+});
+
+onBeforeUnmount(() => {
+    if (timer) clearInterval(timer);
+});
+
 const isSelf = (participant: VoiceParticipant): boolean =>
     !!authStore.user && String(participant.id) === String(authStore.user.id);
 
@@ -42,54 +68,12 @@ const isCurrentChannel = computed(() => {
 
 const isAfkChannel = computed(() => Number(props.channel.id) === serverStore.afkChannelId);
 
-const canMoveMembers = computed(
-    () => !!authStore.user?.permissions?.canMoveMembers || !!authStore.user?.permissions?.isAdministrator,
-);
-
-const isDragOver = ref(false);
-
-type VoiceMoveDragPayload = { userId: string | number; fromChannelId: string };
-
-const handleParticipantDragStart = (event: DragEvent, participant: VoiceParticipant): void => {
-    if (!canMoveMembers.value || isAfkChannel.value) return;
-    const payload: VoiceMoveDragPayload = { userId: participant.id, fromChannelId: props.channel.id };
-    event.dataTransfer?.setData('application/json', JSON.stringify(payload));
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-};
-
-const handleChannelDragOver = (event: DragEvent): void => {
-    if (!canMoveMembers.value || isAfkChannel.value) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-};
-
-const handleChannelDragEnter = (): void => {
-    if (!canMoveMembers.value || isAfkChannel.value) return;
-    isDragOver.value = true;
-};
-
-const handleChannelDragLeave = (): void => {
-    isDragOver.value = false;
-};
-
-const handleChannelDrop = (event: DragEvent): void => {
-    isDragOver.value = false;
-    if (!canMoveMembers.value || isAfkChannel.value) return;
-
-    const raw = event.dataTransfer?.getData('application/json');
-    if (!raw) return;
-
-    let payload: VoiceMoveDragPayload;
-    try {
-        payload = JSON.parse(raw);
-    } catch {
-        return;
-    }
-
-    if (payload.fromChannelId === props.channel.id) return;
-
-    moveVoiceMember(Number(payload.fromChannelId), Number(props.channel.id), payload.userId).catch(() => {});
-};
+const elapsedText = computed<string | null>(() => {
+    if (isAfkChannel.value) return null;
+    const startedAt = voiceStore.getChannelStartedAt(Number(props.channel.id));
+    if (startedAt === null) return null;
+    return formatElapsed(now.value / 1000 - startedAt);
+});
 
 const channelParticipants = computed<VoiceParticipant[]>(() => {
     if (isCurrentChannel.value) {
@@ -134,6 +118,9 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
         >
             <Volume2 :size="16" class="shrink-0" />
             <span class="truncate">{{ channel.name }}</span>
+            <span v-if="elapsedText" class="text-sidebar-foreground/50 ml-auto shrink-0 text-xs tabular-nums">{{
+                elapsedText
+            }}</span>
         </button>
 
         <div v-if="channelParticipants.length > 0" class="ml-6 space-y-0.5 py-0.5">
