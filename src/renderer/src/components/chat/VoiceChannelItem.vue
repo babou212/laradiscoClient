@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Volume2, Monitor, MicOff } from 'lucide-vue-next';
+import { Volume2, Monitor, MicOff, VolumeOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -123,6 +123,11 @@ const handleScreenShareClick = (participant: VoiceParticipant) => {
                                 :size="12"
                                 class="cursor-pointer text-green-400 hover:text-green-300"
                                 @click.stop="handleScreenShareClick(participant)"
+                            />
+                            <VolumeOff
+                                v-if="isSelf(participant) && voiceStore.isSoundMuted"
+                                :size="12"
+                                class="text-red-400"
                             />
                             <MicOff v-if="participant.isMuted" :size="12" class="text-red-400" />
                         </div>
