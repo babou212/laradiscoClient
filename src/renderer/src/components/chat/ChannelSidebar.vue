@@ -121,9 +121,7 @@ const getTextChannels = (channels: Channel[]) => channels.filter((c) => c.type !
 const getVoiceChannels = (channels: Channel[]) => channels.filter((c) => c.type === 'voice');
 
 const afkChannel = computed<Channel | null>(() =>
-    serverStore.afkChannelId
-        ? { id: String(serverStore.afkChannelId), name: 'afk', topic: null, type: 'voice' }
-        : null,
+    serverStore.afkChannelId ? { id: String(serverStore.afkChannelId), name: 'afk', topic: null, type: 'voice' } : null,
 );
 
 watch(
