@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: version-bump-main
@@ -24,18 +25,31 @@ jobs:
 
       - name: Determine bump type from PR label
         id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          NON_EXEMPT=$(echo "$FILES" | grep -Ev '^\.github/|^README\.md$|^CHANGELOG\.md$|^docs/' || true)
+
+          if [ -z "$NON_EXEMPT" ]; then
+            echo "All changed files are under .github/ or docs - skipping version bump."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
           MAPPED=$(jq -c '[.pull_request.labels[].name | select(startswith("semver:")) | sub("^semver:"; "")]' "$GITHUB_EVENT_PATH")
           COUNT=$(echo "$MAPPED" | jq 'length')
 
           if [ "$COUNT" -eq 0 ]; then
-            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label. This should have been blocked by the required 'Validate PR has exactly one semver label' check - check branch protection config. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to main)."
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to main)."
             exit 1
           fi
 
           if [ "$COUNT" -gt 1 ]; then
             NAMES=$(echo "$MAPPED" | jq -r 'join(", ")')
-            echo "::error::PR #${{ github.event.pull_request.number }} merged with multiple semver labels ($NAMES). This should have been blocked by the required check. No automatic bump was performed; apply it manually."
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with multiple semver labels ($NAMES) and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually."
             exit 1
           fi
 
@@ -48,11 +62,13 @@ jobs:
           echo "type=$BUMP" >> "$GITHUB_OUTPUT"
 
       - name: Configure git identity
+        if: steps.bump.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Bump, commit, and push (retries on concurrent updates to main)
+        if: steps.bump.outputs.skip != 'true'
         id: version
         run: |
           MAX_ATTEMPTS=5
