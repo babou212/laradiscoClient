@@ -1,0 +1,65 @@
+name: Version Bump
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-bump-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump version on merge
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Determine bump type from PR label
+        id: bump
+        run: |
+          MAPPED=$(jq -c '[.pull_request.labels[].name | select(startswith("semver:")) | sub("^semver:"; "")]' "$GITHUB_EVENT_PATH")
+          COUNT=$(echo "$MAPPED" | jq 'length')
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label. This should have been blocked by the required 'Validate PR has exactly one semver label' check - check branch protection config. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to main)."
+            exit 1
+          fi
+
+          if [ "$COUNT" -gt 1 ]; then
+            NAMES=$(echo "$MAPPED" | jq -r 'join(", ")')
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with multiple semver labels ($NAMES). This should have been blocked by the required check. No automatic bump was performed; apply it manually."
+            exit 1
+          fi
+
+          BUMP=$(echo "$MAPPED" | jq -r '.[0]')
+          if [[ "$BUMP" != "major" && "$BUMP" != "minor" && "$BUMP" != "patch" ]]; then
+            echo "::error::Unrecognized semver label semver:$BUMP - expected one of semver:major, semver:minor, semver:patch."
+            exit 1
+          fi
+
+          echo "type=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump package.json and package-lock.json
+        id: version
+        run: |
+          npm version ${{ steps.bump.outputs.type }} --no-git-tag-version
+          echo "new_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore(release): bump version to ${{ steps.version.outputs.new_version }} (#${{ github.event.pull_request.number }})"
+          git push origin HEAD:main
