@@ -361,6 +361,8 @@
             "emptyDescription": "创建一个分类并添加频道以开始。",
             "emptyCategory": "此分类中没有频道。",
             "privateBadge": "私密",
+            "dragCategory": "拖动以重新排序分类",
+            "dragChannel": "拖动以重新排序频道",
             "unknown": "未知",
             "roleLabel": "角色",
             "userLabel": "用户",

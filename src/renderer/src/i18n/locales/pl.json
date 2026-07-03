@@ -361,6 +361,8 @@
             "emptyDescription": "Utwórz kategorię i dodaj kanały, aby rozpocząć.",
             "emptyCategory": "Brak kanałów w tej kategorii.",
             "privateBadge": "Prywatny",
+            "dragCategory": "Przeciągnij, aby zmienić kolejność kategorii",
+            "dragChannel": "Przeciągnij, aby zmienić kolejność kanału",
             "unknown": "Nieznany",
             "roleLabel": "Rola",
             "userLabel": "Użytkownik",

@@ -361,6 +361,8 @@
             "emptyDescription": "Erstelle eine Kategorie und füge Kanäle hinzu, um loszulegen.",
             "emptyCategory": "Keine Kanäle in dieser Kategorie.",
             "privateBadge": "Privat",
+            "dragCategory": "Zum Neuordnen der Kategorie ziehen",
+            "dragChannel": "Zum Neuordnen des Kanals ziehen",
             "unknown": "Unbekannt",
             "roleLabel": "Rolle",
             "userLabel": "Benutzer",
