@@ -33,8 +33,8 @@ export function leaveVoiceMembership(channelId: number): Promise<void> {
     return api.delete(`/channels/${channelId}/voice/membership`);
 }
 
-export async function parkAfk(): Promise<void> {
-    await api.post('/voice/afk');
+export async function parkAfk(fromChannelId?: number): Promise<void> {
+    await api.post('/voice/afk', fromChannelId ? { from_channel_id: fromChannelId } : {});
 }
 
 export async function unparkAfk(): Promise<void> {

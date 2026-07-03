@@ -923,6 +923,8 @@ export const useVoiceStore = defineStore('voice', () => {
     async function goAfk(afkChannelId: number): Promise<void> {
         if (!currentChannel.value) return;
 
+        const fromChannelId = currentChannel.value.id;
+
         await leaveChannel();
         parkedAfkChannelId.value = afkChannelId;
 
@@ -946,7 +948,7 @@ export const useVoiceStore = defineStore('voice', () => {
         }
 
         try {
-            await parkAfk();
+            await parkAfk(fromChannelId);
         } catch {
             // best-effort — AFK presence is cosmetic
         }
