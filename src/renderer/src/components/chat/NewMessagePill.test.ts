@@ -8,9 +8,9 @@ describe('NewMessagePill', () => {
         expect(wrapper.text()).toContain('Jump to present');
     });
 
-    it('shows "Jump to bottom" when count is zero and not viewing history', () => {
+    it('shows "Jump to present" when count is zero and not viewing history', () => {
         const wrapper = mount(NewMessagePill, { props: { count: 0 } });
-        expect(wrapper.text()).toContain('Jump to bottom');
+        expect(wrapper.text()).toContain('Jump to present');
     });
 
     it('shows a singular new-message label for count 1', () => {
