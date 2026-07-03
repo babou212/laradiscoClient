@@ -99,6 +99,9 @@ const channelId = computed(() => props.channel?.id);
 const channelIdNum = computed(() => (props.channel?.id != null ? Number(props.channel.id) : undefined));
 const channelIdStr = computed(() => (props.channel?.id != null ? String(props.channel.id) : undefined));
 const isDmRef = computed(() => props.isDm);
+const draftKey = computed(() =>
+    channelIdStr.value ? `${isDmRef.value ? 'dm' : 'channel'}:${channelIdStr.value}` : undefined,
+);
 
 const { isRateLimited, sendError, startRateLimitCooldown } = useRateLimit();
 
@@ -856,6 +859,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 :disabled="isRateLimited"
                 :can-attach-files="isDm || channelPermissions?.canAttachFiles !== false"
                 :uploading-files="uploadingFiles"
+                :draft-key="draftKey"
                 @send="sendMessage"
                 @typing="emitTyping"
                 @cancel-reply="replyingToMessage = null"
