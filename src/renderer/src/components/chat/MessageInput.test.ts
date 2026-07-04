@@ -1,5 +1,7 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { nextTick } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useDraftMessages } from '@/composables/useDraftMessages';
 import type { MessageData } from '@/types/chat';
 import MessageInput from './MessageInput.vue';
 
@@ -75,5 +77,59 @@ describe('MessageInput', () => {
         const buttons = wrapper.findAll('button');
         await buttons[0].trigger('click');
         expect(wrapper.emitted('cancelReply')).toBeTruthy();
+    });
+
+    describe('draft persistence', () => {
+        afterEach(() => {
+            localStorage.clear();
+        });
+
+        it('restores a saved draft when mounted with a draftKey', async () => {
+            useDraftMessages().setDraft('channel:restore-test', 'unsent text');
+
+            const wrapper = mountInput({ draftKey: 'channel:restore-test' });
+            await nextTick();
+            const textarea = wrapper.get('[data-message-input]').element as HTMLTextAreaElement;
+            expect(textarea.value).toBe('unsent text');
+        });
+
+        it('saves the draft after typing, debounced', async () => {
+            vi.useFakeTimers();
+            const wrapper = mountInput({ draftKey: 'channel:save-test' });
+            await type(wrapper, 'work in progress');
+            await nextTick();
+
+            vi.advanceTimersByTime(300);
+            const stored = JSON.parse(localStorage.getItem('laradisco:message-drafts') ?? '{}');
+            expect(stored['channel:save-test'].content).toBe('work in progress');
+        });
+
+        it('clears the draft once the message is sent', async () => {
+            vi.useFakeTimers();
+            const wrapper = mountInput({ draftKey: 'channel:clear-test' });
+            const textarea = await type(wrapper, 'ready to send');
+            vi.advanceTimersByTime(300);
+
+            await textarea.trigger('keydown', { key: 'Enter' });
+
+            const stored = JSON.parse(localStorage.getItem('laradisco:message-drafts') ?? '{}');
+            expect(stored).not.toHaveProperty('channel:clear-test');
+        });
+
+        it('saves the previous key draft and loads the new key draft when draftKey changes', async () => {
+            vi.useFakeTimers();
+            useDraftMessages().setDraft('channel:b', 'draft for b');
+            const wrapper = mountInput({ draftKey: 'channel:a' });
+            await type(wrapper, 'draft for a');
+
+            await wrapper.setProps({ draftKey: 'channel:b' });
+            await nextTick();
+
+            const textarea = wrapper.get('[data-message-input]').element as HTMLTextAreaElement;
+            expect(textarea.value).toBe('draft for b');
+
+            const stored = JSON.parse(localStorage.getItem('laradisco:message-drafts') ?? '{}');
+            expect(stored['channel:a'].content).toBe('draft for a');
+        });
     });
 });

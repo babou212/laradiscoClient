@@ -362,6 +362,8 @@
             "emptyDescription": "Opret en kategori og tilføj kanaler for at komme i gang.",
             "emptyCategory": "Ingen kanaler i denne kategori.",
             "privateBadge": "Privat",
+            "dragCategory": "Træk for at omarrangere kategori",
+            "dragChannel": "Træk for at omarrangere kanal",
             "unknown": "Ukendt",
             "roleLabel": "Rolle",
             "userLabel": "Bruger",

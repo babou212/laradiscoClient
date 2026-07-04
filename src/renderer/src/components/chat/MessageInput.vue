@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
 import { CornerDownRight, Paperclip, Send, Smile, X } from 'lucide-vue-next';
-import { computed, nextTick, ref, shallowRef, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import { useDraftMessages } from '@/composables/useDraftMessages';
 import {
     FileAddSchema,
     GifUrlSchema,
@@ -30,6 +31,8 @@ interface Props {
     disabled?: boolean;
     canAttachFiles?: boolean;
     uploadingFiles?: UploadingFile[];
+    /** Unique key (e.g. `channel:12`, `dm:7`, `thread:99`) used to persist an unsent draft. */
+    draftKey?: string;
 }
 
 const emit = defineEmits<{
@@ -54,6 +57,39 @@ let fileSizeErrorTimer: ReturnType<typeof setTimeout> | undefined;
 
 const props = defineProps<Props>();
 
+const { getDraft, setDraft, clearDraft } = useDraftMessages();
+let draftSaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+function loadDraftForKey(key: string | undefined) {
+    messageInput.value = getDraft(key);
+    nextTick(adjustTextareaHeight);
+}
+
+function scheduleDraftSave(key: string | undefined) {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(() => setDraft(key, messageInput.value), 300);
+}
+
+watch(
+    () => props.draftKey,
+    (newKey, oldKey) => {
+        clearTimeout(draftSaveTimer);
+        if (oldKey !== undefined) setDraft(oldKey, messageInput.value);
+        loadDraftForKey(newKey);
+    },
+);
+
+// Debounced so persistence is idempotent when the value equals what's already
+// stored (e.g. right after loadDraftForKey), so no suppression flag is needed.
+watch(messageInput, () => scheduleDraftSave(props.draftKey));
+
+onMounted(() => loadDraftForKey(props.draftKey));
+
+onUnmounted(() => {
+    clearTimeout(draftSaveTimer);
+    setDraft(props.draftKey, messageInput.value);
+});
+
 const replyPreviewContent = computed(() => {
     if (!props.replyingTo) return '';
     const raw = props.replyingTo.content ?? '';
@@ -77,6 +113,8 @@ const sendMessage = () => {
     messageInput.value = '';
     stagedFiles.value = [];
     showMentionDropdown.value = false;
+    clearTimeout(draftSaveTimer);
+    clearDraft(props.draftKey);
     nextTick(adjustTextareaHeight);
 };
 

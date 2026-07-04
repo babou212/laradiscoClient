@@ -154,6 +154,16 @@ export async function updateSettingsChannel(
     return r.data;
 }
 
+export function reorderSettingsChannels(payload: {
+    categories: { id: string; channel_ids: string[] }[];
+}): Promise<void> {
+    return api.put('/settings/channels/reorder', payload);
+}
+
+export function reorderSettingsCategories(ids: string[]): Promise<void> {
+    return api.put('/settings/categories/reorder', { ids });
+}
+
 export async function createSettingsCategory(data: {
     name: string;
     position?: number;
