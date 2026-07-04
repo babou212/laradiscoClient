@@ -775,6 +775,10 @@
         "failed": "Update failed",
         "downloadFailed": "Download failed"
     },
+    "connection": {
+        "reconnecting": "Reconnecting to server…",
+        "lost": "Lost connection to server. Retrying…"
+    },
     "appContextMenu": {
         "copyText": "Copy text",
         "addReaction": "Add reaction",
