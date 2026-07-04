@@ -103,6 +103,7 @@ export interface MessageAttributes {
     deleted_at: string | null;
     deleted_author_name?: string | null;
     reply_to_id: string | null;
+    client_temp_id?: string | null;
     thread_id?: string | null;
     is_pinned?: boolean;
     pinned_at?: string | null;
@@ -117,6 +118,7 @@ export interface DirectMessageAttributes {
     deleted_at: string | null;
     deleted_author_name?: string | null;
     reply_to_id: string | null;
+    client_temp_id?: string | null;
     is_pinned?: boolean;
     pinned_at?: string | null;
     created_at: string;

@@ -486,8 +486,11 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         attachmentIds.push(linkPreview.image.id);
     }
 
+    const clientTempId = crypto.randomUUID();
+
     const data: {
         content: string;
+        client_temp_id: string;
         reply_to_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
@@ -496,6 +499,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         link_preview?: LinkPreviewData | null;
     } = {
         content,
+        client_temp_id: clientTempId,
     };
 
     if (attachmentIds.length > 0) {
@@ -519,7 +523,8 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     }
 
     const optimisticMessage: MessageData = {
-        id: String(Date.now()),
+        id: clientTempId,
+        client_temp_id: clientTempId,
         content,
         is_edited: false,
         edited_at: null,
@@ -544,9 +549,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         link_preview: linkPreview,
     };
 
-    // If the user was viewing history (scrolled into an older window), snap back
-    // to the live tail before appending so the optimistic message lands in a
-    // contiguous position rather than after a gap.
     if (activeStore.isViewingHistory.value && props.channel?.id) {
         await activeStore.resetToLive(String(props.channel.id));
         await nextTick();
@@ -565,9 +567,20 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         if (response.data) {
             const serverMsg = normalizeMessage(response.data, response.included);
             serverMsg.link_preview = linkPreview ?? serverMsg.link_preview;
-            const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
-            if (idx !== -1) {
-                activeMessages.value.splice(idx, 1, serverMsg);
+
+            const serverIdx = activeMessages.value.findIndex((m) => m.id === serverMsg.id);
+            const optimisticIdx = activeMessages.value.findIndex((m) => m.id === clientTempId);
+
+            if (serverIdx !== -1) {
+                if (optimisticIdx !== -1 && optimisticIdx !== serverIdx) {
+                    activeMessages.value.splice(optimisticIdx, 1);
+                }
+                activeMessages.value[serverIdx].link_preview =
+                    linkPreview ?? activeMessages.value[serverIdx].link_preview;
+            } else if (optimisticIdx !== -1) {
+                activeMessages.value.splice(optimisticIdx, 1, serverMsg);
+            } else {
+                activeStore.addMessage(serverMsg);
             }
         }
     } catch (error: unknown) {
