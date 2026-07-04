@@ -56,7 +56,6 @@ export const useConnectionStore = defineStore('connection', () => {
     const setNetworkOnline = (online: boolean) => {
         if (!active) return;
         if (!online) {
-
             clearTimers();
             status.value = 'disconnected';
             return;
