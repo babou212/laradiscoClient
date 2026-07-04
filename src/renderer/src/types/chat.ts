@@ -117,6 +117,7 @@ export interface MessageData {
     attachments?: Attachment[];
     link_preview?: LinkPreviewData | null;
     client_temp_id?: string | null;
+    send_status?: 'sending' | 'failed';
 }
 
 export interface MessagesResponse {

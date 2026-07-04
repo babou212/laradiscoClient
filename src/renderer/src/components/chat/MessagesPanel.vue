@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useActiveStore } from '@/composables/useActiveStore';
+import { useMessageOutbox } from '@/composables/useMessageOutbox';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useChatScroll } from '@/composables/useChatScroll';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
@@ -151,6 +152,7 @@ const startDmFromProfile = async (userId: string) => {
 };
 
 const activeStore = useActiveStore(isDmRef);
+const outbox = useMessageOutbox();
 const activeMessages = activeStore.messages;
 const isLoadingMessages = activeStore.isLoadingMessages;
 
@@ -547,12 +549,23 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         created_at: new Date().toISOString(),
         attachments: optimisticAttachments.length > 0 ? optimisticAttachments : undefined,
         link_preview: linkPreview,
+        send_status: 'sending',
     };
 
     if (activeStore.isViewingHistory.value && props.channel?.id) {
         await activeStore.resetToLive(String(props.channel.id));
         await nextTick();
     }
+
+    // Persist to the durable outbox before the POST so a crash mid-send is recoverable.
+    await outbox.enqueue({
+        clientTempId,
+        channelId: String(props.channel.id),
+        isDm: props.isDm,
+        payload: data,
+        optimistic: optimisticMessage,
+        createdAt: optimisticMessage.created_at,
+    });
 
     activeStore.addMessage(optimisticMessage);
     pinnedToBottom.value = true;
@@ -583,9 +596,35 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
                 activeStore.addMessage(serverMsg);
             }
         }
+        await outbox.clear(clientTempId);
     } catch (error: unknown) {
-        activeStore.removeMessage(optimisticMessage.id);
+        // Keep the message visible as failed (persisted in the outbox) so the user
+        // can retry it — do not discard it.
+        activeStore.updateMessage(clientTempId, { send_status: 'failed' });
+        const axiosErr = error as { response?: { status?: number; headers?: Record<string, string> } };
+        await outbox.enqueue({
+            clientTempId,
+            channelId: String(props.channel.id),
+            isDm: props.isDm,
+            payload: data,
+            optimistic: { ...optimisticMessage, send_status: 'failed' },
+            createdAt: optimisticMessage.created_at,
+            error: axiosErr?.response?.status ? `HTTP ${axiosErr.response.status}` : t('chat.messages.failedToSend'),
+        });
 
+        if (axiosErr?.response?.status === 429) {
+            const retryAfter = parseInt(axiosErr.response.headers?.['retry-after'] ?? '60', 10);
+            startRateLimitCooldown(retryAfter);
+        }
+    }
+};
+
+const retryFailedMessage = async (message: MessageData) => {
+    if (isRateLimited.value) return;
+    sendError.value = null;
+    try {
+        await outbox.retry(message.id);
+    } catch (error: unknown) {
         const axiosErr = error as { response?: { status?: number; headers?: Record<string, string> } };
         if (axiosErr?.response?.status === 429) {
             const retryAfter = parseInt(axiosErr.response.headers?.['retry-after'] ?? '60', 10);
@@ -594,6 +633,11 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             sendError.value = t('chat.messages.failedToSend');
         }
     }
+};
+
+const deleteFailedMessage = async (message: MessageData) => {
+    await outbox.clear(message.id);
+    activeStore.removeMessage(message.id);
 };
 
 const openThread = (message: MessageData) => {
@@ -810,7 +854,10 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                             :can-send-messages="channelPermissions?.canSendMessages ?? true"
                             :show-thread-button="!isDm"
                             :is-dm="isDm"
+                            :is-rate-limited="isRateLimited"
                             @show-profile="(rect: DOMRect) => openUserProfile(item.user, rect)"
+                            @retry="retryFailedMessage(item)"
+                            @delete-failed="deleteFailedMessage(item)"
                             @start-edit="startEdit(item)"
                             @cancel-edit="cancelEdit"
                             @save-edit="saveEdit(item)"

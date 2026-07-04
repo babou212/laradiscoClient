@@ -118,6 +118,12 @@ export function createWindowApiMock(overrides: DeepPartial<AppApi> = {}): AppApi
         soundboard: {
             trim: vi.fn().mockResolvedValue({ data: new Uint8Array(), mimeType: 'audio/ogg' }),
         },
+        outbox: {
+            enqueue: vi.fn().mockResolvedValue({ success: true }),
+            remove: vi.fn().mockResolvedValue({ success: true }),
+            listForChannel: vi.fn().mockResolvedValue([]),
+            get: vi.fn().mockResolvedValue(null),
+        },
     };
 
     for (const key of Object.keys(overrides) as (keyof AppApi)[]) {
