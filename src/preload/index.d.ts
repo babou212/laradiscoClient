@@ -16,6 +16,7 @@ export type { LinkPreviewMetadata, UnfurlResponse, UnfurlApi } from './types/unf
 export type { ClientActivity, ClientActivityType, ActivityApi } from './types/activity';
 export type { SoundboardApi } from './types/soundboard';
 export type { IdleApi } from './types/idle';
+export type { OutboxApi, OutboxRow } from './types/outbox';
 
 import type { ActivityApi } from './types/activity';
 import type { AttachmentsApi } from './types/attachments';
@@ -25,6 +26,7 @@ import type { ClipboardApi } from './types/clipboard';
 import type { IdleApi } from './types/idle';
 import type { LogApi } from './types/log';
 import type { NotificationsApi } from './types/notifications';
+import type { OutboxApi } from './types/outbox';
 import type { PttApi } from './types/ptt';
 import type { ServerApi } from './types/server';
 import type { SettingsApi } from './types/settings';
@@ -51,6 +53,7 @@ interface AppApi {
     activity: ActivityApi;
     soundboard: SoundboardApi;
     idle: IdleApi;
+    outbox: OutboxApi;
 }
 
 declare global {

@@ -95,8 +95,6 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
 
                 const otherUser = attrs.other_user;
 
-                // The backend serializes last_message as an attribute (not a relationship).
-                // Coerce its ids to strings to match the string ids used elsewhere (e.g. authStore.user.id).
                 const lastMsg = attrs.last_message;
                 const lastMessage: DmGroup['last_message'] = lastMsg
                     ? {
@@ -152,10 +150,21 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
             hasMoreAfter.value = meta.hasMoreAfter;
             oldestId.value = meta.oldestId;
             newestId.value = meta.newestId;
+            await mergeOutbox(groupId);
         } catch (error) {
             console.error('Failed to fetch DM messages:', error);
         } finally {
             isLoadingMessages.value = false;
+        }
+    }
+
+    async function mergeOutbox(groupId: string): Promise<void> {
+        const rows = await window.api.outbox.listForChannel(groupId, true);
+        for (const row of rows) {
+            if (messages.value.some((m) => m.id === row.client_temp_id)) continue;
+            const optimistic = JSON.parse(row.optimistic) as MessageData;
+            optimistic.send_status = 'failed';
+            messages.value.push(optimistic);
         }
     }
 

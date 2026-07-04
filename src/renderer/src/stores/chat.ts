@@ -14,8 +14,6 @@ export const useChatStore = defineStore('chat', () => {
     const currentChannel = ref<Channel | null>(null);
     const currentChannelPermissions = ref<ChannelPermissions | null>(null);
     const messages = ref<MessageData[]>([]);
-    // Anchor pagination edges: ids of the oldest/newest loaded message and
-    // whether more exist beyond each edge (see readPageMeta).
     const oldestId = ref<string | null>(null);
     const newestId = ref<string | null>(null);
     const hasMoreBefore = ref(false);
@@ -26,8 +24,6 @@ export const useChatStore = defineStore('chat', () => {
     const categories = ref<Category[]>([]);
 
     const selectedChannelId = computed(() => currentChannel.value?.id ?? null);
-    // We are viewing history (not pinned to the live tail) only when newer
-    // messages exist beyond what is loaded.
     const isViewingHistory = computed(() => hasMoreAfter.value);
 
     function addMessage(message: MessageData): void {
@@ -95,7 +91,6 @@ export const useChatStore = defineStore('chat', () => {
 
         if (currentChannel.value?.id === id) return;
 
-        // Try to find in already-loaded categories
         for (const cat of categories.value) {
             const ch = cat.channels.find((c) => c.id === id);
             if (ch) {
@@ -155,10 +150,22 @@ export const useChatStore = defineStore('chat', () => {
             oldestId.value = meta.oldestId;
             newestId.value = meta.newestId;
             hydrateUsers(messages.value);
+            await mergeOutbox(channelId);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
             isLoadingMessages.value = false;
+        }
+    }
+
+    async function mergeOutbox(channelId: string): Promise<void> {
+        const rows = await window.api.outbox.listForChannel(channelId, false);
+        for (const row of rows) {
+            if (messages.value.some((m) => m.id === row.client_temp_id)) continue;
+            const optimistic = JSON.parse(row.optimistic) as MessageData;
+            optimistic.send_status = 'failed';
+            messages.value.push(optimistic);
+            hydrateUsers([optimistic]);
         }
     }
 
