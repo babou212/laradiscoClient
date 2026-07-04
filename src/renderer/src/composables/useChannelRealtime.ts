@@ -82,16 +82,20 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 }
                 clearTypingUser(Number(data.message.user.id));
 
-                // Server uses ->toOthers() so we shouldn't normally receive our
-                // own message; defensive dedupe in case echo replays or another
-                // device of the same user posted.
                 if (messages.value.some((m) => m.id === data.message.id)) {
                     return;
                 }
 
-                // While viewing an older window (not anchored to the live tail),
-                // don't splice a non-contiguous message into the list — surface
-                // it via the unread pill. It loads when the user returns to live.
+                if (data.message.client_temp_id) {
+                    const optimisticIdx = messages.value.findIndex(
+                        (m) => m.id !== data.message.id && m.client_temp_id === data.message.client_temp_id,
+                    );
+                    if (optimisticIdx !== -1) {
+                        messages.value.splice(optimisticIdx, 1, data.message);
+                        return; // our own message — no unread bump
+                    }
+                }
+
                 if (isViewingHistory.value) {
                     notifyNewMessage();
                     return;
@@ -216,7 +220,6 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
             });
     }
 
-    // Rejoin channel when the channel id changes
     watch(
         channelId,
         (newId) => {
