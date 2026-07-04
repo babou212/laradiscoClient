@@ -38,8 +38,8 @@ export function moveVoiceMember(fromChannelId: number, toChannelId: number, user
     return api.post(`/channels/${fromChannelId}/voice/move`, { to_channel_id: toChannelId, user_id: userId });
 }
 
-export async function parkAfk(): Promise<void> {
-    await api.post('/voice/afk');
+export async function parkAfk(fromChannelId?: number): Promise<void> {
+    await api.post('/voice/afk', fromChannelId ? { from_channel_id: fromChannelId } : {});
 }
 
 export async function unparkAfk(): Promise<void> {
