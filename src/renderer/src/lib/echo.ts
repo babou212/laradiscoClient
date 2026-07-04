@@ -120,14 +120,11 @@ export function initEcho(): Echo<'reverb'> {
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
             scheduleInboxDrain();
-            // A websocket (re)connect signals connectivity is back: nudge presence
-            // so a drop that downgraded us to idle/offline is corrected at once.
-            // Lazily imported to avoid a circular import (stores import echo.ts).
+
             void import('@/stores/presence')
                 .then(({ usePresenceStore }) => usePresenceStore().reconcile())
                 .catch((error) => console.error('[Presence] reconcile failed:', error));
-            // Resync voice channel rosters too, recovering any .voice.joined/.voice.left
-            // deltas missed while the socket was down.
+
             void import('@/stores/voice')
                 .then(({ useVoiceStore }) => useVoiceStore().fetchVoiceParticipants())
                 .catch((error) => console.error('[Voice] participant resync failed:', error));
@@ -137,6 +134,12 @@ export function initEcho(): Echo<'reverb'> {
         });
         pusher.connection.bind('error', (err: unknown) => {
             console.error('[Echo] WebSocket error:', err);
+        });
+
+        pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
+            void import('@/stores/connection')
+                .then(({ useConnectionStore }) => useConnectionStore().setRealtimeState(states.current))
+                .catch((error) => console.error('[Connection] state update failed:', error));
         });
     }
 
