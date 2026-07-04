@@ -4,6 +4,7 @@ import { startPresenceUpdater, stopPresenceUpdater } from '@/composables/usePres
 import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
+import { useConnectionStore } from '@/stores/connection';
 import { useInboxStore } from '@/stores/inbox';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
@@ -184,6 +185,7 @@ function connectRealtime(userId: number): void {
     realtimeConnected = true;
 
     initEcho();
+    useConnectionStore().connect();
 
     const usersStore = useUsersStore();
     const presenceStore = usePresenceStore();
@@ -218,6 +220,7 @@ function disconnectRealtime(): void {
     notificationsStore.disconnect();
     presenceStore.disconnect();
     usersStore.disconnect();
+    useConnectionStore().disconnect();
     disconnectEcho();
 }
 
