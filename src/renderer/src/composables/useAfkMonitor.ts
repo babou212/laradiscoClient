@@ -7,9 +7,10 @@ const MIC_RMS_THRESHOLD = 0.02;
 const INPUT_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel'] as const;
 
 /**
- * Moves the local user to the AFK channel when EITHER their mic has been silent
- * (little/no sound) for the configured timeout, OR they have been idle (no
- * keyboard/mouse input) for the timeout — either condition alone triggers it.
+ * Moves the local user to the AFK channel once BOTH their mic has been silent
+ * (little/no sound) for the configured timeout AND they have been idle (no
+ * keyboard/mouse input) for the timeout — mic activity alone (e.g. talking
+ * without touching the keyboard/mouse) must keep them out of AFK.
  *
  * Presence is measured two ways: in-app input events (always reliable) and the
  * OS-wide idle time from powerMonitor (catches activity in other apps, when the
@@ -100,7 +101,7 @@ export function useAfkMonitor() {
 
         const micIdleFor = now - lastMicActiveAt;
         const inputIdleFor = now - Math.max(lastInAppInputAt, osInputAt);
-        if (micIdleFor >= timeoutMs || inputIdleFor >= timeoutMs) {
+        if (micIdleFor >= timeoutMs && inputIdleFor >= timeoutMs) {
             stopMonitor();
             void voiceStore.goAfk(afkChannelId);
         }

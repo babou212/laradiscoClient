@@ -1027,7 +1027,7 @@
         },
         "newMessagePill": {
             "jumpToPresent": "Jump to present",
-            "jumpToBottom": "Jump to bottom",
+            "jumpToBottom": "Jump to present",
             "newMessages": "{count} new message | {count} new messages"
         },
         "threadPreview": {

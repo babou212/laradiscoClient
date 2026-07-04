@@ -198,6 +198,10 @@ function resetThreadScroll(): void {
     resetForNewConversation();
 }
 
+const threadDraftKey = computed(() =>
+    threadStore.activeThread?.id != null ? `thread:${threadStore.activeThread.id}` : undefined,
+);
+
 const showPillForHistory = computed(() => threadStore.isViewingHistory);
 const showPill = computed(() => !pinnedToBottom.value || showPillForHistory.value);
 
@@ -526,6 +530,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
             v-if="channelPermissions?.canSendMessages !== false"
             :channel-name="'thread'"
             :placeholder="t('chat.thread.replyPlaceholder')"
+            :draft-key="threadDraftKey"
             @send="sendReply"
             @typing="emitTyping"
             @cancel-reply="() => {}"
