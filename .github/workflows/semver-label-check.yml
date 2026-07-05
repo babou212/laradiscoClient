@@ -2,7 +2,7 @@ name: Semver Label Check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [development]
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:

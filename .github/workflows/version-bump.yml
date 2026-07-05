@@ -2,7 +2,7 @@ name: Version Bump
 
 on:
   pull_request:
-    branches: [main]
+    branches: [development]
     types: [closed]
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: version-bump-main
+  group: version-bump-development
   cancel-in-progress: false
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: development
 
       - name: Determine bump type from PR label
         id: bump
@@ -43,7 +43,7 @@ jobs:
           COUNT=$(echo "$MAPPED" | jq 'length')
 
           if [ "$COUNT" -eq 0 ]; then
-            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to main)."
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to development)."
             exit 1
           fi
 
@@ -67,7 +67,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump, commit, and push (retries on concurrent updates to main)
+      - name: Bump, commit, and push (retries on concurrent updates to development)
         if: steps.bump.outputs.skip != 'true'
         id: version
         run: |
@@ -80,18 +80,18 @@ jobs:
             git add package.json package-lock.json
             git commit -m "chore(release): bump version to $NEW_VERSION (#${{ github.event.pull_request.number }})"
 
-            if git push origin HEAD:main; then
+            if git push origin HEAD:development; then
               echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
-              echo "::error::Failed to push version bump after $MAX_ATTEMPTS attempts - main kept changing concurrently. Bump manually: npm version ${{ steps.bump.outputs.type }} --no-git-tag-version, commit, push to main."
+              echo "::error::Failed to push version bump after $MAX_ATTEMPTS attempts - development kept changing concurrently. Bump manually: npm version ${{ steps.bump.outputs.type }} --no-git-tag-version, commit, push to development."
               exit 1
             fi
 
-            echo "Push rejected (attempt $ATTEMPT/$MAX_ATTEMPTS) - main advanced concurrently. Re-syncing to latest main and retrying..."
-            git fetch origin main
-            git reset --hard origin/main
+            echo "Push rejected (attempt $ATTEMPT/$MAX_ATTEMPTS) - development advanced concurrently. Re-syncing to latest development and retrying..."
+            git fetch origin development
+            git reset --hard origin/development
             sleep $((RANDOM % 5 + 1))
           done
