@@ -72,6 +72,7 @@ protocol.registerSchemesAsPrivileged([
 
 import appIcon from '../../resources/icon.png?asset';
 import { cleanupActivityDetection } from './activity/detect';
+import { getSetting, initDatabase } from './database';
 import { registerIpcHandlers, cleanupAllVideos } from './ipc';
 import { registerLogIpcHandlers } from './log';
 import { initLogger, logger } from './logger';
@@ -213,6 +214,38 @@ function createWindow(): void {
     }
 }
 
+// Mirrors the DARK_THEMES/VALID_THEMES/normalizeTheme logic in
+// src/renderer/src/composables/useAppearance.ts. Duplicated here (rather than
+// imported) because main and renderer are separate build targets in
+// electron-vite — keep the two lists in sync if themes are added/removed.
+const DARK_THEMES = new Set([
+    'default-dark',
+    'dracula',
+    'nord-dark',
+    'midnight',
+    'cyberpunk',
+    'monokai',
+    'emerald',
+    'solarized-dark',
+    'crimson',
+]);
+const VALID_THEMES = new Set(['default', ...DARK_THEMES]);
+
+/**
+ * The `<html ...>` attributes needed to boot straight into the user's saved
+ * theme — computed from the same synchronous settings read the renderer would
+ * otherwise have to await over IPC. Baking this into the HTML we serve avoids
+ * a flash of the wrong theme before the renderer's JS can catch up.
+ */
+function resolveBootThemeAttrs(): string {
+    const saved = getSetting('theme');
+    const theme = saved && VALID_THEMES.has(saved) ? saved : 'default-dark';
+    const isDark = DARK_THEMES.has(theme);
+    const dataThemeAttr = theme === 'default' || theme === 'default-dark' ? '' : ` data-theme="${theme}"`;
+    const classAttr = isDark ? ' class="dark"' : '';
+    return `${classAttr}${dataThemeAttr}`;
+}
+
 app.on('second-instance', () => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) {
@@ -223,6 +256,9 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
     logger.info('app ready');
+    // Needed synchronously before the first protocol.handle('app', ...) request
+    // for index.html, since that request bakes the saved theme into the HTML.
+    initDatabase();
     registerIpcHandlers();
     registerWindowIpcHandlers();
     registerClipboardIpcHandlers();
@@ -234,6 +270,22 @@ app.whenReady().then(() => {
         let filePath = url.pathname;
         if (filePath === '/' || filePath === '') filePath = '/index.html';
         const fullPath = join(__dirname, '../renderer', filePath);
+
+        if (filePath === '/index.html') {
+            try {
+                const html = readFileSync(fullPath, 'utf8');
+                const themedHtml = html.replace(/<html([^>]*)>/, (_match, attrs: string) => {
+                    return `<html${attrs}${resolveBootThemeAttrs()}>`;
+                });
+                return new Response(themedHtml, {
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
+            } catch (error) {
+                logger.error('Failed to inject boot theme into index.html', error);
+                // Fall through to plain file serving below.
+            }
+        }
+
         return net.fetch(`file://${fullPath}`);
     });
 
@@ -375,14 +427,11 @@ app.whenReady().then(() => {
     }
 
     setImmediate(async () => {
-        const [{ initDatabase }, { initPushToTalk }, { initAutoUpdater }, { initActivityDetection }] =
-            await Promise.all([
-                import('./database'),
-                import('./ptt'),
-                import('./updater'),
-                import('./activity/detect'),
-            ]);
-        initDatabase();
+        const [{ initPushToTalk }, { initAutoUpdater }, { initActivityDetection }] = await Promise.all([
+            import('./ptt'),
+            import('./updater'),
+            import('./activity/detect'),
+        ]);
         initPushToTalk();
         initAutoUpdater();
         initActivityDetection();

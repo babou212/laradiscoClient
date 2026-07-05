@@ -8,6 +8,9 @@ import { useServerStore } from '@/stores/server';
 let echoInstance: Echo<'reverb'> | null = null;
 let currentConfigKey = '';
 let inboxDrainTimer: ReturnType<typeof setTimeout> | null = null;
+// Set right before a deliberate disconnectEcho() call so the 'disconnected'
+// event it triggers isn't mistaken for a dropped connection.
+let intentionalDisconnect = false;
 
 /**
  * Drain the offline-delivery inbox after a websocket (re)connect. Debounced and
@@ -119,6 +122,7 @@ export function initEcho(): Echo<'reverb'> {
         const pusher = connector.pusher;
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
+            serverStore.wsConnected = true;
             scheduleInboxDrain();
             // A websocket (re)connect signals connectivity is back: nudge presence
             // so a drop that downgraded us to idle/offline is corrected at once.
@@ -134,9 +138,15 @@ export function initEcho(): Echo<'reverb'> {
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');
+            if (intentionalDisconnect) {
+                intentionalDisconnect = false;
+                return;
+            }
+            serverStore.wsConnected = false;
         });
         pusher.connection.bind('error', (err: unknown) => {
             console.error('[Echo] WebSocket error:', err);
+            serverStore.wsConnected = false;
         });
     }
 
@@ -172,6 +182,7 @@ export function getSocketId(): string | undefined {
 
 export function disconnectEcho(): void {
     if (echoInstance) {
+        intentionalDisconnect = true;
         try {
             echoInstance.disconnect();
         } catch (error) {

@@ -8,8 +8,181 @@
             content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http: https: ws: wss: blob:; img-src 'self' data: http: https: blob: avatar:; font-src 'self' data:; media-src 'self' blob: data: http: https: app-video:; frame-src blob: https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';"
         />
         <title>LaraDisco</title>
+        <style>
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                background: var(--background, #0a0a0a);
+            }
+
+            #preloader {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 1.25rem;
+                background: var(--background, #0a0a0a);
+                transition: opacity 0.25s ease;
+            }
+            #preloader.preloader-hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            #preloader .boot-shadow {
+                width: 150px;
+                height: 22px;
+                margin-top: 0.25rem;
+                border-radius: 50%;
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(255, 255, 255, 0.16) 0%,
+                    rgba(255, 255, 255, 0.07) 50%,
+                    rgba(255, 255, 255, 0) 75%
+                );
+                animation: shadow-pulse 1.5s ease-in-out infinite;
+            }
+            html:not(.dark) #preloader .boot-shadow {
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(0, 0, 0, 0.3) 0%,
+                    rgba(0, 0, 0, 0.14) 50%,
+                    rgba(0, 0, 0, 0) 75%
+                );
+            }
+
+            #preloader .boot-stage {
+                margin-top: 1.5rem;
+                transform: translateX(-9px);
+            }
+
+            #preloader .boot-photo {
+                width: auto;
+                height: 180px;
+                display: block;
+                transform-origin: 50% 50%;
+                filter: brightness(1.15) contrast(1.02) saturate(1.05);
+                animation: boot-pulse 1.5s ease-in-out infinite;
+            }
+            html:not(.dark) #preloader .boot-photo {
+                filter: brightness(0.94) contrast(1.04) saturate(1.05);
+            }
+
+            #preloader .preloader-label {
+                display: flex;
+                align-items: baseline;
+                font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+                font-size: 0.95rem;
+                font-weight: 500;
+                color: var(--muted-foreground, #a1a1aa);
+            }
+
+            #preloader .preloader-dots span {
+                opacity: 0;
+            }
+            #preloader .preloader-dots span:nth-child(1) {
+                animation: dot-appear-1 2s infinite;
+            }
+            #preloader .preloader-dots span:nth-child(2) {
+                animation: dot-appear-2 2s infinite;
+            }
+            #preloader .preloader-dots span:nth-child(3) {
+                animation: dot-appear-3 2s infinite;
+            }
+
+            @keyframes boot-pulse {
+                0%,
+                100% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.1);
+                }
+            }
+
+            @keyframes shadow-pulse {
+                0%,
+                100% {
+                    transform: scale(1);
+                    opacity: 0.85;
+                }
+                50% {
+                    transform: scale(1.12);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes dot-appear-1 {
+                0%,
+                25% {
+                    opacity: 0;
+                }
+                27%,
+                97% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            @keyframes dot-appear-2 {
+                0%,
+                50% {
+                    opacity: 0;
+                }
+                52%,
+                97% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            @keyframes dot-appear-3 {
+                0%,
+                75% {
+                    opacity: 0;
+                }
+                77%,
+                97% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                #preloader .boot-photo {
+                    animation: none;
+                }
+                #preloader .boot-shadow {
+                    animation: none;
+                }
+                #preloader .preloader-dots span {
+                    animation: none;
+                    opacity: 1;
+                }
+            }
+        </style>
     </head>
     <body>
+        <div id="preloader">
+            <div class="boot-stage">
+                <img class="boot-photo" src="/src/assets/images/rat.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="boot-shadow"></div>
+            <div class="preloader-label">
+                <span>Welcome home</span>
+                <span class="preloader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
         <div id="app"></div>
         <script type="module" src="/src/main.ts"></script>
     </body>

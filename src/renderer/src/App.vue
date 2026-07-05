@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router';
 import AdminActionDialogs from '@/components/chat/AdminActionDialogs.vue';
 import ChannelActionDialogs from '@/components/chat/ChannelActionDialogs.vue';
 import AppContextMenu from '@/components/AppContextMenu.vue';
+import ConnectionLostOverlay from '@/components/ConnectionLostOverlay.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -64,5 +65,6 @@ onUnmounted(() => {
         </AppContextMenu>
         <AdminActionDialogs />
         <ChannelActionDialogs />
+        <ConnectionLostOverlay />
     </TooltipProvider>
 </template>

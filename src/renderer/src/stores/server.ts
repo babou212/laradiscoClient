@@ -23,6 +23,10 @@ export const useServerStore = defineStore('server', () => {
     const isConnecting = ref(false);
     const connectionError = ref<string | null>(null);
     const reverbConfig = ref<ReverbConfig | null>(null);
+    // Live websocket connectivity — distinct from `isConnected` (which just
+    // means "a server is configured"). Flipped by the Echo connection
+    // lifecycle in lib/echo.ts; drives the reconnect overlay.
+    const wsConnected = ref(true);
 
     const isConnected = computed(() => !!activeServer.value);
     const activeHost = computed(() => activeServer.value?.host ?? null);
@@ -119,6 +123,7 @@ export const useServerStore = defineStore('server', () => {
         serverLogoUrls.value = null;
         afkChannelId.value = null;
         afkTimeout.value = 5;
+        wsConnected.value = true;
     }
 
     return {
@@ -127,6 +132,7 @@ export const useServerStore = defineStore('server', () => {
         isConnecting,
         connectionError,
         isConnected,
+        wsConnected,
         activeHost,
         reverbConfig,
         serverLogoUrls,
