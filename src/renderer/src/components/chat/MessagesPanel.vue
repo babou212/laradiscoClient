@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { useActiveStore } from '@/composables/useActiveStore';
+import { useMessageOutbox } from '@/composables/useMessageOutbox';
 import { useChannelRealtime } from '@/composables/useChannelRealtime';
 import { useChatScroll } from '@/composables/useChatScroll';
 import { usePinnedMessages } from '@/composables/usePinnedMessages';
@@ -99,6 +100,9 @@ const channelId = computed(() => props.channel?.id);
 const channelIdNum = computed(() => (props.channel?.id != null ? Number(props.channel.id) : undefined));
 const channelIdStr = computed(() => (props.channel?.id != null ? String(props.channel.id) : undefined));
 const isDmRef = computed(() => props.isDm);
+const draftKey = computed(() =>
+    channelIdStr.value ? `${isDmRef.value ? 'dm' : 'channel'}:${channelIdStr.value}` : undefined,
+);
 
 const { isRateLimited, sendError, startRateLimitCooldown } = useRateLimit();
 
@@ -148,6 +152,7 @@ const startDmFromProfile = async (userId: string) => {
 };
 
 const activeStore = useActiveStore(isDmRef);
+const outbox = useMessageOutbox();
 const activeMessages = activeStore.messages;
 const isLoadingMessages = activeStore.isLoadingMessages;
 
@@ -483,8 +488,11 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         attachmentIds.push(linkPreview.image.id);
     }
 
+    const clientTempId = crypto.randomUUID();
+
     const data: {
         content: string;
+        client_temp_id: string;
         reply_to_id?: string;
         mention_user_ids?: number[];
         mention_everyone?: boolean;
@@ -493,6 +501,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         link_preview?: LinkPreviewData | null;
     } = {
         content,
+        client_temp_id: clientTempId,
     };
 
     if (attachmentIds.length > 0) {
@@ -516,7 +525,8 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     }
 
     const optimisticMessage: MessageData = {
-        id: String(Date.now()),
+        id: clientTempId,
+        client_temp_id: clientTempId,
         content,
         is_edited: false,
         edited_at: null,
@@ -539,15 +549,23 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         created_at: new Date().toISOString(),
         attachments: optimisticAttachments.length > 0 ? optimisticAttachments : undefined,
         link_preview: linkPreview,
+        send_status: 'sending',
     };
 
-    // If the user was viewing history (scrolled into an older window), snap back
-    // to the live tail before appending so the optimistic message lands in a
-    // contiguous position rather than after a gap.
     if (activeStore.isViewingHistory.value && props.channel?.id) {
         await activeStore.resetToLive(String(props.channel.id));
         await nextTick();
     }
+
+    // Persist to the durable outbox before the POST so a crash mid-send is recoverable.
+    await outbox.enqueue({
+        clientTempId,
+        channelId: String(props.channel.id),
+        isDm: props.isDm,
+        payload: data,
+        optimistic: optimisticMessage,
+        createdAt: optimisticMessage.created_at,
+    });
 
     activeStore.addMessage(optimisticMessage);
     pinnedToBottom.value = true;
@@ -562,14 +580,51 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         if (response.data) {
             const serverMsg = normalizeMessage(response.data, response.included);
             serverMsg.link_preview = linkPreview ?? serverMsg.link_preview;
-            const idx = activeMessages.value.findIndex((m) => m.id === optimisticMessage.id);
-            if (idx !== -1) {
-                activeMessages.value.splice(idx, 1, serverMsg);
+
+            const serverIdx = activeMessages.value.findIndex((m) => m.id === serverMsg.id);
+            const optimisticIdx = activeMessages.value.findIndex((m) => m.id === clientTempId);
+
+            if (serverIdx !== -1) {
+                if (optimisticIdx !== -1 && optimisticIdx !== serverIdx) {
+                    activeMessages.value.splice(optimisticIdx, 1);
+                }
+                activeMessages.value[serverIdx].link_preview =
+                    linkPreview ?? activeMessages.value[serverIdx].link_preview;
+            } else if (optimisticIdx !== -1) {
+                activeMessages.value.splice(optimisticIdx, 1, serverMsg);
+            } else {
+                activeStore.addMessage(serverMsg);
             }
         }
+        await outbox.clear(clientTempId);
     } catch (error: unknown) {
-        activeStore.removeMessage(optimisticMessage.id);
+        // Keep the message visible as failed (persisted in the outbox) so the user
+        // can retry it — do not discard it.
+        activeStore.updateMessage(clientTempId, { send_status: 'failed' });
+        const axiosErr = error as { response?: { status?: number; headers?: Record<string, string> } };
+        await outbox.enqueue({
+            clientTempId,
+            channelId: String(props.channel.id),
+            isDm: props.isDm,
+            payload: data,
+            optimistic: { ...optimisticMessage, send_status: 'failed' },
+            createdAt: optimisticMessage.created_at,
+            error: axiosErr?.response?.status ? `HTTP ${axiosErr.response.status}` : t('chat.messages.failedToSend'),
+        });
 
+        if (axiosErr?.response?.status === 429) {
+            const retryAfter = parseInt(axiosErr.response.headers?.['retry-after'] ?? '60', 10);
+            startRateLimitCooldown(retryAfter);
+        }
+    }
+};
+
+const retryFailedMessage = async (message: MessageData) => {
+    if (isRateLimited.value) return;
+    sendError.value = null;
+    try {
+        await outbox.retry(message.id);
+    } catch (error: unknown) {
         const axiosErr = error as { response?: { status?: number; headers?: Record<string, string> } };
         if (axiosErr?.response?.status === 429) {
             const retryAfter = parseInt(axiosErr.response.headers?.['retry-after'] ?? '60', 10);
@@ -578,6 +633,11 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
             sendError.value = t('chat.messages.failedToSend');
         }
     }
+};
+
+const deleteFailedMessage = async (message: MessageData) => {
+    await outbox.clear(message.id);
+    activeStore.removeMessage(message.id);
 };
 
 const openThread = (message: MessageData) => {
@@ -794,7 +854,10 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                             :can-send-messages="channelPermissions?.canSendMessages ?? true"
                             :show-thread-button="!isDm"
                             :is-dm="isDm"
+                            :is-rate-limited="isRateLimited"
                             @show-profile="(rect: DOMRect) => openUserProfile(item.user, rect)"
+                            @retry="retryFailedMessage(item)"
+                            @delete-failed="deleteFailedMessage(item)"
                             @start-edit="startEdit(item)"
                             @cancel-edit="cancelEdit"
                             @save-edit="saveEdit(item)"
@@ -856,6 +919,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 :disabled="isRateLimited"
                 :can-attach-files="isDm || channelPermissions?.canAttachFiles !== false"
                 :uploading-files="uploadingFiles"
+                :draft-key="draftKey"
                 @send="sendMessage"
                 @typing="emitTyping"
                 @cancel-reply="replyingToMessage = null"

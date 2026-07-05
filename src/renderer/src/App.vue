@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router';
 import AdminActionDialogs from '@/components/chat/AdminActionDialogs.vue';
 import ChannelActionDialogs from '@/components/chat/ChannelActionDialogs.vue';
 import AppContextMenu from '@/components/AppContextMenu.vue';
+import ConnectionBanner from '@/components/ConnectionBanner.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
 import TitleBar from '@/components/TitleBar.vue';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -52,9 +53,12 @@ onUnmounted(() => {
 <template>
     <TooltipProvider :delay-duration="0">
         <AppContextMenu>
-            <TitleBar />
-            <div class="h-[calc(100vh-var(--titlebar-height))] overflow-hidden">
-                <RouterView />
+            <div class="flex h-screen flex-col">
+                <TitleBar />
+                <ConnectionBanner />
+                <div class="min-h-0 flex-1 overflow-hidden">
+                    <RouterView />
+                </div>
             </div>
             <NotificationToast />
             <UpdateToast />

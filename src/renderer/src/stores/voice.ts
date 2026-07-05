@@ -400,6 +400,55 @@ export const useVoiceStore = defineStore('voice', () => {
                     }
                 })
                 .listen(
+                    '.voice.moved',
+                    (data: {
+                        user_id: number;
+                        from_channel_id: number;
+                        to_channel_id: number;
+                        to_channel_name: string;
+                    }) => {
+                        const selfId = useAuthStore().user?.id;
+                        if (selfId && String(data.user_id) === String(selfId)) {
+                            void joinChannel(data.to_channel_id, data.to_channel_name);
+                            return;
+                        }
+
+                        const movedParticipant = channelParticipantsMap.value
+                            .get(data.from_channel_id)
+                            ?.find((p) => String(p.id) === String(data.user_id));
+
+                        if (!(currentChannel.value && data.from_channel_id === currentChannel.value.id)) {
+                            const fromParticipants = channelParticipantsMap.value.get(data.from_channel_id);
+                            if (fromParticipants) {
+                                const filtered = fromParticipants.filter((p) => String(p.id) !== String(data.user_id));
+                                if (filtered.length > 0) {
+                                    channelParticipantsMap.value.set(data.from_channel_id, filtered);
+                                } else {
+                                    channelParticipantsMap.value.delete(data.from_channel_id);
+                                }
+                            }
+                        }
+
+                        if (!(currentChannel.value && data.to_channel_id === currentChannel.value.id)) {
+                            const toParticipants = channelParticipantsMap.value.get(data.to_channel_id) ?? [];
+                            if (!toParticipants.some((p) => String(p.id) === String(data.user_id))) {
+                                channelParticipantsMap.value.set(data.to_channel_id, [
+                                    ...toParticipants,
+                                    movedParticipant ?? {
+                                        id: data.user_id,
+                                        username: String(data.user_id),
+                                        displayName: String(data.user_id),
+                                        isSpeaking: false,
+                                        isMuted: false,
+                                        isScreenSharing: false,
+                                        avatarUrls: null,
+                                    },
+                                ]);
+                            }
+                        }
+                    },
+                )
+                .listen(
                     '.voice.key_rotated',
                     (data: { channel_id: number; e2ee_key: string; e2ee_key_index: number }) => {
                         void applyRotatedKey(data.channel_id, data.e2ee_key, data.e2ee_key_index);
@@ -680,7 +729,11 @@ export const useVoiceStore = defineStore('voice', () => {
 
             if (started_at !== null) channelStartedAt.value.set(channelId, started_at);
 
-            const E2EE_ENABLED = false;
+            // LiveKit E2EE is room-wide (insertable streams) — no per-track opt-out — so
+            // this encrypts the mic as well as the screen share. Trade-off: E2EE forces
+            // viewers onto software VP9 decode (decoder: "libvpx"), which can hitch on the
+            // screen share; flip to false to let the GPU decoder engage for diagnosis.
+            const E2EE_ENABLED = true;
 
             keyProvider = E2EE_ENABLED ? new IndexedKeyProvider() : null;
             e2eeKeyIndex = e2ee_key_index ?? 0;
@@ -949,6 +1002,8 @@ export const useVoiceStore = defineStore('voice', () => {
     async function goAfk(afkChannelId: number): Promise<void> {
         if (!currentChannel.value) return;
 
+        const fromChannelId = currentChannel.value.id;
+
         await leaveChannel();
         parkedAfkChannelId.value = afkChannelId;
 
@@ -972,7 +1027,7 @@ export const useVoiceStore = defineStore('voice', () => {
         }
 
         try {
-            await parkAfk();
+            await parkAfk(fromChannelId);
         } catch {
             // best-effort — AFK presence is cosmetic
         }

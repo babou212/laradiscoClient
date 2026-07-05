@@ -775,6 +775,10 @@
         "failed": "Update failed",
         "downloadFailed": "Download failed"
     },
+    "connection": {
+        "reconnecting": "Reconnecting to server…",
+        "lost": "Lost connection to server. Retrying…"
+    },
     "appContextMenu": {
         "copyText": "Copy text",
         "addReaction": "Add reaction",
@@ -853,7 +857,11 @@
             "hideMembers": "Hide members",
             "failedToSend": "Failed to send message. Please try again.",
             "failedToUpload": "Failed to upload {fileName}. Please try again.",
-            "fetchingLinkPreview": "Fetching link preview…"
+            "fetchingLinkPreview": "Fetching link preview…",
+            "sending": "Sending…",
+            "messageFailed": "Message failed to send",
+            "retry": "Retry",
+            "deleteFailed": "Delete"
         },
         "composer": {
             "attachFile": "Attach file",
@@ -1027,7 +1035,7 @@
         },
         "newMessagePill": {
             "jumpToPresent": "Jump to present",
-            "jumpToBottom": "Jump to bottom",
+            "jumpToBottom": "Jump to present",
             "newMessages": "{count} new message | {count} new messages"
         },
         "threadPreview": {

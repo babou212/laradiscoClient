@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import type * as VueRouter from 'vue-router';
+import { normalizeMessage } from '@/api/normalizers';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import type { MessageData } from '@/types/chat';
@@ -249,5 +250,55 @@ describe('MessagesPanel send wiring', () => {
         await wrapper.findComponent({ name: 'MessageInput' }).vm.$emit('send', 'hello', []);
         await flushPromises();
         expect(apiSendMessage).not.toHaveBeenCalled();
+    });
+
+    it('sends a client_temp_id and reconciles the optimistic copy to a single server message', async () => {
+        const server = {
+            id: 'server-1',
+            content: 'hello',
+            user: { id: 'u1', username: 'alice', avatar_urls: null },
+            reactions: [],
+            created_at: '2026-01-01T00:00:00Z',
+        } as unknown as MessageData;
+        vi.mocked(normalizeMessage).mockReturnValue(server);
+        apiSendMessage.mockResolvedValue({ data: { id: 'server-1' }, included: [] });
+
+        const wrapper = mountPanel();
+        const chat = useChatStore();
+        await wrapper.findComponent({ name: 'MessageInput' }).vm.$emit('send', 'hello', []);
+        await flushPromises();
+
+        // The linking id was sent to the server...
+        expect(apiSendMessage.mock.calls[0][1]).toEqual(
+            expect.objectContaining({ client_temp_id: expect.any(String) }),
+        );
+        // ...and the optimistic entry became the server copy — exactly one 'hello'.
+        const hellos = chat.messages.filter((m) => m.content === 'hello');
+        expect(hellos).toHaveLength(1);
+        expect(hellos[0].id).toBe('server-1');
+    });
+
+    it('drops the optimistic copy when the broadcast delivered the server message first', async () => {
+        const server = {
+            id: 'server-1',
+            content: 'hello',
+            user: { id: 'u1', username: 'alice', avatar_urls: null },
+            reactions: [],
+            created_at: '2026-01-01T00:00:00Z',
+        } as unknown as MessageData;
+        vi.mocked(normalizeMessage).mockReturnValue(server);
+        apiSendMessage.mockResolvedValue({ data: { id: 'server-1' }, included: [] });
+
+        // Simulate the own broadcast racing ahead: the server copy is already present.
+        seedMessages(['server-1']);
+
+        const wrapper = mountPanel();
+        const chat = useChatStore();
+        await wrapper.findComponent({ name: 'MessageInput' }).vm.$emit('send', 'hello', []);
+        await flushPromises();
+
+        // No duplicate: the optimistic entry was removed, leaving one server-1.
+        expect(chat.messages.filter((m) => m.id === 'server-1')).toHaveLength(1);
+        expect(chat.messages).toHaveLength(1);
     });
 });
