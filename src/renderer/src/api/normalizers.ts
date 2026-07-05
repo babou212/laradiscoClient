@@ -144,6 +144,7 @@ export function normalizeMessage(
         edited_at: attrs.edited_at ?? null,
         deleted_at: attrs.deleted_at ?? null,
         reply_to_id: attrs.reply_to_id ?? null,
+        client_temp_id: attrs.client_temp_id ?? null,
         thread_id: (attrs as MessageAttributes).thread_id ?? null,
         thread,
         reply_to: replyTo,

@@ -729,7 +729,11 @@ export const useVoiceStore = defineStore('voice', () => {
 
             if (started_at !== null) channelStartedAt.value.set(channelId, started_at);
 
-            const E2EE_ENABLED = false;
+            // LiveKit E2EE is room-wide (insertable streams) — no per-track opt-out — so
+            // this encrypts the mic as well as the screen share. Trade-off: E2EE forces
+            // viewers onto software VP9 decode (decoder: "libvpx"), which can hitch on the
+            // screen share; flip to false to let the GPU decoder engage for diagnosis.
+            const E2EE_ENABLED = true;
 
             keyProvider = E2EE_ENABLED ? new IndexedKeyProvider() : null;
             e2eeKeyIndex = e2ee_key_index ?? 0;
@@ -998,6 +1002,8 @@ export const useVoiceStore = defineStore('voice', () => {
     async function goAfk(afkChannelId: number): Promise<void> {
         if (!currentChannel.value) return;
 
+        const fromChannelId = currentChannel.value.id;
+
         await leaveChannel();
         parkedAfkChannelId.value = afkChannelId;
 
@@ -1021,7 +1027,7 @@ export const useVoiceStore = defineStore('voice', () => {
         }
 
         try {
-            await parkAfk();
+            await parkAfk(fromChannelId);
         } catch {
             // best-effort — AFK presence is cosmetic
         }

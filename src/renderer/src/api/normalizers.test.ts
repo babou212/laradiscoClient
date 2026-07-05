@@ -70,6 +70,15 @@ describe('normalizeMessage', () => {
         expect(out.is_pinned).toBe(false);
         expect(out.attachments).toBeUndefined();
     });
+
+    it('surfaces client_temp_id so the optimistic copy can be reconciled', () => {
+        const out = normalizeMessage(messageResource('1', { client_temp_id: 'ctid-abc' }), []);
+        expect(out.client_temp_id).toBe('ctid-abc');
+    });
+
+    it('defaults client_temp_id to null when absent', () => {
+        expect(normalizeMessage(messageResource('1'), []).client_temp_id).toBeNull();
+    });
 });
 
 describe('normalizeMessages', () => {

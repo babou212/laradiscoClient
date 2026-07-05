@@ -8,9 +8,6 @@ import { useServerStore } from '@/stores/server';
 let echoInstance: Echo<'reverb'> | null = null;
 let currentConfigKey = '';
 let inboxDrainTimer: ReturnType<typeof setTimeout> | null = null;
-// Set right before a deliberate disconnectEcho() call so the 'disconnected'
-// event it triggers isn't mistaken for a dropped connection.
-let intentionalDisconnect = false;
 
 /**
  * Drain the offline-delivery inbox after a websocket (re)connect. Debounced and
@@ -122,31 +119,27 @@ export function initEcho(): Echo<'reverb'> {
         const pusher = connector.pusher;
         pusher.connection.bind('connected', () => {
             console.log('[Echo] WebSocket connected');
-            serverStore.wsConnected = true;
             scheduleInboxDrain();
-            // A websocket (re)connect signals connectivity is back: nudge presence
-            // so a drop that downgraded us to idle/offline is corrected at once.
-            // Lazily imported to avoid a circular import (stores import echo.ts).
+
             void import('@/stores/presence')
                 .then(({ usePresenceStore }) => usePresenceStore().reconcile())
                 .catch((error) => console.error('[Presence] reconcile failed:', error));
-            // Resync voice channel rosters too, recovering any .voice.joined/.voice.left
-            // deltas missed while the socket was down.
+
             void import('@/stores/voice')
                 .then(({ useVoiceStore }) => useVoiceStore().fetchVoiceParticipants())
                 .catch((error) => console.error('[Voice] participant resync failed:', error));
         });
         pusher.connection.bind('disconnected', () => {
             console.warn('[Echo] WebSocket disconnected — will auto-reconnect');
-            if (intentionalDisconnect) {
-                intentionalDisconnect = false;
-                return;
-            }
-            serverStore.wsConnected = false;
         });
         pusher.connection.bind('error', (err: unknown) => {
             console.error('[Echo] WebSocket error:', err);
-            serverStore.wsConnected = false;
+        });
+
+        pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
+            void import('@/stores/connection')
+                .then(({ useConnectionStore }) => useConnectionStore().setRealtimeState(states.current))
+                .catch((error) => console.error('[Connection] state update failed:', error));
         });
     }
 
@@ -182,7 +175,6 @@ export function getSocketId(): string | undefined {
 
 export function disconnectEcho(): void {
     if (echoInstance) {
-        intentionalDisconnect = true;
         try {
             echoInstance.disconnect();
         } catch (error) {
