@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useConnectionStore } from '@/stores/connection';
 import ConnectionBanner from './ConnectionBanner.vue';
 
@@ -12,6 +12,10 @@ async function mountWithStatus(status: 'connected' | 'reconnecting' | 'disconnec
 }
 
 describe('ConnectionBanner', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('renders nothing while connected', async () => {
         const wrapper = await mountWithStatus('connected');
         expect(wrapper.text()).toBe('');
@@ -27,5 +31,24 @@ describe('ConnectionBanner', () => {
         const wrapper = await mountWithStatus('disconnected');
         expect(wrapper.text()).toContain('Lost connection to server');
         expect(wrapper.get('[role="alert"]')).toBeTruthy();
+    });
+
+    it('flashes a Connected banner after recovering, then auto-dismisses', async () => {
+        vi.useFakeTimers();
+        const wrapper = mount(ConnectionBanner);
+        const store = useConnectionStore();
+
+        store.status = 'reconnecting';
+        await flushPromises();
+        expect(wrapper.text()).toContain('Reconnecting to server');
+
+        store.status = 'connected';
+        await flushPromises();
+        expect(wrapper.text()).toContain('Connected');
+        expect(wrapper.get('[role="status"]')).toBeTruthy();
+
+        vi.advanceTimersByTime(2500);
+        await flushPromises();
+        expect(wrapper.text()).not.toContain('Connected');
     });
 });

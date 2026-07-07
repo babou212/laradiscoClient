@@ -1,11 +1,43 @@
 <script setup lang="ts">
-import { RefreshCw, WifiOff } from 'lucide-vue-next';
+import { CircleCheck, RefreshCw, WifiOff } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConnectionStore } from '@/stores/connection';
 
+const CONNECTED_FLASH_MS = 2500;
+
 const { t } = useI18n();
 const { status } = storeToRefs(useConnectionStore());
+
+const showConnected = ref(false);
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+const clearFlashTimer = () => {
+    if (flashTimer) {
+        clearTimeout(flashTimer);
+        flashTimer = null;
+    }
+};
+
+watch(status, (next, prev) => {
+    if (next === 'connected' && (prev === 'reconnecting' || prev === 'disconnected')) {
+        showConnected.value = true;
+        clearFlashTimer();
+        flashTimer = setTimeout(() => {
+            flashTimer = null;
+            showConnected.value = false;
+        }, CONNECTED_FLASH_MS);
+        return;
+    }
+
+    if (next !== 'connected') {
+        clearFlashTimer();
+        showConnected.value = false;
+    }
+});
+
+onBeforeUnmount(clearFlashTimer);
 </script>
 
 <template>
@@ -34,6 +66,15 @@ const { status } = storeToRefs(useConnectionStore());
         >
             <WifiOff :size="14" />
             <span>{{ t('connection.lost') }}</span>
+        </div>
+        <div
+            v-else-if="showConnected"
+            class="flex shrink-0 items-center justify-center gap-2 bg-green-600 px-3 py-1.5 text-xs font-medium text-white"
+            role="status"
+            aria-live="polite"
+        >
+            <CircleCheck :size="14" />
+            <span>{{ t('connection.connected') }}</span>
         </div>
     </Transition>
 </template>

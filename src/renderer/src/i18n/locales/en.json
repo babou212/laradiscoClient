@@ -801,7 +801,8 @@
     },
     "connection": {
         "reconnecting": "Reconnecting to server…",
-        "lost": "Lost connection to server. Retrying…"
+        "lost": "Lost connection to server. Retrying…",
+        "connected": "Connected"
     },
     "appContextMenu": {
         "copyText": "Copy text",
