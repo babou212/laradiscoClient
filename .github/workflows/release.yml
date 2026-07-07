@@ -116,6 +116,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          VITE_KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
         run: npm run ${{ matrix.publish_target }}
 
   finalize-release:

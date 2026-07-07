@@ -9,6 +9,7 @@ const SKIP_HOSTS = [
     'media.tenor.com',
     'giphy.com',
     'media.giphy.com',
+    'klipy.com',
 ];
 
 const TRAILING_PUNCTUATION = /[.,!?;:)\]}'"]+$/;

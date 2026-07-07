@@ -37,7 +37,8 @@ describe('MessageSendSchema', () => {
 });
 
 describe('GifUrlSchema', () => {
-    it('allows Tenor and Giphy hosts (incl. subdomains)', () => {
+    it('allows Klipy, Tenor and Giphy hosts (incl. subdomains)', () => {
+        expect(GifUrlSchema.safeParse('https://static.klipy.com/ii/abc.gif').success).toBe(true);
         expect(GifUrlSchema.safeParse('https://media.tenor.com/abc.gif').success).toBe(true);
         expect(GifUrlSchema.safeParse('https://giphy.com/x.gif').success).toBe(true);
         expect(GifUrlSchema.safeParse('https://media.giphy.com/x.gif').success).toBe(true);
