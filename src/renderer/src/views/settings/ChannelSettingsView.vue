@@ -1093,7 +1093,7 @@ async function addUserAccess(userId: string) {
                 </DialogHeader>
                 <DialogHeader v-else>
                     <DialogTitle class="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" class="h-6 w-6 -ml-1.5" @click="backToRoster">
+                        <Button variant="ghost" size="icon" class="-ml-1.5 h-6 w-6" @click="backToRoster">
                             <ArrowLeft class="h-4 w-4" />
                         </Button>
                         {{
@@ -1113,7 +1113,9 @@ async function addUserAccess(userId: string) {
                         <div class="flex items-center gap-2">
                             <Lock class="text-muted-foreground h-4 w-4 shrink-0" />
                             <div>
-                                <p class="text-sm font-medium">{{ t('settings.channels.permissions.private.label') }}</p>
+                                <p class="text-sm font-medium">
+                                    {{ t('settings.channels.permissions.private.label') }}
+                                </p>
                                 <p class="text-muted-foreground text-xs">
                                     {{ t('settings.channels.permissions.private.description') }}
                                 </p>
@@ -1129,7 +1131,9 @@ async function addUserAccess(userId: string) {
                         <Separator />
 
                         <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-semibold">{{ t('settings.channels.permissions.access.heading') }}</h3>
+                            <h3 class="text-sm font-semibold">
+                                {{ t('settings.channels.permissions.access.heading') }}
+                            </h3>
                             <Button size="sm" @click="openAddAccessDialog">
                                 <Plus class="mr-1.5 h-3.5 w-3.5" />
                                 {{ t('settings.channels.permissions.access.addButton') }}
