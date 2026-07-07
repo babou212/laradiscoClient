@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
 import { useUsersStore } from '@/stores/users';
-import type { OnlineUser, UserStatusType } from '@/types';
+import type { OnlineUser, UserActivity, UserStatusType } from '@/types';
 import UserProfilePanel from './UserProfilePanel.vue';
 
 const presenceStore = usePresenceStore();
@@ -55,6 +55,8 @@ const getStatusColor = (status?: UserStatusType) => {
             return 'bg-gray-400';
     }
 };
+
+const activityLabel = (activity: UserActivity) => `${t(`chat.userProfile.activity.${activity.type}`)} ${activity.name}`;
 
 const openUserProfile = (user: OnlineUser) => {
     selectedUser.value = user;
@@ -165,7 +167,10 @@ const statusSections = computed(() => {
                             <div class="text-sidebar-foreground truncate text-sm font-medium">
                                 {{ user.display_name }}
                             </div>
-                            <div v-if="user.custom_status" class="text-sidebar-foreground/60 truncate text-xs">
+                            <div v-if="user.activity" class="text-sidebar-foreground/60 truncate text-xs">
+                                {{ activityLabel(user.activity) }}
+                            </div>
+                            <div v-else-if="user.custom_status" class="text-sidebar-foreground/60 truncate text-xs">
                                 {{ user.custom_status }}
                             </div>
                         </div>

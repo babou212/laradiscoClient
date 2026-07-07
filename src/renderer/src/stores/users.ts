@@ -1,3 +1,4 @@
+import { useQueryCache } from '@pinia/colada';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, reactive } from 'vue';
 import { getMembers } from '@/api/members';
@@ -11,6 +12,7 @@ import {
 } from '@/api/types';
 import { getUserProfile } from '@/api/users';
 import { getEcho } from '@/lib/echo';
+import { SETTINGS_KEYS } from '@/queries/keys';
 import type { OnlineUser, UserActivity, UserStatusType } from '@/types';
 import type { AvatarUrls } from '@/types/chat';
 import type { AuthPermissions } from './auth';
@@ -105,6 +107,7 @@ function rolesFromIncluded(rel: { data?: unknown } | undefined, included: unknow
 }
 
 export const useUsersStore = defineStore('users', () => {
+    const queryCache = useQueryCache();
     const byId = reactive(new Map<string, StoredUser>());
     const inFlight = new Map<string, Promise<StoredUser | null>>();
     let channel: ReturnType<ReturnType<typeof getEcho>['private']> | null = null;
@@ -390,6 +393,12 @@ export const useUsersStore = defineStore('users', () => {
             );
             channel.listen('.server.member.joined', (data: MemberJoinedPayload) => applyMemberJoined(data));
             channel.listen('.user.deleted', (data: UserDeletedPayload) => applyUserDeleted(data));
+            channel.listen('.channel.updated', () => {
+                queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() });
+                void import('@/stores/chat')
+                    .then(({ useChatStore }) => useChatStore().fetchCategories())
+                    .catch((error) => console.error('[Chat] sidebar refetch failed:', error));
+            });
         } catch (error) {
             console.error('Failed to subscribe users store to presence channel', error);
         }

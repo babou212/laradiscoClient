@@ -6,7 +6,18 @@ import { promisify } from 'util';
 import { BrowserWindow, ipcMain, net, Notification, type IpcMainInvokeEvent } from 'electron';
 import sharp from 'sharp';
 import { getAuthSession, removeAuthSession, saveAuthSession } from './auth-storage';
-import { clearActiveServer, getActiveServer, getSetting, saveActiveServer, setSetting } from './database';
+import {
+    clearActiveServer,
+    enqueueOutbox,
+    getActiveServer,
+    getOutbox,
+    getSetting,
+    listOutboxForChannel,
+    removeOutbox,
+    saveActiveServer,
+    setSetting,
+    type OutboxRow,
+} from './database';
 import { FFMPEG_PATH, FFPROBE_PATH } from './ffmpeg';
 import { logger } from './logger';
 
@@ -454,6 +465,24 @@ export function registerIpcHandlers(): void {
     handle('settings:set', async (_event, key: string, value: string) => {
         setSetting(key, value);
         return { success: true };
+    });
+
+    handle('outbox:enqueue', async (_event, row: OutboxRow) => {
+        enqueueOutbox(row);
+        return { success: true };
+    });
+
+    handle('outbox:remove', async (_event, clientTempId: string) => {
+        removeOutbox(clientTempId);
+        return { success: true };
+    });
+
+    handle('outbox:list-for-channel', async (_event, channelId: string, isDm: boolean) => {
+        return listOutboxForChannel(channelId, isDm);
+    });
+
+    handle('outbox:get', async (_event, clientTempId: string) => {
+        return getOutbox(clientTempId);
     });
 
     ipcMain.on('notifications:show', (event, payload: { title: string; body: string; notificationId: string }) => {

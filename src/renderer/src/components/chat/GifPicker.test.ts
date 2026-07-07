@@ -1,23 +1,23 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { TenorGif } from '@/types/chat';
+import type { KlipyGif } from '@/types/chat';
 import GifPicker from './GifPicker.vue';
 
-function gif(id: string, overrides: Partial<TenorGif['media_formats']> = {}): TenorGif {
+function gif(id: string, fileOverrides: Partial<KlipyGif['file']> = {}): KlipyGif {
     return {
         id,
-        content_description: `gif ${id}`,
-        media_formats: {
-            tinygif: { url: `https://media.tenor.com/${id}-tiny.gif` },
-            gif: { url: `https://media.tenor.com/${id}.gif` },
-            ...overrides,
+        title: `gif ${id}`,
+        file: {
+            hd: { gif: { url: `https://static.klipy.com/${id}-hd.gif` } },
+            sm: { gif: { url: `https://static.klipy.com/${id}-sm.gif` } },
+            ...fileOverrides,
         },
     };
 }
 
-function mockFetchOnce(results: TenorGif[], next = '') {
+function mockFetchOnce(results: KlipyGif[], hasNext = false) {
     return vi.fn().mockResolvedValue({
-        json: async () => ({ results, next }),
+        json: async () => ({ result: true, data: { data: results, has_next: hasNext } }),
     });
 }
 
@@ -37,7 +37,7 @@ describe('GifPicker fetch lifecycle', () => {
         mount(GifPicker);
         await flushPromises();
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock.mock.calls[0][0]).toContain('/v2/featured');
+        expect(fetchMock.mock.calls[0][0]).toContain('/gifs/trending');
     });
 
     it('renders fetched GIFs as selectable buttons', async () => {
@@ -46,7 +46,7 @@ describe('GifPicker fetch lifecycle', () => {
         await flushPromises();
         const imgs = wrapper.findAll('img');
         expect(imgs).toHaveLength(2);
-        expect(imgs[0].attributes('src')).toBe('https://media.tenor.com/1-tiny.gif');
+        expect(imgs[0].attributes('src')).toBe('https://static.klipy.com/1-sm.gif');
     });
 
     it('shows the empty state when no GIFs are returned', async () => {
@@ -63,20 +63,20 @@ describe('GifPicker selection', () => {
         await flushPromises();
         const gifButton = wrapper.findAll('button').find((b) => b.find('img').exists());
         await gifButton!.trigger('click');
-        expect(wrapper.emitted('select')?.[0]).toEqual(['https://media.tenor.com/1.gif']);
+        expect(wrapper.emitted('select')?.[0]).toEqual(['https://static.klipy.com/1-hd.gif']);
     });
 
-    it('falls back to the tinygif url when the full gif is missing', async () => {
-        vi.stubGlobal('fetch', mockFetchOnce([gif('1', { gif: undefined })]));
+    it('falls back to the smaller gif url when the hd gif is missing', async () => {
+        vi.stubGlobal('fetch', mockFetchOnce([gif('1', { hd: undefined })]));
         const wrapper = mount(GifPicker);
         await flushPromises();
         const gifButton = wrapper.findAll('button').find((b) => b.find('img').exists());
         await gifButton!.trigger('click');
-        expect(wrapper.emitted('select')?.[0]).toEqual(['https://media.tenor.com/1-tiny.gif']);
+        expect(wrapper.emitted('select')?.[0]).toEqual(['https://static.klipy.com/1-sm.gif']);
     });
 
     it('does not emit select when the gif has no usable url', async () => {
-        vi.stubGlobal('fetch', mockFetchOnce([gif('1', { gif: undefined, tinygif: undefined })]));
+        vi.stubGlobal('fetch', mockFetchOnce([gif('1', { hd: undefined, sm: undefined })]));
         const wrapper = mount(GifPicker);
         await flushPromises();
         const gifButton = wrapper.findAll('button').find((b) => b.find('img').exists());
@@ -98,7 +98,7 @@ describe('GifPicker category navigation', () => {
         await flushPromises();
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock.mock.calls[0][0]).toContain('/v2/search?q=happy');
+        expect(fetchMock.mock.calls[0][0]).toContain('/gifs/search?q=happy');
     });
 });
 

@@ -266,3 +266,45 @@ describe('Message permission data attributes', () => {
         expect(root.attributes('data-can-delete')).toBe('false');
     });
 });
+
+describe('Message send status (retry)', () => {
+    const ownFailed = () =>
+        makeMessage({
+            user: { id: CURRENT_USER_ID, username: 'me', avatar_urls: null },
+            send_status: 'failed',
+        });
+
+    it('shows Retry and Delete affordances for a failed message', () => {
+        const wrapper = mountMessage(ownFailed());
+        expect(wrapper.text().toLowerCase()).toContain('retry');
+        expect(wrapper.find('message-actions-stub').exists()).toBe(false);
+    });
+
+    it('emits retry when Retry is clicked', async () => {
+        const wrapper = mountMessage(ownFailed());
+        const retryBtn = wrapper.findAll('button').find((b) => b.text().toLowerCase() === 'retry');
+        await retryBtn!.trigger('click');
+        expect(wrapper.emitted('retry')).toHaveLength(1);
+    });
+
+    it('emits deleteFailed when Delete is clicked', async () => {
+        const wrapper = mountMessage(ownFailed());
+        const delBtn = wrapper.findAll('button').find((b) => b.text().toLowerCase() === 'delete');
+        await delBtn!.trigger('click');
+        expect(wrapper.emitted('deleteFailed')).toHaveLength(1);
+    });
+
+    it('disables Retry while rate limited', () => {
+        const wrapper = mountMessage(ownFailed(), { isRateLimited: true });
+        const retryBtn = wrapper.findAll('button').find((b) => b.text().toLowerCase() === 'retry');
+        expect(retryBtn!.attributes('disabled')).toBeDefined();
+    });
+
+    it('shows a sending indicator and hides actions while sending', () => {
+        const wrapper = mountMessage(
+            makeMessage({ user: { id: CURRENT_USER_ID, username: 'me', avatar_urls: null }, send_status: 'sending' }),
+        );
+        expect(wrapper.find('message-actions-stub').exists()).toBe(false);
+        expect(wrapper.find('button').exists()).toBe(false);
+    });
+});

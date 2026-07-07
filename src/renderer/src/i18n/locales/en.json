@@ -477,18 +477,42 @@
                 "deleteDescription": "Are you sure you want to delete {name}? All channels in this category will also be deleted. This cannot be undone.",
                 "deleteSubmit": "Delete Category"
             },
-            "overrides": {
-                "title": "Permission Overrides",
-                "description": "Manage permission overrides for #{name}. Overrides allow or deny specific permissions for roles on this channel.",
+            "permissions": {
+                "title": "Channel Permissions",
+                "description": "Use permissions to customise who can do what in #{name}.",
                 "loading": "Loading...",
-                "current": "Current Overrides",
-                "add": "Add Override",
-                "role": "Role",
-                "rolePlaceholder": "Select a role...",
                 "permissions": "Permissions",
                 "allow": "Allow",
                 "deny": "Deny",
-                "save": "Save Override"
+                "save": "Save Changes",
+                "private": {
+                    "label": "Private Channel",
+                    "description": "By making a channel private, only select members and roles will be able to view this channel."
+                },
+                "access": {
+                    "heading": "Who can access this channel?",
+                    "addButton": "Add members or roles",
+                    "rolesHeading": "Roles",
+                    "membersHeading": "Members",
+                    "empty": "No roles or members have been granted access yet."
+                },
+                "picker": {
+                    "title": "Add members or roles",
+                    "description": "Select the roles and members who should be able to access this channel.",
+                    "searchPlaceholder": "Search for roles or members",
+                    "rolesHeading": "Roles",
+                    "membersHeading": "Members",
+                    "noResults": "No matches found.",
+                    "done": "Done"
+                },
+                "detail": {
+                    "title": "Permissions for {name}"
+                },
+                "disableConfirm": {
+                    "title": "Turn off private channel?",
+                    "description": "This will remove all role and member access overrides for this channel. If you make it private again later, you'll start with a clean slate.",
+                    "submit": "Turn Off & Clear"
+                }
             }
         },
         "members": {
@@ -857,7 +881,11 @@
             "hideMembers": "Hide members",
             "failedToSend": "Failed to send message. Please try again.",
             "failedToUpload": "Failed to upload {fileName}. Please try again.",
-            "fetchingLinkPreview": "Fetching link preview…"
+            "fetchingLinkPreview": "Fetching link preview…",
+            "sending": "Sending…",
+            "messageFailed": "Message failed to send",
+            "retry": "Retry",
+            "deleteFailed": "Delete"
         },
         "composer": {
             "attachFile": "Attach file",

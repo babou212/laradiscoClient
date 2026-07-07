@@ -22,6 +22,7 @@ export const usePresenceStore = defineStore('presence', () => {
             avatar_urls: u.avatar_urls,
             custom_status: u.custom_status,
             status: u.status,
+            activity: u.activity,
         })),
     );
 
@@ -33,6 +34,7 @@ export const usePresenceStore = defineStore('presence', () => {
             avatar_urls: u.avatar_urls,
             custom_status: u.custom_status,
             status: u.status,
+            activity: u.activity,
         })),
     );
 
@@ -146,6 +148,7 @@ export const usePresenceStore = defineStore('presence', () => {
             avatar_urls: user.avatar_urls,
             custom_status: user.custom_status,
             status: user.status,
+            activity: user.activity,
         };
     };
 

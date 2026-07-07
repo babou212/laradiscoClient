@@ -28,11 +28,13 @@ interface Props {
     canSendMessages?: boolean;
     showThreadButton?: boolean;
     isDm?: boolean;
+    isRateLimited?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     showThreadButton: true,
     isDm: false,
+    isRateLimited: false,
 });
 
 const emit = defineEmits<{
@@ -48,6 +50,8 @@ const emit = defineEmits<{
     updateEditContent: [content: string];
     showProfile: [rect: DOMRect];
     contentResize: [];
+    retry: [];
+    deleteFailed: [];
 }>();
 
 const authStore = useAuthStore();
@@ -66,11 +70,11 @@ const canThread = computed(() => props.showThreadButton && props.canSendMessages
 
 const displayContent = computed(() => props.message.content ?? '');
 
+const isSending = computed(() => props.message.send_status === 'sending');
+const isFailed = computed(() => props.message.send_status === 'failed');
+
 const replyDisplayContent = computed(() => props.message.reply_to?.content ?? '');
 
-// The author's account has been permanently deleted from the server. Either the
-// message arrived from the API with a name snapshot, or a live deletion event
-// flagged the cached user. In both cases we render a non-interactive tombstone.
 const isDeletedAuthor = computed(
     () => !!props.message.deleted_author_name || usersStore.get(props.message.user?.id ?? '')?.deleted === true,
 );
@@ -227,9 +231,6 @@ const messageWithoutYoutubeUrl = computed(() => {
 
 const linkPreview = computed(() => props.message.link_preview ?? null);
 
-// The link-preview image is bound to the message as a regular attachment so the
-// preview card can load it, but it is already shown inside the card — exclude it
-// here so it is not rendered a second time as a standalone attachment.
 const visibleAttachments = computed(() => {
     const attachments = props.message.attachments;
     if (!attachments?.length) return [];
@@ -287,6 +288,7 @@ const emitShowProfile = (e: MouseEvent) => {
         :data-can-delete="canDelete ? 'true' : 'false'"
         :data-is-pinned="message.is_pinned ? 'true' : 'false'"
         class="group hover:bg-accent/50 relative -mx-2 flex gap-3 rounded p-2"
+        :class="{ 'opacity-60': isSending }"
     >
         <Avatar v-if="isDeletedAuthor" class="size-10 shrink-0 opacity-60">
             <AvatarFallback class="bg-muted text-muted-foreground text-sm font-semibold">
@@ -412,6 +414,27 @@ const emitShowProfile = (e: MouseEvent) => {
                 <FileAttachment v-for="att in visibleAttachments" :key="att.id" :attachment="att" />
             </div>
 
+            <div v-if="isSending" class="text-muted-foreground mt-1 text-xs italic">
+                {{ t('chat.messages.sending') }}
+            </div>
+
+            <div v-else-if="isFailed" class="text-destructive mt-1 flex items-center gap-2 text-xs">
+                <span>{{ t('chat.messages.messageFailed') }}</span>
+                <button
+                    class="hover:bg-destructive/10 rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="isRateLimited"
+                    @click="emit('retry')"
+                >
+                    {{ t('chat.messages.retry') }}
+                </button>
+                <button
+                    class="hover:bg-destructive/10 rounded px-1.5 py-0.5 font-medium underline-offset-2 hover:underline"
+                    @click="emit('deleteFailed')"
+                >
+                    {{ t('chat.messages.deleteFailed') }}
+                </button>
+            </div>
+
             <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">
                 <button
                     v-for="group in groupedReactions"
@@ -440,7 +463,7 @@ const emitShowProfile = (e: MouseEvent) => {
         </div>
 
         <MessageActions
-            v-if="!isEditing && (canReact || canReply || canPin || canEdit || canDelete)"
+            v-if="!isEditing && !isSending && !isFailed && (canReact || canReply || canPin || canEdit || canDelete)"
             :can-react="canReact"
             :can-reply="canReply"
             :can-thread="canThread"
