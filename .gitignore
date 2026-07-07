@@ -8,3 +8,8 @@ dist
 
 # Test coverage
 coverage/
+
+# Local env / secrets — never commit real keys (CI injects them from GitHub secrets)
+.env
+.env.*
+!.env.example

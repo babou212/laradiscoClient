@@ -1,10 +1,18 @@
-export interface TenorGif {
-    id: string;
-    media_formats: {
-        tinygif?: { url: string };
-        gif?: { url: string };
+export interface KlipyGifFile {
+    url: string;
+    width?: number;
+    height?: number;
+}
+
+export interface KlipyGif {
+    id: string | number;
+    title?: string;
+    file: {
+        hd?: { gif?: KlipyGifFile };
+        md?: { gif?: KlipyGifFile };
+        sm?: { gif?: KlipyGifFile };
+        xs?: { gif?: KlipyGifFile };
     };
-    content_description: string;
 }
 
 export interface Category {

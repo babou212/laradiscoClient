@@ -97,6 +97,7 @@ jobs:
       - name: Build & package (dry run)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          VITE_KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
         run: npm run package
 
       - name: Upload packaged app

@@ -3,7 +3,7 @@ import { watchDebounced } from '@vueuse/core';
 import { Search, X, Loader2 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { TenorGif } from '@/types/chat';
+import type { KlipyGif } from '@/types/chat';
 
 const emit = defineEmits<{
     select: [gifUrl: string];
@@ -11,13 +11,14 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
+const KLIPY_API_KEY = import.meta.env.VITE_KLIPY_API_KEY || 'klipy-test-key';
 const searchQuery = shallowRef('');
-const gifs = shallowRef<TenorGif[]>([]);
+const gifs = shallowRef<KlipyGif[]>([]);
 const loading = shallowRef(false);
 const loadingMore = shallowRef(false);
 const selectedCategory = shallowRef<string>('trending');
-const nextCursor = shallowRef<string>('');
+const page = shallowRef(1);
+const hasNext = shallowRef(false);
 const searchInputRef = useTemplateRef<HTMLInputElement>('searchInputRef');
 
 watchDebounced(
@@ -45,22 +46,26 @@ const categories = computed(() => [
 const fetchGifs = async (query?: string, append = false) => {
     if (append) {
         loadingMore.value = true;
+        page.value += 1;
     } else {
         loading.value = true;
         gifs.value = [];
-        nextCursor.value = '';
+        page.value = 1;
+        hasNext.value = false;
     }
 
     try {
-        const pos = append && nextCursor.value ? `&pos=${nextCursor.value}` : '';
+        const base = `https://api.klipy.com/api/v1/${KLIPY_API_KEY}/gifs`;
+        const params = `per_page=30&page=${page.value}&content_filter=off`;
         const endpoint = query
-            ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${TENOR_API_KEY}&limit=30&media_filter=tinygif,gif${pos}`
-            : `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=30&media_filter=tinygif,gif${pos}`;
+            ? `${base}/search?q=${encodeURIComponent(query)}&${params}`
+            : `${base}/trending?${params}`;
 
         const response = await fetch(endpoint);
         const data = await response.json();
-        const results = data.results || [];
-        nextCursor.value = data.next || '';
+        const payload = data?.data;
+        const results: KlipyGif[] = payload?.data ?? [];
+        hasNext.value = !!payload?.has_next;
 
         if (append) {
             gifs.value = [...gifs.value, ...results];
@@ -81,7 +86,7 @@ const fetchGifs = async (query?: string, append = false) => {
 };
 
 const loadMore = () => {
-    if (loadingMore.value || !nextCursor.value) return;
+    if (loadingMore.value || !hasNext.value) return;
     const query =
         searchQuery.value.trim() || (selectedCategory.value !== 'trending' ? selectedCategory.value : undefined);
     fetchGifs(query, true);
@@ -111,8 +116,8 @@ const selectCategory = (categoryId: string) => {
     }
 };
 
-const selectGif = (gif: TenorGif) => {
-    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+const selectGif = (gif: KlipyGif) => {
+    const gifUrl = gif.file?.hd?.gif?.url ?? gif.file?.md?.gif?.url ?? gif.file?.sm?.gif?.url;
     if (gifUrl) {
         emit('select', gifUrl);
     }
@@ -185,8 +190,8 @@ onMounted(() => {
                     @click="selectGif(gif)"
                 >
                     <img
-                        :src="gif.media_formats?.tinygif?.url"
-                        :alt="gif.content_description"
+                        :src="gif.file?.sm?.gif?.url ?? gif.file?.xs?.gif?.url"
+                        :alt="gif.title"
                         class="w-full object-cover transition-transform duration-200 group-hover:scale-105"
                         loading="lazy"
                     />

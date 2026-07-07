@@ -4,7 +4,7 @@ export const MAX_MESSAGE_LENGTH = 4000;
 export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILES = 10;
 
-const ALLOWED_GIF_HOSTS = ['tenor.com', 'media.tenor.com', 'giphy.com', 'media.giphy.com'];
+const ALLOWED_GIF_HOSTS = ['tenor.com', 'media.tenor.com', 'giphy.com', 'media.giphy.com', 'klipy.com'];
 
 export const StagedFileSchema = z.object({
     file: z.instanceof(File),
@@ -59,7 +59,7 @@ export const GifUrlSchema = z
                 return false;
             }
         },
-        { message: 'GIF URL must be from an allowed provider (Tenor or Giphy)' },
+        { message: 'GIF URL must be from an allowed provider (Klipy, Tenor, or Giphy)' },
     );
 
 export const MentionValueSchema = z
