@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useQuery, useMutation, useQueryCache } from '@pinia/colada';
 import {
+    ArrowLeft,
     ChevronDown,
     ChevronRight,
     Folder,
@@ -9,9 +10,11 @@ import {
     Lock,
     Pencil,
     Plus,
+    Search,
     Shield,
     Trash2,
     Volume2,
+    X,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -49,6 +52,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { SETTINGS_KEYS } from '@/queries/keys';
 import { settingsChannelsQuery } from '@/queries/settings/channels';
+import { settingsMembersQuery } from '@/queries/settings/members';
 
 const { t } = useI18n();
 
@@ -85,8 +89,15 @@ type ChannelOverride = {
     user?: { id: number; username: string; name: string } | null;
 };
 
+type Member = {
+    id: string;
+    username: string;
+    display_name: string;
+};
+
 const queryCache = useQueryCache();
 const { data: rawData, isLoading } = useQuery(settingsChannelsQuery);
+const { data: membersRawData } = useQuery(settingsMembersQuery);
 
 const categories = computed<Category[]>(() => {
     if (!rawData.value?.data) return [];
@@ -140,6 +151,15 @@ const allPermissions = computed<Permission[]>(() => {
     return [];
 });
 
+const allMembers = computed<Member[]>(() => {
+    if (!membersRawData.value?.data) return [];
+    return membersRawData.value.data.map((res) => ({
+        id: res.id,
+        username: res.attributes.username,
+        display_name: res.attributes.display_name ?? res.attributes.username,
+    }));
+});
+
 const processing = ref(false);
 const expandedCategories = ref<Set<string>>(new Set());
 
@@ -184,6 +204,7 @@ const editCategoryForm = ref({ name: '' });
 
 const overrideForm = ref({
     role_id: null as string | null,
+    user_id: null as string | null,
     allow: [] as string[],
     deny: [] as string[],
 });
@@ -193,7 +214,7 @@ const editChannelErrors = ref<Record<string, string>>({});
 const categoryErrors = ref<Record<string, string>>({});
 const editCategoryErrors = ref<Record<string, string>>({});
 
-const channelPermissions = [
+const textChannelPermissions = [
     'view_channels',
     'send_messages',
     'send_thread_messages',
@@ -206,15 +227,48 @@ const channelPermissions = [
     'manage_threads',
     'read_message_history',
     'pin_messages',
-    'connect',
-    'speak',
-    'video',
 ];
+
+const voiceChannelPermissions = ['view_channels', 'connect', 'speak', 'video', 'mute_members', 'deafen_members'];
+
+const detailPermissions = computed(() =>
+    overridesChannel.value?.type === 'voice' ? voiceChannelPermissions : textChannelPermissions,
+);
 
 const availableOverrideRoles = computed(() => {
     const existingRoleIds = new Set(channelOverrides.value.filter((o) => o.role_id).map((o) => o.role_id));
     return roles.value.filter((r) => !existingRoleIds.has(Number(r.id)));
 });
+
+const roleOverrides = computed(() => channelOverrides.value.filter((o) => o.role_id != null));
+const userOverrides = computed(() => channelOverrides.value.filter((o) => o.user_id != null));
+
+const availableOverrideMembers = computed(() => {
+    const existingUserIds = new Set(channelOverrides.value.filter((o) => o.user_id).map((o) => o.user_id));
+    return allMembers.value.filter((m) => !existingUserIds.has(Number(m.id)));
+});
+
+const showAddAccessDialog = ref(false);
+const showDisablePrivateConfirm = ref(false);
+const addAccessSearch = ref('');
+const addingRoleId = ref<string | null>(null);
+const addingUserId = ref<string | null>(null);
+
+const filteredPickerRoles = computed(() => {
+    const q = addAccessSearch.value.trim().toLowerCase();
+    if (!q) return availableOverrideRoles.value;
+    return availableOverrideRoles.value.filter((r) => r.name.toLowerCase().includes(q));
+});
+
+const filteredPickerMembers = computed(() => {
+    const q = addAccessSearch.value.trim().toLowerCase();
+    if (!q) return availableOverrideMembers.value;
+    return availableOverrideMembers.value.filter(
+        (m) => m.username.toLowerCase().includes(q) || m.display_name.toLowerCase().includes(q),
+    );
+});
+
+const selectedOverride = ref<ChannelOverride | null>(null);
 
 function channelIcon(type: string) {
     return type === 'voice' ? Volume2 : Hash;
@@ -267,6 +321,12 @@ const { mutateAsync: doEditChannel } = useMutation({
 
 const { mutateAsync: doDeleteChannel } = useMutation({
     mutation: (id: string) => deleteSettingsChannel(id),
+    onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
+});
+
+const { mutateAsync: doTogglePrivate } = useMutation({
+    mutation: (params: { id: string; is_private: boolean }) =>
+        updateSettingsChannel(params.id, { is_private: params.is_private }),
     onSuccess: () => queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() }),
 });
 
@@ -444,20 +504,64 @@ async function confirmDeleteCategory() {
     }
 }
 
-async function openOverrides(channel: Channel) {
-    overridesChannel.value = channel;
-    loadingOverrides.value = true;
-    showOverridesDialog.value = true;
-    overrideForm.value = { role_id: null, allow: [], deny: [] };
-
+async function refreshOverrides(channelId: string) {
     try {
-        const data = await getChannelOverrides(channel.id);
+        const data = await getChannelOverrides(channelId);
         channelOverrides.value = data as ChannelOverride[];
     } catch {
         channelOverrides.value = [];
-    } finally {
-        loadingOverrides.value = false;
     }
+}
+
+async function openOverrides(channel: Channel) {
+    overridesChannel.value = channel;
+    selectedOverride.value = null;
+    loadingOverrides.value = true;
+    showOverridesDialog.value = true;
+
+    await refreshOverrides(channel.id);
+    loadingOverrides.value = false;
+}
+
+function togglePrivate(value: boolean) {
+    if (!overridesChannel.value) return;
+    if (!value && channelOverrides.value.length > 0) {
+        showDisablePrivateConfirm.value = true;
+        return;
+    }
+    overridesChannel.value = { ...overridesChannel.value, is_private: value };
+    doTogglePrivate({ id: overridesChannel.value.id, is_private: value });
+}
+
+async function confirmDisablePrivate() {
+    if (!overridesChannel.value) return;
+    const channelId = overridesChannel.value.id;
+    processing.value = true;
+    try {
+        await Promise.all(channelOverrides.value.map((o) => deleteChannelOverride(channelId, String(o.id))));
+        channelOverrides.value = [];
+        overridesChannel.value = { ...overridesChannel.value, is_private: false };
+        await doTogglePrivate({ id: channelId, is_private: false });
+        showDisablePrivateConfirm.value = false;
+    } catch {
+        // handle
+    } finally {
+        processing.value = false;
+    }
+}
+
+function openOverrideDetail(override: ChannelOverride) {
+    selectedOverride.value = override;
+    overrideForm.value = {
+        role_id: override.role_id != null ? String(override.role_id) : null,
+        user_id: override.user_id != null ? String(override.user_id) : null,
+        allow: [...override.allow],
+        deny: [...override.deny],
+    };
+}
+
+function backToRoster() {
+    selectedOverride.value = null;
 }
 
 async function submitOverride() {
@@ -465,12 +569,8 @@ async function submitOverride() {
     processing.value = true;
     try {
         await createChannelOverride(overridesChannel.value.id, overrideForm.value);
-        overrideForm.value = { role_id: null, allow: [], deny: [] };
-
-        if (overridesChannel.value) {
-            const data = await getChannelOverrides(overridesChannel.value.id);
-            channelOverrides.value = data as ChannelOverride[];
-        }
+        await refreshOverrides(overridesChannel.value.id);
+        selectedOverride.value = null;
     } catch {
         // handle
     } finally {
@@ -483,11 +583,7 @@ async function deleteOverrideAction(override: ChannelOverride) {
     processing.value = true;
     try {
         await deleteChannelOverride(overridesChannel.value.id, String(override.id));
-
-        if (overridesChannel.value) {
-            const data = await getChannelOverrides(overridesChannel.value.id);
-            channelOverrides.value = data as ChannelOverride[];
-        }
+        await refreshOverrides(overridesChannel.value.id);
     } catch {
         // handle
     } finally {
@@ -507,6 +603,39 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
         overrideForm.value[list].push(permission);
     } else {
         overrideForm.value[list].splice(idx, 1);
+    }
+}
+
+function openAddAccessDialog() {
+    addingRoleId.value = null;
+    addingUserId.value = null;
+    addAccessSearch.value = '';
+    showAddAccessDialog.value = true;
+}
+
+async function addRoleAccess(roleId: string) {
+    if (!overridesChannel.value || addingRoleId.value) return;
+    addingRoleId.value = roleId;
+    try {
+        await createChannelOverride(overridesChannel.value.id, { role_id: roleId, allow: ['view_channels'], deny: [] });
+        await refreshOverrides(overridesChannel.value.id);
+    } catch {
+        // handle
+    } finally {
+        addingRoleId.value = null;
+    }
+}
+
+async function addUserAccess(userId: string) {
+    if (!overridesChannel.value || addingUserId.value) return;
+    addingUserId.value = userId;
+    try {
+        await createChannelOverride(overridesChannel.value.id, { user_id: userId, allow: ['view_channels'], deny: [] });
+        await refreshOverrides(overridesChannel.value.id);
+    } catch {
+        // handle
+    } finally {
+        addingUserId.value = null;
     }
 }
 </script>
@@ -848,15 +977,6 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
                         />
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <Checkbox
-                            id="ech-private"
-                            :model-value="editChannelForm.is_private"
-                            @update:model-value="editChannelForm.is_private = !!$event"
-                        />
-                        <Label for="ech-private" class="text-sm">{{ t('settings.channels.edit.privateLabel') }}</Label>
-                    </div>
-
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showEditChannelDialog = false">{{
                             t('settings.common.cancel')
@@ -965,154 +1085,266 @@ function toggleOverridePermission(list: 'allow' | 'deny', permission: string) {
 
         <Dialog v-model:open="showOverridesDialog">
             <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>{{ t('settings.channels.overrides.title') }}</DialogTitle>
+                <DialogHeader v-if="!selectedOverride">
+                    <DialogTitle>{{ t('settings.channels.permissions.title') }}</DialogTitle>
                     <DialogDescription>
-                        {{ t('settings.channels.overrides.description', { name: overridesChannel?.name ?? '' }) }}
+                        {{ t('settings.channels.permissions.description', { name: overridesChannel?.name ?? '' }) }}
                     </DialogDescription>
+                </DialogHeader>
+                <DialogHeader v-else>
+                    <DialogTitle class="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" class="h-6 w-6 -ml-1.5" @click="backToRoster">
+                            <ArrowLeft class="h-4 w-4" />
+                        </Button>
+                        {{
+                            t('settings.channels.permissions.detail.title', {
+                                name: selectedOverride.role?.name ?? selectedOverride.user?.username ?? '',
+                            })
+                        }}
+                    </DialogTitle>
                 </DialogHeader>
 
                 <div v-if="loadingOverrides" class="text-muted-foreground py-4 text-center text-sm">
-                    {{ t('settings.channels.overrides.loading') }}
+                    {{ t('settings.channels.permissions.loading') }}
                 </div>
 
-                <div v-else class="space-y-4">
-                    <div v-if="channelOverrides.length > 0" class="space-y-2">
-                        <h3 class="text-sm font-semibold">{{ t('settings.channels.overrides.current') }}</h3>
+                <div v-else-if="!selectedOverride" class="space-y-4">
+                    <div class="border-border flex items-center justify-between gap-4 rounded-lg border p-3">
+                        <div class="flex items-center gap-2">
+                            <Lock class="text-muted-foreground h-4 w-4 shrink-0" />
+                            <div>
+                                <p class="text-sm font-medium">{{ t('settings.channels.permissions.private.label') }}</p>
+                                <p class="text-muted-foreground text-xs">
+                                    {{ t('settings.channels.permissions.private.description') }}
+                                </p>
+                            </div>
+                        </div>
+                        <Checkbox
+                            :model-value="overridesChannel?.is_private ?? false"
+                            @update:model-value="togglePrivate(!!$event)"
+                        />
+                    </div>
+
+                    <template v-if="overridesChannel?.is_private">
+                        <Separator />
+
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-semibold">{{ t('settings.channels.permissions.access.heading') }}</h3>
+                            <Button size="sm" @click="openAddAccessDialog">
+                                <Plus class="mr-1.5 h-3.5 w-3.5" />
+                                {{ t('settings.channels.permissions.access.addButton') }}
+                            </Button>
+                        </div>
+
                         <div
-                            v-for="override in channelOverrides"
-                            :key="override.id"
-                            class="border-border rounded-lg border p-3"
+                            v-if="roleOverrides.length === 0 && userOverrides.length === 0"
+                            class="text-muted-foreground py-4 text-center text-sm"
                         >
-                            <div class="flex items-center justify-between">
+                            {{ t('settings.channels.permissions.access.empty') }}
+                        </div>
+
+                        <div v-if="roleOverrides.length > 0" class="space-y-2">
+                            <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                                {{ t('settings.channels.permissions.access.rolesHeading') }}
+                            </h4>
+                            <div
+                                v-for="override in roleOverrides"
+                                :key="override.id"
+                                class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
+                                @click="openOverrideDetail(override)"
+                            >
                                 <div class="flex items-center gap-2">
                                     <div
-                                        v-if="override.role"
-                                        class="h-3 w-3 rounded-full"
-                                        :style="{ backgroundColor: override.role.color }"
+                                        class="h-3 w-3 shrink-0 rounded-full"
+                                        :style="{ backgroundColor: override.role?.color }"
                                     />
                                     <span class="text-sm font-medium">
-                                        {{
-                                            override.role?.name ??
-                                            override.user?.username ??
-                                            t('settings.channels.unknown')
-                                        }}
+                                        {{ override.role?.name ?? t('settings.channels.unknown') }}
                                     </span>
-                                    <Badge variant="secondary" class="text-xs">
-                                        {{
-                                            override.role
-                                                ? t('settings.channels.roleLabel')
-                                                : t('settings.channels.userLabel')
-                                        }}
-                                    </Badge>
                                 </div>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    class="text-destructive hover:text-destructive h-7 w-7"
-                                    @click="deleteOverrideAction(override)"
+                                    class="text-muted-foreground hover:text-destructive h-7 w-7"
+                                    @click.stop="deleteOverrideAction(override)"
                                 >
-                                    <Trash2 class="h-3.5 w-3.5" />
+                                    <X class="h-3.5 w-3.5" />
                                 </Button>
                             </div>
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                <Badge
-                                    v-for="perm in override.allow"
-                                    :key="`allow-${perm}`"
-                                    class="bg-green-500/10 text-xs text-green-600"
+                        </div>
+
+                        <div v-if="userOverrides.length > 0" class="space-y-2">
+                            <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                                {{ t('settings.channels.permissions.access.membersHeading') }}
+                            </h4>
+                            <div
+                                v-for="override in userOverrides"
+                                :key="override.id"
+                                class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
+                                @click="openOverrideDetail(override)"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <div
+                                        class="bg-muted flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+                                    >
+                                        {{ (override.user?.username ?? '?').charAt(0).toUpperCase() }}
+                                    </div>
+                                    <span class="text-sm font-medium">
+                                        {{ override.user?.username ?? t('settings.channels.unknown') }}
+                                    </span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="text-muted-foreground hover:text-destructive h-7 w-7"
+                                    @click.stop="deleteOverrideAction(override)"
                                 >
-                                    + {{ getPermissionLabel(perm) }}
-                                </Badge>
-                                <Badge
-                                    v-for="perm in override.deny"
-                                    :key="`deny-${perm}`"
-                                    variant="destructive"
-                                    class="text-xs"
-                                >
-                                    - {{ getPermissionLabel(perm) }}
-                                </Badge>
+                                    <X class="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <form v-else @submit.prevent="submitOverride" class="space-y-3">
+                    <div class="space-y-2">
+                        <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                            {{ t('settings.channels.permissions.permissions') }}
+                        </p>
+                        <div class="grid gap-1.5">
+                            <div
+                                v-for="perm in detailPermissions"
+                                :key="perm"
+                                class="flex items-center justify-between rounded px-2 py-1 text-sm"
+                            >
+                                <span>{{ getPermissionLabel(perm) }}</span>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        :class="[
+                                            'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                                            overrideForm.allow.includes(perm)
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                                        ]"
+                                        @click="toggleOverridePermission('allow', perm)"
+                                    >
+                                        {{ t('settings.channels.permissions.allow') }}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        :class="[
+                                            'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                                            overrideForm.deny.includes(perm)
+                                                ? 'bg-destructive text-destructive-foreground'
+                                                : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                                        ]"
+                                        @click="toggleOverridePermission('deny', perm)"
+                                    >
+                                        {{ t('settings.channels.permissions.deny') }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <Separator />
+                    <DialogFooter>
+                        <Button type="button" variant="outline" size="sm" @click="backToRoster">
+                            {{ t('settings.common.cancel') }}
+                        </Button>
+                        <Button type="submit" :disabled="processing" size="sm">
+                            {{ t('settings.channels.permissions.save') }}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
 
-                    <div>
-                        <h3 class="mb-3 text-sm font-semibold">{{ t('settings.channels.overrides.add') }}</h3>
-                        <form @submit.prevent="submitOverride" class="space-y-3">
-                            <div class="grid gap-2">
-                                <Label>{{ t('settings.channels.overrides.role') }}</Label>
-                                <Select v-model="overrideForm.role_id">
-                                    <SelectTrigger>
-                                        <SelectValue :placeholder="t('settings.channels.overrides.rolePlaceholder')" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem
-                                            v-for="role in availableOverrideRoles"
-                                            :key="role.id"
-                                            :value="role.id"
-                                        >
-                                            <div class="flex items-center gap-2">
-                                                <div
-                                                    class="h-3 w-3 shrink-0 rounded-full"
-                                                    :style="{ backgroundColor: role.color }"
-                                                />
-                                                {{ role.name }}
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+        <Dialog v-model:open="showAddAccessDialog">
+            <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{{ t('settings.channels.permissions.picker.title') }}</DialogTitle>
+                    <DialogDescription>{{ t('settings.channels.permissions.picker.description') }}</DialogDescription>
+                </DialogHeader>
 
-                            <div class="space-y-2">
-                                <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                                    {{ t('settings.channels.overrides.permissions') }}
-                                </p>
-                                <div class="grid gap-1.5">
-                                    <div
-                                        v-for="perm in channelPermissions"
-                                        :key="perm"
-                                        class="flex items-center justify-between rounded px-2 py-1 text-sm"
-                                    >
-                                        <span>{{ getPermissionLabel(perm) }}</span>
-                                        <div class="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                :class="[
-                                                    'rounded px-2 py-0.5 text-xs font-medium transition-colors',
-                                                    overrideForm.allow.includes(perm)
-                                                        ? 'bg-green-500 text-white'
-                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80',
-                                                ]"
-                                                @click="toggleOverridePermission('allow', perm)"
-                                            >
-                                                {{ t('settings.channels.overrides.allow') }}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                :class="[
-                                                    'rounded px-2 py-0.5 text-xs font-medium transition-colors',
-                                                    overrideForm.deny.includes(perm)
-                                                        ? 'bg-destructive text-destructive-foreground'
-                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80',
-                                                ]"
-                                                @click="toggleOverridePermission('deny', perm)"
-                                            >
-                                                {{ t('settings.channels.overrides.deny') }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <DialogFooter>
-                                <Button type="submit" :disabled="processing || !overrideForm.role_id" size="sm">
-                                    {{ t('settings.channels.overrides.save') }}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </div>
+                <div class="relative">
+                    <Search class="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                    <Input
+                        v-model="addAccessSearch"
+                        :placeholder="t('settings.channels.permissions.picker.searchPlaceholder')"
+                        class="pl-9"
+                    />
                 </div>
+
+                <div
+                    v-if="filteredPickerRoles.length === 0 && filteredPickerMembers.length === 0"
+                    class="text-muted-foreground py-4 text-center text-sm"
+                >
+                    {{ t('settings.channels.permissions.picker.noResults') }}
+                </div>
+
+                <div v-if="filteredPickerRoles.length > 0" class="space-y-1">
+                    <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                        {{ t('settings.channels.permissions.picker.rolesHeading') }}
+                    </h4>
+                    <button
+                        v-for="role in filteredPickerRoles"
+                        :key="role.id"
+                        type="button"
+                        class="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-2 rounded-lg p-2 text-left disabled:cursor-wait disabled:opacity-50"
+                        :disabled="addingRoleId === role.id"
+                        @click="addRoleAccess(role.id)"
+                    >
+                        <div class="h-3 w-3 shrink-0 rounded-full" :style="{ backgroundColor: role.color }" />
+                        <span class="text-sm">{{ role.name }}</span>
+                    </button>
+                </div>
+
+                <div v-if="filteredPickerMembers.length > 0" class="space-y-1">
+                    <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                        {{ t('settings.channels.permissions.picker.membersHeading') }}
+                    </h4>
+                    <button
+                        v-for="member in filteredPickerMembers"
+                        :key="member.id"
+                        type="button"
+                        class="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-2 rounded-lg p-2 text-left disabled:cursor-wait disabled:opacity-50"
+                        :disabled="addingUserId === member.id"
+                        @click="addUserAccess(member.id)"
+                    >
+                        <div
+                            class="bg-muted flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+                        >
+                            {{ member.display_name.charAt(0).toUpperCase() }}
+                        </div>
+                        <span class="text-sm">{{ member.display_name }}</span>
+                    </button>
+                </div>
+
+                <DialogFooter>
+                    <Button type="button" size="sm" @click="showAddAccessDialog = false">
+                        {{ t('settings.channels.permissions.picker.done') }}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="showDisablePrivateConfirm">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{{ t('settings.channels.permissions.disableConfirm.title') }}</DialogTitle>
+                    <DialogDescription>
+                        {{ t('settings.channels.permissions.disableConfirm.description') }}
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="showDisablePrivateConfirm = false">{{
+                        t('settings.common.cancel')
+                    }}</Button>
+                    <Button variant="destructive" :disabled="processing" @click="confirmDisablePrivate">{{
+                        t('settings.channels.permissions.disableConfirm.submit')
+                    }}</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     </div>
