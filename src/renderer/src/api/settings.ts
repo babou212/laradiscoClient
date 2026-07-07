@@ -303,7 +303,7 @@ export async function getChannelOverrides(channelId: string): Promise<unknown[]>
 
 export async function createChannelOverride(
     channelId: string,
-    data: { role_id: string | null; allow: string[]; deny: string[] },
+    data: { role_id?: string | null; user_id?: string | null; allow: string[]; deny: string[] },
 ): Promise<unknown> {
     const r = await api.post(`/settings/channels/${channelId}/overrides`, data);
     return r.data;
