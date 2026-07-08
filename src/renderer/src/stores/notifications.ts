@@ -186,6 +186,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
             },
         );
 
+        userChannel.listen('.user.kicked', () => {
+            void handleKicked();
+        });
+
         isConnected.value = true;
         fetchNotifications();
         fetchPreferences();
@@ -215,6 +219,23 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
         await useAuthStore().logout();
         void router.push({ name: 'banned' });
+    };
+
+    const handleKicked = async (): Promise<void> => {
+        // Lazy imports avoid a circular dependency (auth/voice -> api -> ... -> notifications).
+        const { useAuthStore } = await import('@/stores/auth');
+        const { useVoiceStore } = await import('@/stores/voice');
+
+        try {
+            await useVoiceStore().leaveChannel();
+        } catch (err) {
+            console.warn('[Kick] Failed to leave voice on kick:', err);
+        }
+
+        const authStore = useAuthStore();
+        await authStore.logout();
+        authStore.loginError = t('auth.login.kickedMessage');
+        void router.push({ name: 'login' });
     };
 
     const setupNativeClickListener = () => {

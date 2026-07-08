@@ -26,7 +26,7 @@ import {
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getApiErrorMessage } from '@/api/errors';
-import { banUser, jailUser, unjailUser, deleteMember, updateMemberRole, removeMemberRole } from '@/api/settings';
+import { banUser, jailUser, unjailUser, kickUser, updateMemberRole, removeMemberRole } from '@/api/settings';
 import { findIncluded, relationshipIds } from '@/api/types';
 import type { RoleResource } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
@@ -107,17 +107,16 @@ function findMember(userId: string, fallbackUsername: string): Member {
 
 const actionError = ref('');
 
-// --- Kick (permanently delete the member) ---
+// --- Kick (removes them from the server; roles stripped, account survives) ---
 const showKickDialog = ref(false);
 const kickTarget = ref<Member | null>(null);
 
 const { mutateAsync: doKick, isLoading: kicking } = useMutation({
-    mutation: (userId: string) => deleteMember(userId),
+    mutation: (userId: string) => kickUser(userId),
     onSuccess: (_data, userId) => {
         const target = members.value.find((m) => m.id === userId);
-        usersStore.applyUserDeleted({ user_id: userId, username: target?.username ?? '' });
+        usersStore.applyUserKicked({ user_id: userId, username: target?.username ?? '' });
         queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() });
-        queryCache.invalidateQueries({ key: SETTINGS_KEYS.bans() });
     },
 });
 
@@ -297,7 +296,11 @@ function openRolesDialog(userId: string, username: string) {
 
 function getAvailableRoles(member: Member): Role[] {
     const memberRoleIds = new Set(member.roles.map((r) => r.id));
-    return allRoles.value.filter((r) => !memberRoleIds.has(r.id) && !r.is_default);
+    // The default (`everyone`) role is normally already held by every member, so
+    // it's excluded here simply by already being in memberRoleIds — not by a
+    // blanket is_default check. That matters for a kicked member, who has zero
+    // roles: they need `everyone` to show up here so an admin can restore it.
+    return allRoles.value.filter((r) => !memberRoleIds.has(r.id));
 }
 
 function isDefaultRole(role: MemberRole): boolean {
