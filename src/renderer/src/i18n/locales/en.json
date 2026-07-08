@@ -491,12 +491,10 @@
                 },
                 "access": {
                     "heading": "Who can access this channel?",
-                    "headingPublic": "Role & member overrides",
                     "addButton": "Add members or roles",
                     "rolesHeading": "Roles",
                     "membersHeading": "Members",
-                    "empty": "No roles or members have been granted access yet.",
-                    "emptyPublic": "No role or member overrides yet. Add one to customise what they can do here, like denying Send Messages for a read-only channel."
+                    "empty": "No roles or members have been granted access yet."
                 },
                 "picker": {
                     "title": "Add members or roles",
