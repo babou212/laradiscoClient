@@ -5,6 +5,7 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { checkIcon, renderMarkdownWithMentions } from '@/lib/markdown';
 import { formatMessageDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -87,21 +88,26 @@ const authorDisplayName = computed(() => {
 });
 
 const groupedReactions = computed(() => {
-    const map = new Map<string, { emoji: string; count: number; userReacted: boolean }>();
+    const map = new Map<string, { emoji: string; count: number; userReacted: boolean; userIds: string[] }>();
     for (const r of props.message.reactions) {
         const existing = map.get(r.emoji);
         if (existing) {
             existing.count++;
+            existing.userIds.push(r.user_id);
             if (r.user_id === currentUser.value?.id) existing.userReacted = true;
         } else {
             map.set(r.emoji, {
                 emoji: r.emoji,
                 count: 1,
                 userReacted: r.user_id === currentUser.value?.id,
+                userIds: [r.user_id],
             });
         }
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).map((g) => ({
+        ...g,
+        names: g.userIds.map((id) => usersStore.displayName(id)).join(', '),
+    }));
 });
 
 const messageRef = useTemplateRef<HTMLElement>('messageRef');
@@ -436,23 +442,27 @@ const emitShowProfile = (e: MouseEvent) => {
             </div>
 
             <div v-if="message.reactions?.length" class="mt-1.5 flex flex-wrap gap-1">
-                <button
+                <SimpleTooltip
                     v-for="group in groupedReactions"
                     :key="group.emoji"
-                    v-memo="[group.emoji, group.count, group.userReacted, canReact]"
-                    :disabled="!canReact"
-                    class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
-                    :class="[
-                        group.userReacted
-                            ? 'border-primary/50 bg-primary/10 text-primary'
-                            : 'border-border bg-accent/50 text-muted-foreground hover:bg-accent',
-                        !canReact && 'cursor-not-allowed opacity-60',
-                    ]"
-                    @click="canReact && emit('toggleReaction', group.emoji)"
+                    :content="t('chat.messages.reactedWith', { names: group.names, emoji: group.emoji })"
                 >
-                    <span>{{ group.emoji }}</span>
-                    <span>{{ group.count }}</span>
-                </button>
+                    <button
+                        v-memo="[group.emoji, group.count, group.userReacted, group.names, canReact]"
+                        :disabled="!canReact"
+                        class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+                        :class="[
+                            group.userReacted
+                                ? 'border-primary/50 bg-primary/10 text-primary'
+                                : 'border-border bg-accent/50 text-muted-foreground hover:bg-accent',
+                            !canReact && 'cursor-not-allowed opacity-60',
+                        ]"
+                        @click="canReact && emit('toggleReaction', group.emoji)"
+                    >
+                        <span>{{ group.emoji }}</span>
+                        <span>{{ group.count }}</span>
+                    </button>
+                </SimpleTooltip>
             </div>
 
             <ThreadPreviewBadge

@@ -895,7 +895,8 @@
             "sending": "Sending…",
             "messageFailed": "Message failed to send",
             "retry": "Retry",
-            "deleteFailed": "Delete"
+            "deleteFailed": "Delete",
+            "reactedWith": "{names} reacted with {emoji}"
         },
         "composer": {
             "attachFile": "Attach file",
