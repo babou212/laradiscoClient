@@ -11,6 +11,7 @@ import {
     ShieldAlert,
     Trash2,
     Unlock,
+    UserX,
 } from 'lucide-vue-next';
 import {
     DatePickerAnchor,
@@ -33,7 +34,7 @@ import {
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getApiErrorMessage } from '@/api/errors';
-import { banUser, unbanUser, jailUser, unjailUser, deleteMember, getSettingsMembers } from '@/api/settings';
+import { banUser, unbanUser, jailUser, unjailUser, kickUser, deleteMember, getSettingsMembers } from '@/api/settings';
 import type { BanData } from '@/api/settings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -219,6 +220,37 @@ async function confirmJail() {
     }
 }
 
+const showKickDialog = ref(false);
+const kickTarget = ref<SimpleMember | null>(null);
+
+const { mutateAsync: doKick, isLoading: kicking } = useMutation({
+    mutation: (userId: string) => kickUser(userId),
+    onSuccess: (_data, userId) => {
+        // The websocket event updates other clients; reflect it locally at once.
+        const target = members.value.find((m) => m.id === userId);
+        usersStore.applyUserKicked({ user_id: userId, username: target?.username ?? '' });
+        queryCache.invalidateQueries({ key: SETTINGS_KEYS.members() });
+    },
+});
+
+function openKickDialog(member: SimpleMember) {
+    kickTarget.value = member;
+    actionError.value = '';
+    showKickDialog.value = true;
+}
+
+async function confirmKick() {
+    if (!kickTarget.value) return;
+    actionError.value = '';
+    try {
+        await doKick(kickTarget.value.id);
+        showKickDialog.value = false;
+        kickTarget.value = null;
+    } catch (err: unknown) {
+        actionError.value = getApiErrorMessage(err);
+    }
+}
+
 const showDeleteDialog = ref(false);
 const deleteTarget = ref<SimpleMember | null>(null);
 
@@ -379,6 +411,10 @@ function formatDate(dateStr: string): string {
                             >
                                 <Lock class="mr-1.5 h-3.5 w-3.5" />
                                 {{ t('settings.moderation.actions.jail') }}
+                            </Button>
+                            <Button variant="destructive" size="sm" :disabled="kicking" @click="openKickDialog(member)">
+                                <UserX class="mr-1.5 h-3.5 w-3.5" />
+                                {{ t('settings.moderation.actions.kick') }}
                             </Button>
                             <Button variant="destructive" size="sm" :disabled="banning" @click="openBanDialog(member)">
                                 <Ban class="mr-1.5 h-3.5 w-3.5" />
@@ -560,6 +596,35 @@ function formatDate(dateStr: string): string {
                     <Button variant="outline" @click="showJailDialog = false">{{ t('settings.common.cancel') }}</Button>
                     <Button variant="destructive" :disabled="jailing" @click="confirmJail">{{
                         t('settings.moderation.jailDialog.submit')
+                    }}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="showKickDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{{ t('settings.moderation.kickDialog.title') }}</DialogTitle>
+                    <DialogDescription>
+                        {{
+                            t('settings.moderation.kickDialog.description', {
+                                name: kickTarget?.display_name ?? '',
+                            })
+                        }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div
+                    v-if="actionError"
+                    class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm"
+                >
+                    {{ actionError }}
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" @click="showKickDialog = false">{{ t('settings.common.cancel') }}</Button>
+                    <Button variant="destructive" :disabled="kicking" @click="confirmKick">{{
+                        t('settings.moderation.kickDialog.submit')
                     }}</Button>
                 </DialogFooter>
             </DialogContent>

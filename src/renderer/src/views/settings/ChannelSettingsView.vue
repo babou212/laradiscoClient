@@ -617,7 +617,8 @@ async function addRoleAccess(roleId: string) {
     if (!overridesChannel.value || addingRoleId.value) return;
     addingRoleId.value = roleId;
     try {
-        await createChannelOverride(overridesChannel.value.id, { role_id: roleId, allow: ['view_channels'], deny: [] });
+        const allow = overridesChannel.value.is_private ? ['view_channels'] : [];
+        await createChannelOverride(overridesChannel.value.id, { role_id: roleId, allow, deny: [] });
         await refreshOverrides(overridesChannel.value.id);
     } catch {
         // handle
@@ -630,7 +631,8 @@ async function addUserAccess(userId: string) {
     if (!overridesChannel.value || addingUserId.value) return;
     addingUserId.value = userId;
     try {
-        await createChannelOverride(overridesChannel.value.id, { user_id: userId, allow: ['view_channels'], deny: [] });
+        const allow = overridesChannel.value.is_private ? ['view_channels'] : [];
+        await createChannelOverride(overridesChannel.value.id, { user_id: userId, allow, deny: [] });
         await refreshOverrides(overridesChannel.value.id);
     } catch {
         // handle
@@ -1127,87 +1129,93 @@ async function addUserAccess(userId: string) {
                         />
                     </div>
 
-                    <template v-if="overridesChannel?.is_private">
-                        <Separator />
+                    <Separator />
 
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-semibold">
-                                {{ t('settings.channels.permissions.access.heading') }}
-                            </h3>
-                            <Button size="sm" @click="openAddAccessDialog">
-                                <Plus class="mr-1.5 h-3.5 w-3.5" />
-                                {{ t('settings.channels.permissions.access.addButton') }}
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold">
+                            {{
+                                overridesChannel?.is_private
+                                    ? t('settings.channels.permissions.access.heading')
+                                    : t('settings.channels.permissions.access.headingPublic')
+                            }}
+                        </h3>
+                        <Button size="sm" @click="openAddAccessDialog">
+                            <Plus class="mr-1.5 h-3.5 w-3.5" />
+                            {{ t('settings.channels.permissions.access.addButton') }}
+                        </Button>
+                    </div>
+
+                    <div
+                        v-if="roleOverrides.length === 0 && userOverrides.length === 0"
+                        class="text-muted-foreground py-4 text-center text-sm"
+                    >
+                        {{
+                            overridesChannel?.is_private
+                                ? t('settings.channels.permissions.access.empty')
+                                : t('settings.channels.permissions.access.emptyPublic')
+                        }}
+                    </div>
+
+                    <div v-if="roleOverrides.length > 0" class="space-y-2">
+                        <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                            {{ t('settings.channels.permissions.access.rolesHeading') }}
+                        </h4>
+                        <div
+                            v-for="override in roleOverrides"
+                            :key="override.id"
+                            class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
+                            @click="openOverrideDetail(override)"
+                        >
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="h-3 w-3 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: override.role?.color }"
+                                />
+                                <span class="text-sm font-medium">
+                                    {{ override.role?.name ?? t('settings.channels.unknown') }}
+                                </span>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-destructive h-7 w-7"
+                                @click.stop="deleteOverrideAction(override)"
+                            >
+                                <X class="h-3.5 w-3.5" />
                             </Button>
                         </div>
+                    </div>
 
+                    <div v-if="userOverrides.length > 0" class="space-y-2">
+                        <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                            {{ t('settings.channels.permissions.access.membersHeading') }}
+                        </h4>
                         <div
-                            v-if="roleOverrides.length === 0 && userOverrides.length === 0"
-                            class="text-muted-foreground py-4 text-center text-sm"
+                            v-for="override in userOverrides"
+                            :key="override.id"
+                            class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
+                            @click="openOverrideDetail(override)"
                         >
-                            {{ t('settings.channels.permissions.access.empty') }}
-                        </div>
-
-                        <div v-if="roleOverrides.length > 0" class="space-y-2">
-                            <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                                {{ t('settings.channels.permissions.access.rolesHeading') }}
-                            </h4>
-                            <div
-                                v-for="override in roleOverrides"
-                                :key="override.id"
-                                class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
-                                @click="openOverrideDetail(override)"
-                            >
-                                <div class="flex items-center gap-2">
-                                    <div
-                                        class="h-3 w-3 shrink-0 rounded-full"
-                                        :style="{ backgroundColor: override.role?.color }"
-                                    />
-                                    <span class="text-sm font-medium">
-                                        {{ override.role?.name ?? t('settings.channels.unknown') }}
-                                    </span>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    class="text-muted-foreground hover:text-destructive h-7 w-7"
-                                    @click.stop="deleteOverrideAction(override)"
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="bg-muted flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium"
                                 >
-                                    <X class="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div v-if="userOverrides.length > 0" class="space-y-2">
-                            <h4 class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                                {{ t('settings.channels.permissions.access.membersHeading') }}
-                            </h4>
-                            <div
-                                v-for="override in userOverrides"
-                                :key="override.id"
-                                class="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between rounded-lg border p-2.5"
-                                @click="openOverrideDetail(override)"
-                            >
-                                <div class="flex items-center gap-2">
-                                    <div
-                                        class="bg-muted flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-                                    >
-                                        {{ (override.user?.username ?? '?').charAt(0).toUpperCase() }}
-                                    </div>
-                                    <span class="text-sm font-medium">
-                                        {{ override.user?.username ?? t('settings.channels.unknown') }}
-                                    </span>
+                                    {{ (override.user?.username ?? '?').charAt(0).toUpperCase() }}
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    class="text-muted-foreground hover:text-destructive h-7 w-7"
-                                    @click.stop="deleteOverrideAction(override)"
-                                >
-                                    <X class="h-3.5 w-3.5" />
-                                </Button>
+                                <span class="text-sm font-medium">
+                                    {{ override.user?.username ?? t('settings.channels.unknown') }}
+                                </span>
                             </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-destructive h-7 w-7"
+                                @click.stop="deleteOverrideAction(override)"
+                            >
+                                <X class="h-3.5 w-3.5" />
+                            </Button>
                         </div>
-                    </template>
+                    </div>
                 </div>
 
                 <form v-else @submit.prevent="submitOverride" class="space-y-3">

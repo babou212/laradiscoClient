@@ -27,6 +27,7 @@ const stubs = {
     MessageReplyPreview: { template: '<div data-reply-preview />' },
     MessageYoutubeEmbed: { template: '<div data-youtube-embed />' },
     ThreadPreviewBadge: { template: '<div data-thread-badge />' },
+    SimpleTooltip: { props: ['content'], template: '<div :data-tooltip="content"><slot /></div>' },
 };
 
 function makeMessage(overrides: Partial<MessageData> = {}): MessageData {
@@ -208,6 +209,16 @@ describe('Message reactions', () => {
         expect(thumbs!.attributes('disabled')).toBeDefined();
         await thumbs!.trigger('click');
         expect(wrapper.emitted('toggleReaction')).toBeFalsy();
+    });
+
+    it('shows reactor display names in the reaction tooltip', () => {
+        const users = useUsersStore();
+        users.upsert({ id: 'a', username: 'alice', display_name: 'Alice' } as never);
+        users.upsert({ id: 'b', username: 'bob', display_name: 'Bob' } as never);
+        const wrapper = mountMessage(makeMessage({ reactions: [reaction('😂', 'a'), reaction('😂', 'b')] }));
+        const tooltip = wrapper.findAll('[data-tooltip]').find((el) => el.text().includes('😂'));
+        expect(tooltip?.attributes('data-tooltip')).toContain('Alice');
+        expect(tooltip?.attributes('data-tooltip')).toContain('Bob');
     });
 });
 
