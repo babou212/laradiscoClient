@@ -39,7 +39,8 @@
             "signingIn": "Signing in...",
             "forgotPassword": "Forgot your password?",
             "noAccount": "Don't have an account? Sign up",
-            "changeServer": "Change server"
+            "changeServer": "Change server",
+            "kickedMessage": "You have been removed from this server. Sign in again once a role has been assigned to you."
         },
         "register": {
             "joinTitle": "Join Server",
@@ -491,10 +492,12 @@
                 },
                 "access": {
                     "heading": "Who can access this channel?",
+                    "headingPublic": "Role & member overrides",
                     "addButton": "Add members or roles",
                     "rolesHeading": "Roles",
                     "membersHeading": "Members",
-                    "empty": "No roles or members have been granted access yet."
+                    "empty": "No roles or members have been granted access yet.",
+                    "emptyPublic": "No role or member overrides yet. Add one to customise what they can do here, like denying Send Messages for a read-only channel."
                 },
                 "picker": {
                     "title": "Add members or roles",
@@ -602,10 +605,11 @@
             },
             "actions": {
                 "title": "Member Actions",
-                "description": "Ban or jail members. Jailed users have restricted permissions and can only view channels.",
+                "description": "Kick, ban, or jail members. Jailed users have restricted permissions and can only view channels.",
                 "searchPlaceholder": "Search members...",
                 "empty": "No members found.",
                 "jail": "Jail",
+                "kick": "Kick",
                 "ban": "Ban",
                 "delete": "Delete"
             },
@@ -636,6 +640,11 @@
                 "title": "Jail Member",
                 "description": "Jail {name}? This will strip all their roles and restrict them to read-only access.",
                 "submit": "Jail User"
+            },
+            "kickDialog": {
+                "title": "Kick Member",
+                "description": "Kick {name} from the server? They will be logged out and lose all access, but their account is not deleted — an admin can bring them back by assigning them a role again.",
+                "submit": "Kick User"
             }
         },
         "auditLog": {
@@ -658,6 +667,7 @@
             "actions": {
                 "ban": "Banned",
                 "unban": "Unbanned",
+                "kick": "Kicked",
                 "jail": "Jailed",
                 "unjail": "Unjailed",
                 "delete_user": "Deleted User",
@@ -838,7 +848,7 @@
         "copyLink": "Copy link",
         "kickDialog": {
             "title": "Kick Member",
-            "description": "Kick {name} from the server? They will lose access but their account is not deleted — they can rejoin with an invite link.",
+            "description": "Kick {name} from the server? They will be logged out and lose all access, but their account is not deleted — an admin can bring them back by assigning them a role again.",
             "submit": "Kick"
         },
         "release": "Release",

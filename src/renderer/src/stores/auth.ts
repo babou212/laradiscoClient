@@ -238,6 +238,15 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = null;
     }
 
+    /**
+     * Apply a fresh permissions payload to the current user (e.g. from the
+     * realtime `user.roles.updated` broadcast) without a full profile refetch.
+     */
+    function updatePermissions(permissions: AuthPermissions): void {
+        if (!user.value) return;
+        user.value = { ...user.value, permissions };
+    }
+
     function clearError(): void {
         loginError.value = null;
     }
@@ -269,6 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
         register,
         verifyTwoFactor,
         logout,
+        updatePermissions,
         clearError,
         clearBan,
         $reset,

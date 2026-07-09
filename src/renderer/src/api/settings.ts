@@ -225,6 +225,15 @@ export function unjailUser(userId: string): Promise<void> {
 }
 
 /**
+ * Kick a member off the server: strips their roles and forces them out, but
+ * (unlike deleteMember) their account survives — an admin can bring them back
+ * by assigning a role again.
+ */
+export function kickUser(userId: string): Promise<void> {
+    return api.post(`/settings/members/${userId}/kick`);
+}
+
+/**
  * Permanently delete a member from the server. Their messages are retained but
  * relabelled as authored by a deleted user.
  */

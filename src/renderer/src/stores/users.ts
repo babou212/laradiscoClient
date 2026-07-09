@@ -84,6 +84,11 @@ interface UserDeletedPayload {
     username: string;
 }
 
+interface UserKickedPayload {
+    user_id: number | string;
+    username: string;
+}
+
 type AvatarSize = keyof AvatarUrls;
 
 function rolesFromIncluded(rel: { data?: unknown } | undefined, included: unknown): StoredUserRole[] {
@@ -346,6 +351,15 @@ export const useUsersStore = defineStore('users', () => {
         });
     }
 
+    /**
+     * Drop a kicked user from the member/presence lists entirely — unlike
+     * applyUserDeleted, no tombstone: the account survives, so a future
+     * re-add (or fetch()) should resolve them normally again, not as deleted.
+     */
+    function applyUserKicked(data: UserKickedPayload): void {
+        byId.delete(String(data.user_id));
+    }
+
     function applyMemberJoined(data: MemberJoinedPayload): void {
         const id = String(data.user_id);
         if (byId.has(id)) return;
@@ -388,11 +402,23 @@ export const useUsersStore = defineStore('users', () => {
             channel.listen('.user.profile.updated', (data: ProfileUpdatedPayload) => applyProfileUpdate(data));
             channel.listen('.user.presence.updated', (data: PresenceUpdatedPayload) => applyPresenceUpdate(data));
             channel.listen('.user.activity.updated', (data: ActivityUpdatedPayload) => applyActivityUpdate(data));
-            channel.listen('.user.roles.updated', (data: RolesUpdatedPayload) =>
-                applyRolesUpdate(data, currentAuthUserId),
-            );
+            channel.listen('.user.roles.updated', (data: RolesUpdatedPayload) => {
+                applyRolesUpdate(data, currentAuthUserId);
+                if (String(data.user_id) === currentAuthUserId) {
+                    void import('./auth')
+                        .then(({ useAuthStore }) => useAuthStore().updatePermissions(data.permissions))
+                        .catch((error) => console.error('[Auth] Failed to apply live permissions update:', error));
+                    // Channel visibility depends on role membership (base permissions and
+                    // per-channel overrides), so a role change can add/remove channels from
+                    // the sidebar just like a channel/override update does.
+                    void import('./chat')
+                        .then(({ useChatStore }) => useChatStore().fetchCategories())
+                        .catch((error) => console.error('[Chat] sidebar refetch failed:', error));
+                }
+            });
             channel.listen('.server.member.joined', (data: MemberJoinedPayload) => applyMemberJoined(data));
             channel.listen('.user.deleted', (data: UserDeletedPayload) => applyUserDeleted(data));
+            channel.listen('.user.kicked', (data: UserKickedPayload) => applyUserKicked(data));
             channel.listen('.channel.updated', () => {
                 queryCache.invalidateQueries({ key: SETTINGS_KEYS.channels() });
                 void import('@/stores/chat')
@@ -460,6 +486,7 @@ export const useUsersStore = defineStore('users', () => {
         applyRolesUpdate,
         applyMemberJoined,
         applyUserDeleted,
+        applyUserKicked,
         connect,
         disconnect,
         $reset,
