@@ -22,7 +22,6 @@ describe('normalizeExe', () => {
     it('lowercases, trims and drops a .exe suffix', () => {
         expect(normalizeExe('  Code.EXE ')).toBe('code');
         expect(normalizeExe('cs2')).toBe('cs2');
-        expect(normalizeExe('Discord.exe')).toBe('discord');
     });
 });
 

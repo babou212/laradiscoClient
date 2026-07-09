@@ -1,6 +1,6 @@
 /**
  * Bundled "detectable" database mapping running-process executables to
- * rich-presence activity metadata, à la Discord's detectable games list.
+ * rich-presence activity metadata, detectable games list.
  *
  * This is intentionally a plain data module so it is trivial to extend. Each
  * entry lists the executable names to look for (case-insensitive, with or
