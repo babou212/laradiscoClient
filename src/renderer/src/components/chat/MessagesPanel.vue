@@ -10,9 +10,11 @@ import {
     sendMessage as apiSendMessage,
     editMessage as apiEditMessage,
     deleteMessage as apiDeleteMessage,
+    type SendMessageData,
 } from '@/api/messages';
 import { normalizeMessage } from '@/api/normalizers';
 import { toggleChannelReaction, toggleDmReaction } from '@/api/reactions';
+import MlsVerificationBadge from '@/components/chat/MlsVerificationBadge.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +41,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useDirectMessagesStore } from '@/stores/directMessages';
 import { usePresenceStore } from '@/stores/presence';
+import { useServerStore } from '@/stores/server';
 import { useThreadStore } from '@/stores/thread';
 import type {
     Attachment,
@@ -87,6 +90,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const authStore = useAuthStore();
+const serverStore = useServerStore();
 const chatStore = useChatStore();
 const presenceStore = usePresenceStore();
 const dmStore = useDirectMessagesStore();
@@ -100,6 +104,9 @@ const channelId = computed(() => props.channel?.id);
 const channelIdNum = computed(() => (props.channel?.id != null ? Number(props.channel.id) : undefined));
 const channelIdStr = computed(() => (props.channel?.id != null ? String(props.channel.id) : undefined));
 const isDmRef = computed(() => props.isDm);
+const peerUserId = computed(() =>
+    props.isDm && props.channel?.other_user ? Number(props.channel.other_user.id) : null,
+);
 const draftKey = computed(() =>
     channelIdStr.value ? `${isDmRef.value ? 'dm' : 'channel'}:${channelIdStr.value}` : undefined,
 );
@@ -366,6 +373,15 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
 
     sendError.value = null;
 
+    if (props.isDm && peerUserId.value != null && (await window.api.mls.getRequireVerification())) {
+        const v = await window.api.mls.localVerification(peerUserId.value);
+        if (!v.verified) {
+            sendError.value =
+                'Verify this contact (shield icon) before sending — or turn off “require verification” in Settings → Security.';
+            return;
+        }
+    }
+
     const mentionMeta = extractMentionMetadata(content);
 
     if (files.length > 0) {
@@ -478,9 +494,9 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     uploadingFiles.value = [];
 
     previewLoading.value = true;
-    let linkPreview: LinkPreviewData | null;
+    let linkPreview: LinkPreviewData | null = null;
     try {
-        linkPreview = await buildLinkPreviewWithTimeout(content);
+        if (!props.isDm) linkPreview = await buildLinkPreviewWithTimeout(content);
     } finally {
         previewLoading.value = false;
     }
@@ -491,7 +507,10 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     const clientTempId = crypto.randomUUID();
 
     const data: {
-        content: string;
+        content?: string;
+        message_bytes?: string;
+        epoch?: number;
+        sender_device_id?: string;
         client_temp_id: string;
         reply_to_id?: string;
         mention_user_ids?: number[];
@@ -552,12 +571,25 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         send_status: 'sending',
     };
 
+    if (props.isDm && content) {
+        try {
+            const enc = await encryptDmWithRetry(Number(props.channel.id), content);
+            delete data.content;
+            data.message_bytes = enc.message_bytes;
+            data.epoch = enc.epoch;
+            data.sender_device_id = enc.sender_device_id;
+        } catch {
+            sendError.value =
+                'This message could not be encrypted, so it was not sent. Make sure encryption is set up, then try again.';
+            return;
+        }
+    }
+
     if (activeStore.isViewingHistory.value && props.channel?.id) {
         await activeStore.resetToLive(String(props.channel.id));
         await nextTick();
     }
 
-    // Persist to the durable outbox before the POST so a crash mid-send is recoverable.
     await outbox.enqueue({
         clientTempId,
         channelId: String(props.channel.id),
@@ -575,11 +607,17 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     try {
         const response = props.isDm
             ? await sendDmMessage(String(props.channel.id), data)
-            : await apiSendMessage(String(props.channel.id), data);
+            :
+              await apiSendMessage(String(props.channel.id), data as SendMessageData);
 
         if (response.data) {
             const serverMsg = normalizeMessage(response.data, response.included);
             serverMsg.link_preview = linkPreview ?? serverMsg.link_preview;
+
+            if (props.isDm && serverMsg.message_bytes && content) {
+                serverMsg.content = content;
+                void window.api.mls.cacheDm(Number(props.channel.id), serverMsg.id, content);
+            }
 
             const serverIdx = activeMessages.value.findIndex((m) => m.id === serverMsg.id);
             const optimisticIdx = activeMessages.value.findIndex((m) => m.id === clientTempId);
@@ -598,8 +636,6 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
         }
         await outbox.clear(clientTempId);
     } catch (error: unknown) {
-        // Keep the message visible as failed (persisted in the outbox) so the user
-        // can retry it — do not discard it.
         activeStore.updateMessage(clientTempId, { send_status: 'failed' });
         const axiosErr = error as { response?: { status?: number; headers?: Record<string, string> } };
         await outbox.enqueue({
@@ -668,15 +704,53 @@ const cancelEdit = () => {
     editContent.value = '';
 };
 
+/**
+ * Encrypt a DM, self-healing a missing local MLS group. The group can be absent
+ * when a send happens before establish/sync completed (or a Welcome hadn't been
+ * pulled yet), which makes the WASM engine throw "group not found in storage".
+ * On the first failure we re-run establish+sync once and retry. If the group
+ * still can't be built (e.g. no Welcome exists at all), the second attempt
+ * throws and the caller fails closed.
+ */
+async function encryptDmWithRetry(
+    dmId: number,
+    text: string,
+): Promise<{ message_bytes: string; epoch: number; sender_device_id: string }> {
+    try {
+        return await window.api.mls.encryptDm(dmId, text);
+    } catch {
+        const host = serverStore.activeHost;
+        const token = authStore.token;
+        if (host && token) {
+            await window.api.mls.establishDmGroup(host, token, dmId);
+            await window.api.mls.syncDmGroup(host, token, dmId);
+        }
+        return await window.api.mls.encryptDm(dmId, text);
+    }
+}
+
 const saveEdit = async (message: MessageData) => {
     if (!editContent.value.trim() || !props.channel?.id) return;
 
     try {
-        const editData = { content: editContent.value };
         if (props.isDm) {
-            await editDmMessage(String(props.channel.id), String(message.id), editData);
+            // Encrypt the edit as a new MLS message. Fail CLOSED — never PUT
+            // plaintext content for an E2EE DM.
+            let enc: { message_bytes: string; epoch: number; sender_device_id: string };
+            try {
+                enc = await encryptDmWithRetry(Number(props.channel.id), editContent.value);
+            } catch {
+                sendError.value = 'This edit could not be encrypted, so it was not saved.';
+                return;
+            }
+            await editDmMessage(String(props.channel.id), String(message.id), {
+                message_bytes: enc.message_bytes,
+                epoch: enc.epoch,
+                sender_device_id: enc.sender_device_id,
+            });
+            void window.api.mls.cacheDm(Number(props.channel.id), String(message.id), editContent.value);
         } else {
-            await apiEditMessage(String(props.channel.id), String(message.id), editData);
+            await apiEditMessage(String(props.channel.id), String(message.id), { content: editContent.value });
         }
         activeStore.updateMessage(message.id, {
             content: editContent.value,
@@ -759,6 +833,7 @@ const toggleReaction = async (message: MessageData, emoji: string) => {
                 <div class="flex-1">
                     <h2 class="flex items-center gap-1.5 font-semibold">
                         {{ channel?.name || t('chat.messages.selectChannel') }}
+                        <MlsVerificationBadge v-if="isDm && peerUserId != null" :peer-user-id="peerUserId" />
                     </h2>
                     <p v-if="channel?.topic" class="text-muted-foreground text-xs">
                         {{ channel.topic }}

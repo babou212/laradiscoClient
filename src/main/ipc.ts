@@ -20,6 +20,7 @@ import {
 } from './database';
 import { FFMPEG_PATH, FFPROBE_PATH } from './ffmpeg';
 import { logger } from './logger';
+import { mlsService, runExclusive } from './mls/service';
 
 function captureIpcError(channel: string, err: unknown): string {
     const error = err instanceof Error ? err : new Error(String(err));
@@ -151,6 +152,48 @@ function buildBaseUrl(host: string): string {
 }
 
 export function registerIpcHandlers(): void {
+    // Read-only surfaces (no engine mutation) — run unserialized.
+    handle('mls:status', () => mlsService.status());
+    handle('mls:localVerification', (_e, peerUserId: number) => mlsService.localVerification(peerUserId));
+    handle('mls:getRequireVerification', () => mlsService.getRequireVerification());
+    handle('mls:setRequireVerification', (_e, on: boolean) => mlsService.setRequireVerification(on));
+    handle('mls:verificationStatus', (_e, host: string, token: string, peerUserId: number) =>
+        mlsService.verificationStatus(host, token, peerUserId),
+    );
+    handle('mls:markVerified', (_e, peerUserId: number) => mlsService.markVerified(peerUserId));
+    handle('mls:newRecoveryCode', () => mlsService.newRecoveryCode());
+
+    handle('mls:ensureSetup', (_e, host: string, token: string) =>
+        runExclusive(() => mlsService.ensureSetup(host, token)),
+    );
+    handle('mls:establishDmGroup', (_e, host: string, token: string, dmId: number) =>
+        runExclusive(() => mlsService.establishDmGroup(host, token, dmId)),
+    );
+    handle('mls:syncDmGroup', (_e, host: string, token: string, dmId: number) =>
+        runExclusive(() => mlsService.syncDmGroup(host, token, dmId)),
+    );
+    handle('mls:reconcileAllDmGroups', (_e, host: string, token: string) =>
+        runExclusive(() => mlsService.reconcileAllDmGroups(host, token)),
+    );
+    handle('mls:encryptDm', (_e, dmId: number, text: string) =>
+        runExclusive(() => mlsService.encryptDm(dmId, text)),
+    );
+    handle('mls:decryptDm', (_e, dmId: number, messageId: string, messageBytesB64: string) =>
+        runExclusive(() => mlsService.decryptDm(dmId, messageId, messageBytesB64)),
+    );
+    handle('mls:cacheDm', (_e, dmId: number, messageId: string, plaintext: string) =>
+        runExclusive(() => mlsService.cacheDm(dmId, messageId, plaintext)),
+    );
+    handle('mls:redecryptDm', (_e, dmId: number, messageId: string, messageBytesB64: string) =>
+        runExclusive(() => mlsService.redecryptDm(dmId, messageId, messageBytesB64)),
+    );
+    handle('mls:backup', (_e, host: string, token: string, recoveryCode: string) =>
+        runExclusive(() => mlsService.backup(host, token, recoveryCode)),
+    );
+    handle('mls:restore', (_e, host: string, token: string, recoveryCode: string) =>
+        runExclusive(() => mlsService.restore(host, token, recoveryCode)),
+    );
+
     handle('server:ping', async (_event, host: string) => {
         const url = `${buildBaseUrl(host)}/api/v1/ping`;
         try {
@@ -420,6 +463,11 @@ export function registerIpcHandlers(): void {
     handle('auth:logout', async (_event, host: string) => {
         const session = getAuthSession();
         if (session) {
+            try {
+                await mlsService.wipeOnLogout(host, session.token);
+            } catch (error) {
+                console.error('[mls] logout wipe failed', error);
+            }
             try {
                 await net.fetch(`${buildBaseUrl(host)}/api/v1/auth/logout`, {
                     method: 'POST',

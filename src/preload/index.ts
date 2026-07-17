@@ -11,6 +11,7 @@ import { avatarApi } from './apis/avatar';
 import { clipboardApi } from './apis/clipboard';
 import { idleApi } from './apis/idle';
 import { logApi } from './apis/log';
+import { mlsApi } from './apis/mls';
 import { notificationsApi } from './apis/notifications';
 import { outboxApi } from './apis/outbox';
 import { pttApi } from './apis/ptt';
@@ -40,6 +41,7 @@ const api = {
     soundboard: soundboardApi,
     idle: idleApi,
     outbox: outboxApi,
+    mls: mlsApi,
 };
 
 if (process.contextIsolated) {

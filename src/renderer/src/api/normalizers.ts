@@ -140,6 +140,7 @@ export function normalizeMessage(
     return {
         id: resource.id,
         content: attrs.content,
+        message_bytes: attrs.message_bytes ?? null,
         is_edited: attrs.is_edited ?? false,
         edited_at: attrs.edited_at ?? null,
         deleted_at: attrs.deleted_at ?? null,

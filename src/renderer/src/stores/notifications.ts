@@ -106,13 +106,30 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const fetchNotifications = async () => {
         try {
             const response = await getNotifications();
-            notifications.value = response.data.map((r) => ({
-                id: r.id,
-                type: r.attributes.notification_type,
-                data: r.attributes.data as AppNotification['data'],
-                read_at: r.attributes.read_at,
-                created_at: r.attributes.created_at,
-            }));
+            notifications.value = await Promise.all(
+                response.data.map(async (r) => {
+                    const data = r.attributes.data as AppNotification['data'] & { message_bytes?: string };
+                    if (
+                        data.notification_type === 'direct_message' &&
+                        typeof data.message_bytes === 'string' &&
+                        data.dm_group_id != null
+                    ) {
+                        data.content =
+                            (await window.api.mls.decryptDm(
+                                Number(data.dm_group_id),
+                                String(data.message_id),
+                                data.message_bytes,
+                            )) ?? '[encrypted message]';
+                    }
+                    return {
+                        id: r.id,
+                        type: r.attributes.notification_type,
+                        data,
+                        read_at: r.attributes.read_at,
+                        created_at: r.attributes.created_at,
+                    };
+                }),
+            );
             unreadCount.value = response.meta?.unread_count ?? notifications.value.length;
         } catch (err) {
             console.error('Failed to fetch notifications:', err);
@@ -130,7 +147,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
         const echo = getEcho();
         const userChannel = echo.private(`App.Models.User.${currentUserId}`);
-        userChannel.notification((raw: Record<string, unknown>) => {
+        userChannel.notification(async (raw: Record<string, unknown>) => {
             const notification: AppNotification = {
                 id: raw.id as string,
                 type: typeof raw.type === 'string' ? raw.type.split('\\').pop()! : String(raw.type),
@@ -152,6 +169,19 @@ export const useNotificationsStore = defineStore('notifications', () => {
                 read_at: null,
                 created_at: new Date().toISOString(),
             };
+
+            if (
+                notification.data.notification_type === 'direct_message' &&
+                typeof raw.message_bytes === 'string' &&
+                notification.data.dm_group_id != null
+            ) {
+                notification.data.content =
+                    (await window.api.mls.decryptDm(
+                        Number(notification.data.dm_group_id),
+                        String(notification.data.message_id),
+                        raw.message_bytes,
+                    )) ?? '[encrypted message]';
+            }
 
             notifications.value.unshift(notification);
             unreadCount.value++;

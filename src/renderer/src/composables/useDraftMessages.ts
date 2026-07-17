@@ -19,13 +19,22 @@ function pruneExpired(map: DraftMap): DraftMap {
     return pruned;
 }
 
+// DM drafts are E2EE message text — they live in memory only and are never
+// written to localStorage (plaintext LevelDB on disk).
+function isDmKey(key: string): boolean {
+    return key.startsWith('dm:');
+}
+
 function loadDrafts(): DraftMap {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         const parsed: DraftMap = stored ? JSON.parse(stored) : {};
-        const pruned = pruneExpired(parsed);
+        const pruned: DraftMap = {};
+        for (const [key, entry] of Object.entries(pruneExpired(parsed))) {
+            if (!isDmKey(key)) pruned[key] = entry;
+        }
         if (Object.keys(pruned).length !== Object.keys(parsed).length) {
-            persistDrafts(pruned);
+            persistDrafts(pruned); // also scrubs any DM drafts persisted by older builds
         }
         return pruned;
     } catch (error) {
@@ -36,7 +45,11 @@ function loadDrafts(): DraftMap {
 
 function persistDrafts(drafts: DraftMap): void {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+        const persistable: DraftMap = {};
+        for (const [key, entry] of Object.entries(drafts)) {
+            if (!isDmKey(key)) persistable[key] = entry;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
     } catch (error) {
         console.error(error);
     }

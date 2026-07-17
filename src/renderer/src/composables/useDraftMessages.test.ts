@@ -17,13 +17,35 @@ describe('useDraftMessages', () => {
         expect(getDraft('channel:1')).toBe('hello world');
     });
 
-    it('persists drafts to localStorage keyed by conversation, with a timestamp', () => {
+    it('persists channel drafts to localStorage, with a timestamp', () => {
         const { setDraft } = useDraftMessages();
-        setDraft('dm:2', 'saved text');
+        setDraft('channel:2', 'saved text');
 
         const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-        expect(stored['dm:2'].content).toBe('saved text');
-        expect(stored['dm:2'].savedAt).toBeTypeOf('number');
+        expect(stored['channel:2'].content).toBe('saved text');
+        expect(stored['channel:2'].savedAt).toBeTypeOf('number');
+    });
+
+    it('keeps DM drafts in memory only — never written to localStorage', () => {
+        const { getDraft, setDraft } = useDraftMessages();
+        setDraft('dm:2', 'e2ee draft');
+
+        expect(getDraft('dm:2')).toBe('e2ee draft');
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+        expect(stored).not.toHaveProperty('dm:2');
+    });
+
+    it('scrubs DM drafts persisted by older builds on load', async () => {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ 'dm:9': { content: 'legacy plaintext', savedAt: Date.now() } }),
+        );
+
+        vi.resetModules();
+        await import('./useDraftMessages');
+
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+        expect(stored).not.toHaveProperty('dm:9');
     });
 
     it('removes the entry when the draft is cleared', () => {

@@ -102,6 +102,10 @@ export interface ThreadPreview {
 export interface MessageData {
     id: string;
     content: string | null;
+    /** E2EE DMs: base64 MLS ciphertext. Decrypted into `content` in the renderer. */
+    message_bytes?: string | null;
+    epoch?: number | null;
+    sender_device_id?: string | null;
     is_edited: boolean;
     edited_at: string | null;
     deleted_at: string | null;

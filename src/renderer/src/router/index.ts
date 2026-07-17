@@ -5,6 +5,7 @@ import { initEcho, disconnectEcho } from '@/lib/echo';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useConnectionStore } from '@/stores/connection';
+import { useE2eeStore } from '@/stores/e2ee';
 import { useInboxStore } from '@/stores/inbox';
 import { useNotificationsStore } from '@/stores/notifications';
 import { usePresenceStore } from '@/stores/presence';
@@ -123,6 +124,11 @@ const router = createRouter({
                     component: () => import('@/views/settings/TwoFactorSettingsView.vue'),
                 },
                 {
+                    path: 'security',
+                    name: 'settings-security',
+                    component: () => import('@/views/settings/SecuritySettingsView.vue'),
+                },
+                {
                     path: 'server-profile',
                     name: 'settings-server-profile',
                     component: () => import('@/views/settings/ServerProfileView.vue'),
@@ -196,8 +202,23 @@ function connectRealtime(userId: number): void {
     void presenceStore.connect();
     notificationsStore.connect(userId);
     chatStore.connectUnread(userId);
-    // Pull any messages buffered while we were offline (the reconnect path is
-    // handled by the Echo 'connected' handler in lib/echo.ts).
+
+    const mlsHost = useServerStore().activeHost;
+    const mlsToken = useAuthStore().token;
+    if (mlsHost && mlsToken) {
+        void window.api.mls
+            .ensureSetup(mlsHost, mlsToken)
+            .then((res) => {
+                useE2eeStore().setLinkRequired(res.linkRequired);
+                if (!res.linkRequired) {
+                    void window.api.mls.reconcileAllDmGroups(mlsHost, mlsToken).catch(() => {});
+                }
+            })
+            .catch(() => {
+                // Non-fatal: DMs fall back to plaintext until setup succeeds.
+            });
+    }
+
     void useInboxStore().drain();
     startPresenceUpdater();
     void startActivityReporter();
