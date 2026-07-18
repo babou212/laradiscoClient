@@ -41,6 +41,7 @@ export default defineConfig({
             reporter: ['text', 'html', 'lcov'],
             include: ['src/main/**', 'src/preload/**', 'src/renderer/src/**'],
             exclude: [
+                '**/*.wasm',
                 '**/*.d.ts',
                 '**/*.test.ts',
                 'src/renderer/src/i18n/locales/**',

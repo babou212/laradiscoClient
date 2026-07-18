@@ -40,7 +40,8 @@
             "forgotPassword": "Forgot your password?",
             "noAccount": "Don't have an account? Sign up",
             "changeServer": "Change server",
-            "kickedMessage": "You have been removed from this server. Sign in again once a role has been assigned to you."
+            "kickedMessage": "You have been removed from this server. Sign in again once a role has been assigned to you.",
+            "deviceRevokedMessage": "This device's access was revoked and its encryption keys were removed. Sign in again to continue."
         },
         "register": {
             "joinTitle": "Join Server",

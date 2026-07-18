@@ -112,6 +112,9 @@ export interface MessageAttributes {
 
 export interface DirectMessageAttributes {
     content: string | null;
+    message_bytes?: string | null;
+    epoch?: number | null;
+    sender_device_id?: string | null;
     link_preview?: LinkPreviewData | null;
     is_edited: boolean;
     edited_at: string | null;

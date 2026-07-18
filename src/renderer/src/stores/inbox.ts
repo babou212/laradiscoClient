@@ -47,6 +47,15 @@ export const useInboxStore = defineStore('inbox', () => {
                     }
                 } else if (item.message_type === 'direct_message' && payload.dm_group_id != null) {
                     const groupId = String(payload.dm_group_id);
+
+                    if (payload.message_bytes) {
+                        payload.content =
+                            (await window.api.mls.decryptDm(
+                                Number(payload.dm_group_id),
+                                String(payload.id),
+                                payload.message_bytes,
+                            )) ?? '[unable to decrypt]';
+                    }
                     if (dm.selectedDmGroupId === groupId && !dm.isViewingHistory) {
                         dm.addMessage(payload);
                     }

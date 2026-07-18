@@ -1,8 +1,10 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { createDmGroup, findDmGroup, getDmGroups, getDmMessages } from '@/api/direct-messages';
+import { createDmGroup, getDmGroups, getDmMessages } from '@/api/direct-messages';
 import { normalizeMessages } from '@/api/normalizers';
 import { readPageMeta } from '@/api/pagination';
+import { useAuthStore } from '@/stores/auth';
+import { useServerStore } from '@/stores/server';
 import type { AvatarUrls, MessageData } from '@/types/chat';
 
 export interface DmGroup {
@@ -132,6 +134,19 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         } else {
             currentDmGroup.value = { id, name: 'Direct Message' };
         }
+
+        const host = useServerStore().activeHost;
+        const token = useAuthStore().token;
+        if (host && token) {
+            try {
+                await window.api.mls.establishDmGroup(host, token, Number(id));
+                await window.api.mls.syncDmGroup(host, token, Number(id));
+            } catch {
+                // Best-effort: E2EE not ready yet; messages that need decryption
+                // will show a placeholder until sync succeeds.
+            }
+        }
+
         await fetchMessages(id);
     }
 
@@ -144,7 +159,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         hasMoreAfter.value = false;
         try {
             const response = await getDmMessages(groupId);
-            messages.value = normalizeMessages(response.data, response.included);
+            messages.value = await decryptDmMessages(groupId, normalizeMessages(response.data, response.included));
             const meta = readPageMeta(response.meta);
             hasMoreBefore.value = meta.hasMoreBefore;
             hasMoreAfter.value = meta.hasMoreAfter;
@@ -156,6 +171,17 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         } finally {
             isLoadingMessages.value = false;
         }
+    }
+
+    async function decryptDmMessages(groupId: string, msgs: MessageData[]): Promise<MessageData[]> {
+        await Promise.all(
+            msgs.map(async (m) => {
+                if (!m.message_bytes) return;
+                m.content =
+                    (await window.api.mls.decryptDm(Number(groupId), m.id, m.message_bytes)) ?? '[unable to decrypt]';
+            }),
+        );
+        return msgs;
     }
 
     async function mergeOutbox(groupId: string): Promise<void> {
@@ -173,7 +199,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMore.value = true;
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { before: oldestId.value });
-            const older = normalizeMessages(response.data, response.included);
+            const older = await decryptDmMessages(
+                currentDmGroup.value.id,
+                normalizeMessages(response.data, response.included),
+            );
             const meta = readPageMeta(response.meta);
             if (older.length > 0) {
                 messages.value = [...older, ...messages.value];
@@ -192,7 +221,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMore.value = true;
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { after: newestId.value });
-            const newer = normalizeMessages(response.data, response.included);
+            const newer = await decryptDmMessages(
+                currentDmGroup.value.id,
+                normalizeMessages(response.data, response.included),
+            );
             const meta = readPageMeta(response.meta);
             if (newer.length > 0) {
                 messages.value = [...messages.value, ...newer];
@@ -211,7 +243,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMessages.value = true;
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { around: messageId });
-            messages.value = normalizeMessages(response.data, response.included);
+            messages.value = await decryptDmMessages(
+                currentDmGroup.value.id,
+                normalizeMessages(response.data, response.included),
+            );
             const meta = readPageMeta(response.meta);
             hasMoreBefore.value = meta.hasMoreBefore;
             hasMoreAfter.value = meta.hasMoreAfter;
@@ -225,12 +260,7 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
     }
 
     async function startOrGetDm(userId: string): Promise<string | null> {
-        try {
-            const found = await findDmGroup(userId);
-            return String(found.data.dm_group_id);
-        } catch {
-            // Group doesn't exist yet, create one
-        }
+        // createDmGroup is get-or-create: returns the existing group (200) or a new one (201).
         try {
             const created = await createDmGroup(userId);
             if ('data' in created && 'dm_group_id' in created.data) {

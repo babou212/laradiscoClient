@@ -2,7 +2,9 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import AdminActionDialogs from '@/components/chat/AdminActionDialogs.vue';
+import BackupCodeDialog from '@/components/chat/BackupCodeDialog.vue';
 import ChannelActionDialogs from '@/components/chat/ChannelActionDialogs.vue';
+import LinkDeviceDialog from '@/components/chat/LinkDeviceDialog.vue';
 import AppContextMenu from '@/components/AppContextMenu.vue';
 import ConnectionBanner from '@/components/ConnectionBanner.vue';
 import NotificationToast from '@/components/NotificationToast.vue';
@@ -68,5 +70,7 @@ onUnmounted(() => {
         </AppContextMenu>
         <AdminActionDialogs />
         <ChannelActionDialogs />
+        <LinkDeviceDialog />
+        <BackupCodeDialog />
     </TooltipProvider>
 </template>

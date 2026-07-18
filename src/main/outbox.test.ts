@@ -65,6 +65,7 @@ const fakeDb = {
 };
 
 vi.mock('./db', () => ({ initDb: vi.fn(), getDb: () => fakeDb, getRawDb: vi.fn() }));
+vi.mock('./auth-storage', () => ({ getAuthSession: () => ({ user_id: 1 }) }));
 
 import { enqueueOutbox, getOutbox, listOutboxForChannel, removeOutbox } from './database';
 

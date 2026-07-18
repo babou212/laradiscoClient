@@ -67,8 +67,24 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
         currentChannelListener = dm ? `direct-message.${cId}` : `channel.${cId}`;
 
         echo.join(currentChannelListener)
-            .listen('MessageSent', (data: { message: MessageData }) => {
+            .listen('MessageSent', async (data: { message: MessageData }) => {
                 coerceBroadcastMessage(data.message);
+
+                if (dm && data.message.message_bytes) {
+                    const own = data.message.client_temp_id
+                        ? messages.value.find(
+                              (m) => m.id !== data.message.id && m.client_temp_id === data.message.client_temp_id,
+                          )
+                        : undefined;
+                    data.message.content = own
+                        ? own.content
+                        : ((await window.api.mls.decryptDm(
+                              Number(cId),
+                              String(data.message.id),
+                              data.message.message_bytes,
+                          )) ?? '[unable to decrypt]');
+                }
+
                 if (!data.message.reply_to && data.message.reply_to_id) {
                     const parent = messages.value.find((m) => m.id === data.message.reply_to_id);
                     if (parent) {
@@ -104,10 +120,19 @@ export function useChannelRealtime(options: ChannelRealtimeOptions) {
                 addMessage(data.message);
                 notifyNewMessage();
             })
-            .listen('MessageEdited', (data: { message: MessageData }) => {
+            .listen('MessageEdited', async (data: { message: MessageData }) => {
                 coerceBroadcastMessage(data.message);
+                let editedContent = data.message.content;
+                if (dm && data.message.message_bytes) {
+                    editedContent =
+                        (await window.api.mls.redecryptDm(
+                            Number(cId),
+                            String(data.message.id),
+                            data.message.message_bytes,
+                        )) ?? '[unable to decrypt]';
+                }
                 updateMessage(data.message.id, {
-                    content: data.message.content,
+                    content: editedContent,
                     is_edited: true,
                     edited_at: data.message.edited_at,
                 });

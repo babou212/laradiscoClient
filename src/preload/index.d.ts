@@ -17,6 +17,7 @@ export type { ClientActivity, ClientActivityType, ActivityApi } from './types/ac
 export type { SoundboardApi } from './types/soundboard';
 export type { IdleApi } from './types/idle';
 export type { OutboxApi, OutboxRow } from './types/outbox';
+export type { MlsApi, MlsEncrypted } from './types/mls';
 
 import type { ActivityApi } from './types/activity';
 import type { AttachmentsApi } from './types/attachments';
@@ -25,6 +26,7 @@ import type { AvatarApi } from './types/avatar';
 import type { ClipboardApi } from './types/clipboard';
 import type { IdleApi } from './types/idle';
 import type { LogApi } from './types/log';
+import type { MlsApi } from './types/mls';
 import type { NotificationsApi } from './types/notifications';
 import type { OutboxApi } from './types/outbox';
 import type { PttApi } from './types/ptt';
@@ -54,6 +56,7 @@ interface AppApi {
     soundboard: SoundboardApi;
     idle: IdleApi;
     outbox: OutboxApi;
+    mls: MlsApi;
 }
 
 declare global {

@@ -8,7 +8,11 @@ import type {
 } from './types';
 
 export interface SendDmMessageData {
-    content: string;
+    content?: string;
+    // E2EE: MLS ciphertext payload sent instead of `content`.
+    message_bytes?: string;
+    epoch?: number;
+    sender_device_id?: string;
     reply_to_id?: string;
     attachment_ids?: string[];
     client_temp_id?: string;
@@ -16,7 +20,10 @@ export interface SendDmMessageData {
 }
 
 export interface EditDmMessageData {
-    content: string;
+    content?: string;
+    message_bytes?: string;
+    epoch?: number;
+    sender_device_id?: string;
 }
 
 export async function getDmGroups(params?: {
@@ -69,11 +76,6 @@ export async function editDmMessage(
 
 export function deleteDmMessage(groupId: string, messageId: string): Promise<void> {
     return api.delete(`/direct-messages/${groupId}/messages/${messageId}`);
-}
-
-export async function findDmGroup(userId: string): Promise<{ data: { dm_group_id: number } }> {
-    const r = await api.get('/direct-messages/find', { params: { user_id: userId } });
-    return r.data;
 }
 
 export async function createDmGroup(
