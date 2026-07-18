@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth';
@@ -71,8 +78,8 @@ async function link(): Promise<void> {
                     />
                 </div>
                 <p class="text-muted-foreground text-xs">
-                    Don't have it? You can set up a fresh identity from Settings → Security, but you won't be able to read
-                    past messages on this device.
+                    Don't have it? You can set up a fresh identity from Settings → Security, but you won't be able to
+                    read past messages on this device.
                 </p>
             </div>
 

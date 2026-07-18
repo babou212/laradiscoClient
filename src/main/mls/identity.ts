@@ -25,9 +25,18 @@ export function signKeyPackage(identityPrivB64: string, keyPackageBytes: Uint8Ar
 }
 
 /** Verify a KeyPackage's identity signature against the owner's identity key. */
-export function verifyKeyPackage(identityKeyPubB64: string, keyPackageBytes: Uint8Array, signatureB64: string): boolean {
+export function verifyKeyPackage(
+    identityKeyPubB64: string,
+    keyPackageBytes: Uint8Array,
+    signatureB64: string,
+): boolean {
     try {
-        return verify(null, Buffer.from(keyPackageBytes), pubFromB64(identityKeyPubB64), Buffer.from(signatureB64, 'base64'));
+        return verify(
+            null,
+            Buffer.from(keyPackageBytes),
+            pubFromB64(identityKeyPubB64),
+            Buffer.from(signatureB64, 'base64'),
+        );
     } catch {
         return false;
     }

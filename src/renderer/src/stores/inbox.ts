@@ -47,7 +47,7 @@ export const useInboxStore = defineStore('inbox', () => {
                     }
                 } else if (item.message_type === 'direct_message' && payload.dm_group_id != null) {
                     const groupId = String(payload.dm_group_id);
-                    
+
                     if (payload.message_bytes) {
                         payload.content =
                             (await window.api.mls.decryptDm(

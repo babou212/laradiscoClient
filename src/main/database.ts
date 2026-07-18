@@ -296,18 +296,31 @@ export function putDecryptedMessage(messageId: string, groupId: string, content:
     const sealed = encryptLocal(content);
     db.insert(decryptedMessages)
         .values({ ownerId: ownerId(), messageId, groupId, content: sealed, createdAt: new Date().toISOString() })
-        .onConflictDoUpdate({ target: [decryptedMessages.ownerId, decryptedMessages.messageId], set: { content: sealed } })
+        .onConflictDoUpdate({
+            target: [decryptedMessages.ownerId, decryptedMessages.messageId],
+            set: { content: sealed },
+        })
         .run();
 }
 
-export function listDecryptedMessages(): Array<{ message_id: string; group_id: string; content: string; created_at: string }> {
+export function listDecryptedMessages(): Array<{
+    message_id: string;
+    group_id: string;
+    content: string;
+    created_at: string;
+}> {
     const db = getDb();
     return db
         .select()
         .from(decryptedMessages)
         .where(eq(decryptedMessages.ownerId, ownerId()))
         .all()
-        .map((r) => ({ message_id: r.messageId, group_id: r.groupId, content: decryptLocal(r.content), created_at: r.createdAt }));
+        .map((r) => ({
+            message_id: r.messageId,
+            group_id: r.groupId,
+            content: decryptLocal(r.content),
+            created_at: r.createdAt,
+        }));
 }
 
 /**
@@ -321,6 +334,10 @@ export function clearMlsLocalData(): void {
     db.delete(decryptedMessages).where(eq(decryptedMessages.ownerId, uid)).run();
     db.delete(mlsGroups).where(eq(mlsGroups.ownerId, uid)).run();
     db.delete(outbox).run();
-    db.delete(settings).where(like(settings.key, `%::u${uid}`)).run();
-    db.delete(settings).where(eq(settings.key, `mls_device_id_${uid}`)).run();
+    db.delete(settings)
+        .where(like(settings.key, `%::u${uid}`))
+        .run();
+    db.delete(settings)
+        .where(eq(settings.key, `mls_device_id_${uid}`))
+        .run();
 }

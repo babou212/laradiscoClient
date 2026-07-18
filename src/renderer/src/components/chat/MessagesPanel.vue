@@ -607,8 +607,7 @@ const sendMessage = async (content: string, files: StagedFile[] = []) => {
     try {
         const response = props.isDm
             ? await sendDmMessage(String(props.channel.id), data)
-            :
-              await apiSendMessage(String(props.channel.id), data as SendMessageData);
+            : await apiSendMessage(String(props.channel.id), data as SendMessageData);
 
         if (response.data) {
             const serverMsg = normalizeMessage(response.data, response.included);

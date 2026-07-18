@@ -60,7 +60,10 @@ async function restoreBackup(): Promise<void> {
     restoreStatus.value = null;
     try {
         await window.api.mls.restore(c.host, c.token, code);
-        restoreStatus.value = { ok: true, message: 'Backup restored. Your encrypted message history is available on this device.' };
+        restoreStatus.value = {
+            ok: true,
+            message: 'Backup restored. Your encrypted message history is available on this device.',
+        };
         restoreCode.value = '';
     } catch {
         restoreStatus.value = { ok: false, message: 'Restore failed. Check the recovery code and try again.' };
@@ -154,7 +157,11 @@ async function restoreBackup(): Promise<void> {
                         Restore from backup
                     </Button>
 
-                    <p v-if="restoreStatus" class="text-sm" :class="restoreStatus.ok ? 'text-green-600' : 'text-red-600'">
+                    <p
+                        v-if="restoreStatus"
+                        class="text-sm"
+                        :class="restoreStatus.ok ? 'text-green-600' : 'text-red-600'"
+                    >
                         {{ restoreStatus.message }}
                     </p>
                 </div>

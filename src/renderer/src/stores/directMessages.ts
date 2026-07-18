@@ -199,7 +199,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMore.value = true;
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { before: oldestId.value });
-            const older = await decryptDmMessages(currentDmGroup.value.id, normalizeMessages(response.data, response.included));
+            const older = await decryptDmMessages(
+                currentDmGroup.value.id,
+                normalizeMessages(response.data, response.included),
+            );
             const meta = readPageMeta(response.meta);
             if (older.length > 0) {
                 messages.value = [...older, ...messages.value];
@@ -218,7 +221,10 @@ export const useDirectMessagesStore = defineStore('directMessages', () => {
         isLoadingMore.value = true;
         try {
             const response = await getDmMessages(currentDmGroup.value.id, { after: newestId.value });
-            const newer = await decryptDmMessages(currentDmGroup.value.id, normalizeMessages(response.data, response.included));
+            const newer = await decryptDmMessages(
+                currentDmGroup.value.id,
+                normalizeMessages(response.data, response.included),
+            );
             const meta = readPageMeta(response.meta);
             if (newer.length > 0) {
                 messages.value = [...messages.value, ...newer];

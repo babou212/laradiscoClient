@@ -7,8 +7,7 @@ export const mlsApi = {
         ipcRenderer.invoke('mls:establishDmGroup', host, token, dmId),
     syncDmGroup: (host: string, token: string, dmId: number) =>
         ipcRenderer.invoke('mls:syncDmGroup', host, token, dmId),
-    reconcileAllDmGroups: (host: string, token: string) =>
-        ipcRenderer.invoke('mls:reconcileAllDmGroups', host, token),
+    reconcileAllDmGroups: (host: string, token: string) => ipcRenderer.invoke('mls:reconcileAllDmGroups', host, token),
     localVerification: (peerUserId: number) => ipcRenderer.invoke('mls:localVerification', peerUserId),
     getRequireVerification: () => ipcRenderer.invoke('mls:getRequireVerification'),
     setRequireVerification: (on: boolean) => ipcRenderer.invoke('mls:setRequireVerification', on),

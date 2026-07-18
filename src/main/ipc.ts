@@ -175,9 +175,7 @@ export function registerIpcHandlers(): void {
     handle('mls:reconcileAllDmGroups', (_e, host: string, token: string) =>
         runExclusive(() => mlsService.reconcileAllDmGroups(host, token)),
     );
-    handle('mls:encryptDm', (_e, dmId: number, text: string) =>
-        runExclusive(() => mlsService.encryptDm(dmId, text)),
-    );
+    handle('mls:encryptDm', (_e, dmId: number, text: string) => runExclusive(() => mlsService.encryptDm(dmId, text)));
     handle('mls:decryptDm', (_e, dmId: number, messageId: string, messageBytesB64: string) =>
         runExclusive(() => mlsService.decryptDm(dmId, messageId, messageBytesB64)),
     );

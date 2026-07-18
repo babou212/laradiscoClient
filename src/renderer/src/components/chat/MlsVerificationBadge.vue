@@ -77,12 +77,19 @@ watch(() => props.peerUserId, load);
             <p v-else class="text-muted-foreground mt-2 text-xs">
                 This contact hasn't set up encryption yet, so there's no safety number to compare.
             </p>
-            <code v-if="status.safetyNumber" class="bg-muted mt-2 block rounded p-2 font-mono text-xs break-all select-all">
+            <code
+                v-if="status.safetyNumber"
+                class="bg-muted mt-2 block rounded p-2 font-mono text-xs break-all select-all"
+            >
                 {{ status.safetyNumber }}
             </code>
             <div class="mt-3 flex justify-end gap-2">
                 <Button variant="ghost" size="sm" @click="open = false">Close</Button>
-                <Button v-if="status.safetyNumber && (!status.verified || status.changed)" size="sm" @click="markVerified">
+                <Button
+                    v-if="status.safetyNumber && (!status.verified || status.changed)"
+                    size="sm"
+                    @click="markVerified"
+                >
                     Mark as verified
                 </Button>
             </div>

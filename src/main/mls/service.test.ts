@@ -28,8 +28,7 @@ vi.mock('../database', () => ({
             content,
             created_at: 'now',
         })),
-    getPeerIdentity: (id: string) =>
-        state.peers.has(id) ? { user_id: id, ...state.peers.get(id)! } : null,
+    getPeerIdentity: (id: string) => (state.peers.has(id) ? { user_id: id, ...state.peers.get(id)! } : null),
     pinPeerIdentity: (id: string, key: string): 'new' | 'unchanged' | 'changed' => {
         const existing = state.peers.get(id);
         if (!existing) {
@@ -228,7 +227,8 @@ describe('mlsService', () => {
     it('verificationStatus pins a peer (TOFU) and returns a safety number; markVerified flips it', async () => {
         state.settings.set('mls_identity_pub::u1', 'MY-IDENTITY-KEY');
         route((method, url) => {
-            if (url.includes('/identity/7') && method === 'GET') return { status: 200, data: { identity_key: 'PEER-KEY' } };
+            if (url.includes('/identity/7') && method === 'GET')
+                return { status: 200, data: { identity_key: 'PEER-KEY' } };
             return { status: 200 };
         });
 
@@ -333,7 +333,10 @@ describe('mlsService', () => {
     });
 
     it('restore throws on a wrong recovery code', async () => {
-        const encrypted = encryptBundle(mlsService.newRecoveryCode(), JSON.stringify({ provider: '', identity: '', history: [] }));
+        const encrypted = encryptBundle(
+            mlsService.newRecoveryCode(),
+            JSON.stringify({ provider: '', identity: '', history: [] }),
+        );
         route(() => ({ status: 200, data: encrypted }));
         await expect(mlsService.restore(HOST, TOKEN, mlsService.newRecoveryCode())).rejects.toThrow();
     });

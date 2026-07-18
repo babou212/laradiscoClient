@@ -1,9 +1,5 @@
 import { Group, Identity, KeyPackage, Provider, RatchetTree } from './runtime';
-import type {
-    Group as GroupT,
-    Identity as IdentityT,
-    Provider as ProviderT,
-} from './runtime';
+import type { Group as GroupT, Identity as IdentityT, Provider as ProviderT } from './runtime';
 
 export interface StagedCommit {
     added_identities: string[];
@@ -28,10 +24,7 @@ export interface AddResult {
  * the service passes a predicate that only accepts identities belonging to the
  * two conversation participants (verified out-of-band via the backend).
  */
-export type CommitPolicy = (info: {
-    addedIdentities: string[];
-    removedIndices: number[];
-}) => boolean;
+export type CommitPolicy = (info: { addedIdentities: string[]; removedIndices: number[] }) => boolean;
 
 const td = new TextDecoder();
 
@@ -101,11 +94,7 @@ export class MlsEngine {
      */
     addMember(groupId: string, keyPackageBytes: Uint8Array): AddResult {
         const group = Group.load(this.provider, groupId);
-        const messages = group.add_member(
-            this.provider,
-            this.identity,
-            KeyPackage.from_bytes(keyPackageBytes),
-        );
+        const messages = group.add_member(this.provider, this.identity, KeyPackage.from_bytes(keyPackageBytes));
         const ratchetTree = group.export_ratchet_tree().to_bytes();
         group.merge_pending_commit(this.provider);
         return { commit: messages.commit, welcome: messages.welcome, ratchetTree };
@@ -113,11 +102,7 @@ export class MlsEngine {
 
     /** Join a group from a Welcome + exported ratchet tree. Returns the group id. */
     joinFromWelcome(welcomeBytes: Uint8Array, ratchetTreeBytes: Uint8Array): string {
-        const group = Group.join(
-            this.provider,
-            welcomeBytes,
-            RatchetTree.from_bytes(ratchetTreeBytes),
-        );
+        const group = Group.join(this.provider, welcomeBytes, RatchetTree.from_bytes(ratchetTreeBytes));
         return td.decode(group.group_id());
     }
 
