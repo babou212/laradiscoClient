@@ -26,4 +26,6 @@ export const mlsApi = {
         ipcRenderer.invoke('mls:backup', host, token, recoveryCode),
     restore: (host: string, token: string, recoveryCode: string) =>
         ipcRenderer.invoke('mls:restore', host, token, recoveryCode),
+    backupPrompt: (host: string, token: string) => ipcRenderer.invoke('mls:backupPrompt', host, token),
+    backupConfirmed: () => ipcRenderer.invoke('mls:backupConfirmed'),
 };

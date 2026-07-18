@@ -112,10 +112,41 @@ describe('mlsService', () => {
         const kpCall = calls.find((c) => c.url.includes('/mls/key-packages') && c.method === 'POST');
         expect((kpCall!.body as { key_packages: unknown[] }).key_packages.length).toBeGreaterThan(0);
 
-        // Second call is a no-op (keystore already present).
-        const before = calls.length;
+        // Second call re-registers nothing (keystore already present); it only
+        // probes backup state until the recovery code is acknowledged.
         await mlsService.ensureSetup(HOST, TOKEN);
-        expect(calls.length).toBe(before);
+        expect(calls.filter((c) => c.url.includes('/identity/register')).length).toBe(1);
+        expect(calls.filter((c) => c.url.includes('/devices/register')).length).toBe(1);
+    });
+
+    it('flags backupNeeded until the recovery code is acknowledged', async () => {
+        route((_m, url) => {
+            if (url.includes('/keys/backup/exists')) return { status: 200, data: { exists: false } };
+            return { status: 201 };
+        });
+
+        let res = await mlsService.ensureSetup(HOST, TOKEN);
+        expect(res.backupNeeded).toBe(true);
+
+        // Auto-created backup re-shows the SAME code until confirmed (force-quit safety).
+        const code = await mlsService.backupPrompt(HOST, TOKEN);
+        expect(await mlsService.backupPrompt(HOST, TOKEN)).toBe(code);
+        res = await mlsService.ensureSetup(HOST, TOKEN);
+        expect(res.backupNeeded).toBe(true);
+
+        mlsService.backupConfirmed();
+        res = await mlsService.ensureSetup(HOST, TOKEN);
+        expect(res.backupNeeded).toBe(false);
+    });
+
+    it('skips the backup prompt when another device owns the backup', async () => {
+        route((_m, url) => {
+            if (url.includes('/keys/backup/exists')) return { status: 200, data: { exists: true } };
+            return { status: 201 };
+        });
+
+        const res = await mlsService.ensureSetup(HOST, TOKEN);
+        expect(res.backupNeeded).toBe(false);
     });
 
     it('ensureSetup signals linkRequired when the account identity already exists', async () => {

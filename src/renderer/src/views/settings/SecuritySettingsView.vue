@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useClipboard } from '@vueuse/core';
+import { Check, Copy } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
@@ -15,6 +17,8 @@ const busy = ref(false);
 const backupStatus = ref<{ ok: boolean; message: string } | null>(null);
 const restoreStatus = ref<{ ok: boolean; message: string } | null>(null);
 const requireVerification = ref(false);
+
+const { copy, copied } = useClipboard();
 
 onMounted(async () => {
     requireVerification.value = await window.api.mls.getRequireVerification();
@@ -131,6 +135,11 @@ async function restoreBackup(): Promise<void> {
                     <div v-if="recoveryCode" class="bg-muted rounded-md border p-4">
                         <p class="text-sm font-medium">Your recovery code (shown once):</p>
                         <code class="mt-2 block font-mono text-sm break-all select-all">{{ recoveryCode }}</code>
+                        <Button variant="outline" size="sm" class="mt-2" @click="copy(recoveryCode)">
+                            <Check v-if="copied" class="size-4 text-green-500" />
+                            <Copy v-else class="size-4" />
+                            {{ copied ? 'Copied' : 'Copy recovery code' }}
+                        </Button>
                         <p class="text-muted-foreground mt-2 text-xs">
                             Store this somewhere safe. Without it, an encrypted backup cannot be recovered.
                         </p>

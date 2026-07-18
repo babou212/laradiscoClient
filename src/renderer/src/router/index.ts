@@ -210,6 +210,7 @@ function connectRealtime(userId: number): void {
             .ensureSetup(mlsHost, mlsToken)
             .then((res) => {
                 useE2eeStore().setLinkRequired(res.linkRequired);
+                useE2eeStore().setBackupNeeded(res.backupNeeded);
                 if (!res.linkRequired) {
                     void window.api.mls.reconcileAllDmGroups(mlsHost, mlsToken).catch(() => {});
                 }

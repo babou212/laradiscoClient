@@ -6,7 +6,10 @@ export interface MlsEncrypted {
 
 export interface MlsApi {
     status: () => Promise<{ established: boolean; deviceId: string }>;
-    ensureSetup: (host: string, token: string) => Promise<{ deviceId: string; linkRequired: boolean }>;
+    ensureSetup: (
+        host: string,
+        token: string,
+    ) => Promise<{ deviceId: string; linkRequired: boolean; backupNeeded: boolean }>;
     establishDmGroup: (host: string, token: string, dmId: number) => Promise<void>;
     syncDmGroup: (host: string, token: string, dmId: number) => Promise<void>;
     reconcileAllDmGroups: (host: string, token: string) => Promise<void>;
@@ -26,4 +29,6 @@ export interface MlsApi {
     newRecoveryCode: () => Promise<string>;
     backup: (host: string, token: string, recoveryCode: string) => Promise<void>;
     restore: (host: string, token: string, recoveryCode: string) => Promise<void>;
+    backupPrompt: (host: string, token: string) => Promise<string>;
+    backupConfirmed: () => Promise<void>;
 }

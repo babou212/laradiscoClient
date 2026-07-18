@@ -191,6 +191,10 @@ export function registerIpcHandlers(): void {
     handle('mls:restore', (_e, host: string, token: string, recoveryCode: string) =>
         runExclusive(() => mlsService.restore(host, token, recoveryCode)),
     );
+    handle('mls:backupPrompt', (_e, host: string, token: string) =>
+        runExclusive(() => mlsService.backupPrompt(host, token)),
+    );
+    handle('mls:backupConfirmed', () => mlsService.backupConfirmed());
 
     handle('server:ping', async (_event, host: string) => {
         const url = `${buildBaseUrl(host)}/api/v1/ping`;
