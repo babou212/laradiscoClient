@@ -13,9 +13,7 @@ function copyWasmPlugin() {
 
             const outDir = resolve('out2/main/wasm');
             if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-            for (const file of ['openmls_wasm.js', 'openmls_wasm_bg.wasm', 'package.json']) {
-                copyFileSync(resolve(srcDir, file), resolve(outDir, file));
-            }
+            copyFileSync(resolve(srcDir, 'openmls_wasm_bg.wasm'), resolve(outDir, 'openmls_wasm_bg.wasm'));
         },
     };
 }

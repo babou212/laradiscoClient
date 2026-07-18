@@ -90,14 +90,38 @@ export class MlsEngine {
      * Add a member (by their published KeyPackage bytes) to a group we're in.
      * Returns the commit to fan out to existing members and the welcome for the
      * new member; the ratchet tree is exported so the joiner can join even
-     * without the tree extension. Advances our own state immediately.
+     * without the tree extension. Leaves the commit PENDING — call
+     * mergePending() once the server accepts it, or clearPending() if rejected,
+     * so a server-side epoch conflict can't fork our local state.
      */
     addMember(groupId: string, keyPackageBytes: Uint8Array): AddResult {
         const group = Group.load(this.provider, groupId);
         const messages = group.add_member(this.provider, this.identity, KeyPackage.from_bytes(keyPackageBytes));
         const ratchetTree = group.export_ratchet_tree().to_bytes();
-        group.merge_pending_commit(this.provider);
         return { commit: messages.commit, welcome: messages.welcome, ratchetTree };
+    }
+
+    /** Current epoch of a group we hold (pending commits excluded). */
+    epoch(groupId: string): number {
+        return Number(Group.load(this.provider, groupId).epoch());
+    }
+
+    /**
+     * Drop a group's local state entirely (e.g. before rejoining via a fresh
+     * Welcome after this device fell irrecoverably behind the group).
+     */
+    deleteGroup(groupId: string): void {
+        Group.load(this.provider, groupId).delete(this.provider);
+    }
+
+    /** Merge our own pending commit after the server accepted it. */
+    mergePending(groupId: string): void {
+        Group.load(this.provider, groupId).merge_pending_commit(this.provider);
+    }
+
+    /** Discard our own pending commit after the server rejected it. */
+    clearPending(groupId: string): void {
+        Group.load(this.provider, groupId).clear_pending_commit(this.provider);
     }
 
     /** Join a group from a Welcome + exported ratchet tree. Returns the group id. */
@@ -167,7 +191,7 @@ export class MlsEngine {
     /**
      * Remove members by their device-id credential (revocation). Returns the
      * commit to fan out, or null if none of the identities are members.
-     * Advances our own state immediately.
+     * Leaves the commit pending — see addMember().
      */
     removeMembers(groupId: string, deviceIds: string[]): { commit: Uint8Array } | null {
         const group = Group.load(this.provider, groupId);
@@ -179,18 +203,16 @@ export class MlsEngine {
         if (indices.length === 0) return null;
 
         const messages = group.remove_members(this.provider, this.identity, Uint32Array.from(indices));
-        group.merge_pending_commit(this.provider);
         return { commit: messages.commit };
     }
 
     /**
      * Rotate this device's own leaf key (post-compromise security). Returns the
-     * commit to fan out. Advances our own state immediately.
+     * commit to fan out. Leaves the commit pending — see addMember().
      */
     selfUpdate(groupId: string): { commit: Uint8Array } {
         const group = Group.load(this.provider, groupId);
         const messages = group.self_update(this.provider, this.identity);
-        group.merge_pending_commit(this.provider);
         return { commit: messages.commit };
     }
 }

@@ -220,6 +220,14 @@ export const useNotificationsStore = defineStore('notifications', () => {
             void handleKicked();
         });
 
+        userChannel.listen('.device.revoked', (data: { device_id: string }) => {
+            void handleDeviceRevoked(data.device_id);
+        });
+
+        userChannel.listen('.mls.join.requested', (data: { group_id: string; requester_device_id: string }) => {
+            void handleMlsJoinRequested(data);
+        });
+
         isConnected.value = true;
         fetchNotifications();
         fetchPreferences();
@@ -266,6 +274,50 @@ export const useNotificationsStore = defineStore('notifications', () => {
         await authStore.logout();
         authStore.loginError = t('auth.login.kickedMessage');
         void router.push({ name: 'login' });
+    };
+
+    const handleDeviceRevoked = async (deviceId: string): Promise<void> => {
+        // Lazy imports avoid a circular dependency (auth/server -> api -> ... -> notifications).
+        const { useAuthStore } = await import('@/stores/auth');
+        const { useServerStore } = await import('@/stores/server');
+
+        const { deviceId: ownDeviceId } = await window.api.mls.status();
+
+        if (deviceId !== ownDeviceId) {
+            // A sibling device was revoked: re-key DM groups now instead of at next launch.
+            const host = useServerStore().activeHost;
+            const token = useAuthStore().token;
+            if (host && token) void window.api.mls.reconcileAllDmGroups(host, token).catch(() => {});
+            return;
+        }
+
+        // THIS device was revoked: destroy local key material and force logout.
+        // Wipe before logout — the wipe needs the auth session for per-user paths.
+        try {
+            await window.api.mls.wipeLocal();
+        } catch (err) {
+            console.warn('[DeviceRevoked] Local key wipe failed:', err);
+        }
+        const authStore = useAuthStore();
+        await authStore.logout();
+        authStore.loginError = t('auth.login.deviceRevokedMessage');
+        void router.push({ name: 'login' });
+    };
+
+    // A device fell out of sync with an MLS group and asked to be re-added.
+    // Re-running group establishment evicts its stale leaf and re-welcomes it.
+    const handleMlsJoinRequested = async (data: { group_id: string; requester_device_id: string }): Promise<void> => {
+        const m = data.group_id.match(/^dm:(\d+)$/);
+        if (!m) return;
+        const { deviceId } = await window.api.mls.status();
+        if (data.requester_device_id === deviceId) return; // our own rejoin request
+
+        // Lazy imports avoid a circular dependency (auth/server -> api -> ... -> notifications).
+        const { useAuthStore } = await import('@/stores/auth');
+        const { useServerStore } = await import('@/stores/server');
+        const host = useServerStore().activeHost;
+        const token = useAuthStore().token;
+        if (host && token) void window.api.mls.establishDmGroup(host, token, Number(m[1])).catch(() => {});
     };
 
     const setupNativeClickListener = () => {

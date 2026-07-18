@@ -31,4 +31,5 @@ export interface MlsApi {
     restore: (host: string, token: string, recoveryCode: string) => Promise<void>;
     backupPrompt: (host: string, token: string) => Promise<string>;
     backupConfirmed: () => Promise<void>;
+    wipeLocal: () => Promise<void>;
 }

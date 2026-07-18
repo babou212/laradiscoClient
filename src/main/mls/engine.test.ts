@@ -19,6 +19,7 @@ describe('MlsEngine', () => {
 
         alice.createGroup('dm:1');
         const add = alice.addMember('dm:1', bobKp);
+        alice.mergePending('dm:1');
 
         const joinedId = bob.joinFromWelcome(add.welcome, add.ratchetTree);
         expect(joinedId).toBe('dm:1');
@@ -38,6 +39,7 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:2');
         const add = alice.addMember('dm:2', bobKp);
+        alice.mergePending('dm:2');
         bob.joinFromWelcome(add.welcome, add.ratchetTree);
 
         // Simulate an app restart: serialize + restore Alice's whole keystore.
@@ -59,11 +61,13 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:3');
         const addBob = alice.addMember('dm:3', bobKp);
+        alice.mergePending('dm:3');
         bob.joinFromWelcome(addBob.welcome, addBob.ratchetTree);
 
         // Alice adds Carol → produces a commit that existing member Bob must process.
         const [carolKp] = carol.generateKeyPackages(1);
         const addCarol = alice.addMember('dm:3', carolKp);
+        alice.mergePending('dm:3');
 
         // Policy rejects: the added identity is not an allowed participant.
         const rejected = bob.processIncoming('dm:3', addCarol.commit, ({ addedIdentities }) =>
@@ -85,10 +89,12 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:4');
         const addBob = alice.addMember('dm:4', bobKp);
+        alice.mergePending('dm:4');
         bob.joinFromWelcome(addBob.welcome, addBob.ratchetTree);
 
         const [carolKp] = carol.generateKeyPackages(1);
         const addCarol = alice.addMember('dm:4', carolKp);
+        alice.mergePending('dm:4');
 
         const accepted = bob.processIncoming('dm:4', addCarol.commit, ({ addedIdentities }) =>
             addedIdentities.every((id) => id === 'carol-device-1'),
@@ -107,6 +113,7 @@ describe('MlsEngine', () => {
         expect(alice.memberIdentities('dm:5')).toEqual(['alice-device-1']);
 
         alice.addMember('dm:5', bobKp);
+        alice.mergePending('dm:5');
         expect(alice.memberIdentities('dm:5').sort()).toEqual(['alice-device-1', 'bob-device-1']);
     });
 
@@ -116,6 +123,7 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:6');
         const add = alice.addMember('dm:6', bobKp);
+        alice.mergePending('dm:6');
         bob.joinFromWelcome(add.welcome, add.ratchetTree);
 
         for (const text of ['one', 'two', 'three']) {
@@ -139,6 +147,7 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:7');
         const add = alice.addMember('dm:7', bobKp);
+        alice.mergePending('dm:7');
         bob.joinFromWelcome(add.welcome, add.ratchetTree);
 
         expect(alice.isActive('dm:7')).toBe(true);
@@ -156,6 +165,7 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:8');
         alice.addMember('dm:8', bobKp);
+        alice.mergePending('dm:8');
 
         const restored = MlsEngine.restore(alice.serialize(), alice.serializeIdentity());
         expect(restored.memberIdentities('dm:8').sort()).toEqual(['alice-device-1', 'bob-device-1']);
@@ -168,16 +178,64 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:9');
         const add = alice.addMember('dm:9', bobKp);
+        alice.mergePending('dm:9');
         bob.joinFromWelcome(add.welcome, add.ratchetTree);
         expect(alice.memberIdentities('dm:9').sort()).toEqual(['alice-device-1', 'bob-device-1']);
 
         const removal = alice.removeMembers('dm:9', ['bob-device-1']);
+        alice.mergePending('dm:9');
         expect(removal).not.toBeNull();
         expect(alice.memberIdentities('dm:9')).toEqual(['alice-device-1']);
 
         // Bob processes the removal and is no longer active in the group.
         bob.processIncoming('dm:9', removal!.commit, () => true);
         expect(bob.isActive('dm:9')).toBe(false);
+    });
+
+    it('clearPending discards a rejected commit without advancing state', () => {
+        const alice = MlsEngine.create('alice-device-1');
+        const bob = MlsEngine.create('bob-device-1');
+        const [bobKp, bobKp2] = bob.generateKeyPackages(2);
+        alice.createGroup('dm:12');
+        const epochBefore = alice.epoch('dm:12');
+
+        // Server rejects the commit (epoch conflict) → discard, no fork.
+        alice.addMember('dm:12', bobKp);
+        alice.clearPending('dm:12');
+        expect(alice.epoch('dm:12')).toBe(epochBefore);
+        expect(alice.memberIdentities('dm:12')).toEqual(['alice-device-1']);
+
+        // A retry commit can still be created and merged afterwards.
+        alice.addMember('dm:12', bobKp2);
+        alice.mergePending('dm:12');
+        expect(alice.epoch('dm:12')).toBe(epochBefore + 1);
+        expect(alice.memberIdentities('dm:12').sort()).toEqual(['alice-device-1', 'bob-device-1']);
+    });
+
+    it('deleteGroup drops local state so a fresh welcome can rejoin at the current epoch', () => {
+        const alice = MlsEngine.create('alice-device-1');
+        const bob = MlsEngine.create('bob-device-1');
+        const [bobKp, bobKp2] = bob.generateKeyPackages(2);
+        alice.createGroup('dm:13');
+        const add = alice.addMember('dm:13', bobKp);
+        alice.mergePending('dm:13');
+        bob.joinFromWelcome(add.welcome, add.ratchetTree);
+
+        // Bob fell irrecoverably behind → self-heal: wipe local group state.
+        bob.deleteGroup('dm:13');
+        expect(bob.hasGroup('dm:13')).toBe(false);
+
+        // A member evicts bob's stale leaf and re-adds him with a fresh KeyPackage.
+        alice.removeMembers('dm:13', ['bob-device-1']);
+        alice.mergePending('dm:13');
+        const readd = alice.addMember('dm:13', bobKp2);
+        alice.mergePending('dm:13');
+        bob.joinFromWelcome(readd.welcome, readd.ratchetTree);
+
+        expect(bob.epoch('dm:13')).toBe(alice.epoch('dm:13'));
+        const { ciphertext } = alice.encrypt('dm:13', enc.encode('healed'));
+        const r = bob.processIncoming('dm:13', ciphertext, () => true);
+        expect(r.type === 'application' && dec.decode(r.plaintext)).toBe('healed');
     });
 
     it('removeMembers returns null when no identity matches', () => {
@@ -192,9 +250,11 @@ describe('MlsEngine', () => {
         const [bobKp] = bob.generateKeyPackages(1);
         alice.createGroup('dm:11');
         const add = alice.addMember('dm:11', bobKp);
+        alice.mergePending('dm:11');
         bob.joinFromWelcome(add.welcome, add.ratchetTree);
 
         const update = alice.selfUpdate('dm:11');
+        alice.mergePending('dm:11');
         bob.processIncoming('dm:11', update.commit, () => true);
 
         const { ciphertext } = alice.encrypt('dm:11', enc.encode('after rekey'));

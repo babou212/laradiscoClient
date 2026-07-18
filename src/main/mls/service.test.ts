@@ -43,6 +43,13 @@ vi.mock('../database', () => ({
         const p = state.peers.get(id);
         if (p) p.verified = verified;
     },
+    clearMlsLocalData: () => {
+        state.groups.clear();
+        state.decrypted.clear();
+        for (const k of [...state.settings.keys()]) {
+            if (k.endsWith('::u1') || k === 'mls_device_id_1') state.settings.delete(k);
+        }
+    },
 }));
 vi.mock('../logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock('../auth-storage', () => ({ getAuthSession: () => ({ user_id: 1 }) }));
@@ -353,6 +360,7 @@ describe('mlsService', () => {
         route((_m, url) => {
             if (url.includes('/mls/groups/dm:9/claim')) return { status: 200 };
             if (url.includes('/dm-groups/9/members/bundles')) return { status: 200, data: [] };
+            if (url.includes('/join-requests')) return { status: 200, data: [] };
             return { status: 200 };
         });
 
@@ -361,6 +369,170 @@ describe('mlsService', () => {
         await expect(mlsService.establishDmGroup(HOST, TOKEN, 9)).resolves.toBeUndefined();
         // The group now really exists in the keystore, so we can encrypt into it.
         expect(() => mlsService.encryptDm(9, 'hello')).not.toThrow();
+    });
+
+    it('registers the device with its platform and a descriptive name', async () => {
+        route((_m, url) => {
+            if (url.includes('/identity/register')) return { status: 201 };
+            if (url.includes('/devices/register')) return { status: 201 };
+            if (url.includes('/mls/key-packages')) return { status: 201 };
+            return { status: 200 };
+        });
+        await mlsService.ensureSetup(HOST, TOKEN);
+
+        const reg = calls.find((c) => c.url.includes('/devices/register'));
+        const body = reg!.body as { device_name: string; platform: string };
+        expect(body.platform).toBe(process.platform);
+        expect(body.device_name).toContain(process.platform);
+    });
+
+    it('ensureSetup binds the token to this device', async () => {
+        route((_m, url) => {
+            if (url.includes('/identity/register')) return { status: 201 };
+            if (url.includes('/devices/register')) return { status: 201 };
+            if (url.includes('/mls/key-packages')) return { status: 201 };
+            return { status: 200 };
+        });
+        const { deviceId } = await mlsService.ensureSetup(HOST, TOKEN);
+        // bindDevice is fire-and-forget; let the microtask queue drain.
+        await new Promise((r) => setImmediate(r));
+
+        const bind = calls.find((c) => c.url.includes('/devices/bind'));
+        expect((bind!.body as { device_id: string }).device_id).toBe(deviceId);
+    });
+
+    it('wipeLocal destroys local key material without any network calls', async () => {
+        route((_m, url) => {
+            if (url.includes('/identity/register')) return { status: 201 };
+            if (url.includes('/devices/register')) return { status: 201 };
+            if (url.includes('/mls/key-packages')) return { status: 201 };
+            return { status: 200 };
+        });
+        await mlsService.ensureSetup(HOST, TOKEN);
+        await new Promise((r) => setImmediate(r));
+        expect(mlsService.status().established).toBe(true);
+
+        calls = [];
+        mlsService.wipeLocal();
+
+        expect(mlsService.status().established).toBe(false);
+        expect(loadBackupCode()).toBeNull();
+        expect(calls.length).toBe(0);
+    });
+
+    it('self-heals when irrecoverably behind: drops the group and requests a rejoin', async () => {
+        route((_m, url) => {
+            if (url.includes('/identity/register')) return { status: 201 };
+            if (url.includes('/devices/register')) return { status: 201 };
+            if (url.includes('/mls/key-packages')) return { status: 201 };
+            if (url.includes('/join-requests')) return { status: 200, data: [] };
+            if (url.includes('/dm-groups/1/members/bundles')) return { status: 200, data: [] };
+            return { status: 200 };
+        });
+        await mlsService.ensureSetup(HOST, TOKEN);
+        await mlsService.establishDmGroup(HOST, TOKEN, 1); // solo group at epoch 0
+
+        // A commit from far beyond our epoch: we can never replay our way there.
+        route((_m, url) => {
+            if (url.includes('/mls/groups/dm:1/messages') && !url.includes('welcome'))
+                return {
+                    status: 200,
+                    data: [
+                        {
+                            id: 7,
+                            message_type: 'commit',
+                            message_bytes: 'anVuaw==',
+                            sender_user_id: 2,
+                            sender_device_id: 'peer-device',
+                            epoch: 99,
+                        },
+                    ],
+                };
+            if (url.includes('/join-request')) return { status: 201 };
+            if (url.includes('/mls/key-packages')) return { status: 201 };
+            if (url.includes('/mls/welcome')) return { status: 200, data: [] };
+            if (url.includes('/dm-groups/1/members/bundles')) return { status: 200, data: [] };
+            return { status: 200 };
+        });
+        await mlsService.syncDmGroup(HOST, TOKEN, 1);
+
+        // It asked to be re-added, republished key packages, and dropped the group.
+        expect(calls.some((c) => c.method === 'POST' && c.url.includes('/mls/groups/dm:1/join-request'))).toBe(true);
+        expect(calls.some((c) => c.method === 'POST' && c.url.includes('/mls/key-packages'))).toBe(true);
+        expect(() => mlsService.encryptDm(1, 'x')).toThrow(); // group is gone locally
+
+        // Throttled: an immediate second wedge does not re-request.
+        calls = [];
+        await mlsService.syncDmGroup(HOST, TOKEN, 1);
+        expect(calls.some((c) => c.method === 'POST' && c.url.includes('/join-request'))).toBe(false);
+    });
+
+    it('heals a wedged peer: evicts the stale leaf, re-welcomes it, and fulfills the request', async () => {
+        const { generateKeyPairSync: genKeys } = await import('node:crypto');
+        const { signKeyPackage: sign } = await import('./identity');
+        const { MlsEngine: Engine } = await import('./engine');
+        const { createHash } = await import('node:crypto');
+
+        // Peer user 2 with a signed identity + device engine.
+        const { publicKey, privateKey } = genKeys('ed25519');
+        const peerIdentityPub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+        const peerIdentityPriv = privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64');
+
+        const setupRoutes = (kpBytes: Uint8Array | null, pendingJoins: unknown[]): void =>
+            route((_m, url) => {
+                if (url.includes('/identity/register')) return { status: 201 };
+                if (url.includes('/devices/register')) return { status: 201 };
+                if (url.includes('/mls/key-packages/2')) {
+                    if (!kpBytes) return { status: 200, data: [] };
+                    const b64kp = Buffer.from(kpBytes).toString('base64');
+                    return {
+                        status: 200,
+                        data: [
+                            {
+                                device_id: 'peer-device-1',
+                                key_package_bytes: b64kp,
+                                identity_signature: sign(peerIdentityPriv, kpBytes),
+                            },
+                        ],
+                    };
+                }
+                if (url.includes('/mls/key-packages')) return { status: 201 };
+                if (url.includes('/identity/2')) return { status: 200, data: { identity_key: peerIdentityPub } };
+                if (url.includes('/join-requests')) return { status: 200, data: pendingJoins };
+                if (url.includes('/dm-groups/3/members/bundles'))
+                    return { status: 200, data: [{ user_id: 2, devices: [{ device_id: 'peer-device-1' }] }] };
+                if (url.includes('/mls/welcome')) return { status: 200, data: [] };
+                return { status: 200 };
+            });
+
+        await (async () => {
+            route((_m, url) => {
+                if (url.includes('/identity/register')) return { status: 201 };
+                if (url.includes('/devices/register')) return { status: 201 };
+                if (url.includes('/mls/key-packages')) return { status: 201 };
+                return { status: 200 };
+            });
+            await mlsService.ensureSetup(HOST, TOKEN);
+        })();
+
+        const peerEngine = Engine.create('peer-device-1');
+        const [peerKp1, peerKp2] = peerEngine.generateKeyPackages(2);
+        void createHash; // hash used indirectly via service key package payloads
+
+        // First establish: adds the peer normally (welcome #1).
+        setupRoutes(peerKp1, []);
+        await mlsService.establishDmGroup(HOST, TOKEN, 3);
+        expect(calls.filter((c) => c.method === 'POST' && c.url.includes('/welcome')).length).toBe(1);
+
+        // Peer wedges and requests a rejoin; re-establish should heal it.
+        calls = [];
+        setupRoutes(peerKp2, [{ user_id: 2, device_id: 'peer-device-1' }]);
+        await mlsService.establishDmGroup(HOST, TOKEN, 3);
+
+        const commits = calls.filter((c) => c.method === 'POST' && c.url.includes('/mls/groups/dm:3/messages'));
+        expect(commits.length).toBeGreaterThanOrEqual(2); // eviction commit + re-add commit
+        expect(calls.filter((c) => c.method === 'POST' && c.url.includes('/welcome')).length).toBe(1); // fresh welcome
+        expect(calls.some((c) => c.method === 'POST' && c.url.includes('/join-request/fulfill'))).toBe(true);
     });
 
     it('restore throws on a wrong recovery code', async () => {

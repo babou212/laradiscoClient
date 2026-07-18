@@ -195,6 +195,7 @@ export function registerIpcHandlers(): void {
         runExclusive(() => mlsService.backupPrompt(host, token)),
     );
     handle('mls:backupConfirmed', () => mlsService.backupConfirmed());
+    handle('mls:wipeLocal', () => runExclusive(() => mlsService.wipeLocal()));
 
     handle('server:ping', async (_event, host: string) => {
         const url = `${buildBaseUrl(host)}/api/v1/ping`;
