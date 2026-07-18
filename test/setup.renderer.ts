@@ -1,6 +1,7 @@
 import { config } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
+import { createApp } from 'vue';
 import { i18n } from '@/i18n';
 import { createWindowApiMock } from './helpers/windowApi';
 
@@ -46,11 +47,13 @@ beforeAll(() => {
 
     window.Pusher = window.Pusher ?? vi.fn();
 
-    config.global.plugins = [i18n];
 });
 
 beforeEach(() => {
-    setActivePinia(createPinia());
+    const pinia = createPinia();
+    createApp({}).use(pinia);
+    setActivePinia(pinia);
+    config.global.plugins = [i18n, pinia];
     window.api = createWindowApiMock();
     window.electron = { process: { platform: 'linux' }, ipcRenderer: { on: vi.fn(), send: vi.fn(), invoke: vi.fn() } };
 });
