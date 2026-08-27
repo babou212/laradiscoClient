@@ -1,0 +1,97 @@
+name: Version Bump
+
+on:
+  pull_request:
+    branches: [development]
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: version-bump-development
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump version on merge
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+
+      - name: Determine bump type from PR label
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          NON_EXEMPT=$(echo "$FILES" | grep -Ev '^\.github/|^README\.md$|^CHANGELOG\.md$|^docs/' || true)
+
+          if [ -z "$NON_EXEMPT" ]; then
+            echo "All changed files are under .github/ or docs - skipping version bump."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          MAPPED=$(jq -c '[.pull_request.labels[].name | select(startswith("semver:")) | sub("^semver:"; "")]' "$GITHUB_EVENT_PATH")
+          COUNT=$(echo "$MAPPED" | jq 'length')
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with no semver:* label and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually (npm version <major|minor|patch> --no-git-tag-version, commit, push to development)."
+            exit 1
+          fi
+
+          if [ "$COUNT" -gt 1 ]; then
+            NAMES=$(echo "$MAPPED" | jq -r 'join(", ")')
+            echo "::error::PR #${{ github.event.pull_request.number }} merged with multiple semver labels ($NAMES) and non-exempt files changed. This should have been caught by the 'Validate PR has exactly one semver label' check, but that check is advisory-only and doesn't block merging. No automatic bump was performed; apply it manually."
+            exit 1
+          fi
+
+          BUMP=$(echo "$MAPPED" | jq -r '.[0]')
+          if [[ "$BUMP" != "major" && "$BUMP" != "minor" && "$BUMP" != "patch" ]]; then
+            echo "::error::Unrecognized semver label semver:$BUMP - expected one of semver:major, semver:minor, semver:patch."
+            exit 1
+          fi
+
+          echo "type=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump, commit, and push (retries on concurrent updates to development)
+        if: steps.bump.outputs.skip != 'true'
+        id: version
+        run: |
+          MAX_ATTEMPTS=5
+
+          for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS"); do
+            npm version ${{ steps.bump.outputs.type }} --no-git-tag-version
+            NEW_VERSION=$(node -p "require('./package.json').version")
+
+            git add package.json package-lock.json
+            git commit -m "chore(release): bump version to $NEW_VERSION (#${{ github.event.pull_request.number }})"
+
+            if git push origin HEAD:development; then
+              echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
+              echo "::error::Failed to push version bump after $MAX_ATTEMPTS attempts - development kept changing concurrently. Bump manually: npm version ${{ steps.bump.outputs.type }} --no-git-tag-version, commit, push to development."
+              exit 1
+            fi
+
+            echo "Push rejected (attempt $ATTEMPT/$MAX_ATTEMPTS) - development advanced concurrently. Re-syncing to latest development and retrying..."
+            git fetch origin development
+            git reset --hard origin/development
+            sleep $((RANDOM % 5 + 1))
+          done

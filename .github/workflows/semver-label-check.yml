@@ -1,0 +1,46 @@
+name: Semver Label Check
+
+on:
+  pull_request:
+    branches: [development]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: semver-label-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate PR has exactly one semver label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for exactly one semver:* label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          NON_EXEMPT=$(echo "$FILES" | grep -Ev '^\.github/|^README\.md$|^CHANGELOG\.md$|^docs/' || true)
+
+          if [ -z "$NON_EXEMPT" ]; then
+            echo "All changed files are under .github/ or docs - no semver label required."
+            exit 0
+          fi
+
+          COUNT=$(jq '[.pull_request.labels[].name | select(startswith("semver:"))] | length' "$GITHUB_EVENT_PATH")
+          NAMES=$(jq -r '[.pull_request.labels[].name | select(startswith("semver:"))] | join(", ")' "$GITHUB_EVENT_PATH")
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No semver label found. Add exactly one of: semver:major, semver:minor, semver:patch."
+            exit 1
+          fi
+
+          if [ "$COUNT" -gt 1 ]; then
+            echo "::error::Multiple semver labels found ($NAMES). Exactly one of semver:major, semver:minor, semver:patch is required."
+            exit 1
+          fi
+
+          echo "Exactly one semver label present: $NAMES"
