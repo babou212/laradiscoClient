@@ -85,7 +85,7 @@
         "laravel-echo": "^2.3.7",
         "livekit-client": "^2.19.2",
         "lucide-vue-next": "^0.468.0",
-        "markdown-it": "^14.2.0",
+        "markdown-it": "^14.3.1",
         "pinia": "^3.0.4",
         "primeicons": "^7.0.0",
         "primevue": "^4.5.5",
